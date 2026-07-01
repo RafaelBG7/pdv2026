@@ -38,17 +38,21 @@
         </div>
       </div>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-3">
       <label class="form-label" for="cost_price">Preço de custo</label>
       <input class="form-control" id="cost_price" name="cost_price" inputmode="numeric" value="{{ '%.2f'|format(product.cost_price or 0)|replace('.', ',') }}" data-currency-input>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-3">
       <label class="form-label" for="sale_price">Preço de venda</label>
       <input class="form-control" id="sale_price" name="sale_price" inputmode="numeric" value="{{ '%.2f'|format(product.sale_price or 0)|replace('.', ',') }}" data-currency-input>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-3">
       <label class="form-label" for="stock_quantity">Estoque</label>
       <input class="form-control" id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="min_stock_quantity">Estoque mínimo</label>
+      <input class="form-control" id="min_stock_quantity" name="min_stock_quantity" type="number" min="0" value="{{ product.min_stock_quantity or 0 }}">
     </div>
     <div class="col-12">
       <div class="form-check form-switch">

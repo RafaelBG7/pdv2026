@@ -104,17 +104,25 @@ class RouteTestCase(unittest.TestCase):
         self.login()
 
         with self.app.app_context():
-            db.session.add(Product(name='Produto Baixo', sale_price=10, stock_quantity=2, active=True))
-            db.session.add(Product(name='Produto Sem Estoque', sale_price=10, stock_quantity=0, active=True))
+            low_product = Product(name='Produto Baixo', sale_price=10, stock_quantity=2, min_stock_quantity=3, active=True)
+            db.session.add(low_product)
+            db.session.add(Product(name='Produto Sem Estoque', sale_price=10, stock_quantity=0, min_stock_quantity=5, active=True))
             db.session.commit()
+            low_product_id = low_product.id
 
         response = self.client.get('/dashboard')
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Alertas'.encode(), response.data)
         self.assertIn('Estoque baixo'.encode(), response.data)
-        self.assertIn('Produto Baixo está com apenas 2 un. em estoque.'.encode(), response.data)
-        self.assertIn('Produto Sem Estoque está sem estoque.'.encode(), response.data)
+        self.assertIn('Produto Baixo está com 2 un. Mínimo: 3 un.'.encode(), response.data)
+        self.assertIn('Produto Sem Estoque está sem estoque. Mínimo: 5 un.'.encode(), response.data)
+
+        dismiss_response = self.client.get(f'/catalogo/produtos/{low_product_id}/notificacao-estoque', follow_redirects=True)
+
+        self.assertEqual(dismiss_response.status_code, 200)
+        self.assertNotIn('Produto Baixo está com 2 un. Mínimo: 3 un.'.encode(), dismiss_response.data)
+        self.assertIn('Produto Sem Estoque está sem estoque. Mínimo: 5 un.'.encode(), dismiss_response.data)
 
     def test_invalid_login_stays_on_login_page(self):
         response = self.login(password='senha-errada')
@@ -577,7 +585,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.add_all([wines, beers])
             db.session.flush()
             db.session.add_all([
-                Product(name='Vinho Barato', category_id=wines.id, sale_price=30, stock_quantity=3, active=True),
+                Product(name='Vinho Barato', category_id=wines.id, sale_price=30, stock_quantity=3, min_stock_quantity=5, active=True),
                 Product(name='Vinho Premium', category_id=wines.id, sale_price=120, stock_quantity=8, active=True),
                 Product(name='Cerveja Lager', category_id=beers.id, sale_price=8, stock_quantity=0, active=True),
                 Product(name='Produto Inativo', category_id=wines.id, sale_price=50, stock_quantity=5, active=False),
@@ -621,7 +629,7 @@ class RouteTestCase(unittest.TestCase):
         self.open_cash_register()
 
         with self.app.app_context():
-            product = Product(name='Tequila', cost_price=60, sale_price=100, stock_quantity=5, active=True)
+            product = Product(name='Tequila', cost_price=60, sale_price=100, stock_quantity=5, min_stock_quantity=3, active=True)
             db.session.add(product)
             db.session.commit()
             product_id = product.id
@@ -639,7 +647,13 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(sale_response.status_code, 200)
 
-        response = self.client.get('/relatorios', query_string={'period': 'daily'})
+        with self.app.app_context():
+            sale_date = Sale.query.one().created_at.date().isoformat()
+
+        response = self.client.get(
+            '/relatorios',
+            query_string={'period': 'custom', 'start_date': sale_date, 'end_date': sale_date},
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Relatórios'.encode(), response.data)

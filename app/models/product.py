@@ -13,6 +13,7 @@ class Product(db.Model):
     cost_price = db.Column(db.Float, default=0.0)
     sale_price = db.Column(db.Float, default=0.0)
     stock_quantity = db.Column(db.Integer, default=0)
+    min_stock_quantity = db.Column(db.Integer, default=0)
     active = db.Column(db.Boolean, default=True)
     is_kit = db.Column(db.Boolean, default=False)
     kit_component_product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True)

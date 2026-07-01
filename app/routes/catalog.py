@@ -1,6 +1,6 @@
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
 
 from app.extensions import db
@@ -45,6 +45,7 @@ def populate_product(product):
     product.cost_price = parse_money(request.form.get('cost_price'))
     product.sale_price = parse_money(request.form.get('sale_price'))
     product.stock_quantity = parse_int(request.form.get('stock_quantity'))
+    product.min_stock_quantity = parse_int(request.form.get('min_stock_quantity'))
     product.active = request.form.get('active') == 'on'
     product.is_kit = request.form.get('is_kit') == 'on'
     product.kit_component_product_id = int(kit_component_product_id) if kit_component_product_id else None
@@ -83,7 +84,7 @@ def products():
     elif stock == 'out':
         query = query.filter(Product.stock_quantity <= 0)
     elif stock == 'low':
-        query = query.filter(Product.stock_quantity > 0, Product.stock_quantity <= 5)
+        query = query.filter(Product.min_stock_quantity > 0, Product.stock_quantity >= 0, Product.stock_quantity <= Product.min_stock_quantity)
 
     if min_price is not None:
         query = query.filter(Product.sale_price >= min_price)
@@ -198,6 +199,7 @@ def quick_update_product(product_id):
     product.cost_price = parse_money(request.form.get('cost_price'))
     product.sale_price = parse_money(request.form.get('sale_price'))
     product.stock_quantity = parse_int(request.form.get('stock_quantity'))
+    product.min_stock_quantity = parse_int(request.form.get('min_stock_quantity'))
     product.is_kit = request.form.get('is_kit') == 'on'
     kit_component_product_id = request.form.get('kit_component_product_id') or None
     product.kit_component_product_id = int(kit_component_product_id) if kit_component_product_id else None
@@ -226,6 +228,21 @@ def quick_update_product(product_id):
 
     flash('Produto atualizado com sucesso.', 'success')
     return redirect(url_for('catalog.products', status='all'))
+
+
+@catalog_bp.route('/produtos/<int:product_id>/notificacao-estoque')
+@login_required
+def dismiss_low_stock_notification(product_id):
+    product = db.get_or_404(Product, product_id)
+    stock_quantity = product.effective_stock_quantity or 0
+    min_stock_quantity = product.min_stock_quantity or 0
+    notification_key = f'product-low-stock:{product.id}:{stock_quantity}:{min_stock_quantity}'
+    dismissed_notifications = set(session.get('dismissed_low_stock_notifications', []))
+    dismissed_notifications.add(notification_key)
+    session['dismissed_low_stock_notifications'] = sorted(dismissed_notifications)
+    session.modified = True
+
+    return redirect(url_for('catalog.products', status='active', q=product.name))
 
 
 @catalog_bp.route('/produtos/<int:product_id>/alternar-status', methods=['POST'])

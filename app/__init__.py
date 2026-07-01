@@ -1,4 +1,4 @@
-from flask import Flask, render_template, url_for
+from flask import Flask, render_template, session, url_for
 from flask_login import current_user
 from sqlalchemy import inspect, text
 
@@ -16,6 +16,23 @@ def ensure_product_kit_columns():
         'is_kit': 'ALTER TABLE products ADD COLUMN is_kit BOOLEAN DEFAULT 0',
         'kit_component_product_id': 'ALTER TABLE products ADD COLUMN kit_component_product_id INTEGER',
         'kit_component_quantity': 'ALTER TABLE products ADD COLUMN kit_component_quantity INTEGER DEFAULT 0',
+    }
+
+    for column, statement in migrations.items():
+        if column not in columns:
+            db.session.execute(text(statement))
+
+    db.session.commit()
+
+
+def ensure_product_stock_columns():
+    inspector = inspect(db.engine)
+    if 'products' not in inspector.get_table_names():
+        return
+
+    columns = {column['name'] for column in inspector.get_columns('products')}
+    migrations = {
+        'min_stock_quantity': 'ALTER TABLE products ADD COLUMN min_stock_quantity INTEGER DEFAULT 0',
     }
 
     for column, statement in migrations.items():
@@ -97,6 +114,7 @@ def create_app(config_class=Config):
 
         db.create_all()
         ensure_product_kit_columns()
+        ensure_product_stock_columns()
         ensure_sale_discount_columns()
         ensure_sale_item_profit_columns()
         ensure_user_profile_columns()
@@ -124,23 +142,27 @@ def create_app(config_class=Config):
             from app.models import Product
 
             low_stock_products = []
+            dismissed_notifications = set(session.get('dismissed_low_stock_notifications', []))
             products = Product.query.filter_by(active=True).order_by(Product.name.asc()).all()
             for product in products:
                 stock_quantity = product.effective_stock_quantity or 0
-                if stock_quantity <= 5:
-                    low_stock_products.append((stock_quantity, product))
+                min_stock_quantity = product.min_stock_quantity or 0
+                notification_key = f'product-low-stock:{product.id}:{stock_quantity}:{min_stock_quantity}'
+                if min_stock_quantity > 0 and stock_quantity <= min_stock_quantity and notification_key not in dismissed_notifications:
+                    low_stock_products.append((stock_quantity, min_stock_quantity, notification_key, product))
 
-            low_stock_products.sort(key=lambda item: (item[0], item[1].name.lower()))
-            for stock_quantity, product in low_stock_products[:10]:
+            low_stock_products.sort(key=lambda item: (item[0], item[3].name.lower()))
+            for stock_quantity, min_stock_quantity, notification_key, product in low_stock_products[:10]:
                 if stock_quantity <= 0:
-                    message = f'{product.name} está sem estoque.'
+                    message = f'{product.name} está sem estoque. Mínimo: {min_stock_quantity} un.'
                 else:
-                    message = f'{product.name} está com apenas {stock_quantity} un. em estoque.'
+                    message = f'{product.name} está com {stock_quantity} un. Mínimo: {min_stock_quantity} un.'
 
                 notifications.append({
                     'title': 'Estoque baixo',
                     'message': message,
-                    'url': url_for('catalog.products', status='active', q=product.name),
+                    'url': url_for('catalog.dismiss_low_stock_notification', product_id=product.id),
+                    'key': notification_key,
                 })
 
         return {'current_user': current_user, 'app_notifications': notifications}

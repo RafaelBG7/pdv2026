@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Relatórios</h2>
+    <p class="text-muted mb-0">Acompanhe vendas, descontos, pagamentos e lucro por período.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
+</div>
+
+<form class="card card-dark filter-panel mb-4 report-filter-form" method="get" data-report-filter-form>
+  <div>
+    <label class="form-label" for="period">Período</label>
+    <select class="form-select" id="period" name="period" data-report-period>
+      <option value="daily" {% if period == 'daily' %}selected{% endif %}>Diário</option>
+      <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>Semanal</option>
+      <option value="monthly" {% if period == 'monthly' %}selected{% endif %}>Mensal</option>
+      <option value="annual" {% if period == 'annual' %}selected{% endif %}>Anual</option>
+      <option value="custom" {% if period == 'custom' %}selected{% endif %}>Personalizado</option>
+    </select>
+  </div>
+  <div>
+    <label class="form-label" for="start_date">Data inicial</label>
+    <input class="form-control" id="start_date" name="start_date" type="date" value="{{ start_date.isoformat() }}" data-report-start-date>
+  </div>
+  <div>
+    <label class="form-label" for="end_date">Data final</label>
+    <input class="form-control" id="end_date" name="end_date" type="date" value="{{ end_date.isoformat() }}" data-report-end-date>
+  </div>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Filtrar</button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('main.reports') }}">Hoje</a>
+  </div>
+</form>
+
+<div class="report-period-label mb-3">
+  <span>Período selecionado</span>
+  <strong>{{ period_label }}</strong>
+</div>
+
+<div class="report-summary-grid mb-4">
+  <div class="card card-dark report-card">
+    <span>Vendas</span>
+    <strong>{{ totals.sales_count }}</strong>
+  </div>
+  <div class="card card-dark report-card">
+    <span>Total vendido</span>
+    <strong>R$ {{ '%.2f'|format(totals.final or 0)|replace('.', ',') }}</strong>
+  </div>
+  <div class="card card-dark report-card">
+    <span>Lucro</span>
+    <strong>R$ {{ '%.2f'|format(totals.profit or 0)|replace('.', ',') }}</strong>
+  </div>
+  <div class="card card-dark report-card">
+    <span>Ticket médio</span>
+    <strong>R$ {{ '%.2f'|format(totals.average_ticket or 0)|replace('.', ',') }}</strong>
+  </div>
+  <div class="card card-dark report-card">
+    <span>Itens vendidos</span>
+    <strong>{{ totals.items_count }}</strong>
+  </div>
+  <div class="card card-dark report-card">
+    <span>Descontos</span>
+    <strong>R$ {{ '%.2f'|format(totals.discount or 0)|replace('.', ',') }}</strong>
+  </div>
+</div>
+
+<section class="card card-dark report-chart-panel mb-4">
+  <div class="report-section-header">
+    <h5 class="mb-0">Gráfico de vendas</h5>
+  </div>
+  <div class="report-chart" aria-label="Total vendido por período">
+    {% for point in chart_data %}
+    <div class="report-chart-column">
+      <div class="report-chart-track">
+        <div
+          class="report-chart-bar"
+          style="height: {{ point.percent }}%;"
+          title="{{ point.title }} · R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
+          aria-label="{{ point.title }}: R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
+        ></div>
+      </div>
+      <span>{{ point.label }}</span>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Nenhum dado para montar o gráfico.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="report-layout">
+  <section class="card card-dark table-card p-0">
+    <div class="report-section-header">
+      <h5 class="mb-0">Vendas do período</h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle mb-0 app-table report-sales-table">
+        <thead>
+          <tr>
+            <th>Venda</th>
+            <th>Data</th>
+            <th class="text-end">Subtotal</th>
+            <th class="text-end">Desconto</th>
+            <th class="text-end">Total</th>
+            <th class="text-end">Lucro</th>
+            <th>Pagamento</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sale in sales %}
+          <tr>
+            <td><a href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">#{{ sale.id }}</a></td>
+            <td>{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
+            <td class="text-end">R$ {{ '%.2f'|format(sale.total_amount or 0)|replace('.', ',') }}</td>
+            <td class="text-end">R$ {{ '%.2f'|format(sale.discount_amount or 0)|replace('.', ',') }}</td>
+            <td class="text-end">R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</td>
+            <td class="text-end">R$ {{ '%.2f'|format(sale_profit(sale) or 0)|replace('.', ',') }}</td>
+            <td>
+              {% for payment in sale.payments %}
+              <span class="badge text-bg-secondary">{{ payment_methods.get(payment.method, payment.method) }}</span>
+              {% else %}
+              <span class="text-muted">-</span>
+              {% endfor %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">Nenhuma venda encontrada neste período.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside class="report-side">
+    <section class="card card-dark sale-panel">
+      <h5 class="mb-3">Pagamentos</h5>
+      <div class="payment-summary">
+        {% for method, amount in payment_totals.items() %}
+        <div>
+          <span>{{ payment_methods.get(method, method) }}</span>
+          <strong>R$ {{ '%.2f'|format(amount or 0)|replace('.', ',') }}</strong>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhum pagamento no período.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card card-dark sale-panel">
+      <h5 class="mb-3">Produtos mais vendidos</h5>
+      <div class="payment-summary">
+        {% for product in top_products[:8] %}
+        <div>
+          <span>{{ product.name }} <small class="text-muted">({{ product.quantity }} un.)</small></span>
+          <strong>R$ {{ '%.2f'|format(product.total or 0)|replace('.', ',') }}</strong>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhum produto vendido no período.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Venda #{{ sale.id }}</h2>
+    <p class="text-muted mb-0">Resumo do pedido finalizado.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar nova venda</a>
+    <a class="btn btn-outline-light" href="{{ url_for('main.sales') }}">Ver vendas</a>
+  </div>
+</div>
+
+<div class="sale-layout">
+  <section class="card card-dark sale-panel">
+    <h5 class="mb-3">Produtos</h5>
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle mb-0 compact-table sale-detail-table">
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th class="text-end">Qtd.</th>
+            <th class="text-end">Unitário</th>
+            <th class="text-end">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in sale.items %}
+          <tr>
+            <td>{{ item.product.name if item.product else '-' }}</td>
+            <td class="text-end">{{ item.quantity }}</td>
+            <td class="text-end">R$ {{ '%.2f'|format(item.unit_price or 0)|replace('.', ',') }}</td>
+            <td class="text-end">R$ {{ '%.2f'|format(item.total_price or 0)|replace('.', ',') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside class="card card-dark sale-panel">
+    <h5 class="mb-3">Pagamento</h5>
+    <div class="payment-summary">
+      <div><span>Subtotal</span><strong>R$ {{ '%.2f'|format(sale.total_amount or 0)|replace('.', ',') }}</strong></div>
+      <div><span>Desconto</span><strong>R$ {{ '%.2f'|format(sale.discount_amount or 0)|replace('.', ',') }}</strong></div>
+      <div><span>Total</span><strong>R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</strong></div>
+      <div><span>Lucro</span><strong>R$ {{ '%.2f'|format(sale_profit or 0)|replace('.', ',') }}</strong></div>
+      <div><span>Pago</span><strong>R$ {{ '%.2f'|format(paid_amount or 0)|replace('.', ',') }}</strong></div>
+      <div><span>Troco</span><strong>R$ {{ '%.2f'|format(change_amount or 0)|replace('.', ',') }}</strong></div>
+    </div>
+    <hr>
+    {% for payment in sale.payments %}
+    <div class="d-flex justify-content-between mb-2">
+      <span>{{ payment_methods.get(payment.method, payment.method) }}</span>
+      <strong>R$ {{ '%.2f'|format(payment.amount or 0)|replace('.', ',') }}</strong>
+    </div>
+    {% endfor %}
+
+    <div class="sale-next-actions mt-4">
+      <a class="btn btn-primary w-100" href="{{ url_for('main.new_sale') }}">Realizar nova venda</a>
+    </div>
+  </aside>
+</div>
+{% endblock %}

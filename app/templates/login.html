@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100">
+  <div class="col-md-5">
+    <div class="card card-dark p-4 shadow">
+      <h2 class="mb-3 text-center">Adega JF</h2>
+      <p class="text-center text-muted">Sistema PDV Local</p>
+
+      <ul class="nav nav-pills settings-tab-nav mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="settings-tab-button {{ 'is-active active' if auth_tab != 'register' else '' }}" id="login-tab" data-bs-toggle="pill" data-bs-target="#login-panel" type="button" role="tab" aria-controls="login-panel" aria-selected="{{ 'true' if auth_tab != 'register' else 'false' }}">Entrar</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="settings-tab-button {{ 'is-active active' if auth_tab == 'register' else '' }}" id="register-tab" data-bs-toggle="pill" data-bs-target="#register-panel" type="button" role="tab" aria-controls="register-panel" aria-selected="{{ 'true' if auth_tab == 'register' else 'false' }}">Cadastrar</button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <form class="tab-pane fade {{ 'show active' if auth_tab != 'register' else '' }}" id="login-panel" method="post" role="tabpanel" aria-labelledby="login-tab">
+          <input type="hidden" name="form_type" value="login">
+          <div class="mb-3">
+            <label for="username" class="form-label">Usuário</label>
+            <input type="text" class="form-control" id="username" name="username" required>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Senha</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Entrar</button>
+        </form>
+
+        <form class="tab-pane fade {{ 'show active' if auth_tab == 'register' else '' }}" id="register-panel" method="post" role="tabpanel" aria-labelledby="register-tab">
+          <input type="hidden" name="form_type" value="register">
+          <div class="mb-3">
+            <label for="register_username" class="form-label">Usuário</label>
+            <input type="text" class="form-control" id="register_username" name="username" required>
+          </div>
+          <div class="mb-3">
+            <label for="register_email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="register_email" name="email" placeholder="email@exemplo.com">
+          </div>
+          <div class="mb-3">
+            <label for="register_password" class="form-label">Senha</label>
+            <input type="password" class="form-control" id="register_password" name="password" minlength="6" required>
+          </div>
+          <div class="mb-3">
+            <label for="confirm_password" class="form-label">Confirmar senha</label>
+            <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="6" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Cadastrar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

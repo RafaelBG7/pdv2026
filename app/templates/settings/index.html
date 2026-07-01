@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Configurações</h2>
+    <p class="text-muted mb-0">Gerencie os dados do usuário conectado.</p>
+  </div>
+  <span class="badge badge-accent">Usuário: {{ current_user.username }}</span>
+</div>
+
+<div class="settings-tabs" data-settings-tabs>
+  <div class="settings-tab-nav" role="tablist" aria-label="Configurações">
+    <button class="settings-tab-button is-active" type="button" data-settings-tab="user" role="tab" aria-selected="true">Usuário</button>
+    <button class="settings-tab-button" type="button" data-settings-tab="support" role="tab" aria-selected="false">Suporte</button>
+    <button class="settings-tab-button" type="button" data-settings-tab="appearance" role="tab" aria-selected="false">Aparência</button>
+  </div>
+
+  <section class="settings-tab-panel is-active" data-settings-panel="user" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Usuário</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Login</span><strong>{{ current_user.username }}</strong></div>
+          <div><span>Nome exibido</span><strong>{{ current_user.full_name or 'Não informado' }}</strong></div>
+          <div><span>Perfil</span><strong>{{ current_user.role }}</strong></div>
+        </div>
+
+        <form method="post">
+          <input type="hidden" name="form_type" value="profile">
+          <div class="settings-form-grid">
+            <div>
+              <label class="form-label" for="first_name">Nome</label>
+              <input class="form-control" id="first_name" name="first_name" value="{{ current_user.first_name or '' }}">
+            </div>
+            <div>
+              <label class="form-label" for="last_name">Sobrenome</label>
+              <input class="form-control" id="last_name" name="last_name" value="{{ current_user.last_name or '' }}">
+            </div>
+            <div>
+              <label class="form-label" for="phone">Telefone</label>
+              <input class="form-control" id="phone" name="phone" inputmode="tel" value="{{ current_user.phone or '' }}">
+            </div>
+          </div>
+          <button class="btn btn-primary mt-3" type="submit">Salvar dados</button>
+        </form>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Email</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Email protegido</span><strong>{{ current_user.masked_email }}</strong></div>
+        </div>
+
+        <form method="post">
+          <input type="hidden" name="form_type" value="email">
+          <label class="form-label" for="email">Alterar email</label>
+          <input class="form-control" id="email" name="email" type="email" value="{{ current_user.email or '' }}" placeholder="email@exemplo.com">
+          <button class="btn btn-primary mt-3" type="submit">Alterar email</button>
+        </form>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Senha</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Senha criptografada</span><strong>{{ current_user.password_fingerprint }}</strong></div>
+        </div>
+
+        <form method="post">
+          <input type="hidden" name="form_type" value="password">
+          <div class="settings-form-grid">
+            <div>
+              <label class="form-label" for="current_password">Senha atual</label>
+              <input class="form-control" id="current_password" name="current_password" type="password" autocomplete="current-password">
+            </div>
+            <div>
+              <label class="form-label" for="new_password">Nova senha</label>
+              <input class="form-control" id="new_password" name="new_password" type="password" autocomplete="new-password">
+            </div>
+            <div>
+              <label class="form-label" for="confirm_password">Confirmar senha</label>
+              <input class="form-control" id="confirm_password" name="confirm_password" type="password" autocomplete="new-password">
+            </div>
+          </div>
+          <button class="btn btn-primary mt-3" type="submit">Alterar senha</button>
+        </form>
+      </section>
+    </div>
+  </section>
+
+  <section class="settings-tab-panel" data-settings-panel="support" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Suporte</h5>
+        <div class="settings-summary">
+          <div><span>Canal principal</span><strong>{{ current_user.masked_email }}</strong></div>
+          <div><span>Telefone cadastrado</span><strong>{{ current_user.phone or 'Não informado' }}</strong></div>
+          <div><span>Usuário de atendimento</span><strong>{{ current_user.username }}</strong></div>
+        </div>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Informações do sistema</h5>
+        <div class="settings-summary">
+          <div><span>Aplicação</span><strong>Adega JF</strong></div>
+          <div><span>Ambiente</span><strong>PDV Local</strong></div>
+          <div><span>Status</span><strong>Operacional</strong></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="settings-tab-panel" data-settings-panel="appearance" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Aparência</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Tema ativo</span><strong data-settings-theme-label>Atual</strong></div>
+        </div>
+        <div class="settings-theme-options">
+          <button class="settings-theme-choice" type="button" data-settings-theme-choice="light">Light</button>
+          <button class="settings-theme-choice" type="button" data-settings-theme-choice="dark">Dark</button>
+        </div>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Preferências visuais</h5>
+        <div class="settings-summary">
+          <div><span>Tema ativo</span><strong data-settings-theme-label>Atual</strong></div>
+          <div><span>Layout responsivo</span><strong>Ativo</strong></div>
+        </div>
+      </section>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>{{ 'Editar produto' if product.id else 'Novo produto' }}</h2>
+    <p class="text-muted mb-0">Preencha os dados usados no estoque e no PDV.</p>
+  </div>
+  <a class="btn btn-outline-light" href="{{ url_for('catalog.products') }}">Voltar</a>
+</div>
+
+<form class="card card-dark p-4 product-form-card" method="post">
+  <div class="row g-3">
+    <div class="col-md-8">
+      <label class="form-label" for="name">Nome do produto</label>
+      <input class="form-control" id="name" name="name" value="{{ product.name or '' }}" required>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="barcode">Código de barras</label>
+      <input class="form-control" id="barcode" name="barcode" value="{{ product.barcode or '' }}">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="category_id">Categoria</label>
+      <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode>
+        <input class="form-control" id="category_id" value="{{ product.category.name if product.category else '' }}" placeholder="Sem categoria" autocomplete="off" data-autocomplete-input>
+        <input name="category_id" type="hidden" value="{{ product.category_id or '' }}" data-autocomplete-hidden>
+        <div class="product-suggestion-list" data-autocomplete-list></div>
+        <div class="d-none" data-autocomplete-options>
+        {% for category in categories %}
+          <span
+            data-autocomplete-option
+            data-id="{{ category.id }}"
+            data-value="{{ category.name }}"
+            data-title="{{ category.name }}"
+            data-meta="{{ category.products|length }} produto{{ '' if category.products|length == 1 else 's' }}"
+          ></span>
+        {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="cost_price">Preço de custo</label>
+      <input class="form-control" id="cost_price" name="cost_price" inputmode="numeric" value="{{ '%.2f'|format(product.cost_price or 0)|replace('.', ',') }}" data-currency-input>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="sale_price">Preço de venda</label>
+      <input class="form-control" id="sale_price" name="sale_price" inputmode="numeric" value="{{ '%.2f'|format(product.sale_price or 0)|replace('.', ',') }}" data-currency-input>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="stock_quantity">Estoque</label>
+      <input class="form-control" id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}">
+    </div>
+    <div class="col-12">
+      <div class="form-check form-switch">
+        <input class="form-check-input" id="active" name="active" type="checkbox" {% if product.active %}checked{% endif %}>
+        <label class="form-check-label" for="active">Produto ativo</label>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="form-check form-switch">
+        <input class="form-check-input" id="is_kit" name="is_kit" type="checkbox" data-kit-toggle data-kit-target="product-form-kit-fields" {% if product.is_kit %}checked{% endif %}>
+        <label class="form-check-label" for="is_kit">Kit</label>
+      </div>
+    </div>
+    <div class="col-12 kit-fields" id="product-form-kit-fields">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label" for="kit_component_product_id">Produto base do kit</label>
+          <select class="form-select" id="kit_component_product_id" name="kit_component_product_id">
+            <option value="">Selecione o produto unitário</option>
+            {% for kit_product in kit_products %}
+            <option value="{{ kit_product.id }}" {% if product.kit_component_product_id == kit_product.id %}selected{% endif %}>{{ kit_product.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="kit_component_quantity">Unidades descontadas</label>
+          <input class="form-control" id="kit_component_quantity" name="kit_component_quantity" type="number" min="0" value="{{ product.kit_component_quantity or 0 }}">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex justify-content-end gap-2 mt-4">
+    <a class="btn btn-outline-light" href="{{ url_for('catalog.products') }}">Cancelar</a>
+    <button class="btn btn-primary" type="submit">Salvar produto</button>
+  </div>
+</form>
+{% endblock %}

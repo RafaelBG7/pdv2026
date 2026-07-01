@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Caixa</h2>
+    <p class="text-muted mb-0">Abra o caixa antes de iniciar vendas e feche ao final do turno.</p>
+  </div>
+  {% if cash_register %}
+  <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
+  {% endif %}
+</div>
+
+<div class="settings-tabs" data-settings-tabs>
+  <div class="settings-tab-nav" role="tablist" aria-label="Caixa">
+    <button class="settings-tab-button is-active" type="button" data-settings-tab="current-cash" role="tab" aria-selected="true">Caixa atual</button>
+    <button class="settings-tab-button" type="button" data-settings-tab="previous-cash" role="tab" aria-selected="false">Caixas anteriores</button>
+  </div>
+
+  <section class="settings-tab-panel is-active" data-settings-panel="current-cash" role="tabpanel">
+    <div class="sale-layout">
+      <section class="card card-dark sale-panel">
+        {% if cash_register %}
+        <h5 class="mb-3">Caixa aberto</h5>
+        <div class="payment-summary mb-4">
+          <div><span>Status</span><strong>Aberto</strong></div>
+          <div><span>Abertura</span><strong>{{ cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '-' }}</strong></div>
+          <div><span>Valor inicial</span><strong>R$ {{ '%.2f'|format(cash_register.opening_amount or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Vendas registradas</span><strong>{{ cash_register.sales|length }}</strong></div>
+          <div><span>Total vendido</span><strong>R$ {{ '%.2f'|format(cash_register.sales|sum(attribute='final_amount') or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Valor esperado</span><strong>R$ {{ '%.2f'|format(cash_register_expected_amount or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Lucro do caixa</span><strong>R$ {{ '%.2f'|format(cash_register_profit or 0)|replace('.', ',') }}</strong></div>
+        </div>
+
+        <form method="post" action="{{ url_for('main.close_cash_register_route') }}">
+          <label class="form-label" for="closing_amount">Valor final em caixa</label>
+          <input class="form-control mb-3" id="closing_amount" name="closing_amount" inputmode="numeric" placeholder="0,00" data-currency-input required>
+          <button class="btn btn-outline-danger" type="submit">Fechar caixa</button>
+        </form>
+        {% else %}
+        <h5 class="mb-3">Abrir caixa</h5>
+        <div class="payment-summary mb-4">
+          <div><span>Status</span><strong>Fechado</strong></div>
+        </div>
+        <form method="post" action="{{ url_for('main.open_cash_register_route') }}">
+          <label class="form-label" for="opening_amount">Valor inicial</label>
+          <input class="form-control mb-3" id="opening_amount" name="opening_amount" inputmode="numeric" placeholder="0,00" data-currency-input required>
+          <button class="btn btn-primary" type="submit">Abrir caixa</button>
+        </form>
+        {% endif %}
+      </section>
+    </div>
+  </section>
+
+  <section class="settings-tab-panel" data-settings-panel="previous-cash" role="tabpanel">
+    <div class="card card-dark sale-panel">
+      <h5 class="mb-3">Caixas anteriores</h5>
+      <div class="payment-summary">
+        {% for item in closed_registers %}
+        <div>
+          <span>{{ item.closed_at.strftime('%d/%m/%Y %H:%M') if item.closed_at else '-' }}</span>
+          <strong>
+            R$ {{ '%.2f'|format(item.closing_amount or 0)|replace('.', ',') }}
+            <small class="d-block text-muted">Lucro R$ {{ '%.2f'|format(closed_register_profits.get(item.id, 0))|replace('.', ',') }}</small>
+          </strong>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhum caixa fechado ainda.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

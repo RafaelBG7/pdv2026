@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2>Dashboard</h2>
+    <p class="text-muted">Bem-vindo ao painel inicial do PDV.</p>
+  </div>
+  <span class="badge badge-accent">Usuário: {{ current_user.username }}</span>
+</div>
+
+<div class="mb-4">
+  {% if open_cash_register %}
+  <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
+  {% else %}
+  <a class="btn btn-primary" href="{{ url_for('main.cash_register') }}">Abrir caixa</a>
+  {% endif %}
+</div>
+
+<div class="dashboard-grid">
+  <div class="card card-dark p-3">
+    <h5>Resumo rápido</h5>
+    <p class="mb-0 text-muted">Estrutura pronta para módulos de vendas, estoque e caixa.</p>
+  </div>
+  <div class="card card-dark p-3">
+    <h5>Catálogo</h5>
+    <p class="mb-0 text-muted">Produtos, categorias e preços serão adicionados aqui.</p>
+  </div>
+  <div class="card card-dark p-3">
+    <h5>Caixa</h5>
+    <p class="mb-0 text-muted">Controle de abertura, fechamento e pagamentos.</p>
+  </div>
+</div>
+{% endblock %}

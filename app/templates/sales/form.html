@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Realizar venda</h2>
+    <p class="text-muted mb-0">Adicione os produtos do pedido e finalize o pagamento.</p>
+  </div>
+  <a class="btn btn-outline-light" href="{{ url_for('main.sales') }}">Voltar</a>
+</div>
+
+<form method="post" data-sale-form>
+  <datalist id="sale-product-suggestions">
+    {% for product in products %}
+    <option
+      value="{{ product.name }}{% if product.is_kit %} (kit){% endif %}"
+      data-id="{{ product.id }}"
+      data-price="{{ '%.2f'|format(product.sale_price or 0) }}"
+      data-stock="{{ product.effective_stock_quantity or 0 }}"
+    ></option>
+    {% endfor %}
+  </datalist>
+
+  <div class="sale-layout">
+    <section class="card card-dark sale-panel">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <h5 class="mb-0">Produtos da venda</h5>
+        <button class="btn btn-outline-light" type="button" data-add-sale-item>Adicionar produto</button>
+      </div>
+
+      <div class="sale-items" data-sale-items>
+        {% for item in form_state['items'] %}
+        {% set selected = namespace(name='') %}
+        {% for product in products %}
+          {% if item.product_id == product.id|string %}
+            {% set selected.name = product.name ~ (' (kit)' if product.is_kit else '') %}
+          {% endif %}
+        {% endfor %}
+        <div class="sale-item-row" data-sale-item-row>
+          <div>
+            <label class="form-label">Produto</label>
+            <div class="product-autocomplete" data-product-autocomplete>
+              <input class="form-control" value="{{ selected.name }}" placeholder="Digite o nome do produto" data-product-search autocomplete="off" required>
+              <div class="product-suggestion-list" data-product-suggestion-list></div>
+            </div>
+            <input type="hidden" name="product_id[]" value="{{ item.product_id or '' }}" data-product-id>
+          </div>
+          <div>
+            <label class="form-label">Valor un.</label>
+            <input class="form-control" value="R$ 0,00" data-unit-price readonly>
+          </div>
+          <div>
+            <label class="form-label">Estoque</label>
+            <input class="form-control" value="0 un." data-stock-available readonly>
+          </div>
+          <div>
+            <label class="form-label">Qtd.</label>
+            <input class="form-control" name="quantity[]" type="number" min="1" value="{{ item.quantity or '1' }}" data-quantity-input required>
+          </div>
+          <div>
+            <label class="form-label">Subtotal</label>
+            <input class="form-control" value="R$ 0,00" data-line-total readonly>
+          </div>
+          <div class="sale-row-action">
+            <button class="btn btn-outline-danger" type="button" data-remove-sale-item>Remover</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="card card-dark sale-panel">
+      <h5 class="mb-3">Resumo da venda</h5>
+
+      <div class="sale-total-box">
+        <span>Total</span>
+        <strong data-sale-total>R$ 0,00</strong>
+      </div>
+
+      <div class="payment-summary mt-3">
+        <div><span>Subtotal</span><strong data-sale-subtotal>R$ 0,00</strong></div>
+        <div><span>Desconto</span><strong data-sale-discount-label>R$ 0,00</strong></div>
+      </div>
+
+      <input type="hidden" name="discount_amount" value="{{ form_state.get('discount_amount', '') }}" data-discount-input data-currency-input>
+      <button class="btn btn-outline-light w-100 mt-3" type="button" data-discount-open>Desconto <span class="shortcut-label">F3</span></button>
+      <button class="btn btn-primary w-100 mt-3" type="button" data-open-payment-step>Concluir venda <span class="shortcut-label shortcut-label-light">F2</span></button>
+    </aside>
+  </div>
+
+  <section class="card card-dark sale-panel sale-payment-step mt-4 {% if form_state.get('show_payment_step') %}is-open{% endif %}" data-payment-step>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+      <div>
+        <h5 class="mb-1">Formas de pagamento</h5>
+        <p class="text-muted mb-0">Escolha uma ou mais formas para finalizar o pedido.</p>
+      </div>
+      <button class="btn btn-outline-light" type="button" data-close-payment-step>Voltar aos produtos</button>
+    </div>
+
+    <div class="sale-payment-layout">
+      <div class="payment-grid mt-3">
+        {% for method, label in payment_methods.items() %}
+        <div>
+          <label class="form-label" for="payment_{{ method }}">{{ label }}</label>
+          <input class="form-control" id="payment_{{ method }}" name="payment_{{ method }}" inputmode="numeric" placeholder="0,00" value="{{ form_state['payments'].get(method, '') }}" data-payment-input data-currency-input>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="payment-summary sale-payment-summary mt-3">
+        <div><span>Total</span><strong data-payment-step-total>R$ 0,00</strong></div>
+        <div><span>Pago</span><strong data-paid-total>R$ 0,00</strong></div>
+        <div><span>Falta</span><strong data-missing-total>R$ 0,00</strong></div>
+        <div><span>Troco</span><strong data-change-total>R$ 0,00</strong></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary w-100 mt-3" type="submit">Finalizar pedido</button>
+  </section>
+
+  <div class="discount-modal" data-discount-modal aria-hidden="true">
+    <div class="discount-dialog card card-dark">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <div>
+          <h5 class="mb-1">Desconto</h5>
+          <p class="text-muted mb-0">Informe o valor em reais.</p>
+        </div>
+        <button class="btn btn-outline-light" type="button" data-discount-close>Fechar</button>
+      </div>
+
+      <label class="form-label" for="discount_modal_amount">Valor do desconto</label>
+      <input class="form-control" id="discount_modal_amount" inputmode="numeric" placeholder="0,00" data-discount-modal-input data-currency-input>
+      <p class="discount-percent mt-2 mb-0" data-discount-percent>0,00% de desconto</p>
+
+      <button class="btn btn-primary w-100 mt-3" type="button" data-discount-apply>Aplicar desconto</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

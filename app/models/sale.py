@@ -1,0 +1,18 @@
+from datetime import datetime, timezone
+
+from app.extensions import db
+
+
+class Sale(db.Model):
+    __tablename__ = 'sales'
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    total_amount = db.Column(db.Float, default=0.0)
+    discount_amount = db.Column(db.Float, default=0.0)
+    final_amount = db.Column(db.Float, default=0.0)
+    payment_status = db.Column(db.String(20), default='pending')
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    cash_register_id = db.Column(db.Integer, db.ForeignKey('cash_registers.id'))
+    items = db.relationship('SaleItem', back_populates='sale', cascade='all, delete-orphan')
+    payments = db.relationship('Payment', back_populates='sale', cascade='all, delete-orphan')

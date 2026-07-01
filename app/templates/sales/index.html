@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Vendas</h2>
+    <p class="text-muted mb-0">Consulte vendas realizadas e inicie novos pedidos.</p>
+  </div>
+  {% if open_cash_register %}
+  <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
+  {% else %}
+  <a class="btn btn-primary" href="{{ url_for('main.cash_register') }}">Abrir caixa</a>
+  {% endif %}
+</div>
+
+<div class="card card-dark table-card p-0">
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle mb-0 app-table compact-table sales-table">
+      <thead>
+        <tr>
+          <th>Venda</th>
+          <th>Data</th>
+          <th class="text-end">Total</th>
+          <th>Pagamento</th>
+          <th class="text-end actions-column">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in sales %}
+        <tr>
+          <td class="fw-semibold">#{{ sale.id }}</td>
+          <td>{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
+          <td class="text-end">R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</td>
+          <td>
+            {% for payment in sale.payments %}
+            <span class="badge text-bg-secondary">{{ payment_methods.get(payment.method, payment.method) }}</span>
+            {% else %}
+            <span class="text-muted">-</span>
+            {% endfor %}
+          </td>
+          <td class="text-end actions-column">
+            <a class="btn btn-sm btn-outline-light action-button" href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">Ver</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">Nenhuma venda realizada.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

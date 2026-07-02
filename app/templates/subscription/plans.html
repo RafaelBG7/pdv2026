@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Assinaturas</h2>
+    <p class="text-muted mb-0">Planos Basic e Pro para controle da adega.</p>
+  </div>
+  <span class="subscription-pill subscription-{{ subscription.get('state', 'neutral') }}">
+    {{ subscription.get('days_label', 'Sem renovação') }}
+  </span>
+</div>
+
+<section class="card card-dark subscription-overview mb-4">
+  <div>
+    <span>Adega</span>
+    <strong>{{ company.name if company else '-' }}</strong>
+  </div>
+  <div>
+    <span>Plano atual</span>
+    <strong>{{ current_plan or 'Basic' }}</strong>
+  </div>
+  <div>
+    <span>Renova em</span>
+    <strong>{{ subscription.get('renewal_label', '-') }}</strong>
+  </div>
+  <div>
+    <span>Key</span>
+    <strong>{{ company.activation_key if company and company.activation_key else 'Não gerada' }}</strong>
+  </div>
+</section>
+
+<div class="subscription-plan-grid">
+  {% for plan in plans %}
+  <section class="card card-dark subscription-plan-card {{ 'is-featured' if plan.get('highlight') else '' }}">
+    <div class="subscription-plan-head">
+      <div>
+        <p class="text-muted mb-1">Plano</p>
+        <h3>{{ plan.name }}</h3>
+      </div>
+      {% if current_plan == plan.name %}
+      <span class="badge text-bg-success">Atual</span>
+      {% elif plan.get('highlight') %}
+      <span class="badge badge-accent">Mais completo</span>
+      {% endif %}
+    </div>
+
+    <p class="text-muted">{{ plan.tagline }}</p>
+
+    <div class="subscription-price-grid">
+      <div>
+        <span>Mensal</span>
+        <strong>{{ plan.monthly_price }}</strong>
+      </div>
+      <div>
+        <span>Anual</span>
+        <strong>{{ plan.annual_price }}</strong>
+      </div>
+    </div>
+
+    <ul class="subscription-feature-list">
+      {% for feature in plan.features %}
+      <li>{{ feature }}</li>
+      {% endfor %}
+    </ul>
+
+    <button class="btn {{ 'btn-primary' if plan.get('highlight') else 'btn-outline-light' }}" type="button" disabled>
+      {{ 'Plano atual' if current_plan == plan.name else 'Selecionar plano' }}
+    </button>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

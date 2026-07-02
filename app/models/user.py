@@ -17,8 +17,18 @@ class User(db.Model, UserMixin):
     phone = db.Column(db.String(40), default='')
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), default='admin')
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    can_view_products = db.Column(db.Boolean, default=True)
+    can_manage_products = db.Column(db.Boolean, default=True)
+    can_manage_categories = db.Column(db.Boolean, default=True)
+    can_manage_sales = db.Column(db.Boolean, default=True)
+    can_manage_cash_register = db.Column(db.Boolean, default=True)
+    can_view_reports = db.Column(db.Boolean, default=True)
+    can_manage_payables = db.Column(db.Boolean, default=True)
+    can_manage_settings = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    company = db.relationship('Company', back_populates='users')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
@@ -48,3 +58,19 @@ class User(db.Model, UserMixin):
         if not self.password_hash:
             return 'Senha não definida'
         return f'{self.password_hash[:18]}...'
+
+    def has_permission(self, permission):
+        if self.role in ('master', 'admin'):
+            return True
+        if permission == 'can_view_products' and self.can_manage_products:
+            return True
+        return bool(getattr(self, permission, False))
+
+    @property
+    def role_label(self):
+        labels = {
+            'master': 'Master do sistema',
+            'admin': 'Master da adega',
+            'operator': 'Funcionário',
+        }
+        return labels.get(self.role, self.role)

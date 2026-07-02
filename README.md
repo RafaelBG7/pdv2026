@@ -1,237 +1,1348 @@
-# Adega JF - PDV Local
+# Adega JF - PDV Web
 
-Sistema web local de ponto de venda para a Adega JF, construído em Flask, SQLite e templates server-side. O projeto cobre autenticação, catálogo de produtos e categorias, controle de caixa, registro de vendas, baixa de estoque, pagamentos, descontos, relatórios operacionais e configurações do usuário.
+Sistema PDV web para adegas, pequenos mercados e comércios locais. O projeto roda em Flask, usa MySQL como banco relacional, templates HTML/Jinja no frontend e foi estruturado para operação local com evolução futura para um modelo SaaS multiempresa.
 
-> Status geral: parcialmente implementado. O núcleo de PDV está funcional, mas ainda não há API JSON pública, controle real por perfis, migrações formais, auditoria, backup automatizado, empacotamento de produção ou hardening completo de segurança.
+## Visão Geral
 
-## Objetivo
+O Adega JF é um sistema de ponto de venda criado para organizar a operação diária de uma adega. Ele substitui controles manuais em papel ou planilhas por uma interface web acessível pelo navegador.
 
-Resolver a operação básica de uma adega ou pequeno varejo que precisa controlar produtos, estoque, caixa e vendas em uma aplicação simples, local e de baixa complexidade operacional.
+O sistema cobre:
 
-O sistema permite que um operador abra o caixa, registre vendas com múltiplos produtos e múltiplas formas de pagamento, aplique desconto, gere baixa de estoque e acompanhe resultados por período.
+- registro de vendas;
+- controle de produtos;
+- controle de categorias;
+- controle de estoque;
+- abertura e fechamento de caixa;
+- relatórios por período;
+- controle de usuários e permissões;
+- contas a pagar;
+- notificações operacionais;
+- operação local em rede;
+- separação de dados por adega;
+- painel master para administração das adegas;
+- preparação técnica para evolução futura como SaaS.
 
-## Principais Funcionalidades
+## Objetivo do Projeto
 
-- Login, logout, cadastro de usuário e edição de dados do usuário autenticado.
-- Criação automática do usuário inicial `admin` com senha `admin123`.
-- Cadastro, listagem, edição rápida, ativação/inativação e exclusão de produtos.
-- Cadastro, listagem, filtro, edição e exclusão controlada de categorias.
-- Produtos do tipo kit, com estoque efetivo calculado a partir de produto base.
-- Alerta visual de estoque baixo ou zerado para produtos ativos.
-- Abertura e fechamento de caixa.
-- Bloqueio de venda sem caixa aberto.
-- Registro de venda com itens, desconto, pagamentos e cálculo de troco.
-- Múltiplas formas de pagamento: dinheiro, Pix, débito e crédito.
-- Baixa automática de estoque ao finalizar venda.
-- Consulta de vendas e detalhe da venda.
-- Relatórios por período diário, semanal, mensal, anual ou personalizado.
-- Cálculo de subtotal, desconto, total vendido, lucro, ticket médio, itens vendidos e produtos mais vendidos.
-- Interface responsiva com tema claro/escuro, menu lateral recolhível, abas e autocompletes.
-- Testes automatizados para rotas e regras principais.
+O projeto resolve problemas comuns de adegas e pequenos comércios:
+
+- substituir controle manual de produtos, vendas e caixa;
+- organizar estoque e estoque mínimo;
+- registrar vendas com valores corretos;
+- controlar dinheiro esperado no fechamento do caixa;
+- calcular desconto, troco e lucro;
+- acompanhar vendas por período;
+- alertar sobre estoque baixo e contas próximas do vencimento;
+- permitir que outro computador da mesma rede acesse o PDV pelo navegador;
+- criar uma base para evolução futura com múltiplas empresas, planos e assinatura.
 
 ## Tecnologias Utilizadas
 
-Frontend:
-- HTML com Jinja2.
-- Bootstrap 5 via CDN.
-- CSS customizado em `app/static/css/style.css`.
-- JavaScript vanilla em `app/static/js/main.js`.
+| Tecnologia | Uso no projeto |
+|---|---|
+| Python | Linguagem principal do backend. |
+| Flask | Framework web usado para rotas, templates e servidor local. |
+| Flask-Login | Login, logout, sessão de usuário e proteção de rotas. |
+| Flask-SQLAlchemy | Integração do Flask com SQLAlchemy. |
+| SQLAlchemy | ORM e conexão com MySQL. Também é usado em consultas parametrizadas e criação de bancos por adega. |
+| PyMySQL | Driver MySQL usado na URL `mysql+pymysql://...`. |
+| MySQL | Banco relacional principal. Existe um banco central e bancos separados por adega. |
+| Jinja2 | Renderização de templates HTML. |
+| HTML | Estrutura das telas. |
+| CSS | Interface visual em `app/static/css/style.css`, com tema claro/escuro e layout responsivo. |
+| JavaScript | Interações da interface em `app/static/js/main.js`, incluindo menu lateral, autocomplete, venda, desconto, atalhos e tema. |
+| Bootstrap | CSS/JS carregado via CDN nos templates para base visual e componentes. |
+| unittest | Testes automatizados de rotas e regras principais. |
 
-Backend:
-- Python.
-- Flask.
-- Flask-Login.
-- Flask-SQLAlchemy.
-- SQLAlchemy.
-- Werkzeug para hash e verificação de senha.
+Observação: o projeto não usa `python-dotenv` no `requirements.txt`. As variáveis de ambiente são lidas diretamente por `os.environ`.
 
-Banco de Dados:
-- SQLite em `database/adega_jf.db`.
-- Modelagem via SQLAlchemy.
-- Criação automática por `db.create_all()`.
-- Pequenas migrações manuais executadas na inicialização.
-
-Infraestrutura:
-- Execução local com servidor de desenvolvimento Flask.
-- Não há Docker, WSGI de produção, pipeline CI/CD ou configuração formal de deploy no estado atual.
-
-## Estrutura do Projeto
+## Estrutura de Pastas
 
 ```text
-.
+pdv-adega-jf/
 ├── app.py
 ├── config.py
 ├── requirements.txt
+├── README.md
+├── .env.example
 ├── app/
 │   ├── __init__.py
 │   ├── extensions.py
+│   ├── error_logging.py
+│   ├── permissions.py
+│   ├── tenant.py
 │   ├── models/
 │   ├── routes/
 │   ├── static/
 │   └── templates/
 ├── database/
-│   └── adega_jf.db
-├── tests/
-│   └── test_routes.py
-└── docs/
+├── docs/
+├── logs/
+├── scripts/
+└── tests/
 ```
 
-- `app/__init__.py`: fábrica da aplicação, registro de blueprints, criação do banco, migrações manuais e usuário inicial.
-- `app/models/`: entidades SQLAlchemy.
-- `app/routes/`: rotas web divididas entre autenticação, catálogo e operação principal.
-- `app/templates/`: telas Jinja2.
-- `app/static/`: CSS e JavaScript da interface.
-- `database/`: banco SQLite local.
-- `tests/`: testes automatizados com `unittest`.
-- `docs/`: documentação técnica e funcional completa.
+### Arquivos da raiz
 
-## Instalação
+| Arquivo/Pasta | Função |
+|---|---|
+| `app.py` | Ponto de entrada da aplicação. Cria o app e roda em `0.0.0.0` na porta definida por `PORT`, com padrão `5001`. |
+| `config.py` | Configuração principal. Monta URLs MySQL, `SECRET_KEY`, banco central, prefixo de bancos das adegas e pasta de logs. |
+| `requirements.txt` | Dependências Python necessárias para rodar o projeto. |
+| `README.md` | Documentação principal do projeto. |
+| `.env.example` | Modelo de variáveis de ambiente recomendado para configurar o projeto. |
+| `database/` | Arquivos SQLite antigos preservados da fase anterior do projeto. O sistema atual usa MySQL. |
+| `docs/` | Documentação complementar já existente, separada por temas como arquitetura, segurança, testes e roadmap. |
+| `logs/` | Armazena `errors.log`, usado pelo sistema de logs de erro. |
+| `scripts/migrate_sqlite_to_mysql.py` | Script auxiliar para migração dos dados SQLite antigos para MySQL. |
+| `tests/test_routes.py` | Testes automatizados das rotas, permissões, vendas, caixa, relatórios e isolamento por adega. |
+
+### Pasta `app/`
+
+| Arquivo/Pasta | Função |
+|---|---|
+| `app/__init__.py` | Factory `create_app`, registro de blueprints, criação de tabelas, ajustes manuais de colunas, login manager, bloqueio por assinatura, notificações e handlers de erro. |
+| `app/extensions.py` | Instâncias globais de `SQLAlchemy` e `LoginManager`. |
+| `app/error_logging.py` | Logs detalhados de erro com `request_id`, usuário, endpoint, método, formulário protegido e rotação de arquivo. |
+| `app/permissions.py` | Decorator `permission_required` e nomes das permissões do sistema. |
+| `app/tenant.py` | Gerencia banco separado por adega, criação automática de databases MySQL, sessão por tenant e sincronização de empresa/usuários no banco da adega. |
+| `app/models/` | Modelos SQLAlchemy: empresas, usuários, produtos, categorias, caixa, vendas, itens, pagamentos e contas a pagar. |
+| `app/routes/` | Rotas Flask separadas por domínio: autenticação/configurações, catálogo e operação principal. |
+| `app/templates/` | Templates HTML/Jinja das telas. |
+| `app/static/css/style.css` | Estilos da interface, tema claro/escuro, layout, tabelas, cards, vendas, caixa e responsividade. |
+| `app/static/js/main.js` | Comportamentos de frontend: navbar colapsável, tema, filtros, autocomplete, venda, pagamento, desconto e atalhos. |
+
+## Funcionalidades Implementadas
+
+### Login, logout e cadastro inicial
+
+Onde fica:
+
+- Tela: `/login`
+- Código: `app/routes/auth.py`
+- Template: `app/templates/login.html`
+- Tabelas: `users`, `companies`
+
+O sistema permite:
+
+- login com usuário e senha;
+- logout;
+- cadastro de uma nova adega pela tela de login;
+- criação automática de uma empresa/adega;
+- geração de key de ativação para a adega;
+- criação do primeiro usuário como `admin`, chamado de master da adega.
+
+Regras importantes:
+
+- usuário não pode ser vazio;
+- senha de cadastro precisa ter pelo menos 3 caracteres;
+- confirmação de senha precisa bater;
+- username deve ser único;
+- usuário inativo não consegue entrar;
+- adega inativa não permite login de usuários comuns;
+- usuário `master` do sistema é redirecionado ao painel master.
+
+### Usuário master inicial
+
+Na primeira inicialização, caso não exista um usuário `master`, o sistema cria:
+
+```text
+Usuário: master
+Senha: master123
+```
+
+Esse usuário é o master do sistema inteiro, não apenas de uma adega.
+
+### Painel master de adegas
+
+Onde fica:
+
+- Rota: `/master/adegas`
+- Código: `app/routes/auth.py`
+- Template: `app/templates/master/companies.html`
+- Tabelas centrais: `companies`, `users`
+- Tabelas operacionais consultadas: `products`, `sales`, `cash_registers`
+
+O master do sistema pode:
+
+- listar todas as adegas;
+- alternar visualização em tabela ou blocos;
+- editar nome, status, plano, ciclo de cobrança, datas e key;
+- inativar adegas;
+- excluir adegas;
+- acessar a adega como master;
+- sair do acesso de uma adega;
+- consultar quantidade de usuários, produtos, vendas e caixas.
+
+Regras importantes:
+
+- apenas usuário com `role = master` acessa esse painel;
+- o master não pode inativar ou excluir a própria adega do master;
+- ao excluir uma adega, o sistema remove os usuários da empresa e apaga o banco MySQL da adega.
+
+### Assinatura e key de ativação
+
+Onde fica:
+
+- Ativação: `/assinatura`
+- Planos: `/assinaturas`
+- Código: `app/routes/auth.py`
+- Templates: `app/templates/subscription/activation.html` e `app/templates/subscription/plans.html`
+- Tabela: `companies`
+
+O sistema possui controle de assinatura por adega:
+
+- plano atual;
+- ciclo mensal/anual;
+- data de início;
+- data de renovação;
+- key de ativação;
+- bloqueio quando assinatura vence ou empresa está inativa.
+
+Os planos Basic e Pro existem como tela estética/comercial, sem cobrança real integrada.
+
+Regras importantes:
+
+- usuário comum/admin de adega vencida é redirecionado para `/assinatura`;
+- key precisa bater com a key cadastrada na empresa;
+- se a assinatura ainda estiver vencida, a key correta não libera o acesso sozinha;
+- usuário `master` do sistema não é bloqueado por assinatura.
+
+### Configurações, usuário, aparência, equipe e financeiro
+
+Onde fica:
+
+- Rota: `/configuracoes`
+- Código: `app/routes/auth.py`
+- Template: `app/templates/settings/index.html`
+- Tabelas: `users`, `companies`
+
+O sistema permite:
+
+- editar nome, sobrenome e telefone do usuário;
+- alterar email;
+- alterar senha;
+- alternar tema light/dark pela aba Aparência;
+- gerenciar equipe da adega;
+- contratar usuário;
+- alterar permissões de funcionário;
+- ativar/inativar funcionário;
+- configurar taxas de Pix, débito e crédito para desconto no lucro.
+
+Regras importantes:
+
+- senha atual precisa ser informada para trocar senha;
+- nova senha precisa ter pelo menos 3 caracteres;
+- funcionário comum não vê abas sensíveis como equipe, financeiro e plano;
+- cada adega pode ter usuário administrador próprio;
+- não é permitido criar outro usuário com username já existente;
+- se um funcionário tem permissão de gerenciar produtos, também passa a poder ver produtos.
+
+### Produtos
+
+Onde fica:
+
+- Lista: `/catalogo/produtos`
+- Novo: `/catalogo/produtos/novo`
+- Editar: `/catalogo/produtos/<id>/editar`
+- Atualização rápida: `/catalogo/produtos/<id>/atualizar`
+- Código: `app/routes/catalog.py`
+- Templates: `app/templates/catalog/products.html` e `app/templates/catalog/product_form.html`
+- Tabelas: `products`, `categories`
+
+O sistema permite:
+
+- cadastrar produto;
+- listar produto;
+- filtrar por nome/código, status, categoria, estoque, preço mínimo/máximo e ordenação;
+- editar produto;
+- atualizar produto na linha expandida;
+- ativar/inativar produto;
+- excluir produto;
+- configurar custo, venda, estoque e estoque mínimo;
+- associar categoria;
+- configurar produto como kit;
+- importar produtos por CSV ou XLSX.
+
+Campos principais usados:
+
+- nome;
+- código de barras;
+- categoria;
+- valor de custo;
+- valor de venda;
+- estoque;
+- estoque mínimo;
+- status ativo/inativo;
+- kit;
+- produto base do kit;
+- quantidade do produto base consumida pelo kit.
+
+Regras importantes:
+
+- produto precisa ter nome;
+- código de barras não pode duplicar dentro da mesma adega;
+- produto pertence à adega atual;
+- funcionário comum pode ver produtos se tiver permissão, mas não necessariamente editar;
+- kit precisa ter produto base e quantidade maior que zero;
+- produto base do kit não pode ser o próprio kit;
+- lucro exibido considera venda menos custo;
+- alerta de estoque baixo depende de estoque mínimo configurado.
+
+### Importação de produtos por planilha
+
+Onde fica:
+
+- Rota: `/catalogo/produtos/importar`
+- Código: `app/routes/catalog.py`
+- Tabela: `products`, `categories`
+
+Formatos aceitos:
+
+- `.csv`
+- `.xlsx`
+
+Colunas reconhecidas:
+
+- categoria;
+- produto, nome, nome_produto, product, name;
+- valor de custo, custo, preço de custo, cost_price, cost;
+- valor de venda, venda, preço de venda, sale_price, price.
+
+Regras importantes:
+
+- apenas `admin` ou `master` pode importar;
+- a importação é feita dentro da adega atual;
+- categoria é criada se não existir na adega;
+- produto existente com mesmo nome é atualizado;
+- produto novo é criado ativo com estoque inicial 0;
+- linhas sem nome de produto são ignoradas.
+
+### Categorias
+
+Onde fica:
+
+- Rota: `/catalogo/categorias`
+- Atualizar: `/catalogo/categorias/<id>/atualizar`
+- Excluir: `/catalogo/categorias/<id>/excluir`
+- Código: `app/routes/catalog.py`
+- Template: `app/templates/catalog/categories.html`
+- Tabelas: `categories`, `products`
+
+O sistema permite:
+
+- cadastrar categoria;
+- listar categorias;
+- buscar por nome;
+- filtrar por categorias com produtos ou vazias;
+- ordenar por nome, quantidade de produtos ou data;
+- editar nome pela linha expandida;
+- excluir categoria.
+
+Regras importantes:
+
+- categoria precisa ter nome;
+- categoria é única apenas dentro da adega atual;
+- adegas diferentes podem ter categoria com o mesmo nome;
+- não é possível excluir categoria com produtos vinculados;
+- categoria pertence à adega atual.
+
+### Caixa
+
+Onde fica:
+
+- Caixa: `/caixa`
+- Abrir: `/caixa/abrir`
+- Fechar: `/caixa/fechar`
+- Detalhes: `/caixa/<id>`
+- Código: `app/routes/main.py`
+- Templates: `app/templates/cash_register.html` e `app/templates/cash_register_detail.html`
+- Tabela: `cash_registers`
+
+O sistema permite:
+
+- abrir caixa com valor inicial;
+- bloquear abertura de segundo caixa se já existe caixa aberto;
+- exibir caixa atual;
+- consultar caixas anteriores;
+- fechar caixa;
+- validar valor de fechamento;
+- ver detalhes de caixa fechado;
+- consultar formas vendidas, horário de pico e produtos mais vendidos.
+
+Regras importantes:
+
+- venda exige caixa aberto;
+- fechamento precisa bater exatamente com valor inicial + total vendido;
+- se faltar dinheiro, mostra valor faltante;
+- se exceder, mostra valor excedido;
+- lucro do caixa soma lucro das vendas do caixa.
+
+### Vendas
+
+Onde fica:
+
+- Lista: `/vendas`
+- Nova venda: `/vendas/nova`
+- Detalhe: `/vendas/<id>`
+- Código: `app/routes/main.py`
+- Templates: `app/templates/sales/index.html`, `app/templates/sales/form.html`, `app/templates/sales/detail.html`
+- Tabelas: `sales`, `sale_items`, `payments`, `products`, `cash_registers`
+
+O sistema permite:
+
+- listar vendas;
+- abrir tela de nova venda;
+- buscar produto por autocomplete;
+- adicionar múltiplos produtos;
+- usar qualquer quantidade de itens;
+- aplicar desconto em reais;
+- pagar com dinheiro, Pix, débito e crédito;
+- usar múltiplas formas de pagamento na mesma venda;
+- calcular total, pago, faltante e troco;
+- finalizar venda;
+- ver detalhe da venda.
+
+Regras importantes:
+
+- caixa precisa estar aberto;
+- venda precisa ter pelo menos um item;
+- produto precisa existir, estar ativo e pertencer à adega;
+- estoque precisa ser suficiente;
+- kit desconta estoque do produto base;
+- pagamento não pode ser menor que o total final;
+- desconto não passa do total;
+- venda reduz estoque;
+- lucro por item considera custo, desconto do produto e taxas configuradas de Pix/débito/crédito;
+- erro de pagamento ou estoque não reseta o pedido;
+- atalho F2 abre/conclui a etapa de finalização;
+- atalho F3 abre desconto.
+
+### Relatórios
+
+Onde fica:
+
+- Rota: `/relatorios`
+- Código: `app/routes/main.py`
+- Template: `app/templates/reports/index.html`
+- Tabelas: `sales`, `sale_items`, `payments`, `products`
+
+O sistema permite:
+
+- consultar vendas por período diário, semanal, mensal, anual ou personalizado;
+- preencher automaticamente períodos padrão;
+- ver total vendido;
+- ver descontos;
+- ver lucro;
+- ver ticket médio;
+- ver formas de pagamento;
+- ver produtos mais vendidos;
+- ver gráfico de colunas por período.
+
+Períodos automáticos:
+
+- diário: data atual;
+- semanal: últimos 7 dias;
+- mensal: últimos 30 dias;
+- anual: últimos 365 dias;
+- personalizado: datas escolhidas pelo usuário.
+
+### Contas a pagar
+
+Onde fica:
+
+- Lista/cadastro: `/contas-a-pagar`
+- Marcar como paga: `/contas-a-pagar/<id>/pagar`
+- Reabrir: `/contas-a-pagar/<id>/reabrir`
+- Código: `app/routes/main.py`
+- Template: `app/templates/payables/index.html`
+- Tabela: `payables`
+
+O sistema permite:
+
+- cadastrar conta a pagar;
+- categorizar conta como aluguel, luz, água, internet, fornecedor, impostos ou outros;
+- informar valor, vencimento e observações;
+- filtrar abertas, pagas e todas;
+- marcar como paga;
+- reabrir conta;
+- gerar alerta quando está próxima do vencimento.
+
+Regras importantes:
+
+- descrição é obrigatória;
+- data de vencimento precisa ser válida;
+- alertas aparecem quando vencida, vence hoje ou vence em até 3 dias;
+- dados pertencem à adega atual.
+
+### Notificações
+
+Onde fica:
+
+- Código: `app/__init__.py`
+- Template base: `app/templates/base.html`
+
+O sistema mostra notificações no topo:
+
+- estoque baixo;
+- produto sem estoque;
+- conta vencida;
+- conta vencendo hoje;
+- conta vencendo em até 3 dias.
+
+Regras importantes:
+
+- alertas são filtrados pela adega atual;
+- alerta de estoque pode ser dispensado;
+- alertas usam estoque mínimo configurado no produto.
+
+### Logs de erro
+
+Onde fica:
+
+- Código: `app/error_logging.py`
+- Arquivo: `logs/errors.log`
+
+O sistema registra:
+
+- erros HTTP 404 e 500;
+- exceções não tratadas;
+- endpoint;
+- método;
+- caminho;
+- query string;
+- formulário com campos sensíveis protegidos;
+- usuário autenticado;
+- tempo da requisição;
+- `X-Request-ID`.
+
+## Banco de Dados MySQL
+
+O projeto usa MySQL em dois níveis:
+
+1. Banco central: guarda empresas, usuários, assinatura, planos e dados administrativos.
+2. Banco por adega: guarda dados operacionais daquela adega.
+
+Por padrão:
+
+```text
+Banco central: adega_central
+Prefixo dos bancos das adegas: adega
+Exemplo de banco de adega: adega_4_adegajf
+```
+
+### Configuração da conexão
+
+As configurações reais lidas por `config.py` são:
+
+| Variável | Padrão | Função |
+|---|---|---|
+| `SECRET_KEY` | `adega-jf-secret-key` | Chave de sessão do Flask. Deve ser alterada fora do desenvolvimento. |
+| `DATABASE_URL` | Gerada automaticamente | URL completa do banco central. Se definida, sobrescreve `MYSQL_*`. |
+| `MYSQL_USER` | `root` | Usuário do MySQL. |
+| `MYSQL_PASSWORD` | vazio | Senha do MySQL. |
+| `MYSQL_HOST` | `127.0.0.1` | Host do MySQL. |
+| `MYSQL_PORT` | `3306` | Porta do MySQL. |
+| `MYSQL_DATABASE` | `adega_central` | Nome do banco central. |
+| `MYSQL_TENANT_DATABASE_PREFIX` | `adega` | Prefixo dos bancos de cada adega. |
+| `MYSQL_TENANT_DATABASE_URL_TEMPLATE` | vazio | Template opcional para URL dos bancos das adegas. Usa `{database}`. |
+| `MYSQL_SERVER_DATABASE_URL` | MySQL no banco `mysql` | URL administrativa usada para criar/dropar databases. |
+| `PORT` | `5001` | Porta do servidor Flask local. |
+
+Exemplo de URL:
+
+```text
+mysql+pymysql://root@127.0.0.1:3306/adega_central?charset=utf8mb4
+```
+
+### Criação do banco central
+
+O app tenta criar automaticamente o banco central se ele não existir. Também é possível criar manualmente:
+
+```sql
+CREATE DATABASE adega_central CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+### Criar usuário MySQL dedicado
+
+Exemplo opcional:
+
+```sql
+CREATE USER 'adega_user'@'localhost' IDENTIFIED BY 'sua_senha_forte';
+GRANT ALL PRIVILEGES ON adega_central.* TO 'adega_user'@'localhost';
+GRANT ALL PRIVILEGES ON `adega\_%`.* TO 'adega_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Para criação automática de bancos das adegas, o usuário precisa ter permissão de `CREATE DATABASE` e `DROP DATABASE`, ou a variável `MYSQL_SERVER_DATABASE_URL` deve apontar para um usuário administrativo.
+
+### Tabelas e campos principais
+
+#### `companies`
+
+Representa uma adega/empresa.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `name` | Nome da adega. |
+| `database_path` | Nome do banco MySQL da adega. |
+| `active` | Indica se a adega está ativa. |
+| `subscription_plan` | Plano atual: Essencial, Profissional, Premium, Basic/Pro na tela comercial. |
+| `billing_cycle` | Ciclo mensal/anual. |
+| `subscription_started_at` | Data de início da assinatura. |
+| `subscription_renews_at` | Data de renovação. |
+| `activation_key` | Key de ativação da adega. |
+| `activation_key_updated_at` | Data/hora da última alteração da key. |
+| `pix_fee_enabled`, `debit_fee_enabled`, `credit_fee_enabled` | Ativação das taxas por forma de pagamento. |
+| `pix_fee_percent`, `debit_fee_percent`, `credit_fee_percent` | Percentuais de taxa. |
+| `created_at` | Data de criação. |
+
+#### `users`
+
+Representa usuários do sistema.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `username` | Login único. |
+| `first_name`, `last_name` | Nome e sobrenome. |
+| `email` | Email. |
+| `phone` | Telefone. |
+| `password_hash` | Senha com hash. |
+| `role` | `master`, `admin` ou `operator`. |
+| `company_id` | FK para `companies.id`. |
+| `is_active` | Usuário ativo/inativo. |
+| `can_view_products` | Permissão para ver produtos. |
+| `can_manage_products` | Permissão para gerenciar produtos. |
+| `can_manage_categories` | Permissão para categorias. |
+| `can_manage_sales` | Permissão para vendas. |
+| `can_manage_cash_register` | Permissão para caixa. |
+| `can_view_reports` | Permissão para relatórios. |
+| `can_manage_payables` | Permissão para contas a pagar. |
+| `can_manage_settings` | Permissão para configurações. |
+| `created_at` | Data de criação. |
+
+#### `categories`
+
+Categorias de produtos.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `name` | Nome da categoria. |
+| `company_id` | FK para `companies.id`. |
+| `created_at` | Data de criação. |
+
+#### `products`
+
+Produtos vendidos.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `name` | Nome do produto. |
+| `barcode` | Código de barras opcional. |
+| `category_id` | FK para `categories.id`. |
+| `company_id` | FK para `companies.id`. |
+| `cost_price` | Preço de custo. |
+| `sale_price` | Preço de venda. |
+| `stock_quantity` | Estoque atual. |
+| `min_stock_quantity` | Estoque mínimo para alerta. |
+| `active` | Produto ativo/inativo. |
+| `is_kit` | Indica se é kit. |
+| `kit_component_product_id` | Produto base descontado quando o kit é vendido. |
+| `kit_component_quantity` | Quantidade do produto base consumida pelo kit. |
+| `created_at` | Data de criação. |
+
+#### `cash_registers`
+
+Caixas abertos/fechados.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `opened_at` | Data/hora de abertura. |
+| `closed_at` | Data/hora de fechamento. |
+| `opening_amount` | Valor inicial. |
+| `closing_amount` | Valor final informado. |
+| `status` | `open` ou `closed`. |
+| `user_id` | Usuário que abriu. |
+| `company_id` | FK para `companies.id`. |
+
+#### `sales`
+
+Venda finalizada.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `created_at` | Data/hora da venda. |
+| `total_amount` | Total bruto. |
+| `discount_amount` | Desconto em reais. |
+| `final_amount` | Total final. |
+| `payment_status` | Status do pagamento. |
+| `user_id` | Usuário que registrou. |
+| `company_id` | FK para `companies.id`. |
+| `cash_register_id` | FK para `cash_registers.id`. |
+
+#### `sale_items`
+
+Itens da venda.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `sale_id` | FK para `sales.id`. |
+| `product_id` | FK para `products.id`. |
+| `quantity` | Quantidade vendida. |
+| `unit_price` | Preço unitário na venda. |
+| `unit_cost_price` | Custo unitário na venda. |
+| `total_price` | Total do item. |
+| `profit_amount` | Lucro calculado do item. |
+
+#### `payments`
+
+Pagamentos da venda. No pedido original foi citado `sale_payments`; no código real a tabela se chama `payments`.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `sale_id` | FK para `sales.id`. |
+| `method` | `money`, `pix`, `debit` ou `credit`. |
+| `amount` | Valor pago nessa forma. |
+
+#### `payables`
+
+Contas a pagar.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `company_id` | FK para `companies.id`. |
+| `description` | Descrição da conta. |
+| `category` | Categoria da conta. |
+| `amount` | Valor. |
+| `due_date` | Vencimento. |
+| `paid` | Paga/não paga. |
+| `paid_at` | Data/hora do pagamento. |
+| `notes` | Observações. |
+| `created_at` | Data de criação. |
+
+### Tabelas citadas mas não existentes no código atual
+
+| Nome | Status |
+|---|---|
+| `stock_movements` | Não existe no código atual. A baixa de estoque é feita diretamente em `products.stock_quantity`. |
+| `clientes` | Não existe no código atual. O sistema ainda não possui cadastro de clientes. |
+| `sale_payments` | Não existe com esse nome. A tabela real é `payments`. |
+
+### Relacionamentos principais
+
+- `Company` possui vários `User`.
+- `Category` possui vários `Product`.
+- `Product` pode pertencer a uma `Category`.
+- `Product` pode apontar para outro `Product` como componente de kit.
+- `CashRegister` possui várias `Sale`.
+- `Sale` possui vários `SaleItem`.
+- `Sale` possui vários `Payment`.
+- `SaleItem` aponta para `Product`.
+- `Payable` pertence a uma `Company`.
+
+## Configuração do Ambiente
+
+### 1. Instalar Python
+
+Recomendado: Python 3.10 ou superior. O ambiente local atual usa Python 3.13.
+
+Verifique:
+
+```bash
+python3 --version
+```
+
+### 2. Criar ambiente virtual
+
+Na pasta do projeto:
 
 ```bash
 cd /Users/rafaelborges/pdv-adega-jf
 python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
 ```
 
-Requisitos:
-- Python 3.10 ou superior.
-- `pip`.
-- Acesso à internet apenas para instalar dependências e carregar Bootstrap via CDN no navegador.
+### 3. Ativar ambiente virtual
 
-## Configuração
-
-Variáveis de ambiente reconhecidas:
-
-| Variável | Obrigatória | Padrão | Uso |
-|---|---:|---|---|
-| `SECRET_KEY` | Não no desenvolvimento, sim em produção | `adega-jf-secret-key` | Assinatura de sessão Flask |
-| `PORT` | Não | `5001` | Porta usada por `app.py` |
-
-Configurações atuais em `config.py`:
-- `SQLALCHEMY_DATABASE_URI`: aponta para `sqlite:///database/adega_jf.db`.
-- `SQLALCHEMY_TRACK_MODIFICATIONS`: `False`.
-- `DEBUG`: `True`.
-
-## Como Executar
-
-Há um problema no arquivo `app.py`: ele importa `create_apppy`, mas a função existente é `create_app`. Enquanto isso não for corrigido, executar `python app.py` falha.
-
-Execução alternativa funcional:
+macOS/Linux:
 
 ```bash
 source .venv/bin/activate
-flask --app app:create_app run --host 0.0.0.0 --port 5001
 ```
 
-Depois acesse:
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Windows CMD:
+
+```bat
+.venv\Scripts\activate.bat
+```
+
+### 4. Instalar dependências
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### 5. Configurar MySQL
+
+Com MySQL instalado e rodando, crie o banco central se desejar fazer manualmente:
+
+```sql
+CREATE DATABASE adega_central CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+O sistema também tenta criar esse banco automaticamente ao iniciar, desde que o usuário MySQL tenha permissão.
+
+### 6. Configurar variáveis de ambiente
+
+Copie o modelo:
+
+```bash
+cp .env.example .env
+```
+
+O projeto não carrega `.env` automaticamente porque não usa `python-dotenv`. Você pode exportar as variáveis no terminal ou rodar informando antes do comando.
+
+Exemplo macOS/Linux:
+
+```bash
+export MYSQL_USER=root
+export MYSQL_PASSWORD=sua_senha
+export MYSQL_HOST=127.0.0.1
+export MYSQL_PORT=3306
+export MYSQL_DATABASE=adega_central
+export SECRET_KEY=troque-esta-chave
+```
+
+Ou em uma única linha:
+
+```bash
+MYSQL_PASSWORD=sua_senha SECRET_KEY=troque-esta-chave python app.py
+```
+
+### 7. Rodar o projeto
+
+```bash
+python app.py
+```
+
+Acesse:
 
 ```text
-http://localhost:5001
+http://127.0.0.1:5001
 ```
 
-Acesso inicial:
+A porta padrão é `5001` porque no macOS a porta `5000` pode estar ocupada pelo AirPlay.
+
+Para trocar a porta:
+
+```bash
+PORT=5002 python app.py
+```
+
+## Configuração do MySQL
+
+### Comandos básicos
+
+Entrar sem senha:
+
+```bash
+mysql -u root
+```
+
+Entrar com senha:
+
+```bash
+mysql -u root -p
+```
+
+Ver bancos:
+
+```sql
+SHOW DATABASES;
+```
+
+Usar banco central:
+
+```sql
+USE adega_central;
+```
+
+Ver tabelas:
+
+```sql
+SHOW TABLES;
+```
+
+Ver adegas cadastradas:
+
+```sql
+SELECT id, name, database_path, active FROM companies;
+```
+
+Ver usuários:
+
+```sql
+SELECT id, username, role, company_id, is_active FROM users;
+```
+
+### Variáveis usadas pelo projeto
+
+```env
+SECRET_KEY=troque-esta-chave-em-producao
+MYSQL_USER=root
+MYSQL_PASSWORD=
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=adega_central
+MYSQL_TENANT_DATABASE_PREFIX=adega
+MYSQL_TENANT_DATABASE_URL_TEMPLATE=
+MYSQL_SERVER_DATABASE_URL=mysql+pymysql://root@127.0.0.1:3306/mysql?charset=utf8mb4
+PORT=5001
+```
+
+Também é possível usar:
+
+```env
+DATABASE_URL=mysql+pymysql://root:senha@127.0.0.1:3306/adega_central?charset=utf8mb4
+```
+
+Quando `DATABASE_URL` existe, ela substitui a montagem automática baseada em `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_HOST`, `MYSQL_PORT` e `MYSQL_DATABASE`.
+
+## Como Acessar pela Rede Local
+
+O `app.py` já roda com:
+
+```python
+app.run(host='0.0.0.0', port=port, debug=True)
+```
+
+Isso permite acesso por outro computador da mesma rede.
+
+No computador servidor, rode:
+
+```bash
+python app.py
+```
+
+Em outro computador da mesma rede, acesse:
 
 ```text
-Usuário: admin
-Senha: admin123
+http://IP_DO_SERVIDOR:5001
 ```
 
-Troque a senha imediatamente em ambientes reais.
+### Descobrir IP no macOS
 
-## Como Fazer Deploy
-
-Deploy de produção ainda não está implementado. O caminho recomendado para produção é:
-
-1. Corrigir `app.py`.
-2. Definir `SECRET_KEY` segura por variável de ambiente.
-3. Desativar `DEBUG`.
-4. Usar servidor WSGI, como Gunicorn ou uWSGI.
-5. Colocar Nginx ou proxy equivalente na frente.
-6. Configurar HTTPS.
-7. Definir política de backup para `database/adega_jf.db`.
-8. Substituir migrações manuais por Flask-Migrate/Alembic.
-
-Detalhes estão em [docs/12-deploy.md](docs/12-deploy.md).
-
-## Usuários do Sistema
-
-Implementado:
-- Usuário autenticado.
-- Campo `role` no banco, com padrão `admin`.
-- Todo usuário criado pela tela de cadastro recebe `role='admin'`.
-
-Não implementado:
-- Matriz real de permissões por papel.
-- Perfis operacionais como operador, gerente, supervisor e cliente.
-- Bloqueio por `is_active` no login.
-
-## Fluxo Geral
-
-```mermaid
-flowchart TD
-    A["Usuário acessa o sistema"] --> B["Login"]
-    B --> C["Dashboard"]
-    C --> D{"Caixa aberto?"}
-    D -- "Não" --> E["Abrir caixa"]
-    D -- "Sim" --> F["Registrar venda"]
-    E --> F
-    F --> G["Selecionar produtos"]
-    G --> H["Aplicar desconto opcional"]
-    H --> I["Informar pagamentos"]
-    I --> J{"Pagamento cobre total?"}
-    J -- "Não" --> G
-    J -- "Sim" --> K["Finalizar venda"]
-    K --> L["Baixar estoque"]
-    L --> M["Consultar venda ou relatório"]
-    M --> N["Fechar caixa"]
+```bash
+ipconfig getifaddr en0
 ```
 
-## Roadmap
+Se estiver usando cabo:
 
-Versão atual:
-- PDV web local com vendas, estoque, caixa, relatórios e autenticação básica.
+```bash
+ipconfig getifaddr en1
+```
 
-Próxima versão recomendada:
-- Corrigir `app.py`.
-- Implementar permissões reais.
-- Adicionar CSRF.
-- Remover cadastro livre de administradores.
-- Formalizar migrações.
-- Implementar backup e restauração.
+### Descobrir IP no Windows
 
-Melhorias futuras:
-- API JSON autenticada.
-- Auditoria de ações.
+```bat
+ipconfig
+```
+
+Procure por `IPv4 Address`.
+
+### Descobrir IP no Linux
+
+```bash
+hostname -I
+```
+
+ou:
+
+```bash
+ip addr
+```
+
+## Fluxo Operacional do PDV
+
+1. O usuário acessa `/login`.
+2. Faz login com usuário e senha.
+3. Se for master do sistema, entra no painel de adegas.
+4. Se for usuário de uma adega, entra no dashboard.
+5. Cadastra categorias em `/catalogo/categorias`.
+6. Cadastra produtos em `/catalogo/produtos`.
+7. Configura estoque, custo, venda e estoque mínimo.
+8. Abre o caixa em `/caixa`.
+9. Acessa `/vendas/nova`.
+10. Adiciona os produtos da venda.
+11. Aplica desconto, se necessário.
+12. Escolhe uma ou mais formas de pagamento.
+13. Finaliza a venda.
+14. O sistema baixa o estoque.
+15. O sistema registra itens, pagamentos e lucro.
+16. O usuário consulta vendas, caixa e relatórios.
+17. No fim do turno, fecha o caixa informando o valor final.
+
+## Regras de Negócio
+
+- Usuário precisa estar autenticado para acessar áreas internas.
+- Algumas áreas exigem permissões específicas.
+- Cada adega tem seus próprios dados operacionais.
+- Venda só pode ser registrada com caixa aberto.
+- Não é permitido abrir dois caixas ao mesmo tempo para a mesma adega.
+- Venda precisa ter pelo menos um item.
+- Produto vendido precisa estar ativo.
+- Produto vendido precisa pertencer à adega atual.
+- Estoque precisa ser suficiente.
+- Produto kit desconta estoque do produto base.
+- Kit precisa ter produto base e quantidade configurados.
+- Pagamento total não pode ser menor que o valor final da venda.
+- O sistema calcula valor faltante quando o pagamento é insuficiente.
+- O sistema calcula troco quando pagamento é maior que o total final.
+- Desconto é em reais e não pode passar do total da venda.
+- Venda reduz estoque imediatamente.
+- Lucro considera preço de venda, custo, desconto e taxas configuradas.
+- Caixa só fecha quando valor informado é igual ao valor esperado.
+- Categoria com produtos vinculados não pode ser excluída.
+- Categoria duplicada é validada por adega, não globalmente.
+- Código de barras duplicado é validado por adega.
+- Funcionário só acessa áreas permitidas.
+- Assinatura vencida bloqueia usuário de adega até regularização.
+
+## Rotas do Sistema
+
+### Autenticação, assinatura, master e configurações
+
+| Método | Rota | Função | Template | Login | Descrição |
+|---|---|---|---|---|---|
+| GET/POST | `/login` | `login` | `login.html` | Não | Exibe login, autentica usuário e cadastra nova adega. |
+| GET | `/logout` | `logout` | - | Sim | Encerra sessão e redireciona para login. |
+| GET/POST | `/assinatura` | `subscription_activation` | `subscription/activation.html` | Sim | Mostra status da assinatura e valida key. |
+| GET | `/assinaturas` | `subscriptions` | `subscription/plans.html` | Sim | Mostra planos Basic e Pro. |
+| GET | `/master/adegas` | `master_companies` | `master/companies.html` | Sim, master | Lista e gerencia adegas. |
+| POST | `/master/adegas/<company_id>/editar` | `edit_company` | - | Sim, master | Edita dados, plano, renovação e key da adega. |
+| GET | `/master/adegas/<company_id>/acessar` | `access_company` | - | Sim, master | Conecta o master em uma adega. |
+| GET | `/master/adegas/sair-acesso` | `leave_company_access` | - | Sim, master | Sai do acesso da adega. |
+| POST | `/master/adegas/<company_id>/alternar-status` | `toggle_company_status` | - | Sim, master | Ativa/inativa adega. |
+| POST | `/master/adegas/<company_id>/excluir` | `delete_company` | - | Sim, master | Exclui adega, usuários e banco MySQL da adega. |
+| GET/POST | `/configuracoes` | `settings` | `settings/index.html` | Sim | Perfil, email, senha, equipe, permissões, taxas e aparência. |
+
+### Catálogo
+
+| Método | Rota | Função | Template | Login/Permissão | Descrição |
+|---|---|---|---|---|---|
+| GET | `/catalogo/produtos` | `products` | `catalog/products.html` | `can_view_products` | Lista produtos com filtros e sugestões. |
+| POST | `/catalogo/produtos/importar` | `import_products` | - | `can_manage_products` | Importa CSV/XLSX para a adega atual. |
+| GET/POST | `/catalogo/produtos/novo` | `new_product` | `catalog/product_form.html` | `can_manage_products` | Cadastra produto. |
+| GET/POST | `/catalogo/produtos/<product_id>/editar` | `edit_product` | `catalog/product_form.html` | `can_manage_products` | Edita produto. |
+| POST | `/catalogo/produtos/<product_id>/atualizar` | `quick_update_product` | - | `can_manage_products` | Atualização rápida pela lista. |
+| GET | `/catalogo/produtos/<product_id>/notificacao-estoque` | `dismiss_low_stock_notification` | - | `can_view_products` | Dispensa alerta de estoque baixo. |
+| POST | `/catalogo/produtos/<product_id>/alternar-status` | `toggle_product` | - | `can_manage_products` | Ativa/inativa produto. |
+| POST | `/catalogo/produtos/<product_id>/excluir` | `delete_product` | - | `can_manage_products` | Exclui produto. |
+| GET/POST | `/catalogo/categorias` | `categories` | `catalog/categories.html` | `can_manage_categories` | Lista, filtra e cadastra categorias. |
+| POST | `/catalogo/categorias/<category_id>/atualizar` | `update_category` | - | `can_manage_categories` | Atualiza categoria. |
+| POST | `/catalogo/categorias/<category_id>/excluir` | `delete_category` | - | `can_manage_categories` | Exclui categoria vazia. |
+
+### Operação
+
+| Método | Rota | Função | Template | Login/Permissão | Descrição |
+|---|---|---|---|---|---|
+| GET | `/` | `dashboard` | `dashboard.html` | Sim | Página inicial autenticada. |
+| GET | `/dashboard` | `dashboard` | `dashboard.html` | Sim | Dashboard. |
+| GET | `/vendas` | `sales` | `sales/index.html` | `can_manage_sales` | Lista vendas. |
+| GET/POST | `/vendas/nova` | `new_sale` | `sales/form.html` | `can_manage_sales` | Registra venda. |
+| GET | `/vendas/<sale_id>` | `sale_detail` | `sales/detail.html` | `can_manage_sales` | Detalhe da venda. |
+| GET | `/caixa` | `cash_register` | `cash_register.html` | `can_manage_cash_register` | Caixa atual e anteriores. |
+| GET | `/caixa/<cash_register_id>` | `cash_register_detail` | `cash_register_detail.html` | `can_manage_cash_register` | Detalhes do caixa. |
+| POST | `/caixa/abrir` | `open_cash_register_route` | - | `can_manage_cash_register` | Abre caixa. |
+| POST | `/caixa/fechar` | `close_cash_register_route` | - | `can_manage_cash_register` | Fecha caixa com validação. |
+| GET | `/relatorios` | `reports` | `reports/index.html` | `can_view_reports` | Relatórios e gráfico por período. |
+| GET/POST | `/contas-a-pagar` | `payables` | `payables/index.html` | `can_manage_payables` | Lista e cadastra contas. |
+| POST | `/contas-a-pagar/<payable_id>/pagar` | `pay_payable` | - | `can_manage_payables` | Marca conta como paga. |
+| POST | `/contas-a-pagar/<payable_id>/reabrir` | `reopen_payable` | - | `can_manage_payables` | Reabre conta paga. |
+
+## Templates e Interface
+
+| Template | Função |
+|---|---|
+| `base.html` | Layout base com sidebar, topbar, notificações, mensagens flash, Bootstrap, CSS e JS. |
+| `login.html` | Login e cadastro de nova adega. |
+| `dashboard.html` | Tela inicial autenticada. |
+| `master/companies.html` | Painel master para gerenciar adegas. |
+| `subscription/activation.html` | Tela de ativação/regularização da assinatura. |
+| `subscription/plans.html` | Tela estética de planos Basic e Pro. |
+| `settings/index.html` | Configurações com abas de usuário, suporte, aparência, equipe e financeiro. |
+| `catalog/products.html` | Lista de produtos, filtros, importação e edição expandida. |
+| `catalog/product_form.html` | Formulário de produto. |
+| `catalog/categories.html` | Lista, filtro, cadastro e edição de categorias. |
+| `sales/index.html` | Histórico de vendas. |
+| `sales/form.html` | Realização de venda. |
+| `sales/detail.html` | Detalhe da venda finalizada. |
+| `cash_register.html` | Caixa atual e caixas anteriores. |
+| `cash_register_detail.html` | Detalhamento de caixa fechado. |
+| `reports/index.html` | Relatórios e gráfico de vendas. |
+| `payables/index.html` | Contas a pagar. |
+| `errors/404.html` | Página de erro 404. |
+| `errors/500.html` | Página de erro 500. |
+| `placeholder.html` | Template auxiliar simples. |
+
+## Arquivos Estáticos
+
+| Arquivo | Função |
+|---|---|
+| `app/static/css/style.css` | Tema visual, layout responsivo, sidebar, cards, tabelas, formulários, vendas, caixa, relatórios, notificações e dark/light mode. |
+| `app/static/js/main.js` | Tema light/dark, sidebar colapsável, abas, filtros avançados, autocomplete, moeda, kits, venda, pagamento, desconto e atalhos F2/F3. |
+
+Não há imagens, logos ou ícones próprios no repositório. A interface usa texto, CSS e componentes Bootstrap.
+
+## Segurança
+
+O projeto já possui:
+
+- login e logout com Flask-Login;
+- senha armazenada com hash via Werkzeug;
+- proteção de rotas com `@login_required`;
+- permissões por usuário com `permission_required`;
+- roles `master`, `admin` e `operator`;
+- bloqueio por assinatura vencida;
+- separação de dados por adega;
+- consultas ORM/parametrizadas, reduzindo risco de SQL Injection;
+- logs com proteção de campos sensíveis como senhas;
+- `SECRET_KEY` configurável por variável de ambiente;
+- usuário inativo bloqueado;
+- adega inativa bloqueada.
+
+### Pontos de atenção de segurança
+
+- O `SECRET_KEY` padrão deve ser trocado em qualquer ambiente real.
+- O app roda com `debug=True` em `app.py`; isso não deve ser usado em produção.
+- Não há CSRF explícito nos formulários.
+- Não há política de força de senha além de tamanho mínimo 3.
+- Não há recuperação de senha.
+- Não há rate limit para tentativas de login.
+- Não há auditoria detalhada de alterações de dados.
+- O `.env` não deve ser versionado com senhas reais.
+- O usuário MySQL `root` não é recomendado em produção.
+
+## Backup do MySQL
+
+Backup é obrigatório para qualquer uso real. Como cada adega tem banco separado, faça backup do banco central e dos bancos das adegas.
+
+Backup do banco central:
+
+```bash
+mysqldump -u root -p adega_central > backup_adega_central.sql
+```
+
+Backup de uma adega:
+
+```bash
+mysqldump -u root -p adega_4_adegajf > backup_adega_4_adegajf.sql
+```
+
+Restaurar:
+
+```bash
+mysql -u root -p adega_central < backup_adega_central.sql
+```
+
+Backup de todos os bancos:
+
+```bash
+mysqldump -u root -p --databases adega_central adega_1_painel_master adega_4_adegajf > backup_completo.sql
+```
+
+Recomendação: automatizar backup diário e manter cópia externa.
+
+## Testes
+
+Rodar todos os testes:
+
+```bash
+python -m unittest discover
+```
+
+Rodar arquivo específico:
+
+```bash
+python -m unittest tests.test_routes
+```
+
+Os testes usam configuração própria com SQLite em memória (`TESTING = True`) para validar rotas e regras sem depender do MySQL real.
+
+## Deploy Futuro
+
+Para produção, o projeto pode evoluir para:
+
+- servidor Linux;
+- ambiente virtual isolado;
+- banco MySQL gerenciado ou instalado no servidor;
+- Gunicorn como servidor WSGI;
+- Nginx como proxy reverso;
+- domínio próprio;
+- HTTPS com Let's Encrypt;
+- serviço `systemd`;
+- logs centralizados;
+- backup automático;
+- variáveis de ambiente separadas por ambiente;
+- modo debug desativado;
+- usuário MySQL dedicado;
+- política de atualização e migração de banco.
+
+Exemplo conceitual com Gunicorn:
+
+```bash
+gunicorn "app:create_app()" --bind 127.0.0.1:8000
+```
+
+Observação: o projeto ainda não possui arquivo de configuração Gunicorn, Dockerfile ou scripts de deploy.
+
+## Evolução para SaaS
+
+O sistema já possui bases importantes para SaaS:
+
+- cadastro de empresas/adegas;
+- banco separado por adega;
+- usuários por empresa;
+- permissões por usuário;
+- painel master;
+- assinatura/key;
+- planos exibidos na interface;
+- isolamento operacional por `company_id` e database.
+
+Próximos passos para SaaS completo:
+
+- onboarding comercial de clientes;
+- cobrança real integrada;
+- emissão automática de key/licença;
+- domínio ou subdomínio por cliente;
+- auditoria de ações;
+- backup por cliente;
+- painel financeiro do provedor;
+- limites por plano;
+- monitoramento de bancos das adegas;
+- migrações versionadas por tenant;
+- API para integrações externas;
+- suporte multiusuário simultâneo em ambiente hospedado.
+
+## Melhorias Recomendadas
+
+### Técnicas
+
+- Adotar Flask-Migrate/Alembic para migrações versionadas.
+- Criar Dockerfile e `docker-compose.yml`.
+- Adicionar `python-dotenv` se quiser carregar `.env` automaticamente.
+- Desativar debug em produção.
+- Adicionar CSRF nos formulários.
+- Criar camada de services para regras de venda/estoque.
+- Criar auditoria de alterações críticas.
+- Melhorar testes de banco MySQL real.
+- Criar comandos CLI para manutenção.
+- Adicionar type hints em funções críticas.
+
+### Produto
+
 - Impressão de comprovante.
-- Exportação de relatórios.
+- Integração com maquininha.
+- Integração WhatsApp.
 - Cadastro de clientes.
-- Controle de fornecedores e compras.
-- App mobile/PWA.
-- Dashboard gerencial avançado.
+- Histórico de movimentações de estoque.
+- Sangria e suprimento de caixa.
+- Cancelamento/estorno de venda.
+- Dashboard financeiro.
+- API JSON.
+- Backup automático pela interface.
+- Controle de produtos por código de barras com leitor físico.
 
-## Documentação Técnica
+## Status do Projeto
 
-A documentação completa está em `docs/`:
+- [x] Login
+- [x] Logout
+- [x] Cadastro de nova adega pela tela de login
+- [x] Usuário master do sistema
+- [x] Painel master de adegas
+- [x] Acesso do master a qualquer adega
+- [x] Banco MySQL central
+- [x] Banco MySQL separado por adega
+- [x] Produtos
+- [x] Categorias
+- [x] Kits
+- [x] Importação CSV/XLSX de produtos
+- [x] Estoque mínimo
+- [x] Notificação de estoque baixo
+- [x] Abertura de caixa
+- [x] Fechamento de caixa com validação
+- [x] Vendas com múltiplos produtos
+- [x] Múltiplas formas de pagamento
+- [x] Desconto em reais
+- [x] Troco e valor faltante
+- [x] Baixa de estoque
+- [x] Cálculo de lucro
+- [x] Taxas de Pix/débito/crédito no lucro
+- [x] Relatórios por período
+- [x] Gráfico de vendas
+- [x] Contas a pagar
+- [x] Alertas de contas vencendo
+- [x] Funcionários e permissões
+- [x] Tema claro/escuro
+- [x] Navbar colapsável
+- [x] Logs de erro
+- [x] Testes automatizados de rotas
+- [ ] Migrações com Alembic
+- [ ] Docker
+- [ ] CSRF
+- [ ] Impressão de comprovante
+- [ ] Integração real com pagamento
+- [ ] Backup automático
+- [ ] Deploy de produção
+- [ ] Auditoria completa
+- [ ] Cadastro de clientes
+- [ ] Movimentações de estoque separadas
 
-- [01 - Visão Geral](docs/01-visao-geral.md)
-- [02 - Requisitos](docs/02-requisitos.md)
-- [03 - Arquitetura](docs/03-arquitetura.md)
-- [04 - Modelagem do Banco](docs/04-modelagem-banco.md)
-- [05 - Regras de Negócio](docs/05-regras-negocio.md)
-- [06 - Fluxo do Sistema](docs/06-fluxo-sistema.md)
-- [07 - Front-end](docs/07-front-end.md)
-- [08 - Back-end](docs/08-back-end.md)
-- [09 - Rotas HTTP](docs/09-api.md)
-- [10 - Autenticação](docs/10-autenticacao.md)
-- [11 - Permissões](docs/11-permissoes.md)
-- [12 - Deploy](docs/12-deploy.md)
-- [13 - Monitoramento](docs/13-monitoramento.md)
-- [14 - Segurança](docs/14-seguranca.md)
-- [15 - Testes](docs/15-testes.md)
-- [16 - Manutenção](docs/16-manutencao.md)
-- [17 - Roadmap](docs/17-roadmap.md)
-- [18 - Casos de Uso](docs/18-casos-de-uso.md)
-- [19 - Diagrama de Classe](docs/19-diagrama-classe.md)
-- [20 - Diagramas de Sequência](docs/20-diagrama-sequencia.md)
-- [21 - Glossário](docs/21-glossario.md)
+## Como Contribuir/Desenvolver
+
+Fluxo recomendado:
+
+1. Clonar o repositório.
+2. Criar uma branch para a alteração.
+3. Criar e ativar o ambiente virtual.
+4. Instalar dependências.
+5. Configurar MySQL local.
+6. Criar/copiar `.env.example` para `.env`, se desejar.
+7. Rodar o projeto localmente.
+8. Rodar testes antes de finalizar.
+9. Fazer commits claros e pequenos.
+
+Comandos principais:
+
+```bash
+git checkout -b minha-alteracao
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python app.py
+python -m unittest discover
+```
+
+## Licença
+
+Este projeto ainda não possui uma licença definida.
+
+## Autor
+
+Desenvolvido por Rafael Borges Pontes  
+Projeto Adega JF

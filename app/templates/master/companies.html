@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Painel master</h2>
+    <p class="text-muted mb-0">Gerencie, acesse e acompanhe as adegas cadastradas.</p>
+  </div>
+  <div class="master-toolbar">
+    <a class="settings-theme-choice {{ 'is-active' if view_mode == 'table' else '' }}" href="{{ url_for('auth.master_companies', view='table') }}">Colunas</a>
+    <a class="settings-theme-choice {{ 'is-active' if view_mode == 'cards' else '' }}" href="{{ url_for('auth.master_companies', view='cards') }}">Blocos</a>
+  </div>
+</div>
+
+{% if master_company_active %}
+<div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2" role="alert">
+  <span>Você está acessando a adega <strong>{{ master_company.name }}</strong>.</span>
+  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('auth.leave_company_access') }}">Voltar ao painel master</a>
+</div>
+{% endif %}
+
+{% macro company_actions(company) %}
+<div class="table-actions justify-content-end">
+  <a class="btn btn-primary btn-sm" href="{{ url_for('auth.access_company', company_id=company.id) }}">Acessar</a>
+  <form method="post" action="{{ url_for('auth.toggle_company_status', company_id=company.id) }}">
+    <button class="btn btn-outline-warning btn-sm" type="submit" {% if company.id == current_user.company_id %}disabled{% endif %}>
+      {{ 'Inativar' if company.active else 'Ativar' }}
+    </button>
+  </form>
+  <form method="post" action="{{ url_for('auth.delete_company', company_id=company.id) }}" onsubmit="return confirm('Excluir esta adega e todos os usuários vinculados?');">
+    <button class="btn btn-outline-danger btn-sm" type="submit" {% if company.id == current_user.company_id %}disabled{% endif %}>Excluir</button>
+  </form>
+</div>
+{% endmacro %}
+
+{% if view_mode == 'cards' %}
+<div class="company-card-grid">
+  {% for company in companies %}
+  {% set stats = company_stats.get(company.id, {}) %}
+  {% set subscription = subscription_statuses.get(company.id, {}) %}
+  <section class="card card-dark company-card">
+    <div class="company-card-header">
+      <div>
+        <h5 class="mb-1">{{ company.name }}</h5>
+        <p class="text-muted mb-0">Banco {{ company.id }} · {{ company.subscription_plan or 'Essencial' }} · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }} · Key {{ company.activation_key or 'não gerada' }}</p>
+      </div>
+      {% if company.active %}
+      <span class="badge text-bg-success">Ativa</span>
+      {% else %}
+      <span class="badge text-bg-secondary">Inativa</span>
+      {% endif %}
+    </div>
+
+    <div class="company-stat-grid">
+      <div><span>Usuários</span><strong>{{ user_counts.get(company.id, 0) }}</strong></div>
+      <div><span>Produtos</span><strong>{{ stats.get('products', 0) }}</strong></div>
+      <div><span>Vendas</span><strong>{{ stats.get('sales', 0) }}</strong></div>
+      <div><span>Caixas</span><strong>{{ stats.get('cash_registers', 0) }}</strong></div>
+      <div><span>Renovação</span><strong>{{ subscription.get('renewal_label', '-') }}</strong></div>
+      <div><span>Prazo</span><strong>{{ subscription.get('days_label', 'Sem renovação') }}</strong></div>
+      <div><span>Key</span><strong>{{ company.activation_key or 'Gerar key' }}</strong></div>
+    </div>
+
+    <form class="company-edit-form" method="post" action="{{ url_for('auth.edit_company', company_id=company.id) }}">
+      <input type="hidden" name="view_mode" value="cards">
+      <div>
+        <label class="form-label" for="card_company_{{ company.id }}">Nome</label>
+        <input class="form-control" id="card_company_{{ company.id }}" name="name" value="{{ company.name }}" required>
+      </div>
+      <div class="form-check form-switch">
+        <input class="form-check-input" id="card_active_{{ company.id }}" name="active" type="checkbox" {% if company.active %}checked{% endif %} {% if company.id == current_user.company_id %}disabled{% endif %}>
+        <label class="form-check-label" for="card_active_{{ company.id }}">Ativa</label>
+      </div>
+      <div class="company-subscription-form">
+        <div>
+          <label class="form-label" for="card_plan_{{ company.id }}">Plano</label>
+          <select class="form-select" id="card_plan_{{ company.id }}" name="subscription_plan">
+            {% for plan in subscription_plans %}
+            <option value="{{ plan }}" {% if company.subscription_plan == plan %}selected{% endif %}>{{ plan }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="card_cycle_{{ company.id }}">Pagamento</label>
+          <select class="form-select" id="card_cycle_{{ company.id }}" name="billing_cycle">
+            {% for cycle, label in billing_cycles.items() %}
+            <option value="{{ cycle }}" {% if company.billing_cycle == cycle %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="card_started_{{ company.id }}">Início</label>
+          <input class="form-control" id="card_started_{{ company.id }}" name="subscription_started_at" type="date" value="{{ company.subscription_started_at.isoformat() if company.subscription_started_at else '' }}">
+        </div>
+        <div>
+          <label class="form-label" for="card_renews_{{ company.id }}">Renova em</label>
+          <input class="form-control" id="card_renews_{{ company.id }}" name="subscription_renews_at" type="date" value="{{ company.subscription_renews_at.isoformat() if company.subscription_renews_at else '' }}">
+        </div>
+        <div>
+          <label class="form-label" for="card_key_{{ company.id }}">Key de ativação</label>
+          <input class="form-control activation-key-field" id="card_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Gerar automaticamente">
+        </div>
+        <label class="form-check form-switch mb-0 company-key-toggle">
+          <input class="form-check-input" name="generate_activation_key" type="checkbox">
+          <span class="form-check-label">Gerar nova key</span>
+        </label>
+      </div>
+      <button class="btn btn-outline-light btn-sm" type="submit">Salvar</button>
+    </form>
+
+    <small class="text-muted company-db-path">{{ company.database_path or '-' }}</small>
+    {{ company_actions(company) }}
+  </section>
+  {% else %}
+  <div class="card card-dark sale-panel">
+    <p class="text-muted mb-0">Nenhuma adega cadastrada.</p>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card card-dark table-card p-0">
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle mb-0 app-table company-table">
+      <thead>
+        <tr>
+          <th>Adega</th>
+          <th>Status</th>
+          <th>Plano</th>
+          <th>Renovação</th>
+          <th>Usuários</th>
+          <th>Produtos</th>
+          <th>Vendas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for company in companies %}
+        {% set stats = company_stats.get(company.id, {}) %}
+        {% set subscription = subscription_statuses.get(company.id, {}) %}
+        <tr class="product-summary-row">
+          <td>
+            <button class="product-name-button" type="button" data-bs-toggle="collapse" data-bs-target="#company-details-{{ company.id }}" aria-expanded="false" aria-controls="company-details-{{ company.id }}">
+              <span>{{ company.name }}</span>
+              <small>
+                Banco {{ company.id }}
+                · {{ company.subscription_plan or 'Essencial' }}
+                · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }}
+                · Key {{ company.activation_key or 'não gerada' }}
+                {% if company.id == current_user.company_id %}
+                · Adega do master
+                {% endif %}
+              </small>
+            </button>
+          </td>
+          <td>
+            {% if company.active %}
+            <span class="badge text-bg-success">Ativa</span>
+            {% else %}
+            <span class="badge text-bg-secondary">Inativa</span>
+            {% endif %}
+          </td>
+          <td>{{ company.subscription_plan or 'Essencial' }}</td>
+          <td>
+            <span class="subscription-pill subscription-{{ subscription.get('state', 'neutral') }}">{{ subscription.get('days_label', 'Sem renovação') }}</span>
+            <small class="d-block text-muted">{{ subscription.get('renewal_label', '-') }}</small>
+          </td>
+          <td>{{ user_counts.get(company.id, 0) }}</td>
+          <td>{{ stats.get('products', 0) }}</td>
+          <td>{{ stats.get('sales', 0) }}</td>
+        </tr>
+        <tr class="product-details-row">
+          <td colspan="7" class="p-0">
+            <div class="collapse" id="company-details-{{ company.id }}">
+              <div class="product-details-panel">
+                <div class="company-stat-grid company-details-stats">
+                  <div><span>Usuários</span><strong>{{ user_counts.get(company.id, 0) }}</strong></div>
+                  <div><span>Produtos</span><strong>{{ stats.get('products', 0) }}</strong></div>
+                  <div><span>Vendas</span><strong>{{ stats.get('sales', 0) }}</strong></div>
+                  <div><span>Caixas</span><strong>{{ stats.get('cash_registers', 0) }}</strong></div>
+                  <div><span>Plano</span><strong>{{ company.subscription_plan or 'Essencial' }}</strong></div>
+                  <div><span>Pagamento</span><strong>{{ billing_cycles.get(company.billing_cycle, 'Mensal') }}</strong></div>
+                  <div><span>Renova em</span><strong>{{ subscription.get('renewal_label', '-') }}</strong></div>
+                  <div><span>Prazo</span><strong>{{ subscription.get('days_label', 'Sem renovação') }}</strong></div>
+                  <div><span>Key</span><strong>{{ company.activation_key or 'Gerar key' }}</strong></div>
+                </div>
+
+                <div>
+                  <span class="text-muted d-block mb-1">Banco de dados</span>
+                  <strong class="company-db-path">{{ company.database_path or '-' }}</strong>
+                </div>
+
+                <form class="company-details-form" method="post" action="{{ url_for('auth.edit_company', company_id=company.id) }}">
+                  <input type="hidden" name="view_mode" value="table">
+                  <div class="company-main-form">
+                    <div>
+                      <label class="form-label" for="company_name_{{ company.id }}">Nome</label>
+                      <input class="form-control" id="company_name_{{ company.id }}" name="name" value="{{ company.name }}" required>
+                    </div>
+                    <label class="form-check form-switch mb-0 company-active-toggle">
+                      <input class="form-check-input" name="active" type="checkbox" {% if company.active %}checked{% endif %} {% if company.id == current_user.company_id %}disabled{% endif %}>
+                      <span class="form-check-label">Ativa</span>
+                    </label>
+                  </div>
+
+                  <div class="company-subscription-form">
+                    <div>
+                      <label class="form-label" for="plan_{{ company.id }}">Plano</label>
+                      <select class="form-select" id="plan_{{ company.id }}" name="subscription_plan">
+                        {% for plan in subscription_plans %}
+                        <option value="{{ plan }}" {% if company.subscription_plan == plan %}selected{% endif %}>{{ plan }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div>
+                      <label class="form-label" for="cycle_{{ company.id }}">Pagamento</label>
+                      <select class="form-select" id="cycle_{{ company.id }}" name="billing_cycle">
+                        {% for cycle, label in billing_cycles.items() %}
+                        <option value="{{ cycle }}" {% if company.billing_cycle == cycle %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div>
+                      <label class="form-label" for="started_{{ company.id }}">Início</label>
+                      <input class="form-control" id="started_{{ company.id }}" name="subscription_started_at" type="date" value="{{ company.subscription_started_at.isoformat() if company.subscription_started_at else '' }}">
+                    </div>
+                    <div>
+                      <label class="form-label" for="renews_{{ company.id }}">Renova em</label>
+                      <input class="form-control" id="renews_{{ company.id }}" name="subscription_renews_at" type="date" value="{{ company.subscription_renews_at.isoformat() if company.subscription_renews_at else '' }}">
+                    </div>
+                    <div>
+                      <label class="form-label" for="activation_key_{{ company.id }}">Key de ativação</label>
+                      <input class="form-control activation-key-field" id="activation_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Gerar automaticamente">
+                    </div>
+                    <label class="form-check form-switch mb-0 company-key-toggle">
+                      <input class="form-check-input" name="generate_activation_key" type="checkbox">
+                      <span class="form-check-label">Gerar nova key</span>
+                    </label>
+                  </div>
+                  <button class="btn btn-outline-light" type="submit">Salvar</button>
+                </form>
+
+                {{ company_actions(company) }}
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">Nenhuma adega cadastrada.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

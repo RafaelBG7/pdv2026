@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="text-center py-5">
+  <h1 class="display-4">500</h1>
+  <p class="text-muted">Ocorreu uma falha inesperada. O erro foi registrado para análise.</p>
+  <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Voltar ao dashboard</a>
+</div>
+{% endblock %}

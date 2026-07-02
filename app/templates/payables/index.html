@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Contas a pagar</h2>
+    <p class="text-muted mb-0">Cadastre despesas como aluguel, luz e fornecedores.</p>
+  </div>
+  <div class="master-toolbar">
+    <a class="settings-theme-choice {{ 'is-active' if status_filter == 'open' else '' }}" href="{{ url_for('main.payables', status='open') }}">Pendentes</a>
+    <a class="settings-theme-choice {{ 'is-active' if status_filter == 'paid' else '' }}" href="{{ url_for('main.payables', status='paid') }}">Pagas</a>
+    <a class="settings-theme-choice {{ 'is-active' if status_filter == 'all' else '' }}" href="{{ url_for('main.payables', status='all') }}">Todas</a>
+  </div>
+</div>
+
+<div class="payable-summary-grid mb-4">
+  <div class="card card-dark payable-summary-card">
+    <span>Total pendente</span>
+    <strong>R$ {{ '%.2f'|format(totals.open)|replace('.', ',') }}</strong>
+  </div>
+  <div class="card card-dark payable-summary-card">
+    <span>Vencidas</span>
+    <strong>R$ {{ '%.2f'|format(totals.overdue)|replace('.', ',') }}</strong>
+  </div>
+  <div class="card card-dark payable-summary-card">
+    <span>Vencem em até 3 dias</span>
+    <strong>R$ {{ '%.2f'|format(totals.due_soon)|replace('.', ',') }}</strong>
+  </div>
+</div>
+
+<section class="card card-dark sale-panel mb-4">
+  <h5 class="mb-3">Nova conta</h5>
+  <form class="payable-form" method="post">
+    <div>
+      <label class="form-label" for="description">Descrição</label>
+      <input class="form-control" id="description" name="description" placeholder="Ex: Aluguel, luz, internet" required>
+    </div>
+    <div>
+      <label class="form-label" for="category">Categoria</label>
+      <select class="form-select" id="category" name="category">
+        {% for category in categories %}
+        <option value="{{ category }}">{{ category }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="amount">Valor</label>
+      <input class="form-control" id="amount" name="amount" inputmode="numeric" placeholder="0,00" data-currency-input>
+    </div>
+    <div>
+      <label class="form-label" for="due_date">Vencimento</label>
+      <input class="form-control" id="due_date" name="due_date" type="date" value="{{ today.isoformat() }}" required>
+    </div>
+    <div class="payable-form-notes">
+      <label class="form-label" for="notes">Observação</label>
+      <input class="form-control" id="notes" name="notes" placeholder="Opcional">
+    </div>
+    <button class="btn btn-primary" type="submit">Cadastrar conta</button>
+  </form>
+</section>
+
+<div class="card card-dark table-card p-0">
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle mb-0 app-table payable-table">
+      <thead>
+        <tr>
+          <th>Conta</th>
+          <th>Categoria</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th class="text-end">Valor</th>
+          <th class="text-end">Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for payable in payables %}
+        {% set status = payable_status(payable) %}
+        <tr>
+          <td>
+            <strong>{{ payable.description }}</strong>
+            {% if payable.notes %}
+            <small class="d-block text-muted">{{ payable.notes }}</small>
+            {% endif %}
+          </td>
+          <td>{{ payable.category or '-' }}</td>
+          <td>{{ payable.due_date.strftime('%d/%m/%Y') if payable.due_date else '-' }}</td>
+          <td><span class="subscription-pill payable-{{ status }}">{{ payable_status_label(payable) }}</span></td>
+          <td class="text-end">R$ {{ '%.2f'|format(payable.amount or 0)|replace('.', ',') }}</td>
+          <td class="text-end">
+            {% if payable.paid %}
+            <form method="post" action="{{ url_for('main.reopen_payable', payable_id=payable.id) }}">
+              <button class="btn btn-outline-light btn-sm" type="submit">Reabrir</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('main.pay_payable', payable_id=payable.id) }}">
+              <button class="btn btn-primary btn-sm" type="submit">Marcar pago</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">Nenhuma conta encontrada.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -6,8 +6,26 @@
     <h2>Produtos</h2>
     <p class="text-muted mb-0">Cadastre, edite e acompanhe o estoque dos produtos.</p>
   </div>
+  {% if current_user.has_permission('can_manage_products') %}
   <a class="btn btn-primary" href="{{ url_for('catalog.new_product') }}">Novo produto</a>
+  {% endif %}
 </div>
+
+{% if can_import_products %}
+<section class="card card-dark import-panel mb-4">
+  <div>
+    <h5 class="mb-1">Importar planilha</h5>
+    <p class="text-muted mb-0">
+      Importa somente para {{ import_company.name if import_company else 'a adega atual' }}.
+      Colunas: categoria, produto, custo e venda.
+    </p>
+  </div>
+  <form class="import-form" method="post" action="{{ url_for('catalog.import_products') }}" enctype="multipart/form-data">
+    <input class="form-control" name="spreadsheet" type="file" accept=".csv,.xlsx" required>
+    <button class="btn btn-outline-light" type="submit">Importar</button>
+  </form>
+</section>
+{% endif %}
 
 {% set has_advanced_filters = filters.category_id or filters.stock != 'all' or filters.min_price or filters.max_price %}
 
@@ -130,9 +148,11 @@
               <span>{{ product.name }}</span>
               <small>
                 {{ product.barcode or 'Sem código' }}
+                {% if current_user.has_permission('can_manage_products') %}
                 · Lucro R$ {{ '%.2f'|format(product.profit_amount or 0)|replace('.', ',') }}
                 ({{ '%.2f'|format(product.profit_margin_percent or 0)|replace('.', ',') }}%)
                 · Mínimo {{ product.min_stock_quantity or 0 }} un.
+                {% endif %}
                 {% if product.is_kit and product.kit_component %}
                 · Kit: baixa {{ product.kit_component_quantity }} un. de {{ product.kit_component.name }}
                 {% endif %}
@@ -160,6 +180,7 @@
             <div class="collapse" id="product-details-{{ product.id }}">
               <div class="product-details-panel">
                 <div class="product-profit-summary">
+                  {% if current_user.has_permission('can_manage_products') %}
                   <div>
                     <span>Custo</span>
                     <strong>R$ {{ '%.2f'|format(product.cost_price or 0)|replace('.', ',') }}</strong>
@@ -184,8 +205,27 @@
                     <span>Estoque mínimo</span>
                     <strong>{{ product.min_stock_quantity or 0 }}</strong>
                   </div>
+                  {% else %}
+                  <div>
+                    <span>Preço</span>
+                    <strong>R$ {{ '%.2f'|format(product.sale_price or 0)|replace('.', ',') }}</strong>
+                  </div>
+                  <div>
+                    <span>Estoque</span>
+                    <strong>{{ product.effective_stock_quantity or 0 }}</strong>
+                  </div>
+                  <div>
+                    <span>Categoria</span>
+                    <strong>{{ product.category.name if product.category else '-' }}</strong>
+                  </div>
+                  <div>
+                    <span>Status</span>
+                    <strong>{{ 'Ativo' if product.active else 'Inativo' }}</strong>
+                  </div>
+                  {% endif %}
                 </div>
 
+                {% if current_user.has_permission('can_manage_products') %}
                 <form method="post" action="{{ url_for('catalog.quick_update_product', product_id=product.id) }}" class="product-inline-form">
                   <div>
                     <label class="form-label" for="name_{{ product.id }}">Nome</label>
@@ -264,6 +304,9 @@
                     <button class="btn btn-outline-danger" type="submit">Excluir</button>
                   </form>
                 </div>
+                {% else %}
+                <p class="text-muted mb-0">Consulta liberada. Alterações de nome, categoria, preço e estoque exigem permissão de gerenciamento.</p>
+                {% endif %}
               </div>
             </div>
           </td>

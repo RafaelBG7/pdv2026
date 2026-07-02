@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="activation-page">
+  <section class="card card-dark activation-card">
+    <div>
+      <p class="text-muted mb-2">Ativação necessária</p>
+      <h2>Assinatura vencida ou bloqueada</h2>
+      <p class="text-muted mb-0">
+        Para continuar usando o sistema da {{ company.name if company else 'adega' }}, informe a key de ativação enviada pelo suporte.
+      </p>
+    </div>
+
+    <div class="activation-status-grid">
+      <div>
+        <span>Status</span>
+        <strong>{{ subscription.get('days_label', 'Sem renovação') }}</strong>
+      </div>
+      <div>
+        <span>Renovação</span>
+        <strong>{{ subscription.get('renewal_label', '-') }}</strong>
+      </div>
+      <div>
+        <span>Plano</span>
+        <strong>{{ company.subscription_plan if company else '-' }}</strong>
+      </div>
+    </div>
+
+    <form method="post" class="activation-form">
+      <label class="form-label" for="activation_key">Key de ativação</label>
+      <input class="form-control activation-key-input" id="activation_key" name="activation_key" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" required>
+      <button class="btn btn-primary" type="submit">Ativar sistema</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

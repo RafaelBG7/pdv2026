@@ -29,13 +29,34 @@
               </button>
             </div>
             <ul class="nav flex-column mt-4">
+              {% if current_user.role == 'master' %}
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['auth.master_companies'] else '' }}" href="{{ url_for('auth.master_companies') }}" title="Adegas"><span class="nav-icon">A</span><span class="nav-label">Adegas</span></a></li>
+              {% endif %}
+              {% if current_user.role != 'master' or master_company_active %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}" title="Dashboard"><span class="nav-icon">D</span><span class="nav-label">Dashboard</span></a></li>
+              {% if current_user.has_permission('can_view_products') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['catalog.products', 'catalog.new_product', 'catalog.edit_product'] else '' }}" href="{{ url_for('catalog.products') }}" title="Produtos"><span class="nav-icon">P</span><span class="nav-label">Produtos</span></a></li>
+              {% endif %}
+              {% if current_user.has_permission('can_manage_categories') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'catalog.categories' else '' }}" href="{{ url_for('catalog.categories') }}" title="Categorias"><span class="nav-icon">C</span><span class="nav-label">Categorias</span></a></li>
+              {% endif %}
+              {% if current_user.has_permission('can_manage_sales') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['main.sales', 'main.new_sale', 'main.sale_detail'] else '' }}" href="{{ url_for('main.sales') }}" title="Vendas"><span class="nav-icon">V</span><span class="nav-label">Vendas</span></a></li>
+              {% endif %}
+              {% if current_user.has_permission('can_manage_cash_register') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.cash_register' else '' }}" href="{{ url_for('main.cash_register') }}" title="Caixa"><span class="nav-icon">R$</span><span class="nav-label">Caixa</span></a></li>
+              {% endif %}
+              {% if current_user.has_permission('can_manage_payables') %}
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['main.payables', 'main.pay_payable', 'main.reopen_payable'] else '' }}" href="{{ url_for('main.payables') }}" title="Contas a pagar"><span class="nav-icon">CP</span><span class="nav-label">Contas a pagar</span></a></li>
+              {% endif %}
+              {% if current_user.has_permission('can_view_reports') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.reports' else '' }}" href="{{ url_for('main.reports') }}" title="Relatórios"><span class="nav-icon">R</span><span class="nav-label">Relatórios</span></a></li>
+              {% endif %}
+              {% if current_user.role in ['admin', 'master'] or current_user.has_permission('can_manage_settings') %}
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['auth.subscriptions', 'auth.subscription_activation'] else '' }}" href="{{ url_for('auth.subscriptions') }}" title="Assinaturas"><span class="nav-icon">AS</span><span class="nav-label">Assinaturas</span></a></li>
+              {% endif %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.settings' else '' }}" href="{{ url_for('auth.settings') }}" title="Configurações"><span class="nav-icon">CFG</span><span class="nav-label">Configurações</span></a></li>
+              {% endif %}
               <li class="nav-item mt-4"><a class="nav-link" href="{{ url_for('auth.logout') }}" title="Sair"><span class="nav-icon">S</span><span class="nav-label">Sair</span></a></li>
             </ul>
           </div>
@@ -74,7 +95,12 @@
                     {% endif %}
                   </div>
                 </details>
-                <span class="topbar-username">{{ current_user.full_name or current_user.username }}</span>
+                <span class="topbar-username">
+                  {{ current_user.full_name or current_user.username }}
+                  {% if master_company_active %}
+                  · {{ master_company.name }}
+                  {% endif %}
+                </span>
               </div>
             </header>
           {% endif %}

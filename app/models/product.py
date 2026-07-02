@@ -8,8 +8,9 @@ class Product(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    barcode = db.Column(db.String(100), unique=True, nullable=True)
+    barcode = db.Column(db.String(100), nullable=True)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)
     cost_price = db.Column(db.Float, default=0.0)
     sale_price = db.Column(db.Float, default=0.0)
     stock_quantity = db.Column(db.Integer, default=0)

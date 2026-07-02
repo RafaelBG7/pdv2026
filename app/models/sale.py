@@ -13,6 +13,7 @@ class Sale(db.Model):
     final_amount = db.Column(db.Float, default=0.0)
     payment_status = db.Column(db.String(20), default='pending')
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)
     cash_register_id = db.Column(db.Integer, db.ForeignKey('cash_registers.id'))
     items = db.relationship('SaleItem', back_populates='sale', cascade='all, delete-orphan')
     payments = db.relationship('Payment', back_populates='sale', cascade='all, delete-orphan')

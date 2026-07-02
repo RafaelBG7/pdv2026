@@ -275,6 +275,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const paymentStep = saleForm.querySelector('[data-payment-step]');
     const openPaymentStepButton = saleForm.querySelector('[data-open-payment-step]');
     const closePaymentStepButton = saleForm.querySelector('[data-close-payment-step]');
+    const finalizeSaleButton = saleForm.querySelector('[data-finalize-sale]');
     const paymentInputs = Array.from(saleForm.querySelectorAll('[data-payment-input]'));
     let autoPaymentInput = null;
     let autoPaymentValue = '';
@@ -553,6 +554,72 @@ document.addEventListener('DOMContentLoaded', function () {
       return Math.max(subtotal - discount, 0);
     }
 
+    function currentPaidAmount() {
+      return paymentInputs.reduce(function (sum, input) {
+        return sum + parseCurrency(input.value);
+      }, 0);
+    }
+
+    function removeBlankSaleRows() {
+      const rows = Array.from(saleForm.querySelectorAll('[data-sale-item-row]'));
+      rows.forEach(function (row) {
+        syncProductId(row);
+      });
+
+      rows.forEach(function (row) {
+        const productIdInput = row.querySelector('[data-product-id]');
+        const searchInput = row.querySelector('[data-product-search]');
+        const currentRows = saleForm.querySelectorAll('[data-sale-item-row]');
+        const isBlank = !productIdInput.value && !searchInput.value.trim();
+
+        if (isBlank && currentRows.length > 1) {
+          row.remove();
+        }
+      });
+    }
+
+    function firstInvalidSaleRow() {
+      return Array.from(saleForm.querySelectorAll('[data-sale-item-row]')).find(function (row) {
+        const searchInput = row.querySelector('[data-product-search]');
+        const productIdInput = row.querySelector('[data-product-id]');
+        return searchInput.value.trim() && !productIdInput.value;
+      });
+    }
+
+    function canSubmitSaleByShortcut() {
+      removeBlankSaleRows();
+      updateSaleTotals();
+
+      const invalidRow = firstInvalidSaleRow();
+      if (invalidRow) {
+        renderProductSuggestions(invalidRow);
+        focusProductSearch(invalidRow);
+        return false;
+      }
+
+      if (!Array.from(saleForm.querySelectorAll('[data-product-id]')).some(function (input) { return Boolean(input.value); })) {
+        const firstProductInput = saleForm.querySelector('[data-product-search]');
+        if (firstProductInput) {
+          firstProductInput.focus();
+        }
+        return false;
+      }
+
+      const total = currentOrderTotal();
+      const paid = currentPaidAmount();
+      if (paid + 0.001 < total) {
+        openPaymentStep();
+        const firstPaymentInput = paymentInputs.find(function (input) { return parseCurrency(input.value) === 0; }) || paymentInputs[0];
+        if (firstPaymentInput) {
+          firstPaymentInput.focus();
+          firstPaymentInput.select();
+        }
+        return false;
+      }
+
+      return true;
+    }
+
     function fillPayment(input) {
       const total = currentOrderTotal();
 
@@ -601,6 +668,19 @@ document.addEventListener('DOMContentLoaded', function () {
     function finishSaleByShortcut() {
       if (discountModal && discountModal.classList.contains('is-open')) {
         closeDiscountModal();
+      }
+
+      if (paymentStep && paymentStep.classList.contains('is-open')) {
+        if (!canSubmitSaleByShortcut()) {
+          return;
+        }
+
+        if (finalizeSaleButton) {
+          finalizeSaleButton.click();
+        } else if (saleForm.requestSubmit) {
+          saleForm.requestSubmit();
+        }
+        return;
       }
 
       openPaymentStep();
@@ -717,6 +797,20 @@ document.addEventListener('DOMContentLoaded', function () {
       closePaymentStepButton.addEventListener('click', closePaymentStep);
     }
 
+    if (finalizeSaleButton) {
+      finalizeSaleButton.addEventListener('click', function (event) {
+        if (!canSubmitSaleByShortcut()) {
+          event.preventDefault();
+        }
+      });
+    }
+
+    saleForm.addEventListener('submit', function (event) {
+      if (!canSubmitSaleByShortcut()) {
+        event.preventDefault();
+      }
+    });
+
     if (discountModal) {
       discountModal.addEventListener('mousedown', function (event) {
         if (event.target === discountModal) {
@@ -728,18 +822,20 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('keydown', function (event) {
       if (event.key === 'F2') {
         event.preventDefault();
+        event.stopPropagation();
         finishSaleByShortcut();
       }
 
       if (event.key === 'F3') {
         event.preventDefault();
+        event.stopPropagation();
         openDiscountModal();
       }
 
       if (event.key === 'Escape' && discountModal && discountModal.classList.contains('is-open')) {
         closeDiscountModal();
       }
-    });
+    }, true);
 
     addButton.addEventListener('click', function () {
       const row = createSaleRow();

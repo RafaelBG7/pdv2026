@@ -23,6 +23,7 @@
             <th class="text-end">Qtd.</th>
             <th class="text-end">Unitário</th>
             <th class="text-end">Subtotal</th>
+            <th class="text-end">Lucro final</th>
           </tr>
         </thead>
         <tbody>
@@ -32,6 +33,7 @@
             <td class="text-end">{{ item.quantity }}</td>
             <td class="text-end">R$ {{ '%.2f'|format(item.unit_price or 0)|replace('.', ',') }}</td>
             <td class="text-end">R$ {{ '%.2f'|format(item.total_price or 0)|replace('.', ',') }}</td>
+            <td class="text-end">R$ {{ '%.2f'|format(sale_item_profit(item) or 0)|replace('.', ',') }}</td>
           </tr>
           {% endfor %}
         </tbody>

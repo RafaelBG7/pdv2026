@@ -12,6 +12,10 @@
 <div class="settings-tabs" data-settings-tabs>
   <div class="settings-tab-nav" role="tablist" aria-label="Configurações">
     <button class="settings-tab-button is-active" type="button" data-settings-tab="user" role="tab" aria-selected="true">Usuário</button>
+    {% if can_view_admin_tabs %}
+    <button class="settings-tab-button" type="button" data-settings-tab="team" role="tab" aria-selected="false">Equipe</button>
+    <button class="settings-tab-button" type="button" data-settings-tab="finance" role="tab" aria-selected="false">Financeiro</button>
+    {% endif %}
     <button class="settings-tab-button" type="button" data-settings-tab="support" role="tab" aria-selected="false">Suporte</button>
     <button class="settings-tab-button" type="button" data-settings-tab="appearance" role="tab" aria-selected="false">Aparência</button>
   </div>
@@ -22,6 +26,7 @@
         <h5 class="mb-3">Usuário</h5>
         <div class="settings-summary mb-4">
           <div><span>Login</span><strong>{{ current_user.username }}</strong></div>
+          <div><span>Adega</span><strong>{{ settings_company.name if settings_company else 'Não vinculada' }}</strong></div>
           <div><span>Nome exibido</span><strong>{{ current_user.full_name or 'Não informado' }}</strong></div>
           <div><span>Perfil</span><strong>{{ current_user.role }}</strong></div>
         </div>
@@ -87,6 +92,152 @@
       </section>
     </div>
   </section>
+
+  {% if can_view_admin_tabs %}
+  <section class="settings-tab-panel" data-settings-panel="team" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Gestão de funcionários</h5>
+        <div class="employee-list">
+          {% for user in company_users %}
+          <form class="employee-card" method="post">
+            <input type="hidden" name="form_type" value="update_employee">
+            <input type="hidden" name="employee_id" value="{{ user.id }}">
+            <div class="employee-card-header">
+              <div>
+                <strong>{{ user.full_name or user.username }}</strong>
+                <small>{{ user.username }} · {{ user.role_label }}</small>
+              </div>
+              <label class="form-check form-switch mb-0">
+                <input class="form-check-input" name="is_active" type="checkbox" {% if user.is_active %}checked{% endif %} {% if not can_manage_employees or user.role == 'admin' %}disabled{% endif %}>
+                <span class="form-check-label">{{ 'Ativo' if user.is_active else 'Inativo' }}</span>
+              </label>
+            </div>
+            <div class="permission-grid">
+              {% for permission in employee_permissions %}
+              <label class="form-check">
+                <input class="form-check-input" name="{{ permission }}" type="checkbox" {% if user.has_permission(permission) %}checked{% endif %} {% if not can_manage_employees or user.role == 'admin' %}disabled{% endif %}>
+                <span class="form-check-label">{{ permission_labels.get(permission, permission) }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if can_manage_employees and user.role != 'admin' %}
+            <button class="btn btn-outline-light btn-sm" type="submit">Salvar permissões</button>
+            {% endif %}
+          </form>
+          {% else %}
+          <p class="text-muted mb-0">Nenhum usuário contratado ainda.</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Contratar funcionário</h5>
+        {% if can_manage_employees %}
+        <form method="post">
+          <input type="hidden" name="form_type" value="hire_user">
+          <div class="settings-form-grid">
+            <div>
+              <label class="form-label" for="hire_username">Login</label>
+              <input class="form-control" id="hire_username" name="hire_username" required>
+            </div>
+            <div>
+              <label class="form-label" for="hire_email">Email</label>
+              <input class="form-control" id="hire_email" name="hire_email" type="email" placeholder="email@exemplo.com">
+            </div>
+            <div>
+              <label class="form-label" for="hire_password">Senha inicial</label>
+              <input class="form-control" id="hire_password" name="hire_password" type="password" minlength="3" required>
+            </div>
+            <div>
+              <label class="form-label" for="hire_role">Perfil</label>
+              <select class="form-select" id="hire_role" name="hire_role">
+                <option value="operator">Operador</option>
+                <option value="admin">Master da adega</option>
+              </select>
+            </div>
+          </div>
+          <div class="permission-grid mt-3">
+            {% for permission in employee_permissions %}
+            <label class="form-check">
+              <input class="form-check-input" name="{{ permission }}" type="checkbox" {% if permission in ['can_view_products', 'can_manage_sales', 'can_manage_cash_register'] %}checked{% endif %}>
+              <span class="form-check-label">{{ permission_labels.get(permission, permission) }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <button class="btn btn-primary mt-3" type="submit">Contratar</button>
+        </form>
+        {% else %}
+        <p class="text-muted mb-0">Apenas o master da adega pode contratar e editar funcionários.</p>
+        {% endif %}
+      </section>
+    </div>
+  </section>
+
+  <section class="settings-tab-panel" data-settings-panel="finance" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Taxa da maquininha</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Pix</span><strong>{{ 'Ativo' if settings_company and settings_company.pix_fee_enabled else 'Inativo' }} · {{ '%.2f'|format(settings_company.pix_fee_percent or 0)|replace('.', ',') if settings_company else '0,00' }}%</strong></div>
+          <div><span>Débito</span><strong>{{ 'Ativo' if settings_company and settings_company.debit_fee_enabled else 'Inativo' }} · {{ '%.2f'|format(settings_company.debit_fee_percent or 0)|replace('.', ',') if settings_company else '0,00' }}%</strong></div>
+          <div><span>Crédito</span><strong>{{ 'Ativo' if settings_company and settings_company.credit_fee_enabled else 'Inativo' }} · {{ '%.2f'|format(settings_company.credit_fee_percent or 0)|replace('.', ',') if settings_company else '0,00' }}%</strong></div>
+        </div>
+
+        {% if current_user.role in ['admin', 'master'] %}
+        <form method="post">
+          <input type="hidden" name="form_type" value="card_fees">
+          <div class="machine-fee-grid">
+            <label class="machine-fee-row" for="pix_fee_enabled">
+              <span class="form-check form-switch mb-0">
+                <input class="form-check-input" id="pix_fee_enabled" name="pix_fee_enabled" type="checkbox" {% if settings_company and settings_company.pix_fee_enabled %}checked{% endif %}>
+                <span class="form-check-label">Ativar Pix</span>
+              </span>
+              <span>
+                <span class="form-label">Taxa Pix (%)</span>
+                <input class="form-control" name="pix_fee_percent" inputmode="decimal" value="{{ '%.2f'|format(settings_company.pix_fee_percent or 0)|replace('.', ',') if settings_company else '0,00' }}">
+              </span>
+            </label>
+            <label class="machine-fee-row" for="debit_fee_enabled">
+              <span class="form-check form-switch mb-0">
+                <input class="form-check-input" id="debit_fee_enabled" name="debit_fee_enabled" type="checkbox" {% if settings_company and settings_company.debit_fee_enabled %}checked{% endif %}>
+                <span class="form-check-label">Ativar débito</span>
+              </span>
+              <span>
+                <span class="form-label">Taxa débito (%)</span>
+                <input class="form-control" name="debit_fee_percent" inputmode="decimal" value="{{ '%.2f'|format(settings_company.debit_fee_percent or 0)|replace('.', ',') if settings_company else '0,00' }}">
+              </span>
+            </label>
+            <label class="machine-fee-row" for="credit_fee_enabled">
+              <span class="form-check form-switch mb-0">
+                <input class="form-check-input" id="credit_fee_enabled" name="credit_fee_enabled" type="checkbox" {% if settings_company and settings_company.credit_fee_enabled %}checked{% endif %}>
+                <span class="form-check-label">Ativar crédito</span>
+              </span>
+              <span>
+                <span class="form-label">Taxa crédito (%)</span>
+                <input class="form-control" name="credit_fee_percent" inputmode="decimal" value="{{ '%.2f'|format(settings_company.credit_fee_percent or 0)|replace('.', ',') if settings_company else '0,00' }}">
+              </span>
+            </label>
+          </div>
+          <button class="btn btn-primary mt-3" type="submit">Salvar taxas</button>
+        </form>
+        {% else %}
+        <p class="text-muted mb-0">Apenas o usuário master pode alterar as taxas da maquininha.</p>
+        {% endif %}
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Como entra no lucro</h5>
+        <div class="settings-summary">
+          <div><span>Dinheiro</span><strong>Sem desconto</strong></div>
+          <div><span>Pix</span><strong>Desconta apenas se o Pix estiver ativo</strong></div>
+          <div><span>Débito</span><strong>Desconta apenas se o débito estiver ativo</strong></div>
+          <div><span>Crédito</span><strong>Desconta apenas se o crédito estiver ativo</strong></div>
+        </div>
+      </section>
+    </div>
+  </section>
+  {% endif %}
 
   <section class="settings-tab-panel" data-settings-panel="support" role="tabpanel">
     <div class="settings-layout">

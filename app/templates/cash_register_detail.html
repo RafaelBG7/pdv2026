@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Detalhes do caixa</h2>
+    <p class="text-muted mb-0">
+      {{ cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '-' }}
+      até
+      {{ cash_register.closed_at.strftime('%d/%m/%Y %H:%M') if cash_register.closed_at else 'em aberto' }}
+    </p>
+  </div>
+  <a class="btn btn-outline-light" href="{{ url_for('main.cash_register') }}">Voltar ao caixa</a>
+</div>
+
+<div class="cash-summary-grid mb-4">
+  <div class="card card-dark">
+    <span>Status</span>
+    <strong>{{ 'Fechado' if cash_register.status == 'closed' else 'Aberto' }}</strong>
+  </div>
+  <div class="card card-dark">
+    <span>Valor inicial</span>
+    <strong>R$ {{ '%.2f'|format(cash_register.opening_amount or 0)|replace('.', ',') }}</strong>
+  </div>
+  <div class="card card-dark">
+    <span>Valor final</span>
+    <strong>R$ {{ '%.2f'|format(cash_register.closing_amount or 0)|replace('.', ',') }}</strong>
+  </div>
+  <div class="card card-dark">
+    <span>Total vendido</span>
+    <strong>R$ {{ '%.2f'|format(cash_register_total_sold or 0)|replace('.', ',') }}</strong>
+  </div>
+  <div class="card card-dark">
+    <span>Vendas</span>
+    <strong>{{ totals.sales_count }}</strong>
+  </div>
+  <div class="card card-dark">
+    <span>Lucro</span>
+    <strong>R$ {{ '%.2f'|format(cash_register_profit or 0)|replace('.', ',') }}</strong>
+  </div>
+</div>
+
+<div class="cash-detail-layout">
+  <section class="card card-dark cash-panel">
+    <div class="cash-panel-header">
+      <div>
+        <h5 class="mb-1">Formas vendidas</h5>
+        <p class="text-muted mb-0">Total recebido por forma de pagamento.</p>
+      </div>
+    </div>
+    <div class="cash-detail-list">
+      {% for method, label in payment_methods.items() %}
+      {% if payment_totals.get(method) %}
+      <div>
+        <span>{{ label }}</span>
+        <strong>R$ {{ '%.2f'|format(payment_totals.get(method, 0))|replace('.', ',') }}</strong>
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% if not payment_totals %}
+      <p class="text-muted mb-0">Nenhuma forma de pagamento registrada.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card card-dark cash-panel">
+    <div class="cash-panel-header">
+      <div>
+        <h5 class="mb-1">Horário de pico</h5>
+        <p class="text-muted mb-0">Períodos com mais vendas no caixa.</p>
+      </div>
+    </div>
+    <div class="cash-detail-list">
+      {% for hour in peak_hours[:5] %}
+      <div>
+        <span>{{ hour.label }}</span>
+        <strong>{{ hour.sales_count }} venda{{ '' if hour.sales_count == 1 else 's' }}</strong>
+        <small>R$ {{ '%.2f'|format(hour.total or 0)|replace('.', ',') }}</small>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">Nenhuma venda registrada neste caixa.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card card-dark cash-panel">
+    <div class="cash-panel-header">
+      <div>
+        <h5 class="mb-1">Produtos mais vendidos</h5>
+        <p class="text-muted mb-0">Ranking por total vendido.</p>
+      </div>
+    </div>
+    <div class="cash-detail-list">
+      {% for product in top_products[:10] %}
+      <div>
+        <span>{{ product.name }}</span>
+        <strong>{{ product.quantity }} un.</strong>
+        <small>R$ {{ '%.2f'|format(product.total or 0)|replace('.', ',') }}</small>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">Nenhum produto vendido neste caixa.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

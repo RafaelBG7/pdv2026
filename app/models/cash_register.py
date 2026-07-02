@@ -13,4 +13,5 @@ class CashRegister(db.Model):
     closing_amount = db.Column(db.Float, default=0.0)
     status = db.Column(db.String(20), default='open')
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)
     sales = db.relationship('Sale', backref='cash_register')

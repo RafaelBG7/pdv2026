@@ -1,10 +1,12 @@
 from datetime import date, datetime, time, timedelta, timezone
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
-from app.models import CashRegister, Payment, Product, Sale, SaleItem
+from app.models import CashRegister, Payable, Payment, Product, Sale, SaleItem
+from app.permissions import permission_required
+from app.tenant import current_tenant_company, tenant_session
 
 main_bp = Blueprint('main', __name__)
 PAYMENT_METHODS = {
@@ -13,6 +15,7 @@ PAYMENT_METHODS = {
     'debit': 'Débito',
     'credit': 'Crédito',
 }
+PAYABLE_CATEGORIES = ('Aluguel', 'Luz', 'Água', 'Internet', 'Fornecedor', 'Impostos', 'Outros')
 
 
 def parse_money(value):
@@ -27,6 +30,49 @@ def parse_money(value):
 
 def format_brl(value):
     return f'R$ {value:.2f}'.replace('.', ',')
+
+
+def payable_status(payable):
+    if payable.paid:
+        return 'paid'
+    today = date.today()
+    if payable.due_date < today:
+        return 'overdue'
+    if payable.due_date == today:
+        return 'due_today'
+    if payable.due_date <= today + timedelta(days=3):
+        return 'near_due'
+    return 'pending'
+
+
+def payable_status_label(payable):
+    status = payable_status(payable)
+    labels = {
+        'paid': 'Pago',
+        'overdue': 'Vencida',
+        'due_today': 'Vence hoje',
+        'near_due': 'Próxima',
+        'pending': 'Pendente',
+    }
+    return labels.get(status, 'Pendente')
+
+
+def card_fee_total(company, payments, final_amount, paid_amount):
+    if not company or final_amount <= 0 or paid_amount <= 0:
+        return 0.0
+
+    payment_scale = min(final_amount / paid_amount, 1.0)
+    fee_total = 0.0
+    for method, amount in payments:
+        effective_amount = (amount or 0.0) * payment_scale
+        if method == 'pix' and company.pix_fee_enabled:
+            fee_total += effective_amount * ((company.pix_fee_percent or 0.0) / 100)
+        elif method == 'debit' and company.debit_fee_enabled:
+            fee_total += effective_amount * ((company.debit_fee_percent or 0.0) / 100)
+        elif method == 'credit' and company.credit_fee_enabled:
+            fee_total += effective_amount * ((company.credit_fee_percent or 0.0) / 100)
+
+    return round(fee_total, 2)
 
 
 def parse_quantity(value):
@@ -66,7 +112,19 @@ def sale_form_state():
 
 
 def open_cash_register():
-    return CashRegister.query.filter_by(status='open').order_by(CashRegister.opened_at.desc()).first()
+    return tenant_session().query(CashRegister).filter_by(company_id=current_tenant_company().id, status='open').order_by(CashRegister.opened_at.desc()).first()
+
+
+def tenant_query(model):
+    company = current_tenant_company()
+    return tenant_session().query(model).filter(model.company_id == company.id)
+
+
+def tenant_get_or_404(model, record_id):
+    record = tenant_query(model).filter_by(id=record_id).first()
+    if not record:
+        abort(404)
+    return record
 
 
 def stock_source_for_product(product):
@@ -248,6 +306,35 @@ def build_sales_chart(period, start, end, sales):
     return buckets
 
 
+def cash_register_peak_hours(cash_register):
+    hours = {}
+    if not cash_register:
+        return []
+
+    for sale in cash_register.sales:
+        if not sale.created_at:
+            continue
+        hour = sale.created_at.hour
+        data = hours.setdefault(hour, {
+            'hour': hour,
+            'label': f'{hour:02d}:00 - {hour:02d}:59',
+            'sales_count': 0,
+            'total': 0.0,
+        })
+        data['sales_count'] += 1
+        data['total'] += sale.final_amount or 0.0
+
+    peak_hours = sorted(
+        hours.values(),
+        key=lambda item: (item['sales_count'], item['total']),
+        reverse=True,
+    )
+    for item in peak_hours:
+        item['total'] = round(item['total'], 2)
+
+    return peak_hours
+
+
 @main_bp.route('/')
 @main_bp.route('/dashboard')
 @login_required
@@ -257,8 +344,9 @@ def dashboard():
 
 @main_bp.route('/vendas')
 @login_required
+@permission_required('can_manage_sales')
 def sales():
-    sales = Sale.query.order_by(Sale.created_at.desc()).all()
+    sales = tenant_query(Sale).order_by(Sale.created_at.desc()).all()
     return render_template(
         'sales/index.html',
         sales=sales,
@@ -267,8 +355,92 @@ def sales():
     )
 
 
+@main_bp.route('/contas-a-pagar', methods=['GET', 'POST'])
+@login_required
+@permission_required('can_manage_payables')
+def payables():
+    if request.method == 'POST':
+        description = request.form.get('description', '').strip()
+        category = request.form.get('category', 'Outros').strip() or 'Outros'
+        amount = parse_money(request.form.get('amount'))
+        due_date = parse_date(request.form.get('due_date'))
+        notes = request.form.get('notes', '').strip()
+
+        if not description:
+            flash('Informe a descrição da conta.', 'danger')
+        elif not due_date:
+            flash('Informe uma data de vencimento válida.', 'danger')
+        else:
+            tenant_db = tenant_session()
+            tenant_db.add(Payable(
+                company_id=current_tenant_company().id,
+                description=description,
+                category=category if category in PAYABLE_CATEGORIES else 'Outros',
+                amount=amount,
+                due_date=due_date,
+                notes=notes,
+            ))
+            tenant_db.commit()
+            flash('Conta a pagar cadastrada com sucesso.', 'success')
+            return redirect(url_for('main.payables'))
+
+    status_filter = request.args.get('status', 'open')
+    query = tenant_query(Payable)
+    if status_filter == 'paid':
+        query = query.filter_by(paid=True)
+    elif status_filter == 'all':
+        pass
+    else:
+        status_filter = 'open'
+        query = query.filter_by(paid=False)
+
+    payables_list = query.order_by(Payable.paid.asc(), Payable.due_date.asc(), Payable.description.asc()).all()
+    open_payables = tenant_query(Payable).filter_by(paid=False).all()
+    totals = {
+        'open': round(sum(item.amount or 0.0 for item in open_payables), 2),
+        'overdue': round(sum(item.amount or 0.0 for item in open_payables if payable_status(item) == 'overdue'), 2),
+        'due_soon': round(sum(item.amount or 0.0 for item in open_payables if payable_status(item) in ('due_today', 'near_due')), 2),
+    }
+
+    return render_template(
+        'payables/index.html',
+        payables=payables_list,
+        categories=PAYABLE_CATEGORIES,
+        status_filter=status_filter,
+        payable_status=payable_status,
+        payable_status_label=payable_status_label,
+        totals=totals,
+        today=date.today(),
+    )
+
+
+@main_bp.route('/contas-a-pagar/<int:payable_id>/pagar', methods=['POST'])
+@login_required
+@permission_required('can_manage_payables')
+def pay_payable(payable_id):
+    payable = tenant_get_or_404(Payable, payable_id)
+    payable.paid = True
+    payable.paid_at = datetime.now(timezone.utc)
+    tenant_session().commit()
+    flash('Conta marcada como paga.', 'success')
+    return redirect(url_for('main.payables'))
+
+
+@main_bp.route('/contas-a-pagar/<int:payable_id>/reabrir', methods=['POST'])
+@login_required
+@permission_required('can_manage_payables')
+def reopen_payable(payable_id):
+    payable = tenant_get_or_404(Payable, payable_id)
+    payable.paid = False
+    payable.paid_at = None
+    tenant_session().commit()
+    flash('Conta reaberta.', 'info')
+    return redirect(url_for('main.payables', status='all'))
+
+
 @main_bp.route('/relatorios')
 @login_required
+@permission_required('can_view_reports')
 def reports():
     selected_period = request.args.get('period', 'daily')
     start_date = parse_date(request.args.get('start_date'))
@@ -278,7 +450,7 @@ def reports():
         start_date=start_date,
         end_date=end_date,
     )
-    sales = Sale.query.filter(
+    sales = tenant_query(Sale).filter(
         Sale.created_at >= start_datetime,
         Sale.created_at < end_datetime,
     ).order_by(Sale.created_at.desc()).all()
@@ -303,13 +475,14 @@ def reports():
 
 @main_bp.route('/vendas/nova', methods=['GET', 'POST'])
 @login_required
+@permission_required('can_manage_sales')
 def new_sale():
     cash_register = open_cash_register()
     if not cash_register:
         flash('Abra o caixa antes de registrar uma venda.', 'warning')
         return redirect(url_for('main.cash_register'))
 
-    products = Product.query.filter_by(active=True).order_by(Product.name.asc()).all()
+    products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
     form_state = {
         'items': [{'product_id': '', 'quantity': '1'}],
         'discount_amount': '',
@@ -330,7 +503,18 @@ def new_sale():
             if not product_id or quantity <= 0:
                 continue
 
-            product = db.session.get(Product, int(product_id))
+            try:
+                product_id_int = int(product_id)
+            except (TypeError, ValueError):
+                flash('Selecione um produto válido para finalizar a venda.', 'danger')
+                return render_template(
+                    'sales/form.html',
+                    products=products,
+                    payment_methods=PAYMENT_METHODS,
+                    form_state=form_state,
+                )
+
+            product = tenant_query(Product).filter_by(id=product_id_int).first()
             if not product or not product.active:
                 continue
 
@@ -350,7 +534,9 @@ def new_sale():
             total_amount += line_total
 
         for stock_product_id, required_quantity in stock_requirements.items():
-            stock_product = db.session.get(Product, stock_product_id)
+            stock_product = tenant_query(Product).filter_by(id=stock_product_id).first()
+            if not stock_product:
+                continue
             if stock_product.stock_quantity < required_quantity:
                 flash(f'Estoque insuficiente para {stock_product.name}.', 'danger')
                 return render_template(
@@ -391,35 +577,41 @@ def new_sale():
                 form_state=form_state,
             )
 
+        company = current_tenant_company()
+        machine_fee_total = card_fee_total(company, payments, final_amount, paid_amount)
+
         sale = Sale(
             total_amount=total_amount,
             discount_amount=discount_amount,
             final_amount=final_amount,
             payment_status='paid',
             user_id=current_user.id,
+            company_id=company.id,
             cash_register_id=cash_register.id,
         )
-        db.session.add(sale)
-        db.session.flush()
+        tenant_db = tenant_session()
+        tenant_db.add(sale)
+        tenant_db.flush()
 
         for product, quantity, line_total in selected_items:
             stock_product, units_per_sale = stock_source_for_product(product)
             stock_product.stock_quantity -= units_per_sale * quantity
             unit_cost_price = product.cost_price or 0.0
-            db.session.add(SaleItem(
+            item_fee = machine_fee_total * (line_total / total_amount) if total_amount > 0 else 0.0
+            tenant_db.add(SaleItem(
                 sale_id=sale.id,
                 product_id=product.id,
                 quantity=quantity,
                 unit_price=product.sale_price,
                 unit_cost_price=unit_cost_price,
                 total_price=line_total,
-                profit_amount=round(((product.sale_price or 0.0) - unit_cost_price) * quantity, 2),
+                profit_amount=round((((product.sale_price or 0.0) - unit_cost_price) * quantity) - item_fee, 2),
             ))
 
         for method, amount in payments:
-            db.session.add(Payment(sale_id=sale.id, method=method, amount=amount))
+            tenant_db.add(Payment(sale_id=sale.id, method=method, amount=amount))
 
-        db.session.commit()
+        tenant_db.commit()
         change_amount = max(paid_amount - final_amount, 0.0)
         flash(f'Venda finalizada com sucesso. Troco: {format_brl(change_amount)}.', 'success')
         return redirect(url_for('main.sale_detail', sale_id=sale.id))
@@ -434,14 +626,16 @@ def new_sale():
 
 @main_bp.route('/vendas/<int:sale_id>')
 @login_required
+@permission_required('can_manage_sales')
 def sale_detail(sale_id):
-    sale = db.get_or_404(Sale, sale_id)
+    sale = tenant_get_or_404(Sale, sale_id)
     paid_amount = sum(payment.amount for payment in sale.payments)
     change_amount = max(paid_amount - sale.final_amount, 0.0)
     return render_template(
         'sales/detail.html',
         sale=sale,
         sale_profit=sale_profit(sale),
+        sale_item_profit=sale_item_profit,
         paid_amount=paid_amount,
         change_amount=change_amount,
         payment_methods=PAYMENT_METHODS,
@@ -450,9 +644,10 @@ def sale_detail(sale_id):
 
 @main_bp.route('/caixa')
 @login_required
+@permission_required('can_manage_cash_register')
 def cash_register():
     current_cash_register = open_cash_register()
-    closed_registers = CashRegister.query.filter_by(status='closed').order_by(CashRegister.closed_at.desc()).limit(10).all()
+    closed_registers = tenant_query(CashRegister).filter_by(status='closed').order_by(CashRegister.closed_at.desc()).limit(10).all()
     return render_template(
         'cash_register.html',
         cash_register=current_cash_register,
@@ -463,8 +658,33 @@ def cash_register():
     )
 
 
+@main_bp.route('/caixa/<int:cash_register_id>')
+@login_required
+@permission_required('can_manage_cash_register')
+def cash_register_detail(cash_register_id):
+    selected_cash_register = tenant_get_or_404(CashRegister, cash_register_id)
+    sales = sorted(
+        selected_cash_register.sales,
+        key=lambda sale: sale.created_at or datetime.min,
+        reverse=True,
+    )
+    totals, payment_totals, top_products = build_sales_report(sales)
+    return render_template(
+        'cash_register_detail.html',
+        cash_register=selected_cash_register,
+        totals=totals,
+        payment_totals=payment_totals,
+        top_products=top_products,
+        peak_hours=cash_register_peak_hours(selected_cash_register),
+        payment_methods=PAYMENT_METHODS,
+        cash_register_profit=cash_register_profit(selected_cash_register),
+        cash_register_total_sold=cash_register_total_sold(selected_cash_register),
+    )
+
+
 @main_bp.route('/caixa/abrir', methods=['POST'])
 @login_required
+@permission_required('can_manage_cash_register')
 def open_cash_register_route():
     if open_cash_register():
         flash('Já existe um caixa aberto.', 'warning')
@@ -474,15 +694,18 @@ def open_cash_register_route():
         opening_amount=parse_money(request.form.get('opening_amount')),
         status='open',
         user_id=current_user.id,
+        company_id=current_tenant_company().id,
     )
-    db.session.add(cash_register)
-    db.session.commit()
+    tenant_db = tenant_session()
+    tenant_db.add(cash_register)
+    tenant_db.commit()
     flash('Caixa aberto com sucesso.', 'success')
     return redirect(url_for('main.cash_register'))
 
 
 @main_bp.route('/caixa/fechar', methods=['POST'])
 @login_required
+@permission_required('can_manage_cash_register')
 def close_cash_register_route():
     cash_register = open_cash_register()
     if not cash_register:
@@ -502,6 +725,6 @@ def close_cash_register_route():
     cash_register.closing_amount = closing_amount
     cash_register.closed_at = datetime.now(timezone.utc)
     cash_register.status = 'closed'
-    db.session.commit()
+    tenant_session().commit()
     flash('Caixa fechado com sucesso.', 'success')
     return redirect(url_for('main.cash_register'))

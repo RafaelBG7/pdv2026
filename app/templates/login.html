@@ -37,16 +37,20 @@
             <input type="text" class="form-control" id="register_username" name="username" required>
           </div>
           <div class="mb-3">
+            <label for="company_name" class="form-label">Nome da adega</label>
+            <input type="text" class="form-control" id="company_name" name="company_name" placeholder="Ex: Adega JF">
+          </div>
+          <div class="mb-3">
             <label for="register_email" class="form-label">Email</label>
             <input type="email" class="form-control" id="register_email" name="email" placeholder="email@exemplo.com">
           </div>
           <div class="mb-3">
             <label for="register_password" class="form-label">Senha</label>
-            <input type="password" class="form-control" id="register_password" name="password" minlength="6" required>
+            <input type="password" class="form-control" id="register_password" name="password" minlength="3" required>
           </div>
           <div class="mb-3">
             <label for="confirm_password" class="form-label">Confirmar senha</label>
-            <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="6" required>
+            <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="3" required>
           </div>
           <button type="submit" class="btn btn-primary w-100">Cadastrar</button>
         </form>

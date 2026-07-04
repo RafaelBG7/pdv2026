@@ -1,0 +1,189 @@
+name: Build desktop apps
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  MYSQL_ZIP_URL: https://cdn.mysql.com/Downloads/MySQL-8.4/mysql-8.4.10-winx64.zip
+
+jobs:
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run route tests
+        env:
+          TESTING: '1'
+          MAIL_SUPPRESS_SEND: '1'
+        run: python -m unittest discover
+
+  build-macos:
+    name: Build macOS app
+    runs-on: macos-14
+    needs: tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Create virtualenv
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+
+      - name: Build app bundle
+        run: bash scripts/build_macos_app.sh
+
+      - name: Smoke test bundled app
+        env:
+          APP_BASE_DIR: ${{ github.workspace }}/dist
+          APP_DESKTOP_SMOKE_TEST: '1'
+          PORT: '5097'
+          TESTING: '1'
+          MAIL_SUPPRESS_SEND: '1'
+          DATABASE_URL: sqlite://
+        run: dist/GirofyPDV.app/Contents/MacOS/GirofyPDV
+
+      - name: Package macOS artifact
+        run: |
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent GirofyPDV.app GirofyPDV-macOS.zip
+          if [ -f .env.example ]; then zip -q GirofyPDV-macOS.zip .env.example; fi
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GirofyPDV-macOS
+          path: dist/GirofyPDV-macOS.zip
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows app
+    runs-on: windows-latest
+    needs: tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Create virtualenv
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+
+      - name: Build executable
+        shell: pwsh
+        run: .\scripts\build_windows_app.ps1
+
+      - name: Smoke test bundled executable
+        shell: pwsh
+        env:
+          APP_BASE_DIR: ${{ github.workspace }}\dist
+          APP_DESKTOP_SMOKE_TEST: '1'
+          PORT: '5097'
+          TESTING: '1'
+          MAIL_SUPPRESS_SEND: '1'
+          DATABASE_URL: sqlite://
+        run: .\dist\GirofyPDV\GirofyPDV.exe
+
+      - name: Download MySQL Community Server
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path installer\windows\mysql -Force | Out-Null
+          Invoke-WebRequest -Uri $env:MYSQL_ZIP_URL -OutFile installer\windows\mysql\mysql-winx64.zip
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Windows installer with bundled MySQL
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -match "^v") {
+            $env:APP_VERSION = "${{ github.ref_name }}".TrimStart("v")
+          } else {
+            $env:APP_VERSION = "0.0.${{ github.run_number }}"
+          }
+          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+          & $iscc installer\windows\GirofyPDV.iss
+
+      - name: Package Windows artifact
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\GirofyPDV -DestinationPath dist\GirofyPDV-Windows.zip -Force
+          if (Test-Path dist\.env.example) {
+            Compress-Archive -Path dist\.env.example -DestinationPath dist\GirofyPDV-Windows.zip -Update
+          }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GirofyPDV-Windows
+          path: dist/GirofyPDV-Windows.zip
+          if-no-files-found: error
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GirofyPDV-Windows-Installer
+          path: dist/installer/GirofyPDV-Setup.exe
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs:
+      - build-macos
+      - build-windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -d '' files < <(find release-artifacts -type f -print0)
+          gh release create "${GITHUB_REF_NAME}" "${files[@]}" \
+            --title "GirofyPDV ${GITHUB_REF_NAME}" \
+            --notes "Build automático desktop para macOS e Windows. O instalador Windows inclui configuração local do MySQL."

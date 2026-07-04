@@ -930,6 +930,7 @@ Ele gera:
 
 - `GirofyPDV-macOS.zip`, contendo `GirofyPDV.app`;
 - `GirofyPDV-Windows.zip`, contendo `GirofyPDV.exe`;
+- `GirofyPDV-Setup.exe`, instalador Windows com MySQL local embutido;
 - um modelo `.env.example` junto do pacote quando não houver `.env`.
 
 O workflow roda de duas formas:
@@ -957,12 +958,46 @@ Quando a execução vier de uma tag `v*`, o GitHub também cria uma Release auto
 GitHub > Releases
 ```
 
-Essa Release recebe os dois anexos:
+Essa Release recebe estes anexos:
 
 - `GirofyPDV-macOS.zip`;
 - `GirofyPDV-Windows.zip`.
+- `GirofyPDV-Setup.exe`.
 
 Observação: por segurança, o GitHub não deve receber o `.env` real. Cada instalação precisa criar/copiar seu próprio `.env` ao lado do app baixado.
+
+### 10. Instalador Windows com MySQL embutido
+
+Para clientes Windows, o arquivo recomendado é:
+
+```text
+GirofyPDV-Setup.exe
+```
+
+Esse instalador faz automaticamente:
+
+- instala o aplicativo em `Arquivos de Programas\GirofyPDV`;
+- instala o MySQL Community Server local em uma pasta interna do Girofy;
+- cria o serviço Windows `GirofyPDVMySQL`;
+- usa a porta local `3307`, evitando conflito com outro MySQL na porta `3306`;
+- cria o banco `adega_central`;
+- cria o usuário `girofy_app` com senha segura gerada automaticamente;
+- gera o arquivo `.env` do aplicativo;
+- cria atalhos no menu iniciar e na área de trabalho.
+
+Os dados do banco ficam em:
+
+```text
+C:\ProgramData\GirofyPDV\mysql-data
+```
+
+As senhas geradas ficam em:
+
+```text
+C:\ProgramData\GirofyPDV\secrets
+```
+
+Na desinstalação, o serviço `GirofyPDVMySQL` é removido, mas os dados em `C:\ProgramData\GirofyPDV` são preservados para evitar perda acidental de vendas, produtos e caixas.
 
 ## Configuração do MySQL
 

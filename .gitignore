@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.venv-py39-backup/
+.env
+.env.*
+!.env.example
+logs/*.log
+build/
+dist/
+*.spec
+installer/windows/mysql/*.zip

@@ -922,6 +922,48 @@ open dist/GirofyPDV.app
 
 Ao abrir, o launcher sobe o servidor local em uma porta livre e mostra o sistema dentro de uma janela de aplicativo. Ele usa `dist/.env` como configuração local. Se o MySQL não estiver rodando ou alguma configuração falhar, o arquivo `dist/launcher-error.log` será criado com o erro detalhado.
 
+### 9. Builds automáticos no GitHub
+
+O repositório possui o workflow `.github/workflows/build-desktop.yml` para gerar automaticamente os pacotes desktop.
+
+Ele gera:
+
+- `GirofyPDV-macOS.zip`, contendo `GirofyPDV.app`;
+- `GirofyPDV-Windows.zip`, contendo `GirofyPDV.exe`;
+- um modelo `.env.example` junto do pacote quando não houver `.env`.
+
+O workflow roda de duas formas:
+
+```text
+Actions > Build desktop apps > Run workflow
+```
+
+Ou ao publicar uma tag iniciada com `v`:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Depois da execução, os arquivos ficam em:
+
+```text
+GitHub > Actions > Build desktop apps > Artifacts
+```
+
+Quando a execução vier de uma tag `v*`, o GitHub também cria uma Release automaticamente em:
+
+```text
+GitHub > Releases
+```
+
+Essa Release recebe os dois anexos:
+
+- `GirofyPDV-macOS.zip`;
+- `GirofyPDV-Windows.zip`.
+
+Observação: por segurança, o GitHub não deve receber o `.env` real. Cada instalação precisa criar/copiar seu próprio `.env` ao lado do app baixado.
+
 ## Configuração do MySQL
 
 ### Comandos básicos

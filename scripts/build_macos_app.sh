@@ -31,9 +31,23 @@ rm -rf build dist/GirofyPDV dist/GirofyPDV.app
 if [[ -f ".env" ]]; then
   cp .env dist/.env
   echo "Configuração local copiada para dist/.env"
-else
+elif [[ -f ".env.example" ]]; then
   cp .env.example dist/.env.example
   echo "Nenhum .env encontrado. Modelo copiado para dist/.env.example"
+else
+  cat > dist/.env.example <<'ENV'
+APP_ENV=desktop
+FLASK_DEBUG=0
+SECRET_KEY=troque-esta-chave
+MYSQL_USER=root
+MYSQL_PASSWORD=
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=adega_central
+MAIL_SUPPRESS_SEND=1
+PORT=5003
+ENV
+  echo "Nenhum .env encontrado. Modelo mínimo criado em dist/.env.example"
 fi
 
 echo

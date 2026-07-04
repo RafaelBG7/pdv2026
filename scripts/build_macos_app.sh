@@ -24,6 +24,8 @@ rm -rf build dist/GirofyPDV dist/GirofyPDV.app
   --add-data "app/templates:app/templates" \
   --add-data "app/static:app/static" \
   --hidden-import pymysql \
+  --hidden-import webview \
+  --hidden-import webview.platforms.cocoa \
   desktop_launcher.py
 
 if [[ -f ".env" ]]; then

@@ -900,7 +900,7 @@ PORT=5002 python app.py
 
 ### 8. Compilar como aplicativo local no macOS
 
-O projeto pode ser empacotado como um aplicativo `.app`. Ele continua usando MySQL local e lê as configurações pelo arquivo `.env`, sem embutir senhas no executável.
+O projeto pode ser empacotado como um aplicativo `.app` com janela própria via WebView nativa do macOS. Ele continua usando MySQL local e lê as configurações pelo arquivo `.env`, sem embutir senhas no executável.
 
 Compile com:
 
@@ -920,7 +920,7 @@ Para abrir pelo terminal:
 open dist/GirofyPDV.app
 ```
 
-Ao abrir, o launcher sobe o servidor local em uma porta livre, abre o navegador automaticamente e usa `dist/.env` como configuração local. Se o MySQL não estiver rodando ou alguma configuração falhar, o arquivo `dist/launcher-error.log` será criado com o erro detalhado.
+Ao abrir, o launcher sobe o servidor local em uma porta livre e mostra o sistema dentro de uma janela de aplicativo. Ele usa `dist/.env` como configuração local. Se o MySQL não estiver rodando ou alguma configuração falhar, o arquivo `dist/launcher-error.log` será criado com o erro detalhado.
 
 ## Configuração do MySQL
 

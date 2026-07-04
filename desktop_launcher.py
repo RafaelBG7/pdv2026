@@ -2,9 +2,10 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import traceback
-import webbrowser
+import urllib.request
 from pathlib import Path
 
 from werkzeug.serving import make_server
@@ -12,6 +13,8 @@ from werkzeug.serving import make_server
 
 APP_NAME = 'Girofy PDV'
 DEFAULT_PORT = 5003
+WINDOW_WIDTH = 1366
+WINDOW_HEIGHT = 820
 
 
 def runtime_dir():
@@ -56,6 +59,18 @@ def show_error(message, log_path):
         print(full_message)
 
 
+def wait_until_ready(url, timeout=20):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=1) as response:
+                if response.status < 500:
+                    return True
+        except Exception:
+            time.sleep(0.25)
+    return False
+
+
 def main():
     base_dir = runtime_dir()
     os.environ.setdefault('APP_BASE_DIR', str(base_dir))
@@ -68,6 +83,7 @@ def main():
     os.environ.setdefault('PUBLIC_BASE_URL', f'http://127.0.0.1:{port}')
 
     try:
+        import webview
         from app import create_app
 
         app = create_app()
@@ -79,17 +95,34 @@ def main():
         return 1
 
     url = f'http://127.0.0.1:{port}/'
-    webbrowser.open(url)
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
 
     try:
-        server.serve_forever()
+        if not wait_until_ready(url):
+            raise RuntimeError(f'O servidor local não respondeu em {url}')
+
+        if os.environ.get('APP_DESKTOP_SMOKE_TEST') == '1':
+            print(url)
+            return 0
+
+        webview.create_window(
+            APP_NAME,
+            url,
+            width=WINDOW_WIDTH,
+            height=WINDOW_HEIGHT,
+            min_size=(1024, 680),
+        )
+        webview.start(debug=False)
     except KeyboardInterrupt:
-        server.shutdown()
+        pass
     except Exception:
         log_path = base_dir / 'launcher-error.log'
         log_path.write_text(traceback.format_exc(), encoding='utf-8')
         show_error('O Girofy PDV foi encerrado por uma falha inesperada.', log_path)
         return 1
+    finally:
+        server.shutdown()
 
     time.sleep(0.2)
     return 0

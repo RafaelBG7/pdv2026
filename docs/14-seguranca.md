@@ -2,159 +2,122 @@
 
 ## Status Atual
 
-Segurança básica de autenticação existe, mas o projeto precisa de hardening antes de produção.
+O projeto possui segurança básica funcional para uso local/controlado, mas ainda precisa de hardening antes de produção pública.
 
 ## Implementado
 
 ### Hash de Senha
 
-Senhas são armazenadas com hash:
+Senhas são armazenadas com hash Werkzeug:
 
 ```python
-generate_password_hash(password, method='pbkdf2:sha256')
+generate_password_hash(password, method='scrypt')
 ```
 
 ### Sessão Autenticada
 
-Rotas principais usam:
+Rotas principais usam `@login_required`.
+
+### Permissões por Perfil
+
+Rotas sensíveis usam:
 
 ```python
-@login_required
+@permission_required('can_manage_sales')
 ```
+
+Os perfis atuais são:
+
+- `master`
+- `admin`
+- `manager`
+- `operator`
+
+### Isolamento por Adega
+
+Cada adega possui seu próprio banco MySQL operacional. Isso reduz risco de mistura de produtos, categorias, vendas e caixas entre empresas.
+
+### Bloqueio por Assinatura/Key
+
+Adega sem key ativa, vencida ou inativa é redirecionada para a tela de assinatura.
+
+### Verificação de E-mail
+
+Novos cadastros precisam confirmar o e-mail com código de 6 dígitos enviado por SMTP. O código expira, possui limite de tentativas e é invalidado ao reenviar.
+
+### Recuperação de Senha
+
+O usuário pode solicitar link temporário de redefinição. O token expira em 30 minutos, é armazenado com hash e é invalidado depois de usado.
+
+### Troca de E-mail
+
+Quando a conta já possui e-mail confirmado, a alteração exige confirmação pelo e-mail antigo. O link usa token temporário com hash e expira em 30 minutos.
+
+### Alertas por E-mail
+
+Alertas críticos são configuráveis por adega e por destinatário. Cada envio fica registrado para reduzir repetição do mesmo alerta.
+
+### Logs de Erro
+
+Erros são registrados em `logs/errors.log` com dados sensíveis mascarados.
 
 ### ORM
 
-SQLAlchemy reduz risco de SQL Injection em consultas normais.
+SQLAlchemy reduz risco de SQL Injection nas consultas normais.
 
-### Templates
+### Escape de Templates
 
-Jinja2 escapa variáveis por padrão, reduzindo risco de XSS em saídas simples.
+Jinja2 escapa variáveis por padrão, reduzindo risco de XSS básico.
 
 ## Parcialmente Implementado
 
 ### Chave Secreta
 
-`SECRET_KEY` pode vir do ambiente, mas há padrão fraco:
+`SECRET_KEY` pode vir do ambiente, mas existe padrão fraco para desenvolvimento:
 
 ```text
 adega-jf-secret-key
 ```
 
-Produção deve sempre definir chave segura.
+Em produção, sempre definir uma chave longa e secreta.
 
-### Usuário Ativo
+### Logs
 
-Campo `is_active` existe, mas não bloqueia login de forma explícita.
+Há logs de erro, mas ainda falta auditoria de ações de negócio.
 
-### Perfis
+### Backup
 
-Campo `role` existe, mas não há autorização por perfil.
+Backup por adega existe, mas produção deve enviar cópias para local externo.
+
+### Rate Limiting de Login
+
+Existe bloqueio simples em memória após tentativas inválidas de login. Ele protege o uso local/controlado, mas em produção deve ser substituído ou complementado por uma solução persistente, como Flask-Limiter com Redis ou outro armazenamento compartilhado.
 
 ## Não Implementado
 
 ### CSRF
 
-Formulários POST não têm token CSRF.
+Formulários POST ainda não possuem token CSRF.
 
 Recomendação:
 
-- Instalar Flask-WTF.
-- Habilitar `CSRFProtect`.
-- Adicionar token aos formulários.
-
-### Rate Limiting
-
-Não há limite de tentativas de login.
-
-Recomendação:
-
-- Usar Flask-Limiter.
-- Limitar `/login`.
-
-### Recuperação de Senha Segura
-
-Não há fluxo de recuperação.
+- Adicionar Flask-WTF ou proteção CSRF equivalente.
+- Incluir token em todos os formulários.
 
 ### Auditoria
 
-Não há registro de ações críticas.
+Não existe tabela de auditoria para ações críticas.
 
-### Criptografia em Repouso
+## Recomendações de Produção
 
-SQLite não é criptografado.
-
-### Backup Seguro
-
-Não há rotina de backup nem criptografia de backup.
-
-### LGPD
-
-Dados pessoais atuais:
-
-- Nome.
-- Sobrenome.
-- Email.
-- Telefone.
-
-Requisitos LGPD pendentes:
-
-- Política de retenção.
-- Exclusão/anomização quando aplicável.
-- Base legal.
-- Controle de acesso por perfil.
-- Auditoria de acesso e alterações.
-- Proteção de backups.
-
-## Riscos Críticos
-
-| Risco | Impacto | Mitigação |
-|---|---|---|
-| Cadastro público cria admin | Alto | Remover cadastro público ou exigir convite/admin |
-| Senha padrão `admin123` | Alto | Forçar troca no primeiro acesso |
-| `DEBUG=True` | Alto | Desativar em produção |
-| `SECRET_KEY` padrão | Alto | Definir variável segura |
-| Sem CSRF | Alto | Adicionar CSRFProtect |
-| Sem autorização por papel | Alto | Implementar `roles_required` |
-| Produto pode ser excluído por qualquer usuário autenticado | Médio/Alto | Restringir exclusão |
-| Sem auditoria | Médio | Criar tabela de auditoria |
-| Bootstrap via CDN | Médio | Avaliar SRI ou assets locais |
-
-## Recomendações de Hardening
-
-1. Corrigir configuração de produção.
-2. Remover cadastro público.
-3. Forçar troca da senha inicial.
-4. Implementar CSRF.
-5. Implementar permissões.
-6. Implementar rate limiting.
-7. Adicionar headers de segurança.
-8. Configurar HTTPS.
-9. Criar logs e auditoria.
-10. Definir backup criptografado.
-
-## Headers Recomendados
-
-- `Content-Security-Policy`.
-- `X-Frame-Options`.
-- `X-Content-Type-Options`.
-- `Referrer-Policy`.
-- `Strict-Transport-Security` em HTTPS.
-
-## SQL Injection
-
-Baixo risco nas consultas ORM atuais.
-
-Atenção:
-
-- Migrações manuais usam SQL raw fixo, sem input externo.
-- Manter entradas do usuário longe de SQL textual.
-
-## XSS
-
-Risco reduzido por autoescape do Jinja2.
-
-Recomendações:
-
-- Evitar `|safe` com dados de usuário.
-- Adicionar CSP.
-- Sanitizar qualquer HTML futuro informado por usuário.
+- Trocar senha padrão do `master`.
+- Definir `SECRET_KEY` forte.
+- Rodar com `DEBUG=False`.
+- Usar HTTPS.
+- Criar usuário MySQL dedicado.
+- Restringir painel master.
+- Ativar CSRF.
+- Usar rate limit persistente para `/login` e endpoints sensíveis.
+- Guardar backups fora do servidor.
+- Criar auditoria de alterações.
+- Monitorar erros 500 e tentativas negadas.

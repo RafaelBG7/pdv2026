@@ -2,189 +2,194 @@
 
 ## Visão Geral
 
-O backend é uma aplicação Flask organizada por fábrica de aplicação, extensões, modelos e blueprints.
+O backend é uma aplicação Flask organizada por fábrica de aplicação, blueprints, modelos e serviços auxiliares.
 
 ```text
 app/
 ├── __init__.py
+├── backup.py
+├── error_logging.py
 ├── extensions.py
+├── permissions.py
+├── tenant.py
 ├── models/
-└── routes/
+├── routes/
+├── static/
+└── templates/
 ```
 
 ## Fábrica da Aplicação
 
-Arquivo: `app/__init__.py`.
+Arquivo:
+
+- `app/__init__.py`
 
 Responsabilidades:
 
 - Criar instância Flask.
 - Carregar `Config`.
 - Inicializar `db` e `login_manager`.
+- Criar banco central se necessário.
 - Registrar blueprints.
-- Criar tabelas.
-- Executar migrações manuais.
-- Criar usuário `admin` se não existir.
-- Configurar `user_loader`.
-- Configurar página 404.
-- Injetar usuário e alertas de estoque no contexto dos templates.
+- Criar tabelas centrais.
+- Garantir colunas de compatibilidade.
+- Criar usuário master do sistema.
+- Aplicar bloqueio por assinatura/key.
+- Injetar notificações no template base.
+- Executar backup automático quando devido.
+- Registrar handlers de erro.
 
-## Extensões
+## Blueprints
 
-Arquivo: `app/extensions.py`.
+### `auth_bp`
 
-Extensões:
+Arquivo:
 
-- `db = SQLAlchemy()`.
-- `login_manager = LoginManager()`.
+- `app/routes/auth.py`
 
-Configuração de login:
+Cuida de:
 
-- `login_view = 'auth.login'`.
-- Mensagem: `Faça login para acessar esta página.`.
-- Categoria: `warning`.
+- Login/logout/cadastro.
+- Assinatura e ativação.
+- Painel master.
+- Logs do master.
+- Configurações.
+- Equipe.
+- Geração de key.
+- Backup.
+- Download do modelo de importação.
+
+### `catalog_bp`
+
+Arquivo:
+
+- `app/routes/catalog.py`
+
+Cuida de:
+
+- Produtos.
+- Categorias.
+- Kits.
+- Estoque mínimo.
+- Importação de planilha.
+- Dispensa de notificação de estoque.
+
+### `main_bp`
+
+Arquivo:
+
+- `app/routes/main.py`
+
+Cuida de:
+
+- Dashboard.
+- Vendas.
+- Caixa.
+- Relatórios.
+- Contas a pagar.
+- Exportação CSV.
+
+## Tenant
+
+Arquivo:
+
+- `app/tenant.py`
+
+Responsabilidades:
+
+- Definir nome do banco da adega.
+- Criar banco MySQL da adega.
+- Criar engine por tenant.
+- Abrir sessão da adega atual.
+- Sincronizar usuário/empresa no banco operacional.
+- Apagar banco ao excluir adega, quando permitido.
+
+## Permissões
+
+Arquivo:
+
+- `app/permissions.py`
+
+Uso:
+
+```python
+@permission_required('can_manage_sales')
+```
+
+O decorator bloqueia usuário sem permissão e redireciona para o dashboard com mensagem.
+
+## Backup
+
+Arquivo:
+
+- `app/backup.py`
+
+Funções principais:
+
+- `backup_due(company)`
+- `create_company_backup(company, reason='manual')`
+- `build_database_dump(engine, database_name)`
+
+O backup gera um arquivo `.sql` com estrutura e dados do banco da adega.
+
+## Logs de Erro
+
+Arquivo:
+
+- `app/error_logging.py`
+
+Registra erro com:
+
+- Usuário.
+- Método.
+- Endpoint.
+- Caminho.
+- Formulário mascarado.
+- Tempo de requisição.
+- Request id.
 
 ## Configuração
 
-Arquivo: `config.py`.
+Arquivo:
 
-Classe: `Config`.
+- `config.py`
 
-- Cria diretório `database/`.
-- Usa `SECRET_KEY` do ambiente ou padrão.
-- Define URI SQLite.
-- Desativa tracking de modificações SQLAlchemy.
-- Mantém `DEBUG=True`.
+Variáveis principais:
 
-## Models
+- `DATABASE_URL`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `MYSQL_HOST`
+- `MYSQL_PORT`
+- `MYSQL_DATABASE`
+- `MYSQL_TENANT_DATABASE_PREFIX`
+- `MYSQL_TENANT_DATABASE_URL_TEMPLATE`
+- `MYSQL_SERVER_DATABASE_URL`
+- `SECRET_KEY`
+- `PORT`
 
-Modelos:
+## Rotas Críticas
 
-- `User`.
-- `Category`.
-- `Product`.
-- `CashRegister`.
-- `Sale`.
-- `SaleItem`.
-- `Payment`.
+| Rota | Função |
+|---|---|
+| `/login` | Login e cadastro. |
+| `/assinatura` | Ativação por key. |
+| `/master/adegas` | Gestão master. |
+| `/configuracoes` | Usuário, equipe, financeiro, backup, importação, exportação e keys. |
+| `/catalogo/produtos` | Produtos. |
+| `/catalogo/categorias` | Categorias. |
+| `/vendas/nova` | Registrar venda. |
+| `/caixa` | Caixa atual e anteriores. |
+| `/relatorios` | Relatórios. |
+| `/contas-a-pagar` | Contas a pagar. |
+| `/exportacoes/<tipo>` | Exportação CSV. |
 
-Não há camada Repository. As rotas acessam os modelos diretamente.
+## Padrões de Implementação
 
-## Rotas de Autenticação
-
-Arquivo: `app/routes/auth.py`.
-
-Funções:
-
-- `login()`: login e cadastro.
-- `logout()`: encerra sessão.
-- `settings()`: atualiza perfil, email e senha.
-
-Validações:
-
-- Login valida senha.
-- Cadastro valida usuário, senha mínima, confirmação e duplicidade.
-- Alteração de senha valida senha atual, tamanho e confirmação.
-
-## Rotas de Catálogo
-
-Arquivo: `app/routes/catalog.py`.
-
-Funções auxiliares:
-
-- `parse_money()`.
-- `parse_optional_money()`.
-- `parse_int()`.
-- `populate_product()`.
-
-Rotas:
-
-- Produtos.
-- Novo produto.
-- Editar produto.
-- Atualização rápida.
-- Alternar status.
-- Excluir produto.
-- Categorias.
-- Atualizar categoria.
-- Excluir categoria.
-
-Tratamento de erros:
-
-- `IntegrityError` para código de barras duplicado e categoria duplicada.
-
-## Rotas Principais
-
-Arquivo: `app/routes/main.py`.
-
-Constantes:
-
-- `PAYMENT_METHODS`.
-
-Funções auxiliares:
-
-- Parsing e formatação: `parse_money`, `format_brl`, `parse_quantity`, `parse_date`.
-- Venda: `sale_form_state`, `stock_source_for_product`, `sale_item_profit`, `sale_profit`.
-- Caixa: `open_cash_register`, `cash_register_profit`, `cash_register_total_sold`, `cash_register_expected_amount`.
-- Relatórios: `report_period_range`, `build_sales_report`, `build_sales_chart`.
-
-Rotas:
-
-- `dashboard()`.
-- `sales()`.
-- `reports()`.
-- `new_sale()`.
-- `sale_detail()`.
-- `cash_register()`.
-- `open_cash_register_route()`.
-- `close_cash_register_route()`.
-
-## Validações Importantes no Servidor
-
-- Caixa aberto antes de vender.
-- Produto ativo antes de vender.
-- Kit configurado antes de vender.
-- Estoque suficiente antes de gravar venda.
-- Venda com ao menos um item.
-- Pagamento total suficiente.
-- Nome obrigatório de produto.
-- Produto kit com base e quantidade.
-- Categoria não vazia.
-- Categoria sem produtos para exclusão.
-- Valor de fechamento do caixa exatamente igual ao esperado.
-
-## Tratamento de Erros
-
-Implementado:
-
-- Flash messages para erro de validação.
-- `IntegrityError` em cadastro/edição de produto e categoria.
-- Página 404 customizada.
-
-Não implementado:
-
-- Handler global para 500.
-- Logs estruturados.
-- Retorno JSON de erro.
-- Captura centralizada de exceções.
-
-## Logs
-
-Não há logging customizado. O sistema depende do log padrão do Flask/servidor.
-
-## Serviços e Repositórios
-
-Diretório `app/services/` existe, mas está vazio além de `__init__.py`.
-
-Status:
-
-- Planejado para evolução.
-- Regras de negócio atualmente ficam nas rotas.
-
-## Riscos Técnicos
-
-- Regras de venda e estoque concentradas em uma função grande (`new_sale`).
-- Sem transações explícitas para concorrência.
-- Sem paginação em listagens.
-- Sem migrações versionadas.
-- `app.py` quebrado por import incorreto.
+- Rotas protegidas devem usar `@login_required`.
+- Rotas sensíveis também devem usar `@permission_required`.
+- Dados operacionais devem usar `tenant_session()`.
+- Dados globais/master devem usar `db.session`.
+- Após POST bem-sucedido, usar redirect.
+- Mensagens para usuário devem usar `flash()`.
+- Validações importantes devem ficar no backend.

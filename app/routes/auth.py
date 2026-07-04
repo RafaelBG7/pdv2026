@@ -1,20 +1,37 @@
 from datetime import date, datetime, timedelta, timezone
+import io
+import json
+from pathlib import Path
+import re
 import secrets
 import string
+import time
 
-from flask import Blueprint, redirect, render_template, request, session, url_for, flash
+from flask import Blueprint, current_app, redirect, render_template, request, send_file, session, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
+from werkzeug.security import check_password_hash, generate_password_hash
 
+from app.backup import BACKUP_FREQUENCIES, backup_frequency_label, create_company_backup
 from app.extensions import db
-from app.models import CashRegister, Company, Product, Sale, User
-from app.permissions import PERMISSION_LABELS
+from app.models import ActivationKey, CashRegister, Company, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Product, Sale, User
+from app.permissions import (
+    PERMISSION_LABELS,
+    authorize_permission_override,
+    authorize_role_override,
+    grant_permission_view_override,
+    has_permission_view_override,
+    user_can_override_permission,
+)
+from app.services.alert_service import EMAIL_ALERT_TYPES, alert_settings_for_company, parse_recipients
+from app.services.email_service import EmailAuthenticationError, send_email_change_confirmation, send_password_reset_email, send_verification_code_email
 from app.tenant import current_tenant_company, drop_mysql_database, tenant_database_identifier, tenant_engine
 
 
 auth_bp = Blueprint('auth', __name__)
-SUBSCRIPTION_PLANS = ('Essencial', 'Profissional', 'Premium')
+SUBSCRIPTION_PLANS = ('Basic', 'Pro', 'Essencial', 'Profissional', 'Premium')
+MASTER_KEY_PLANS = ('Basic', 'Pro')
 BASIC_PRO_PLANS = (
     {
         'name': 'Basic',
@@ -49,6 +66,27 @@ BILLING_CYCLES = {
     'monthly': 'Mensal',
     'annual': 'Anual',
 }
+KEY_PRESETS = (
+    ('1d', '1 dia', 1),
+    ('3d', '3 dias', 3),
+    ('7d', '7 dias', 7),
+    ('1m', '1 mês', 30),
+    ('3m', '3 meses', 90),
+    ('1y', '1 ano', 365),
+)
+LOGIN_ATTEMPTS = {}
+LOGIN_ATTEMPT_LIMIT = 5
+LOGIN_BLOCK_SECONDS = 15 * 60
+VERIFICATION_CODE_TTL_MINUTES = 15
+VERIFICATION_ATTEMPT_LIMIT = 5
+VERIFICATION_RESEND_SECONDS = 60
+VERIFICATION_RESEND_HOURLY_LIMIT = 3
+PASSWORD_RESET_TTL_MINUTES = 30
+EMAIL_CHANGE_TTL_MINUTES = 30
+LOG_ENTRY_PATTERN = re.compile(
+    r'^(?P<created_at>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) '
+    r'(?P<level>[A-Z]+) \[(?P<logger>[^\]]+)\] (?P<message>.*)$'
+)
 EMPLOYEE_PERMISSIONS = (
     'can_view_products',
     'can_manage_products',
@@ -59,6 +97,46 @@ EMPLOYEE_PERMISSIONS = (
     'can_manage_payables',
     'can_manage_settings',
 )
+EMPLOYEE_ROLES = {
+    'operator': {
+        'label': 'Funcionário',
+        'description': 'Realiza vendas, abre caixa e acessa configurações pessoais.',
+    },
+    'manager': {
+        'label': 'Gerente',
+        'description': 'Pode operar e gerenciar a adega, exceto a área financeira.',
+    },
+    'admin': {
+        'label': 'Admin',
+        'description': 'Acesso completo à adega, incluindo financeiro.',
+    },
+}
+ROLE_PERMISSION_DEFAULTS = {
+    'operator': {
+        'can_view_products': True,
+        'can_manage_products': False,
+        'can_manage_categories': False,
+        'can_manage_sales': True,
+        'can_manage_cash_register': True,
+        'can_view_reports': False,
+        'can_manage_payables': False,
+        'can_manage_settings': False,
+    },
+    'manager': {
+        'can_view_products': True,
+        'can_manage_products': True,
+        'can_manage_categories': True,
+        'can_manage_sales': True,
+        'can_manage_cash_register': True,
+        'can_view_reports': True,
+        'can_manage_payables': True,
+        'can_manage_settings': True,
+    },
+    'admin': {
+        permission: True
+        for permission in EMPLOYEE_PERMISSIONS
+    },
+}
 
 
 def parse_date_field(value):
@@ -76,6 +154,150 @@ def parse_percent(value):
         return 0.0
 
 
+def password_min_length():
+    configured = current_app.config.get('PASSWORD_MIN_LENGTH')
+    if configured:
+        return int(configured)
+    return 3 if current_app.config.get('TESTING') else 8
+
+
+def password_too_short(password):
+    return len(password or '') < password_min_length()
+
+
+def valid_email(value):
+    return bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', value or ''))
+
+
+def utc_now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def generate_verification_code():
+    return f'{secrets.randbelow(1_000_000):06d}'
+
+
+def verification_user_from_session():
+    user_id = session.get('pending_verification_user_id')
+    if not user_id:
+        return None
+    return db.session.get(User, int(user_id))
+
+
+def remember_verification_user(user):
+    session['pending_verification_user_id'] = user.id
+
+
+def clear_verification_user():
+    session.pop('pending_verification_user_id', None)
+
+
+def create_email_verification_code(user, force=False):
+    now = utc_now()
+    recent_codes = EmailVerificationCode.query.filter_by(user_id=user.id).order_by(EmailVerificationCode.created_at.desc()).all()
+    if not force:
+        recent_sent = [code for code in recent_codes if code.created_at and code.created_at > now - timedelta(hours=1)]
+        if len(recent_sent) >= VERIFICATION_RESEND_HOURLY_LIMIT:
+            return False, 'Limite de reenvios atingido. Tente novamente mais tarde.'
+        last_code = recent_codes[0] if recent_codes else None
+        if last_code and last_code.created_at and last_code.created_at > now - timedelta(seconds=VERIFICATION_RESEND_SECONDS):
+            return False, 'Aguarde 1 minuto antes de reenviar o código.'
+
+    for code_record in recent_codes:
+        if not code_record.used:
+            code_record.used = True
+
+    code = generate_verification_code()
+    code_record = EmailVerificationCode(
+        user_id=user.id,
+        code_hash=generate_password_hash(code, method='scrypt'),
+        expires_at=now + timedelta(minutes=VERIFICATION_CODE_TTL_MINUTES),
+        used=False,
+        attempts=0,
+    )
+    db.session.add(code_record)
+    db.session.commit()
+
+    try:
+        if current_app.config.get('MAIL_SUPPRESS_SEND'):
+            current_app.config['TEST_LAST_VERIFICATION_CODE'] = code
+        send_verification_code_email(user, code)
+    except EmailAuthenticationError as error:
+        current_app.logger.error('Falha de autenticação SMTP ao enviar código para %s: %s', user.email, error, exc_info=True)
+        return False, 'Gmail recusou o envio. Confira se MAIL_SMTP_LOGIN é o e-mail correto e se MAIL_SMTP_PASSWORD é uma senha de app válida.'
+    except Exception as error:
+        current_app.logger.error('Falha ao enviar código de verificação para %s: %s', user.email, error, exc_info=True)
+        return False, 'Não foi possível enviar o e-mail agora. Verifique as configurações de envio.'
+
+    return True, 'Código enviado para o e-mail cadastrado.'
+
+
+def active_verification_code_for_user(user):
+    return EmailVerificationCode.query.filter_by(user_id=user.id, used=False).order_by(EmailVerificationCode.created_at.desc()).first()
+
+
+def public_url_for(endpoint, **values):
+    base_url = (current_app.config.get('PUBLIC_BASE_URL') or '').rstrip('/')
+    path = url_for(endpoint, **values)
+    if base_url:
+        return f'{base_url}{path}'
+    return url_for(endpoint, _external=True, **values)
+
+
+def request_email_change(user, new_email):
+    EmailChangeRequest.query.filter_by(user_id=user.id, used=False).update({'used': True})
+    token = secrets.token_urlsafe(32)
+    change_request = EmailChangeRequest(
+        user_id=user.id,
+        old_email=user.email,
+        new_email=new_email,
+        token_hash=generate_password_hash(token, method='scrypt'),
+        expires_at=utc_now() + timedelta(minutes=EMAIL_CHANGE_TTL_MINUTES),
+        used=False,
+    )
+    db.session.add(change_request)
+    db.session.commit()
+
+    confirmation_url = public_url_for('auth.confirm_email_change', token=token)
+    if current_app.config.get('MAIL_SUPPRESS_SEND'):
+        current_app.config['TEST_LAST_EMAIL_CHANGE_TOKEN'] = token
+        current_app.config['TEST_LAST_EMAIL_CHANGE_URL'] = confirmation_url
+    send_email_change_confirmation(user, new_email, confirmation_url)
+
+
+def login_attempt_key(username):
+    remote_addr = request.headers.get('X-Forwarded-For', request.remote_addr) or 'local'
+    return f'{remote_addr.split(",")[0].strip()}:{(username or "").lower()}'
+
+
+def login_is_blocked(username):
+    attempt = LOGIN_ATTEMPTS.get(login_attempt_key(username))
+    if not attempt:
+        return False
+    blocked_until = attempt.get('blocked_until') or 0
+    if blocked_until <= time.time():
+        if blocked_until:
+            LOGIN_ATTEMPTS.pop(login_attempt_key(username), None)
+        return False
+    return True
+
+
+def register_login_failure(username):
+    key = login_attempt_key(username)
+    attempt = LOGIN_ATTEMPTS.setdefault(key, {'count': 0, 'blocked_until': 0})
+    attempt['count'] += 1
+    if attempt['count'] >= LOGIN_ATTEMPT_LIMIT:
+        attempt['blocked_until'] = time.time() + LOGIN_BLOCK_SECONDS
+
+
+def clear_login_failures(username):
+    LOGIN_ATTEMPTS.pop(login_attempt_key(username), None)
+
+
+def normalize_digits(value):
+    return ''.join(char for char in str(value or '') if char.isdigit())
+
+
 def generate_activation_key():
     alphabet = string.ascii_uppercase + string.digits
     groups = [
@@ -85,24 +307,139 @@ def generate_activation_key():
     return '-'.join(groups)
 
 
+def available_activation_key(value):
+    key = (value or '').strip().upper()
+    if not key:
+        return None
+    return ActivationKey.query.filter_by(key=key, active=True, used_by_company_id=None).first()
+
+
+def apply_activation_key_to_company(activation_key, company):
+    company.activation_key = activation_key.key
+    company.activation_key_updated_at = datetime.now(timezone.utc)
+    company.subscription_plan = activation_key.plan
+    company.subscription_started_at = date.today()
+    company.subscription_renews_at = activation_key.renews_at
+    company.billing_cycle = 'annual' if (activation_key.renews_at - date.today()).days >= 365 else 'monthly'
+    company.active = True
+    activation_key.used_by_company_id = company.id
+    activation_key.used_at = datetime.now(timezone.utc)
+
+
+def read_recent_error_logs(limit=20):
+    log_path = Path(current_app.config.get('LOG_DIR') or '') / 'errors.log'
+    if not log_path.exists():
+        return []
+
+    try:
+        lines = log_path.read_text(encoding='utf-8', errors='replace').splitlines()
+    except OSError:
+        return []
+
+    entries = []
+    current_entry = None
+    for line in lines[-1000:]:
+        match = LOG_ENTRY_PATTERN.match(line)
+        if match:
+            if current_entry:
+                entries.append(current_entry)
+            current_entry = {
+                'created_at': match.group('created_at'),
+                'level': match.group('level'),
+                'logger': match.group('logger'),
+                'message': match.group('message'),
+                'traceback': '',
+                'context': {},
+            }
+        elif current_entry:
+            current_entry['traceback'] = f"{current_entry['traceback']}\n{line}".strip()
+
+    if current_entry:
+        entries.append(current_entry)
+
+    parsed_entries = []
+    for entry in entries[-limit:]:
+        message = entry['message']
+        context = {}
+        if ' | contexto=' in message:
+            message, raw_context = message.split(' | contexto=', 1)
+            try:
+                context = json.loads(raw_context)
+            except json.JSONDecodeError:
+                context = {}
+
+        entry['message'] = message
+        entry['context'] = context
+        parsed_entries.append(entry)
+
+    parsed_entries.reverse()
+    return parsed_entries
+
+
+def clear_error_log_file():
+    log_path = Path(current_app.config.get('LOG_DIR') or '') / 'errors.log'
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text('', encoding='utf-8')
+
+
 def can_manage_company_users():
-    return current_user.role in ('admin', 'master') or current_user.has_permission('can_manage_settings')
+    return current_user.role in ('admin', 'manager', 'master') or current_user.has_permission('can_manage_settings')
 
 
 def can_view_admin_settings():
-    return current_user.role in ('admin', 'master') or current_user.has_permission('can_manage_settings')
+    return (
+        current_user.is_authenticated
+        and (
+            can_manage_company_users()
+            or has_permission_view_override('can_manage_settings')
+        )
+    )
+
+
+def can_view_finance_settings():
+    return (
+        current_user.is_authenticated
+        and (
+            current_user.role in ('admin', 'master')
+            or has_permission_view_override('can_view_finance')
+        )
+    )
+
+
+def can_import_products_settings():
+    return can_view_admin_settings()
+
+
+def can_export_data_settings():
+    return (
+        current_user.is_authenticated
+        and current_tenant_company() is not None
+        and (
+            current_user.role in ('admin', 'master')
+            or has_permission_view_override('can_export_data')
+        )
+    )
 
 
 def apply_employee_permissions(user, form):
-    if user.role == 'admin':
-        for permission in EMPLOYEE_PERMISSIONS:
-            setattr(user, permission, True)
-        return
-
+    defaults = ROLE_PERMISSION_DEFAULTS.get(user.role, ROLE_PERMISSION_DEFAULTS['operator'])
     for permission in EMPLOYEE_PERMISSIONS:
-        setattr(user, permission, form.get(permission) == 'on')
-    if user.can_manage_products:
-        user.can_view_products = True
+        setattr(user, permission, defaults.get(permission, False))
+
+
+def company_cpf_exists(company_id, cpf, user_id=None):
+    cpf_digits = normalize_digits(cpf)
+    if not cpf_digits:
+        return False
+
+    query = User.query.filter_by(company_id=company_id)
+    if user_id:
+        query = query.filter(User.id != user_id)
+
+    for user in query.all():
+        if normalize_digits(user.cpf) == cpf_digits:
+            return True
+    return False
 
 
 def subscription_status(company):
@@ -142,6 +479,8 @@ def company_requires_activation(company):
         return True
     if not company.active:
         return True
+    if not (company.activation_key or '').strip():
+        return True
     if not company.subscription_renews_at:
         return True
     return company.subscription_renews_at < date.today()
@@ -171,12 +510,20 @@ def login():
             email = request.form.get('email', '').strip()
             company_name = request.form.get('company_name', '').strip() or username
             confirm_password = request.form.get('confirm_password', '')
+            provided_key = request.form.get('activation_key', '').strip().upper()
+            no_activation_key = request.form.get('no_activation_key') == 'on'
 
             if not username:
                 flash('Informe o usuário para cadastro.', 'danger')
                 return render_template('login.html', auth_tab='register')
-            if len(password) < 3:
-                flash('A senha deve ter pelo menos 3 caracteres.', 'danger')
+            if not email:
+                flash('Informe um e-mail para receber o código de verificação.', 'danger')
+                return render_template('login.html', auth_tab='register')
+            if not valid_email(email):
+                flash('Informe um e-mail válido.', 'danger')
+                return render_template('login.html', auth_tab='register')
+            if password_too_short(password):
+                flash(f'A senha deve ter pelo menos {password_min_length()} caracteres.', 'danger')
                 return render_template('login.html', auth_tab='register')
             if password != confirm_password:
                 flash('A confirmação da senha não confere.', 'danger')
@@ -186,12 +533,42 @@ def login():
                 return render_template('login.html', auth_tab='register')
 
             company = Company(name=company_name)
-            company.activation_key = generate_activation_key()
-            company.activation_key_updated_at = datetime.now(timezone.utc)
+            activation_key = None
+            if provided_key and not no_activation_key:
+                activation_key = available_activation_key(provided_key)
+                if not activation_key:
+                    flash('Key de ativação inválida ou já utilizada.', 'danger')
+                    return render_template('login.html', auth_tab='register')
+
+            if no_activation_key or not provided_key:
+                company.activation_key = ''
+                company.activation_key_updated_at = None
+                company.subscription_started_at = None
+                company.subscription_renews_at = None
+            else:
+                company.activation_key = activation_key.key
+                company.activation_key_updated_at = datetime.now(timezone.utc)
+                company.subscription_plan = activation_key.plan
+                company.subscription_started_at = date.today()
+                company.subscription_renews_at = activation_key.renews_at
+                company.billing_cycle = 'annual' if (activation_key.renews_at - date.today()).days >= 365 else 'monthly'
             db.session.add(company)
             db.session.flush()
             tenant_database_identifier(company)
-            user = User(username=username, email=email, role='admin', company_id=company.id, is_active=True)
+            if no_activation_key or not provided_key:
+                company.subscription_started_at = None
+                company.subscription_renews_at = None
+            elif activation_key:
+                apply_activation_key_to_company(activation_key, company)
+            user = User(
+                username=username,
+                email=email,
+                email_verified=False,
+                email_verified_at=None,
+                role='admin',
+                company_id=company.id,
+                is_active=True,
+            )
             user.set_password(password)
             db.session.add(user)
             try:
@@ -201,16 +578,27 @@ def login():
                 flash('Já existe um usuário com este login.', 'danger')
                 return render_template('login.html', auth_tab='register')
 
-            login_user(user)
-            flash('Cadastro realizado com sucesso.', 'success')
-            return redirect(url_for('main.dashboard'))
+            remember_verification_user(user)
+            sent, message = create_email_verification_code(user, force=True)
+            flash(message, 'success' if sent else 'warning')
+            flash('Cadastro criado. Confirme seu e-mail para acessar o sistema.', 'info')
+            return redirect(url_for('auth.verify_email'))
+
+        if login_is_blocked(username):
+            flash('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.', 'danger')
+            return render_template('login.html', auth_tab='login')
 
         user = User.query.filter_by(username=username).first()
 
         if user and user.check_password(password):
+            clear_login_failures(username)
             if not user.is_active:
                 flash('Este usuário está inativo. Fale com o master da adega.', 'danger')
                 return render_template('login.html', auth_tab='login')
+            if not user.email_verified:
+                remember_verification_user(user)
+                flash('Seu e-mail ainda não foi confirmado.', 'warning')
+                return redirect(url_for('auth.verify_email'))
             if user.role != 'master' and user.company and not user.company.active:
                 flash('Esta adega está inativa. Fale com o usuário master.', 'danger')
                 return render_template('login.html', auth_tab='login')
@@ -223,17 +611,243 @@ def login():
                 return redirect(url_for('auth.subscription_activation'))
             return redirect(url_for('main.dashboard'))
 
+        register_login_failure(username)
         flash('Usuário ou senha inválidos.', 'danger')
 
     return render_template('login.html', auth_tab='login')
 
 
+@auth_bp.route('/verify-email', methods=['GET', 'POST'])
+def verify_email():
+    user = verification_user_from_session()
+    if not user:
+        flash('Faça login para confirmar seu e-mail.', 'warning')
+        return redirect(url_for('auth.login'))
+    if user.email_verified:
+        clear_verification_user()
+        flash('Seu e-mail já está confirmado.', 'info')
+        return redirect(url_for('auth.login'))
+
+    if request.method == 'POST':
+        code = normalize_digits(request.form.get('code', ''))
+        if len(code) != 6:
+            flash('Informe o código de 6 dígitos.', 'danger')
+            return render_template('verify_email.html', user=user)
+
+        code_record = active_verification_code_for_user(user)
+        now = utc_now()
+        if not code_record:
+            flash('Código inválido ou já utilizado. Solicite um novo código.', 'danger')
+            return render_template('verify_email.html', user=user)
+        if code_record.expires_at < now:
+            code_record.used = True
+            db.session.commit()
+            flash('Este código expirou. Solicite um novo código.', 'danger')
+            return render_template('verify_email.html', user=user)
+        if code_record.attempts >= VERIFICATION_ATTEMPT_LIMIT:
+            code_record.used = True
+            db.session.commit()
+            flash('Limite de tentativas atingido. Solicite um novo código.', 'danger')
+            return render_template('verify_email.html', user=user)
+
+        code_record.attempts += 1
+        if not check_password_hash(code_record.code_hash, code):
+            db.session.commit()
+            flash('Código incorreto.', 'danger')
+            return render_template('verify_email.html', user=user)
+
+        code_record.used = True
+        user.email_verified = True
+        user.email_verified_at = now
+        db.session.commit()
+        clear_verification_user()
+        login_user(user)
+        current_app.logger.info('Email confirmado para user_id=%s', user.id)
+        flash('E-mail confirmado com sucesso.', 'success')
+        if user.role == 'master':
+            return redirect(url_for('auth.master_companies'))
+        if company_requires_activation(user.company):
+            flash('Cadastro realizado, mas esta adega ainda não possui plano/key ativa.', 'warning')
+            return redirect(url_for('auth.subscription_activation'))
+        flash('Cadastro realizado com sucesso.', 'success')
+        return redirect(url_for('main.dashboard'))
+
+    return render_template('verify_email.html', user=user)
+
+
+@auth_bp.route('/verify-email/resend', methods=['POST'])
+def resend_verification_code():
+    user = verification_user_from_session()
+    if not user:
+        flash('Faça login para reenviar o código.', 'warning')
+        return redirect(url_for('auth.login'))
+    if user.email_verified:
+        clear_verification_user()
+        flash('Seu e-mail já está confirmado.', 'info')
+        return redirect(url_for('auth.login'))
+
+    sent, message = create_email_verification_code(user)
+    flash(message, 'success' if sent else 'warning')
+    return redirect(url_for('auth.verify_email'))
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        if not valid_email(email):
+            flash('Informe um e-mail válido.', 'danger')
+            return render_template('forgot_password.html')
+
+        user = User.query.filter_by(email=email).first()
+        if user and user.is_active and user.email_verified:
+            PasswordResetToken.query.filter_by(user_id=user.id, used=False).update({'used': True})
+            token = secrets.token_urlsafe(32)
+            reset_record = PasswordResetToken(
+                user_id=user.id,
+                token_hash=generate_password_hash(token, method='scrypt'),
+                expires_at=utc_now() + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES),
+                used=False,
+            )
+            db.session.add(reset_record)
+            db.session.commit()
+            reset_url = public_url_for('auth.reset_password', token=token)
+            try:
+                if current_app.config.get('MAIL_SUPPRESS_SEND'):
+                    current_app.config['TEST_LAST_PASSWORD_RESET_TOKEN'] = token
+                    current_app.config['TEST_LAST_PASSWORD_RESET_URL'] = reset_url
+                send_password_reset_email(user, reset_url)
+                current_app.logger.info('Email de recuperação enviado para user_id=%s', user.id)
+            except EmailAuthenticationError as error:
+                current_app.logger.error('Falha de autenticação SMTP na recuperação de senha para %s: %s', email, error, exc_info=True)
+                flash('Gmail recusou o envio. Confira se MAIL_SMTP_LOGIN é o e-mail correto e se MAIL_SMTP_PASSWORD é uma senha de app válida.', 'danger')
+                return render_template('forgot_password.html')
+            except Exception as error:
+                current_app.logger.error('Falha ao enviar recuperação de senha para %s: %s', email, error, exc_info=True)
+                flash('Não foi possível enviar o e-mail agora. Verifique a configuração de envio.', 'danger')
+                return render_template('forgot_password.html')
+
+        flash('Se este e-mail estiver cadastrado, enviaremos um link de redefinição.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('forgot_password.html')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    now = utc_now()
+    reset_record = None
+    active_tokens = PasswordResetToken.query.filter(
+        PasswordResetToken.used.is_(False),
+        PasswordResetToken.expires_at >= now,
+    ).order_by(PasswordResetToken.created_at.desc()).all()
+    for candidate in active_tokens:
+        if check_password_hash(candidate.token_hash, token):
+            reset_record = candidate
+            break
+
+    if not reset_record:
+        flash('Link de redefinição inválido ou expirado.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    user = reset_record.user
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        if password_too_short(password):
+            flash(f'A senha deve ter pelo menos {password_min_length()} caracteres.', 'danger')
+            return render_template('reset_password.html', token=token)
+        if password != confirm_password:
+            flash('A confirmação da senha não confere.', 'danger')
+            return render_template('reset_password.html', token=token)
+
+        user.set_password(password)
+        reset_record.used = True
+        db.session.commit()
+        current_app.logger.info('Senha redefinida para user_id=%s', user.id)
+        flash('Senha redefinida com sucesso. Faça login novamente.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('reset_password.html', token=token)
+
+
+@auth_bp.route('/confirmar-troca-email/<token>')
+def confirm_email_change(token):
+    now = utc_now()
+    change_request = None
+    active_requests = EmailChangeRequest.query.filter(
+        EmailChangeRequest.used.is_(False),
+        EmailChangeRequest.expires_at >= now,
+    ).order_by(EmailChangeRequest.created_at.desc()).all()
+    for candidate in active_requests:
+        if check_password_hash(candidate.token_hash, token):
+            change_request = candidate
+            break
+
+    if not change_request:
+        flash('Link de troca de e-mail inválido ou expirado.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    user = change_request.user
+    user.email = change_request.new_email
+    user.email_verified = True
+    user.email_verified_at = now
+    change_request.used = True
+    change_request.confirmed_at = now
+    db.session.commit()
+    current_app.logger.info('Email alterado com confirmação antiga para user_id=%s', user.id)
+    flash('E-mail alterado com sucesso.', 'success')
+
+    if current_user.is_authenticated and current_user.id == user.id:
+        return redirect(url_for('auth.settings'))
+    return redirect(url_for('auth.login'))
+
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
+    session.pop('permission_view_overrides', None)
     logout_user()
     flash('Você saiu do sistema.', 'info')
     return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/autorizar-acesso', methods=['GET', 'POST'])
+@login_required
+def permission_unlock():
+    permission = request.values.get('permission', '')
+    next_url = request.values.get('next') or url_for('main.dashboard')
+    if permission not in PERMISSION_LABELS:
+        flash('Permissão inválida.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    if not next_url.startswith('/'):
+        next_url = url_for('main.dashboard')
+
+    if current_user.has_permission(permission) or current_user.role == 'master':
+        return redirect(next_url)
+
+    authorizers = [
+        user for user in User.query.order_by(User.username.asc()).all()
+        if user_can_override_permission(user, permission)
+    ]
+
+    if request.method == 'POST':
+        if authorize_permission_override(permission):
+            grant_permission_view_override(permission)
+            flash(f'Acesso liberado para {PERMISSION_LABELS.get(permission, "esta área")}.', 'success')
+            return redirect(next_url)
+        flash('Usuário ou senha de autorização inválidos.', 'danger')
+
+    return render_template(
+        'permission_unlock.html',
+        permission=permission,
+        permission_label=PERMISSION_LABELS.get(permission, 'esta área'),
+        next_url=next_url,
+        authorizers=authorizers,
+    )
 
 
 @auth_bp.route('/assinatura', methods=['GET', 'POST'])
@@ -250,11 +864,23 @@ def subscription_activation():
         expected_key = (company.activation_key or '').strip().upper() if company else ''
 
         if not expected_key:
-            flash('Esta adega ainda não possui key de ativação. Fale com o suporte.', 'danger')
-            return redirect(url_for('auth.subscription_activation'))
+            generated_key = available_activation_key(activation_key)
+            if not generated_key:
+                flash('Key de ativação inválida ou já utilizada.', 'danger')
+                return redirect(url_for('auth.subscription_activation'))
+            apply_activation_key_to_company(generated_key, company)
+            db.session.commit()
+            flash('Assinatura ativada com sucesso.', 'success')
+            return redirect(url_for('main.dashboard'))
         if activation_key != expected_key:
-            flash('Key de ativação inválida.', 'danger')
-            return redirect(url_for('auth.subscription_activation'))
+            generated_key = available_activation_key(activation_key)
+            if not generated_key:
+                flash('Key de ativação inválida.', 'danger')
+                return redirect(url_for('auth.subscription_activation'))
+            apply_activation_key_to_company(generated_key, company)
+            db.session.commit()
+            flash('Assinatura ativada com sucesso.', 'success')
+            return redirect(url_for('main.dashboard'))
         if company_requires_activation(company):
             flash('Key correta, mas a assinatura ainda está vencida. Solicite a renovação ao suporte.', 'danger')
             return redirect(url_for('auth.subscription_activation'))
@@ -268,9 +894,12 @@ def subscription_activation():
 @auth_bp.route('/assinaturas')
 @login_required
 def subscriptions():
-    if not can_view_admin_settings():
-        flash('Seu usuário não tem permissão para ver o plano da adega.', 'danger')
-        return redirect(url_for('main.dashboard'))
+    if not can_view_finance_settings():
+        return redirect(url_for(
+            'auth.permission_unlock',
+            permission='can_view_finance',
+            next=request.full_path if request.query_string else request.path,
+        ))
 
     company = current_tenant_company()
     if current_user.role == 'master' and not company:
@@ -332,7 +961,19 @@ def master_companies():
         billing_cycles=BILLING_CYCLES,
         view_mode=view_mode,
         active_master_company_id=session.get('master_company_id'),
+        recent_error_logs=read_recent_error_logs(),
     )
+
+
+@auth_bp.route('/master/logs/limpar', methods=['POST'])
+@login_required
+def clear_master_logs():
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    clear_error_log_file()
+    flash('Logs limpos com sucesso.', 'success')
+    return redirect(url_for('auth.master_companies'))
 
 
 @auth_bp.route('/master/adegas/<int:company_id>/editar', methods=['POST'])
@@ -371,7 +1012,7 @@ def edit_company(company_id):
         company.subscription_renews_at = date.today() + timedelta(days=days)
 
     activation_key = request.form.get('activation_key', '').strip().upper()
-    if request.form.get('generate_activation_key') == 'on' or not activation_key:
+    if request.form.get('generate_activation_key') == 'on':
         activation_key = generate_activation_key()
     if activation_key != (company.activation_key or ''):
         company.activation_key = activation_key
@@ -462,9 +1103,70 @@ def settings():
             return redirect(url_for('auth.settings'))
 
         if form_type == 'email':
-            current_user.email = request.form.get('email', '').strip()
+            email = request.form.get('email', '').strip()
+            if not email or not valid_email(email):
+                flash('Informe um e-mail válido.', 'danger')
+                return redirect(url_for('auth.settings'))
+            if email == (current_user.email or ''):
+                flash('Este já é o e-mail cadastrado.', 'info')
+                return redirect(url_for('auth.settings'))
+            if not current_user.email:
+                current_user.email = email
+                current_user.email_verified = True
+                current_user.email_verified_at = utc_now()
+                db.session.commit()
+                flash('Email atualizado com sucesso.', 'success')
+                return redirect(url_for('auth.settings'))
+
+            if not current_user.email_verified:
+                current_user.email = email
+                current_user.email_verified = False
+                current_user.email_verified_at = None
+                db.session.commit()
+                remember_verification_user(current_user)
+                sent, message = create_email_verification_code(current_user, force=True)
+                flash(message, 'success' if sent else 'warning')
+                flash('Confirme o novo e-mail para concluir a alteração.', 'info')
+                return redirect(url_for('auth.verify_email'))
+
+            try:
+                request_email_change(current_user, email)
+            except EmailAuthenticationError as error:
+                current_app.logger.error('Falha de autenticação SMTP ao solicitar troca de email para user_id=%s: %s', current_user.id, error, exc_info=True)
+                flash('Gmail recusou o envio. Confira a configuração de e-mail do sistema.', 'danger')
+                return redirect(url_for('auth.settings'))
+            except Exception as error:
+                current_app.logger.error('Falha ao solicitar troca de email para user_id=%s: %s', current_user.id, error, exc_info=True)
+                flash('Não foi possível enviar a confirmação para o e-mail antigo agora.', 'danger')
+                return redirect(url_for('auth.settings'))
+
+            flash('Enviamos um link de confirmação para o e-mail antigo.', 'success')
+            return redirect(url_for('auth.settings'))
+
+        if form_type == 'email_alerts':
+            if not can_manage_company_users() and not authorize_permission_override('can_manage_settings'):
+                flash('Informe a senha de um usuário autorizado para alterar alertas.', 'danger')
+                return redirect(url_for('auth.settings'))
+            if not settings_company:
+                flash('Nenhuma adega selecionada para configurar alertas.', 'danger')
+                return redirect(url_for('auth.settings'))
+
+            existing_settings = alert_settings_for_company(settings_company)
+            for alert_type in EMAIL_ALERT_TYPES:
+                setting = existing_settings.get(alert_type)
+                if not setting:
+                    setting = EmailAlertSetting(company_id=settings_company.id, alert_type=alert_type)
+                    db.session.add(setting)
+                recipients = parse_recipients(request.form.get(f'alert_recipients_{alert_type}', ''))
+                invalid_recipients = [recipient for recipient in recipients if not valid_email(recipient)]
+                if invalid_recipients:
+                    flash(f'E-mail inválido em {EMAIL_ALERT_TYPES[alert_type]["label"]}: {invalid_recipients[0]}', 'danger')
+                    return redirect(url_for('auth.settings'))
+                setting.enabled = request.form.get(f'alert_enabled_{alert_type}') == 'on'
+                setting.recipients = ', '.join(recipients)
+
             db.session.commit()
-            flash('Email atualizado com sucesso.', 'success')
+            flash('Alertas por e-mail atualizados com sucesso.', 'success')
             return redirect(url_for('auth.settings'))
 
         if form_type == 'password':
@@ -475,8 +1177,8 @@ def settings():
             if not current_user.check_password(current_password):
                 flash('Senha atual incorreta.', 'danger')
                 return redirect(url_for('auth.settings'))
-            if len(new_password) < 3:
-                flash('A nova senha deve ter pelo menos 3 caracteres.', 'danger')
+            if password_too_short(new_password):
+                flash(f'A nova senha deve ter pelo menos {password_min_length()} caracteres.', 'danger')
                 return redirect(url_for('auth.settings'))
             if new_password != confirm_password:
                 flash('A confirmação da senha não confere.', 'danger')
@@ -488,8 +1190,8 @@ def settings():
             return redirect(url_for('auth.settings'))
 
         if form_type == 'card_fees':
-            if not can_view_admin_settings():
-                flash('Apenas o usuário master pode alterar as taxas da maquininha.', 'danger')
+            if current_user.role not in ('admin', 'master') and not authorize_role_override('admin', 'master'):
+                flash('Informe a senha de um admin para alterar as taxas da maquininha.', 'danger')
                 return redirect(url_for('auth.settings'))
 
             company = current_user.company
@@ -507,33 +1209,100 @@ def settings():
                 flash('Taxas da maquininha atualizadas com sucesso.', 'success')
             return redirect(url_for('auth.settings'))
 
+        if form_type == 'backup_settings':
+            if not can_manage_company_users() and not authorize_permission_override('can_manage_settings'):
+                flash('Informe a senha de um usuário autorizado para configurar backups.', 'danger')
+                return redirect(url_for('auth.settings'))
+
+            frequency = request.form.get('backup_frequency', 'manual')
+            if frequency not in BACKUP_FREQUENCIES:
+                frequency = 'manual'
+            if settings_company:
+                settings_company.backup_frequency = frequency
+                db.session.commit()
+                flash('Configuração de backup salva com sucesso.', 'success')
+            return redirect(url_for('auth.settings'))
+
+        if form_type == 'manual_backup':
+            if not can_manage_company_users() and not authorize_permission_override('can_manage_settings'):
+                flash('Informe a senha de um usuário autorizado para gerar backup.', 'danger')
+                return redirect(url_for('auth.settings'))
+
+            try:
+                backup_path = create_company_backup(settings_company, reason='manual')
+                flash(f'Backup gerado com sucesso: {backup_path.name}', 'success')
+            except Exception:
+                flash('Não foi possível gerar o backup agora. Verifique os logs.', 'danger')
+            return redirect(url_for('auth.settings'))
+
+        if form_type == 'master_generate_key':
+            if current_user.role != 'master':
+                flash('Apenas o master do sistema pode gerar keys.', 'danger')
+                return redirect(url_for('auth.settings'))
+
+            company_id = request.form.get('key_company_id')
+            company = db.session.get(Company, int(company_id)) if company_id and company_id.isdigit() else None
+            plan = request.form.get('key_plan', 'Basic')
+            renews_at = parse_date_field(request.form.get('key_renews_at'))
+            if plan not in MASTER_KEY_PLANS:
+                plan = 'Basic'
+            if not renews_at:
+                flash('Informe a data de validade da key.', 'danger')
+                return redirect(url_for('auth.settings'))
+
+            activation_key = generate_activation_key()
+            while ActivationKey.query.filter_by(key=activation_key).first():
+                activation_key = generate_activation_key()
+
+            key_record = ActivationKey(key=activation_key, plan=plan, renews_at=renews_at, active=True)
+            db.session.add(key_record)
+            db.session.flush()
+            if company:
+                apply_activation_key_to_company(key_record, company)
+            db.session.commit()
+            if company:
+                flash(f'Key gerada para {company.name}: {activation_key}', 'success')
+            else:
+                flash(f'Key avulsa gerada: {activation_key}', 'success')
+            return redirect(url_for('auth.settings'))
+
         if form_type == 'hire_user':
-            if not can_manage_company_users():
-                flash('Apenas o usuário master pode contratar usuários.', 'danger')
+            if not can_manage_company_users() and not authorize_permission_override('can_manage_settings'):
+                flash('Informe a senha de um usuário autorizado para contratar usuários.', 'danger')
                 return redirect(url_for('auth.settings'))
 
             username = request.form.get('hire_username', '').strip()
+            first_name = request.form.get('hire_first_name', '').strip()
+            last_name = request.form.get('hire_last_name', '').strip()
+            cpf = request.form.get('hire_cpf', '').strip()
             email = request.form.get('hire_email', '').strip()
             password = request.form.get('hire_password', '')
             role = request.form.get('hire_role', 'operator')
+            if role not in EMPLOYEE_ROLES:
+                role = 'operator'
 
             if not username:
                 flash('Informe o login do novo usuário.', 'danger')
                 return redirect(url_for('auth.settings'))
-            if len(password) < 3:
-                flash('A senha inicial deve ter pelo menos 3 caracteres.', 'danger')
+            if password_too_short(password):
+                flash(f'A senha inicial deve ter pelo menos {password_min_length()} caracteres.', 'danger')
                 return redirect(url_for('auth.settings'))
             if User.query.filter_by(username=username).first():
                 flash('Já existe um usuário com este login.', 'danger')
                 return redirect(url_for('auth.settings'))
-            if role == 'admin' and User.query.filter_by(company_id=settings_company.id, role='admin').first():
-                flash('Esta adega já possui um master da adega.', 'danger')
+            if email and not valid_email(email):
+                flash('Informe um e-mail válido para o funcionário.', 'danger')
                 return redirect(url_for('auth.settings'))
-
+            if company_cpf_exists(settings_company.id, cpf):
+                flash('Já existe um funcionário com este CPF nesta adega.', 'danger')
+                return redirect(url_for('auth.settings'))
             user = User(
                 username=username,
+                first_name=first_name,
+                last_name=last_name,
+                cpf=cpf,
                 email=email,
-                role='admin' if role == 'admin' else 'operator',
+                role=role,
                 company_id=settings_company.id,
                 is_active=True,
             )
@@ -545,8 +1314,8 @@ def settings():
             return redirect(url_for('auth.settings'))
 
         if form_type == 'update_employee':
-            if not can_manage_company_users():
-                flash('Apenas o usuário master pode alterar funcionários.', 'danger')
+            if not can_manage_company_users() and not authorize_permission_override('can_manage_settings'):
+                flash('Informe a senha de um usuário autorizado para alterar funcionários.', 'danger')
                 return redirect(url_for('auth.settings'))
 
             employee_id = request.form.get('employee_id')
@@ -555,23 +1324,77 @@ def settings():
                 flash('Funcionário não encontrado.', 'danger')
                 return redirect(url_for('auth.settings'))
             if employee.id == current_user.id and employee.role == 'admin' and request.form.get('is_active') != 'on':
-                flash('Você não pode inativar o próprio master da adega.', 'danger')
+                flash('Você não pode inativar o próprio admin da adega.', 'danger')
                 return redirect(url_for('auth.settings'))
 
             employee.is_active = request.form.get('is_active') == 'on'
+            employee.first_name = request.form.get('employee_first_name', '').strip()
+            employee.last_name = request.form.get('employee_last_name', '').strip()
+            employee_email = request.form.get('employee_email', '').strip()
+            if employee_email and not valid_email(employee_email):
+                flash('Informe um e-mail válido para o funcionário.', 'danger')
+                return redirect(url_for('auth.settings'))
+            if employee_email != (employee.email or ''):
+                employee.email = employee_email
+            employee_cpf = request.form.get('employee_cpf', '').strip()
+            if company_cpf_exists(settings_company.id, employee_cpf, employee.id):
+                flash('Já existe um funcionário com este CPF nesta adega.', 'danger')
+                return redirect(url_for('auth.settings'))
+            employee.cpf = employee_cpf
+            role = request.form.get('employee_role', employee.role)
+            if employee.id == current_user.id and employee.role == 'admin':
+                role = 'admin'
+            employee.role = role if role in EMPLOYEE_ROLES else employee.role
             apply_employee_permissions(employee, request.form)
             db.session.commit()
             flash('Permissões do funcionário atualizadas.', 'success')
             return redirect(url_for('auth.settings'))
 
     can_view_admin_tabs = can_view_admin_settings()
+    can_view_finance_tab = can_view_finance_settings()
     company_users = User.query.filter_by(company_id=settings_company.id).order_by(User.username.asc()).all() if settings_company and can_view_admin_tabs else []
+    key_companies = Company.query.order_by(Company.name.asc()).all() if current_user.role == 'master' else []
+    key_records = ActivationKey.query.order_by(ActivationKey.created_at.desc()).limit(20).all() if current_user.role == 'master' else []
+    email_alert_settings = alert_settings_for_company(settings_company) if settings_company and can_view_admin_tabs else {}
     return render_template(
         'settings/index.html',
         company_users=company_users,
         settings_company=settings_company,
         employee_permissions=EMPLOYEE_PERMISSIONS,
         permission_labels=PERMISSION_LABELS,
+        employee_roles=EMPLOYEE_ROLES,
         can_manage_employees=can_manage_company_users(),
         can_view_admin_tabs=can_view_admin_tabs,
+        can_view_finance_tab=can_view_finance_tab,
+        backup_frequencies=BACKUP_FREQUENCIES,
+        backup_frequency_label=backup_frequency_label,
+        can_import_products=can_import_products_settings(),
+        can_export_data=can_export_data_settings(),
+        key_companies=key_companies,
+        key_records=key_records,
+        key_plans=MASTER_KEY_PLANS,
+        key_presets=KEY_PRESETS,
+        default_key_renews_at=date.today() + timedelta(days=30),
+        email_alert_types=EMAIL_ALERT_TYPES,
+        email_alert_settings=email_alert_settings,
+    )
+
+
+@auth_bp.route('/configuracoes/importacao/modelo')
+@login_required
+def import_template_download():
+    if not can_import_products_settings():
+        flash('Apenas o dono da adega pode baixar o modelo de importação.', 'danger')
+        return redirect(url_for('auth.settings'))
+
+    template_path = Path(current_app.root_path) / 'static' / 'files' / 'modelo_importacao.xlsx'
+    if not template_path.exists():
+        flash('Modelo de importação não encontrado.', 'danger')
+        return redirect(url_for('auth.settings'))
+
+    return send_file(
+        io.BytesIO(template_path.read_bytes()),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='modelo_importacao_produtos.xlsx',
     )

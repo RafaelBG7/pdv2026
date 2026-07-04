@@ -6,7 +6,7 @@ import unittest
 
 from app import create_app
 from app.extensions import db
-from app.models import CashRegister, Category, Company, Payable, Payment, Product, Sale, SaleItem, User
+from app.models import ActivationKey, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, User
 
 
 class TestConfig:
@@ -15,12 +15,15 @@ class TestConfig:
     SQLALCHEMY_DATABASE_URI = 'sqlite://'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = False
+    MAIL_SUPPRESS_SEND = True
+    PUBLIC_BASE_URL = 'http://localhost'
 
 
 class RouteTestCase(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         TestConfig.LOG_DIR = Path(self.temp_dir.name) / 'logs'
+        TestConfig.BACKUP_DIR = Path(self.temp_dir.name) / 'backups'
         self.app = create_app(TestConfig)
         self.client = self.app.test_client()
 
@@ -52,7 +55,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Entrar'.encode(), response.data)
         self.assertIn('Cadastrar'.encode(), response.data)
 
-    def test_register_creates_user_and_logs_in(self):
+    def test_register_without_key_creates_user_but_requires_activation(self):
         response = self.client.post(
             '/login',
             data={
@@ -60,6 +63,7 @@ class RouteTestCase(unittest.TestCase):
                 'username': 'operador',
                 'company_name': 'Adega Operador',
                 'email': 'operador@example.com',
+                'no_activation_key': 'on',
                 'password': 'senha123',
                 'confirm_password': 'senha123',
             },
@@ -67,13 +71,59 @@ class RouteTestCase(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Cadastro realizado com sucesso.'.encode(), response.data)
-        self.assertIn('Dashboard'.encode(), response.data)
+        self.assertIn('Confirmar e-mail'.encode(), response.data)
+        self.assertIn('Cadastro criado. Confirme seu e-mail para acessar o sistema.'.encode(), response.data)
         with self.app.app_context():
             user = User.query.filter_by(username='operador').one()
             self.assertEqual(user.email, 'operador@example.com')
+            self.assertFalse(user.email_verified)
             self.assertEqual(user.company.name, 'Adega Operador')
+            self.assertEqual(user.company.activation_key, '')
+            self.assertIsNone(user.company.subscription_renews_at)
             self.assertTrue(user.check_password('senha123'))
+            self.assertEqual(EmailVerificationCode.query.filter_by(user_id=user.id).count(), 1)
+
+        blocked_response = self.client.get('/dashboard', follow_redirects=True)
+
+        self.assertEqual(blocked_response.status_code, 200)
+        self.assertIn('Entrar'.encode(), blocked_response.data)
+
+    def test_register_with_key_creates_user_and_logs_in(self):
+        with self.app.app_context():
+            db.session.add(ActivationKey(key='ABCD-1234-EFGH-5678', plan='Pro', renews_at=date.today() + timedelta(days=30)))
+            db.session.commit()
+
+        response = self.client.post(
+            '/login',
+            data={
+                'form_type': 'register',
+                'username': 'operadorcomkey',
+                'company_name': 'Adega Com Key',
+                'email': 'key@example.com',
+                'activation_key': 'ABCD-1234-EFGH-5678',
+                'password': 'senha123',
+                'confirm_password': 'senha123',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Confirmar e-mail'.encode(), response.data)
+        code = self.app.config['TEST_LAST_VERIFICATION_CODE']
+        verify_response = self.client.post('/verify-email', data={'code': code}, follow_redirects=True)
+
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertIn('Cadastro realizado com sucesso.'.encode(), verify_response.data)
+        self.assertIn('Dashboard'.encode(), verify_response.data)
+        with self.app.app_context():
+            user = User.query.filter_by(username='operadorcomkey').one()
+            self.assertTrue(user.email_verified)
+            self.assertIsNotNone(user.email_verified_at)
+            self.assertEqual(user.company.activation_key, 'ABCD-1234-EFGH-5678')
+            self.assertEqual(user.company.subscription_plan, 'Pro')
+            self.assertIsNotNone(user.company.subscription_renews_at)
+            key = ActivationKey.query.filter_by(key='ABCD-1234-EFGH-5678').one()
+            self.assertEqual(key.used_by_company_id, user.company_id)
 
     def test_master_can_hire_user_for_same_company(self):
         self.login()
@@ -83,11 +133,12 @@ class RouteTestCase(unittest.TestCase):
             data={
                 'form_type': 'hire_user',
                 'hire_username': 'caixa1',
+                'hire_first_name': 'Pedro',
+                'hire_last_name': 'Caixa',
+                'hire_cpf': '123.456.789-00',
                 'hire_email': 'caixa@example.com',
                 'hire_password': '123',
                 'hire_role': 'operator',
-                'can_manage_sales': 'on',
-                'can_manage_cash_register': 'on',
             },
             follow_redirects=True,
         )
@@ -99,12 +150,67 @@ class RouteTestCase(unittest.TestCase):
             hired_user = User.query.filter_by(username='caixa1').one()
             self.assertEqual(hired_user.company_id, master.company_id)
             self.assertEqual(hired_user.role, 'operator')
+            self.assertEqual(hired_user.first_name, 'Pedro')
+            self.assertEqual(hired_user.last_name, 'Caixa')
+            self.assertEqual(hired_user.cpf, '123.456.789-00')
             self.assertTrue(hired_user.check_password('123'))
             self.assertTrue(hired_user.can_manage_sales)
             self.assertTrue(hired_user.can_manage_cash_register)
+            self.assertTrue(hired_user.can_view_products)
             self.assertFalse(hired_user.can_manage_products)
+            self.assertFalse(hired_user.can_manage_settings)
 
-    def test_employee_permissions_block_unallowed_routes(self):
+        duplicate_response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'hire_user',
+                'hire_username': 'caixa2',
+                'hire_cpf': '12345678900',
+                'hire_password': '123',
+                'hire_role': 'operator',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(duplicate_response.status_code, 200)
+        self.assertIn('Já existe um funcionário com este CPF nesta adega.'.encode(), duplicate_response.data)
+
+    def test_company_can_have_multiple_admin_users(self):
+        self.login()
+
+        first_response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'hire_user',
+                'hire_username': 'admin1',
+                'hire_password': '123',
+                'hire_role': 'admin',
+            },
+            follow_redirects=True,
+        )
+        second_response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'hire_user',
+                'hire_username': 'admin2',
+                'hire_password': '123',
+                'hire_role': 'admin',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertIn('Usuário contratado com sucesso.'.encode(), first_response.data)
+        self.assertIn('Usuário contratado com sucesso.'.encode(), second_response.data)
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            admins = User.query.filter_by(company_id=company_id, role='admin').all()
+            usernames = {user.username for user in admins}
+            self.assertIn('admin1', usernames)
+            self.assertIn('admin2', usernames)
+
+    def test_employee_permissions_allow_view_and_block_unallowed_actions_without_password(self):
         self.login()
 
         self.client.post(
@@ -114,7 +220,6 @@ class RouteTestCase(unittest.TestCase):
                 'hire_username': 'vendedor',
                 'hire_password': '123',
                 'hire_role': 'operator',
-                'can_manage_sales': 'on',
             },
             follow_redirects=True,
         )
@@ -123,12 +228,19 @@ class RouteTestCase(unittest.TestCase):
 
         products_response = self.client.get('/catalogo/produtos', follow_redirects=True)
         sales_response = self.client.get('/vendas')
+        cash_response = self.client.get('/caixa')
+        settings_response = self.client.get('/configuracoes')
+        reports_response = self.client.get('/relatorios', follow_redirects=True)
 
         self.assertEqual(products_response.status_code, 200)
-        self.assertIn('não tem permissão'.encode(), products_response.data)
+        self.assertIn('Produtos'.encode(), products_response.data)
         self.assertEqual(sales_response.status_code, 200)
+        self.assertEqual(cash_response.status_code, 200)
+        self.assertEqual(settings_response.status_code, 200)
+        self.assertIn('Usuário'.encode(), settings_response.data)
+        self.assertIn('Autorizar Relatórios'.encode(), reports_response.data)
 
-    def test_common_employee_can_view_products_but_cannot_edit_them(self):
+    def test_common_employee_can_view_products_but_needs_authorized_password_to_edit(self):
         self.login()
         with self.app.app_context():
             product = Product(name='Produto Consulta', sale_price=10, stock_quantity=5, active=True, company_id=self.master_company_id())
@@ -143,16 +255,13 @@ class RouteTestCase(unittest.TestCase):
                 'hire_username': 'consulta',
                 'hire_password': '123',
                 'hire_role': 'operator',
-                'can_view_products': 'on',
-                'can_manage_sales': 'on',
-                'can_manage_cash_register': 'on',
             },
             follow_redirects=True,
         )
         self.client.get('/logout')
         self.login(username='consulta', password='123')
 
-        products_response = self.client.get('/catalogo/produtos')
+        products_response = self.client.get('/catalogo/produtos', follow_redirects=True)
         edit_response = self.client.post(
             f'/catalogo/produtos/{product_id}/atualizar',
             data={
@@ -166,48 +275,212 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(products_response.status_code, 200)
         self.assertIn('Produto Consulta'.encode(), products_response.data)
         self.assertNotIn('Novo produto'.encode(), products_response.data)
-        self.assertIn('não tem permissão'.encode(), edit_response.data)
+        self.assertNotIn('Salvar'.encode(), products_response.data)
+        self.assertNotIn('Venda</label>'.encode(), products_response.data)
+        self.assertIn('Informe a senha de um usuário autorizado'.encode(), edit_response.data)
         with self.app.app_context():
             unchanged = db.session.get(Product, product_id)
             self.assertEqual(unchanged.name, 'Produto Consulta')
             self.assertEqual(unchanged.sale_price, 10)
 
-    def test_employee_with_product_permission_cannot_import_spreadsheet(self):
+        authorized_response = self.client.post(
+            f'/catalogo/produtos/{product_id}/atualizar',
+            data={
+                'name': 'Produto Alterado',
+                'sale_price': '99,00',
+                'stock_quantity': '1',
+                '_permission_override_username': 'master',
+                '_permission_override_password': 'master123',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertIn('Produto atualizado com sucesso.'.encode(), authorized_response.data)
+        with self.app.app_context():
+            changed = db.session.get(Product, product_id)
+            self.assertEqual(changed.name, 'Produto Alterado')
+            self.assertEqual(changed.sale_price, 99)
+
+    def test_manager_can_manage_operations_but_not_finance(self):
+        self.login()
+        with self.app.app_context():
+            product = Product(name='Produto Gerente', sale_price=10, stock_quantity=5, active=True, company_id=self.master_company_id())
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'hire_user',
+                'hire_username': 'gerente',
+                'hire_password': '123',
+                'hire_role': 'manager',
+            },
+            follow_redirects=True,
+        )
+        self.client.get('/logout')
+        self.login(username='gerente', password='123')
+
+        products_response = self.client.get('/catalogo/produtos')
+        edit_response = self.client.post(
+            f'/catalogo/produtos/{product_id}/atualizar',
+            data={'name': 'Produto Gerente Editado', 'sale_price': '12,00', 'stock_quantity': '4'},
+            follow_redirects=True,
+        )
+        settings_response = self.client.get('/configuracoes')
+        subscription_response = self.client.get('/assinaturas', follow_redirects=True)
+        fees_response = self.client.post(
+            '/configuracoes',
+            data={'form_type': 'card_fees', 'debit_fee_enabled': 'on', 'debit_fee_percent': '2,00'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(products_response.status_code, 200)
+        self.assertIn('Produto Gerente'.encode(), products_response.data)
+        self.assertEqual(edit_response.status_code, 200)
+        self.assertIn('Produto atualizado com sucesso.'.encode(), edit_response.data)
+        self.assertIn('Equipe'.encode(), settings_response.data)
+        self.assertIn('Importação'.encode(), settings_response.data)
+        self.assertIn('Backup'.encode(), settings_response.data)
+        self.assertIn('Autorizar Financeiro'.encode(), settings_response.data)
+        self.assertNotIn('Taxa da maquininha'.encode(), settings_response.data)
+        self.assertIn('Autorizar Financeiro'.encode(), subscription_response.data)
+        self.assertIn('Informe a senha de um admin'.encode(), fees_response.data)
+        with self.app.app_context():
+            changed = db.session.get(Product, product_id)
+            self.assertEqual(changed.name, 'Produto Gerente Editado')
+            company = User.query.filter_by(username='master').one().company
+            self.assertFalse(company.debit_fee_enabled)
+
+    def test_master_can_edit_employee_profile_fields(self):
+        self.login()
+        self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'hire_user',
+                'hire_username': 'perfil',
+                'hire_first_name': 'Nome',
+                'hire_last_name': 'Antigo',
+                'hire_cpf': '111.222.333-44',
+                'hire_password': '123',
+                'hire_role': 'operator',
+            },
+            follow_redirects=True,
+        )
+        with self.app.app_context():
+            employee_id = User.query.filter_by(username='perfil').one().id
+
+        response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'update_employee',
+                'employee_id': employee_id,
+                'employee_first_name': 'Nome',
+                'employee_last_name': 'Novo',
+                'employee_cpf': '555.666.777-88',
+                'employee_role': 'manager',
+                'is_active': 'on',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Permissões do funcionário atualizadas.'.encode(), response.data)
+        with self.app.app_context():
+            employee = db.session.get(User, employee_id)
+            self.assertEqual(employee.last_name, 'Novo')
+            self.assertEqual(employee.cpf, '555.666.777-88')
+            self.assertEqual(employee.role, 'manager')
+
+    def test_manager_can_import_spreadsheet(self):
         self.login()
 
         self.client.post(
             '/configuracoes',
             data={
                 'form_type': 'hire_user',
-                'hire_username': 'estoquista',
+                'hire_username': 'gerenteimport',
                 'hire_password': '123',
-                'hire_role': 'operator',
-                'can_view_products': 'on',
-                'can_manage_products': 'on',
+                'hire_role': 'manager',
             },
             follow_redirects=True,
         )
         self.client.get('/logout')
-        self.login(username='estoquista', password='123')
+        self.login(username='gerenteimport', password='123')
 
-        products_response = self.client.get('/catalogo/produtos')
-        import_response = self.client.post(
+        response = self.client.post(
             '/catalogo/produtos/importar',
             data={
-                'spreadsheet': (io.BytesIO('categoria;produto;custo;venda\nTeste;Produto X;1;2\n'.encode('utf-8')), 'produtos.csv'),
+                'spreadsheet': (io.BytesIO('categoria;produto;preco_custo;preco_venda\nTeste;Produto X;1;2\n'.encode('utf-8')), 'produtos.csv'),
             },
             content_type='multipart/form-data',
             follow_redirects=True,
         )
 
-        self.assertEqual(products_response.status_code, 200)
-        self.assertNotIn('Importar planilha'.encode(), products_response.data)
-        self.assertEqual(import_response.status_code, 200)
-        self.assertIn('Apenas o dono da adega pode importar planilhas.'.encode(), import_response.data)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Importação concluída: 1 produto(s) criado(s)'.encode(), response.data)
         with self.app.app_context():
-            self.assertIsNone(Product.query.filter_by(name='Produto X').first())
+            self.assertIsNotNone(Product.query.filter_by(name='Produto X').first())
 
-    def test_common_employee_cannot_see_team_or_finance_settings_tabs(self):
+    def test_admin_can_export_products_csv(self):
+        self.login()
+        with self.app.app_context():
+            db.session.add(Product(
+                name='Produto Exportado',
+                barcode='789',
+                cost_price=5,
+                sale_price=10,
+                stock_quantity=7,
+                active=True,
+                company_id=self.master_company_id(),
+            ))
+            db.session.commit()
+
+        settings_response = self.client.get('/configuracoes')
+        response = self.client.get('/exportacoes/produtos')
+
+        self.assertEqual(settings_response.status_code, 200)
+        self.assertIn('Exportação'.encode(), settings_response.data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'text/csv')
+        self.assertIn('attachment;', response.headers.get('Content-Disposition', ''))
+        self.assertIn('Produto Exportado'.encode(), response.data)
+        self.assertIn('produto'.encode(), response.data)
+
+    def test_manager_cannot_export_data(self):
+        self.login()
+
+        self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'hire_user',
+                'hire_username': 'semexport',
+                'hire_password': '123',
+                'hire_role': 'manager',
+            },
+            follow_redirects=True,
+        )
+        self.client.get('/logout')
+        self.login(username='semexport', password='123')
+
+        settings_response = self.client.get('/configuracoes')
+        response = self.client.get('/exportacoes/produtos', follow_redirects=True)
+        authorized_response = self.client.post(
+            '/exportacoes/produtos',
+            data={
+                '_permission_override_username': 'master',
+                '_permission_override_password': 'master123',
+            },
+        )
+
+        self.assertEqual(settings_response.status_code, 200)
+        self.assertIn('Exportação'.encode(), settings_response.data)
+        self.assertIn('Informe a senha de um admin'.encode(), response.data)
+        self.assertEqual(authorized_response.status_code, 200)
+        self.assertEqual(authorized_response.mimetype, 'text/csv')
+
+    def test_common_employee_can_see_admin_tabs_but_actions_require_password(self):
         self.login()
 
         self.client.post(
@@ -217,9 +490,6 @@ class RouteTestCase(unittest.TestCase):
                 'hire_username': 'funcionario',
                 'hire_password': '123',
                 'hire_role': 'operator',
-                'can_view_products': 'on',
-                'can_manage_sales': 'on',
-                'can_manage_cash_register': 'on',
             },
             follow_redirects=True,
         )
@@ -232,12 +502,36 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Usuário'.encode(), response.data)
         self.assertIn('Suporte'.encode(), response.data)
         self.assertIn('Aparência'.encode(), response.data)
+        self.assertIn('Autorizar Gestão'.encode(), response.data)
         self.assertNotIn('Equipe'.encode(), response.data)
         self.assertNotIn('Financeiro'.encode(), response.data)
+        self.assertNotIn('Importação'.encode(), response.data)
         self.assertNotIn('Gestão de funcionários'.encode(), response.data)
         self.assertNotIn('Taxa da maquininha'.encode(), response.data)
 
-    def test_common_employee_cannot_see_or_access_subscription_plan(self):
+        unlocked_response = self.client.post(
+            '/autorizar-acesso',
+            data={
+                'permission': 'can_manage_settings',
+                'next': '/configuracoes',
+                '_permission_override_username': 'master',
+                '_permission_override_password': 'master123',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertIn('Equipe'.encode(), unlocked_response.data)
+        self.assertIn('Importação'.encode(), unlocked_response.data)
+        self.assertIn('Gestão de funcionários'.encode(), unlocked_response.data)
+
+        denied_response = self.client.post(
+            '/configuracoes',
+            data={'form_type': 'hire_user', 'hire_username': 'novo', 'hire_password': '123'},
+            follow_redirects=True,
+        )
+        self.assertIn('Informe a senha de um usuário autorizado'.encode(), denied_response.data)
+
+    def test_common_employee_can_view_subscription_plan(self):
         self.login()
 
         self.client.post(
@@ -247,9 +541,6 @@ class RouteTestCase(unittest.TestCase):
                 'hire_username': 'semplano',
                 'hire_password': '123',
                 'hire_role': 'operator',
-                'can_view_products': 'on',
-                'can_manage_sales': 'on',
-                'can_manage_cash_register': 'on',
             },
             follow_redirects=True,
         )
@@ -262,13 +553,12 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertNotIn('Assinaturas'.encode(), dashboard_response.data)
         self.assertEqual(subscription_response.status_code, 200)
-        self.assertIn('não tem permissão para ver o plano'.encode(), subscription_response.data)
-        self.assertNotIn('Plano atual'.encode(), subscription_response.data)
+        self.assertIn('Autorizar Financeiro'.encode(), subscription_response.data)
 
     def test_company_data_is_separated_between_logins(self):
         with self.app.app_context():
-            company_a = Company(name='Adega A')
-            company_b = Company(name='Adega B')
+            company_a = Company(name='Adega A', activation_key='KEY-A')
+            company_b = Company(name='Adega B', activation_key='KEY-B')
             db.session.add_all([company_a, company_b])
             db.session.flush()
             user_a = User(username='adegajf123', role='admin', company_id=company_a.id, is_active=True)
@@ -298,8 +588,8 @@ class RouteTestCase(unittest.TestCase):
 
     def test_different_companies_can_create_category_with_same_name(self):
         with self.app.app_context():
-            company_a = Company(name='Adega Categoria A')
-            company_b = Company(name='Adega Categoria B')
+            company_a = Company(name='Adega Categoria A', activation_key='KEY-CAT-A')
+            company_b = Company(name='Adega Categoria B', activation_key='KEY-CAT-B')
             db.session.add_all([company_a, company_b])
             db.session.flush()
             user_a = User(username='cat_a', role='admin', company_id=company_a.id, is_active=True)
@@ -386,6 +676,27 @@ class RouteTestCase(unittest.TestCase):
             self.assertTrue(updated_company.active)
             self.assertEqual(updated_company.subscription_plan, 'Premium')
             self.assertEqual(updated_company.billing_cycle, 'annual')
+            self.assertEqual(updated_company.activation_key, '')
+
+        generate_key_response = self.client.post(
+            f'/master/adegas/{company_id}/editar',
+            data={
+                'name': 'Adega Editada',
+                'active': 'on',
+                'view_mode': 'cards',
+                'subscription_plan': 'Premium',
+                'billing_cycle': 'annual',
+                'subscription_started_at': '2026-07-01',
+                'subscription_renews_at': '2027-07-01',
+                'generate_activation_key': 'on',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(generate_key_response.status_code, 200)
+        with self.app.app_context():
+            generated_company = db.session.get(Company, company_id)
+            self.assertTrue(generated_company.activation_key)
 
         access_response = self.client.get(
             f'/master/adegas/{company_id}/acessar',
@@ -425,6 +736,58 @@ class RouteTestCase(unittest.TestCase):
         with self.app.app_context():
             self.assertIsNone(db.session.get(Company, company_id))
             self.assertIsNone(User.query.filter_by(username='removivel').first())
+
+    def test_master_settings_can_generate_key_with_plan_and_period(self):
+        with self.app.app_context():
+            company = Company(name='Adega Sem Key', activation_key='', subscription_renews_at=None)
+            db.session.add(company)
+            db.session.commit()
+            company_id = company.id
+
+        self.login()
+        settings_response = self.client.get('/configuracoes')
+
+        self.assertEqual(settings_response.status_code, 200)
+        self.assertIn('Gerar key'.encode(), settings_response.data)
+        self.assertIn('Adega Sem Key'.encode(), settings_response.data)
+
+        response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'master_generate_key',
+                'key_company_id': str(company_id),
+                'key_plan': 'Pro',
+                'key_renews_at': '2026-12-31',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Key gerada para Adega Sem Key'.encode(), response.data)
+        with self.app.app_context():
+            updated = db.session.get(Company, company_id)
+            self.assertEqual(updated.subscription_plan, 'Pro')
+            self.assertEqual(updated.subscription_renews_at.isoformat(), '2026-12-31')
+            self.assertTrue(updated.activation_key)
+            self.assertTrue(updated.active)
+            self.assertEqual(ActivationKey.query.filter_by(key=updated.activation_key).one().used_by_company_id, company_id)
+
+        avulsa_response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'master_generate_key',
+                'key_company_id': '',
+                'key_plan': 'Basic',
+                'key_renews_at': '2026-07-09',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(avulsa_response.status_code, 200)
+        self.assertIn('Key avulsa gerada'.encode(), avulsa_response.data)
+        with self.app.app_context():
+            free_key = ActivationKey.query.filter_by(plan='Basic', renews_at=date(2026, 7, 9), used_by_company_id=None).one()
+            self.assertTrue(free_key.key)
 
     def test_expired_subscription_blocks_company_until_valid_activation_key(self):
         yesterday = date.today() - timedelta(days=1)
@@ -585,12 +948,220 @@ class RouteTestCase(unittest.TestCase):
         with self.app.app_context():
             self.assertTrue(db.session.get(Payable, payable_id).paid)
 
+    def test_dashboard_shows_operational_summary(self):
+        self.login()
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            product = Product(
+                name='Produto Dashboard',
+                cost_price=60,
+                sale_price=100,
+                stock_quantity=2,
+                min_stock_quantity=3,
+                active=True,
+                company_id=company_id,
+            )
+            cash_register = CashRegister(
+                company_id=company_id,
+                opening_amount=100,
+                status='open',
+                opened_at=datetime.now(),
+            )
+            db.session.add_all([product, cash_register])
+            db.session.flush()
+            sale = Sale(
+                company_id=company_id,
+                cash_register_id=cash_register.id,
+                created_at=datetime.now(),
+                total_amount=100,
+                final_amount=100,
+                payment_status='paid',
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add(SaleItem(
+                sale_id=sale.id,
+                product_id=product.id,
+                quantity=1,
+                unit_price=100,
+                unit_cost_price=60,
+                total_price=100,
+                profit_amount=40,
+            ))
+            db.session.add(Payable(
+                company_id=company_id,
+                description='Internet',
+                category='Internet',
+                amount=120,
+                due_date=date.today() + timedelta(days=1),
+            ))
+            db.session.commit()
+
+        response = self.client.get('/dashboard')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Vendido hoje'.encode(), response.data)
+        self.assertIn('R$ 100,00'.encode(), response.data)
+        self.assertIn('Lucro hoje'.encode(), response.data)
+        self.assertIn('R$ 40,00'.encode(), response.data)
+        self.assertIn('Produto Dashboard'.encode(), response.data)
+        self.assertIn('Estoque baixo'.encode(), response.data)
+        self.assertIn('Internet'.encode(), response.data)
+
+    def test_operator_dashboard_hides_profit_and_payables(self):
+        self.login()
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            product = Product(
+                name='Produto Sem Financeiro',
+                cost_price=10,
+                sale_price=20,
+                stock_quantity=2,
+                min_stock_quantity=3,
+                active=True,
+                company_id=company_id,
+            )
+            employee = User(username='dashboard_func', role='operator', company_id=company_id, is_active=True)
+            employee.set_password('123')
+            employee.can_view_products = False
+            employee.can_manage_products = False
+            employee.can_manage_categories = False
+            employee.can_manage_sales = True
+            employee.can_manage_cash_register = True
+            employee.can_view_reports = False
+            employee.can_manage_payables = False
+            employee.can_manage_settings = False
+            db.session.add_all([
+                product,
+                employee,
+                Payable(
+                    company_id=company_id,
+                    description='Conta Restrita',
+                    category='Aluguel',
+                    amount=300,
+                    due_date=date.today() + timedelta(days=1),
+                ),
+            ])
+            db.session.flush()
+            sale = Sale(
+                company_id=company_id,
+                created_at=datetime.now(),
+                total_amount=20,
+                final_amount=20,
+                payment_status='paid',
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add(SaleItem(
+                sale_id=sale.id,
+                product_id=product.id,
+                quantity=1,
+                unit_price=20,
+                unit_cost_price=10,
+                total_price=20,
+                profit_amount=10,
+            ))
+            db.session.commit()
+
+        self.client.get('/logout')
+        self.login(username='dashboard_func', password='123')
+        response = self.client.get('/dashboard')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Vendido hoje'.encode(), response.data)
+        self.assertIn('Produto Sem Financeiro'.encode(), response.data)
+        self.assertIn('Estoque baixo'.encode(), response.data)
+        self.assertNotIn('Lucro hoje'.encode(), response.data)
+        self.assertNotIn('Lucro do caixa'.encode(), response.data)
+        self.assertNotIn('lucro R$'.encode(), response.data)
+        self.assertNotIn('Relatórios'.encode(), response.data)
+        self.assertNotIn('Contas próximas'.encode(), response.data)
+        self.assertNotIn('Contas vencendo'.encode(), response.data)
+        self.assertNotIn('Conta Restrita'.encode(), response.data)
+
     def test_invalid_login_stays_on_login_page(self):
         response = self.login(password='senha-errada')
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Usuário ou senha inválidos.'.encode(), response.data)
         self.assertIn('Entrar'.encode(), response.data)
+
+    def test_unverified_email_blocks_login_and_allows_confirmation(self):
+        with self.app.app_context():
+            company = Company(name='Adega Verificar', activation_key='KEY-VERIFY', subscription_renews_at=date.today() + timedelta(days=30))
+            db.session.add(company)
+            db.session.flush()
+            user = User(
+                username='semconfirmar',
+                email='semconfirmar@example.com',
+                email_verified=False,
+                role='admin',
+                company_id=company.id,
+                is_active=True,
+            )
+            user.set_password('senha123')
+            db.session.add(user)
+            db.session.commit()
+
+        login_response = self.login(username='semconfirmar', password='senha123', follow_redirects=True)
+
+        self.assertEqual(login_response.status_code, 200)
+        self.assertIn('Seu e-mail ainda não foi confirmado.'.encode(), login_response.data)
+        self.assertIn('Confirmar e-mail'.encode(), login_response.data)
+
+        resend_response = self.client.post('/verify-email/resend', follow_redirects=True)
+
+        self.assertEqual(resend_response.status_code, 200)
+        self.assertIn('Código enviado para o e-mail cadastrado.'.encode(), resend_response.data)
+        code = self.app.config['TEST_LAST_VERIFICATION_CODE']
+
+        verify_response = self.client.post('/verify-email', data={'code': code}, follow_redirects=True)
+
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertIn('Dashboard'.encode(), verify_response.data)
+        with self.app.app_context():
+            user = User.query.filter_by(username='semconfirmar').one()
+            self.assertTrue(user.email_verified)
+            self.assertIsNotNone(user.email_verified_at)
+
+    def test_password_reset_sends_token_and_changes_password(self):
+        with self.app.app_context():
+            company = Company(name='Adega Reset', activation_key='KEY-RESET', subscription_renews_at=date.today() + timedelta(days=30))
+            db.session.add(company)
+            db.session.flush()
+            user = User(
+                username='resetavel',
+                email='resetavel@example.com',
+                email_verified=True,
+                role='admin',
+                company_id=company.id,
+                is_active=True,
+            )
+            user.set_password('senha123')
+            db.session.add(user)
+            db.session.commit()
+
+        request_response = self.client.post('/forgot-password', data={'email': 'resetavel@example.com'}, follow_redirects=True)
+
+        self.assertEqual(request_response.status_code, 200)
+        self.assertIn('Se este e-mail estiver cadastrado'.encode(), request_response.data)
+        token = self.app.config['TEST_LAST_PASSWORD_RESET_TOKEN']
+        with self.app.app_context():
+            self.assertEqual(PasswordResetToken.query.count(), 1)
+
+        reset_response = self.client.post(
+            f'/reset-password/{token}',
+            data={'password': 'nova1234', 'confirm_password': 'nova1234'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(reset_response.status_code, 200)
+        self.assertIn('Senha redefinida com sucesso'.encode(), reset_response.data)
+        with self.app.app_context():
+            user = User.query.filter_by(username='resetavel').one()
+            token_record = PasswordResetToken.query.one()
+            self.assertTrue(user.check_password('nova1234'))
+            self.assertTrue(token_record.used)
 
     def test_authenticated_user_is_redirected_away_from_login(self):
         self.login()
@@ -639,6 +1210,47 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('origem', log_content)
         self.assertIn('X-Request-ID', response.headers)
 
+    def test_master_panel_shows_recent_error_logs(self):
+        self.client.get('/rota-inexistente?origem=painel-master')
+        self.login()
+
+        response = self.client.get('/master/adegas')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Logs recentes'.encode(), response.data)
+        self.assertIn('Erro HTTP 404'.encode(), response.data)
+        self.assertIn('/rota-inexistente'.encode(), response.data)
+        self.assertIn('Request ID'.encode(), response.data)
+        self.assertIn('Limpar logs'.encode(), response.data)
+
+    def test_master_can_clear_error_logs(self):
+        self.client.get('/rota-inexistente?origem=limpar')
+        log_path = Path(self.app.config['LOG_DIR']) / 'errors.log'
+        self.assertIn('Erro HTTP 404', log_path.read_text(encoding='utf-8'))
+
+        self.login()
+        response = self.client.post('/master/logs/limpar', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Logs limpos com sucesso.'.encode(), response.data)
+        self.assertEqual(log_path.read_text(encoding='utf-8'), '')
+
+    def test_non_master_cannot_clear_error_logs(self):
+        with self.app.app_context():
+            company = Company(name='Adega Log', activation_key='KEY-LOG')
+            db.session.add(company)
+            db.session.flush()
+            user = User(username='logadmin', role='admin', company_id=company.id, is_active=True)
+            user.set_password('123')
+            db.session.add(user)
+            db.session.commit()
+
+        self.login(username='logadmin', password='123')
+        response = self.client.post('/master/logs/limpar', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Apenas o usuário master pode acessar este painel.'.encode(), response.data)
+
     def test_catalog_routes_redirect_anonymous_users_to_login(self):
         for route in ('/catalogo/produtos', '/catalogo/produtos/novo', '/catalogo/categorias'):
             with self.subTest(route=route):
@@ -661,6 +1273,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Dark'.encode(), response.data)
         self.assertIn('Senha criptografada'.encode(), response.data)
         self.assertIn('Email protegido'.encode(), response.data)
+        self.assertIn('Importação'.encode(), response.data)
+        self.assertIn('Baixar planilha exemplo'.encode(), response.data)
 
     def test_subscriptions_page_shows_basic_and_pro_plans(self):
         self.login()
@@ -708,6 +1322,94 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(user.last_name, 'Borges')
             self.assertEqual(user.phone, '(11) 99999-0000')
             self.assertEqual(user.email, 'rafael@example.com')
+            self.assertTrue(user.email_verified)
+
+    def test_settings_email_change_requires_old_email_confirmation(self):
+        with self.app.app_context():
+            user = User.query.filter_by(username='master').one()
+            user.email = 'antigo@example.com'
+            user.email_verified = True
+            user.email_verified_at = datetime.now()
+            db.session.commit()
+
+        self.login()
+
+        request_response = self.client.post(
+            '/configuracoes',
+            data={'form_type': 'email', 'email': 'novo@example.com'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(request_response.status_code, 200)
+        self.assertIn('Enviamos um link de confirmação para o e-mail antigo.'.encode(), request_response.data)
+        with self.app.app_context():
+            user = User.query.filter_by(username='master').one()
+            self.assertEqual(user.email, 'antigo@example.com')
+            self.assertEqual(EmailChangeRequest.query.count(), 1)
+
+        token = self.app.config['TEST_LAST_EMAIL_CHANGE_TOKEN']
+        confirm_response = self.client.get(f'/confirmar-troca-email/{token}', follow_redirects=True)
+
+        self.assertEqual(confirm_response.status_code, 200)
+        self.assertIn('E-mail alterado com sucesso.'.encode(), confirm_response.data)
+        with self.app.app_context():
+            user = User.query.filter_by(username='master').one()
+            change_request = EmailChangeRequest.query.one()
+            self.assertEqual(user.email, 'novo@example.com')
+            self.assertTrue(user.email_verified)
+            self.assertTrue(change_request.used)
+
+    def test_settings_updates_email_alerts(self):
+        self.login()
+
+        response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'email_alerts',
+                'alert_enabled_product_out_of_stock': 'on',
+                'alert_recipients_product_out_of_stock': 'dono@example.com, gerente@example.com',
+                'alert_recipients_product_low_stock': '',
+                'alert_enabled_payable_due_today': 'on',
+                'alert_recipients_payable_due_today': 'financeiro@example.com',
+                'alert_recipients_payable_overdue': '',
+                'alert_recipients_subscription_expiring': '',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Alertas por e-mail atualizados com sucesso.'.encode(), response.data)
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            out_stock = EmailAlertSetting.query.filter_by(company_id=company_id, alert_type='product_out_of_stock').one()
+            due_today = EmailAlertSetting.query.filter_by(company_id=company_id, alert_type='payable_due_today').one()
+            self.assertTrue(out_stock.enabled)
+            self.assertEqual(out_stock.recipient_list, ['dono@example.com', 'gerente@example.com'])
+            self.assertTrue(due_today.enabled)
+
+    def test_email_alert_for_out_of_stock_product_is_sent_once(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            db.session.add(EmailAlertSetting(
+                company_id=company_id,
+                alert_type='product_out_of_stock',
+                enabled=True,
+                recipients='dono@example.com',
+            ))
+            db.session.add(Product(name='Produto Alerta Email', sale_price=10, stock_quantity=0, min_stock_quantity=1, active=True, company_id=company_id))
+            db.session.commit()
+
+        first_response = self.client.get('/dashboard')
+        second_response = self.client.get('/dashboard')
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        with self.app.app_context():
+            deliveries = EmailAlertDelivery.query.filter_by(alert_type='product_out_of_stock').all()
+            self.assertEqual(len(deliveries), 1)
+            self.assertIn('dono@example.com', deliveries[0].recipients)
 
     def test_settings_updates_card_machine_fees(self):
         self.login()
@@ -737,6 +1439,39 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(company.pix_fee_percent, 0.99)
             self.assertEqual(company.debit_fee_percent, 1.75)
             self.assertEqual(company.credit_fee_percent, 3.20)
+
+    def test_settings_updates_backup_frequency_and_runs_manual_backup(self):
+        self.login()
+
+        frequency_response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'backup_settings',
+                'backup_frequency': 'weekly',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(frequency_response.status_code, 200)
+        self.assertIn('Backup'.encode(), frequency_response.data)
+        self.assertIn('Configuração de backup salva com sucesso.'.encode(), frequency_response.data)
+        with self.app.app_context():
+            company = User.query.filter_by(username='master').one().company
+            self.assertEqual(company.backup_frequency, 'weekly')
+
+        manual_response = self.client.post(
+            '/configuracoes',
+            data={'form_type': 'manual_backup'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(manual_response.status_code, 200)
+        self.assertIn('Backup gerado com sucesso'.encode(), manual_response.data)
+        with self.app.app_context():
+            company = User.query.filter_by(username='master').one().company
+            self.assertEqual(company.backup_last_status, 'success')
+            self.assertTrue(Path(company.backup_last_path).exists())
+            self.assertIn('Backup Adega JF', Path(company.backup_last_path).read_text(encoding='utf-8'))
 
     def test_settings_updates_password_with_current_password(self):
         self.login()
@@ -790,18 +1525,23 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('Produtos'.encode(), response.data)
         self.assertIn('Novo produto'.encode(), response.data)
-        self.assertIn('Importar planilha'.encode(), response.data)
+        self.assertNotIn('Importar planilha'.encode(), response.data)
         self.assertIn('Lucro R$ 4,00'.encode(), response.data)
         self.assertIn('40,00%'.encode(), response.data)
 
     def test_import_products_from_csv_creates_categories_and_products(self):
         self.login()
-        csv_content = 'categoria;produto;custo;venda\nCervejas;Heineken 269ml;3,50;6,00\nDestilados;Whisky JF;50.00;89.90\n'
+        csv_content = (
+            'categoria;produto;preco_custo;preco_venda;estoque_minimo;estoque_atual\n'
+            'Cervejas;Heineken 269ml;3,50;6,00;4;24\n'
+            'Destilados;Whisky JF;50.00;89.90;2;7\n'
+        )
 
         response = self.client.post(
             '/catalogo/produtos/importar',
             data={
                 'spreadsheet': (io.BytesIO(csv_content.encode('utf-8')), 'produtos.csv'),
+                'return_to': 'settings',
             },
             content_type='multipart/form-data',
             follow_redirects=True,
@@ -809,15 +1549,29 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Importação concluída: 2 produto(s) criado(s), 0 atualizado(s), 0 linha(s) ignorada(s).'.encode(), response.data)
+        self.assertIn('Configurações'.encode(), response.data)
         with self.app.app_context():
             beer = Product.query.filter_by(name='Heineken 269ml').one()
             whisky = Product.query.filter_by(name='Whisky JF').one()
             self.assertEqual(beer.category.name, 'Cervejas')
             self.assertEqual(beer.cost_price, 3.50)
             self.assertEqual(beer.sale_price, 6.00)
+            self.assertEqual(beer.min_stock_quantity, 4)
+            self.assertEqual(beer.stock_quantity, 24)
             self.assertEqual(whisky.category.name, 'Destilados')
             self.assertEqual(whisky.cost_price, 50.00)
             self.assertEqual(whisky.sale_price, 89.90)
+            self.assertEqual(whisky.min_stock_quantity, 2)
+            self.assertEqual(whisky.stock_quantity, 7)
+
+    def test_import_template_can_be_downloaded_from_settings(self):
+        self.login()
+
+        response = self.client.get('/configuracoes/importacao/modelo')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        self.assertIn('attachment;', response.headers.get('Content-Disposition', ''))
 
     def test_create_edit_toggle_and_delete_product(self):
         self.login()
@@ -1589,6 +2343,62 @@ class RouteTestCase(unittest.TestCase):
             cash_register = CashRegister.query.one()
             self.assertEqual(cash_register.status, 'closed')
             self.assertEqual(cash_register.closing_amount, 150.00)
+
+    def test_operator_cash_register_hides_financial_totals(self):
+        self.login()
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            operator = User(username='caixa_sem_total', role='operator', company_id=company_id, is_active=True)
+            operator.set_password('123')
+            operator.can_manage_cash_register = True
+            operator.can_manage_sales = True
+            operator.can_view_reports = False
+            cash_register = CashRegister(
+                company_id=company_id,
+                user_id=1,
+                status='closed',
+                opening_amount=100,
+                closing_amount=150,
+                opened_at=datetime(2026, 7, 1, 8, 30),
+                closed_at=datetime(2026, 7, 1, 18, 45),
+            )
+            sale = Sale(
+                company_id=company_id,
+                cash_register=cash_register,
+                total_amount=50,
+                final_amount=50,
+                payment_status='paid',
+                created_at=datetime(2026, 7, 1, 12, 0),
+            )
+            db.session.add_all([operator, cash_register, sale])
+            db.session.commit()
+            cash_register_id = cash_register.id
+
+        self.client.get('/logout')
+        self.login(username='caixa_sem_total', password='123')
+
+        cash_response = self.client.get('/caixa')
+        detail_response = self.client.get(f'/caixa/{cash_register_id}')
+        dashboard_response = self.client.get('/dashboard')
+
+        self.assertEqual(cash_response.status_code, 200)
+        self.assertIn('01/07/2026 08:30'.encode(), cash_response.data)
+        self.assertIn('01/07/2026 18:45'.encode(), cash_response.data)
+        self.assertNotIn('Total vendido'.encode(), cash_response.data)
+        self.assertNotIn('Lucro'.encode(), cash_response.data)
+        self.assertNotIn('Valor final'.encode(), cash_response.data)
+
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertIn('Abertura'.encode(), detail_response.data)
+        self.assertIn('Fechamento'.encode(), detail_response.data)
+        self.assertNotIn('Total vendido'.encode(), detail_response.data)
+        self.assertNotIn('Lucro'.encode(), detail_response.data)
+        self.assertNotIn('Valor inicial'.encode(), detail_response.data)
+        self.assertNotIn('Valor final'.encode(), detail_response.data)
+        self.assertNotIn('Formas vendidas'.encode(), detail_response.data)
+        self.assertNotIn('Produtos mais vendidos'.encode(), detail_response.data)
+
+        self.assertNotIn('Vendas no caixa R$'.encode(), dashboard_response.data)
 
     def test_closed_cash_register_detail_shows_payments_peak_hour_and_top_products(self):
         self.login()

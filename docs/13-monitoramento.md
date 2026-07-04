@@ -2,136 +2,125 @@
 
 ## Status Atual
 
-Monitoramento dedicado não está implementado.
+O sistema possui monitoramento básico por logs de erro e alertas operacionais na interface.
 
-O sistema possui:
+Implementado:
 
-- Mensagens visuais para usuário via `flash`.
-- Alertas de estoque baixo na interface.
-- Logs padrão do Flask/servidor em execução.
+- Logs detalhados de erro em `logs/errors.log`.
+- Visualização dos logs recentes no painel master.
+- Botão para limpar logs no painel master.
+- Notificações de estoque baixo, produto sem estoque e contas a pagar.
+- Mensagens visuais com `flash`.
 
-O sistema não possui:
+Ainda não implementado:
 
-- Logs estruturados.
-- Métricas.
-- Alertas externos.
+- Métricas externas.
 - Monitoramento de disponibilidade.
-- Rastreamento de erro.
-- Auditoria.
+- Alertas por WhatsApp.
+- Auditoria completa de ações de negócio.
+- Dashboard técnico de performance.
 
-## Logs Recomendados
+## Logs de Erro
 
-Eventos a registrar:
+Arquivo:
 
-- Login com sucesso.
-- Login inválido.
-- Logout.
-- Criação, edição, inativação e exclusão de produto.
-- Criação, edição e exclusão de categoria.
-- Abertura e fechamento de caixa.
-- Tentativa de fechamento com divergência.
-- Venda finalizada.
-- Venda bloqueada por estoque insuficiente.
-- Venda bloqueada por pagamento insuficiente.
-- Alteração de senha.
-- Erros 500.
+```text
+logs/errors.log
+```
 
-Campos recomendados:
+O log registra:
 
-- Data/hora.
-- Usuário.
-- IP.
-- Rota.
-- Ação.
-- Entidade.
-- ID da entidade.
-- Resultado.
-- Mensagem.
+- Código HTTP.
+- Exceção.
+- Rota/endpoint.
+- Método.
+- Caminho.
+- Query string.
+- Dados de formulário com campos sensíveis mascarados.
+- Usuário autenticado.
+- Duração da requisição.
+- `X-Request-ID`.
 
-## Métricas Recomendadas
+O master do sistema consegue ver os registros recentes em `/master/adegas` e limpar o arquivo pelo botão `Limpar logs`.
+
+## Alertas Operacionais
+
+As notificações aparecem no topo da interface:
+
+- Produto sem estoque.
+- Produto com estoque igual ou abaixo do estoque mínimo.
+- Conta vencida.
+- Conta vencendo hoje.
+- Conta vencendo em até 3 dias.
+
+As notificações são filtradas pela adega atual.
+
+## Alertas por E-mail
+
+Além das notificações internas, a aba `Configurações > Alertas` permite ativar envio por e-mail e definir destinatários por tipo de alerta.
+
+Tipos atuais:
+
+- Produto esgotado.
+- Estoque baixo.
+- Conta vence hoje.
+- Conta vencida.
+- Assinatura perto do vencimento.
+
+O sistema registra cada alerta enviado para evitar disparos repetidos enquanto a situação não mudar.
+
+## Métricas de Negócio Disponíveis
+
+O próprio sistema já mostra:
+
+- Total vendido no dia.
+- Lucro do dia.
+- Ticket médio.
+- Status do caixa.
+- Produtos com estoque baixo.
+- Contas vencidas ou próximas.
+- Produtos mais vendidos.
+- Vendas por período em relatório e gráfico.
+
+## O Que Monitorar em Produção
 
 Aplicação:
 
-- Tempo de resposta por rota.
-- Taxa de erros 4xx e 5xx.
-- Requisições por minuto.
-- Usuários ativos.
+- Quantidade de erros 500.
+- Tempo médio de resposta.
+- Falhas de login.
+- Tentativas de acesso sem permissão.
 
 Banco:
 
-- Tamanho do arquivo SQLite.
-- Tempo médio de consulta.
-- Erros de lock.
+- Tamanho do banco central.
+- Tamanho dos bancos por adega.
+- Tempo de consulta em relatórios.
+- Falhas de conexão MySQL.
 
 Negócio:
 
-- Vendas por período.
-- Total vendido.
-- Lucro.
-- Ticket médio.
-- Produtos sem estoque.
-- Divergências de caixa.
+- Caixas abertos há muito tempo.
+- Estoque crítico.
+- Vendas canceladas ou bloqueadas.
+- Contas vencidas.
 
-Infraestrutura:
+Backup:
 
-- CPU.
-- Memória.
-- Disco.
-- Disponibilidade.
-
-## Alertas Recomendados
-
-- Aplicação indisponível.
-- Erro 500 recorrente.
-- Banco sem permissão de escrita.
-- Disco com pouco espaço.
-- Backup falhando.
-- Caixa com divergência.
-- Produto crítico sem estoque.
-
-## Auditoria
-
-Status: não implementada.
-
-Tabela recomendada:
-
-```text
-audit_logs
-- id
-- user_id
-- action
-- entity_type
-- entity_id
-- before_data
-- after_data
-- ip_address
-- created_at
-```
-
-## Health Check
-
-Não implementado.
-
-Rota recomendada:
-
-```text
-GET /health
-```
-
-Resposta sugerida:
-
-```json
-{
-  "status": "ok",
-  "database": "ok"
-}
-```
-
-## Backup Monitorado
-
-Recomenda-se validar:
-
-- Horário do último backup.
-- Tamanho do backup.
-- Integridade do SQLite.
+- Último backup com sucesso.
+- Falhas de backup.
+- Tamanho dos arquivos gerados.
 - Teste periódico de restauração.
+
+## Próximo Passo Recomendado
+
+Criar auditoria de ações críticas separada de logs de erro:
+
+- Login.
+- Alteração de preço.
+- Exclusão/inativação de produto.
+- Abertura e fechamento de caixa.
+- Venda concluída.
+- Tentativa de venda bloqueada.
+- Alteração de permissões.
+- Geração e uso de key.

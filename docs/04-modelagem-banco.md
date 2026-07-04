@@ -2,19 +2,35 @@
 
 ## Visão Geral
 
-Banco atual: SQLite em `database/adega_jf.db`.
+O sistema usa MySQL em dois níveis:
 
-ORM: Flask-SQLAlchemy.
+- Banco central: empresas, usuários, keys e dados administrativos.
+- Banco por adega: categorias, produtos, vendas, pagamentos, caixa e contas a pagar.
 
-Criação:
+ORM:
 
-- Tabelas criadas por `db.create_all()`.
-- Colunas novas adicionadas por funções manuais em `app/__init__.py`.
+- Flask-SQLAlchemy / SQLAlchemy.
+
+Criação e compatibilidade:
+
+- `db.create_all()` cria tabelas do banco central.
+- `tenant.py` cria bancos/tabelas das adegas.
+- Funções em `app/__init__.py` garantem colunas adicionadas durante a evolução do projeto.
 
 ```mermaid
 erDiagram
-    USERS ||--o{ CASH_REGISTERS : opens
-    USERS ||--o{ SALES : creates
+    COMPANIES ||--o{ USERS : has
+    ACTIVATION_KEYS }o--o| COMPANIES : used_by
+    USERS ||--o{ EMAIL_VERIFICATION_CODES : confirms
+    USERS ||--o{ PASSWORD_RESET_TOKENS : resets
+    USERS ||--o{ EMAIL_CHANGE_REQUESTS : changes_email
+    COMPANIES ||--o{ EMAIL_ALERT_SETTINGS : configures
+    COMPANIES ||--o{ EMAIL_ALERT_DELIVERIES : sends
+    COMPANIES ||--o{ CATEGORIES : owns
+    COMPANIES ||--o{ PRODUCTS : owns
+    COMPANIES ||--o{ CASH_REGISTERS : owns
+    COMPANIES ||--o{ SALES : owns
+    COMPANIES ||--o{ PAYABLES : owns
     CATEGORIES ||--o{ PRODUCTS : groups
     PRODUCTS ||--o{ SALE_ITEMS : sold_as
     PRODUCTS ||--o{ PRODUCTS : kit_base
@@ -23,168 +39,261 @@ erDiagram
     SALES ||--o{ PAYMENTS : paid_by
 ```
 
-## Tabela `users`
+## Banco Central
 
-Finalidade: armazenar usuários autenticáveis.
+### `companies`
 
-| Campo | Tipo | Obrigatório | Chave/Índice | Descrição |
-|---|---|---:|---|---|
-| `id` | Integer | Sim | PK | Identificador |
-| `username` | String(80) | Sim | Unique | Login do usuário |
-| `first_name` | String(120) | Não |  | Nome |
-| `last_name` | String(120) | Não |  | Sobrenome |
-| `email` | String(255) | Não |  | Email |
-| `phone` | String(40) | Não |  | Telefone |
-| `password_hash` | String(255) | Sim |  | Hash da senha |
-| `role` | String(50) | Não |  | Papel do usuário; padrão `admin` |
-| `is_active` | Boolean | Não |  | Indicador de ativo |
-| `created_at` | DateTime | Não |  | Data de criação |
+Representa cada adega/empresa.
 
-Observações:
+Campos principais:
 
-- `is_active` não é validado no login.
-- `role` não é usado para autorização.
-- Métodos: `set_password()`, `check_password()`.
-- Propriedades: `full_name`, `masked_email`, `password_fingerprint`.
+- `id`
+- `name`
+- `database_path`
+- `active`
+- `subscription_plan`
+- `billing_cycle`
+- `subscription_started_at`
+- `subscription_renews_at`
+- `activation_key`
+- `activation_key_updated_at`
+- `pix_fee_enabled`, `debit_fee_enabled`, `credit_fee_enabled`
+- `pix_fee_percent`, `debit_fee_percent`, `credit_fee_percent`
+- `backup_frequency`
+- `backup_last_at`
+- `backup_last_path`
+- `backup_last_status`
+- `created_at`
 
-## Tabela `categories`
+### `users`
 
-Finalidade: agrupar produtos.
+Representa usuários autenticáveis do sistema.
 
-| Campo | Tipo | Obrigatório | Chave/Índice | Descrição |
-|---|---|---:|---|---|
-| `id` | Integer | Sim | PK | Identificador |
-| `name` | String(120) | Sim | Unique | Nome da categoria |
-| `created_at` | DateTime | Não |  | Data de criação |
+Campos principais:
 
-Relacionamentos:
+- `id`
+- `username`
+- `first_name`
+- `last_name`
+- `cpf`
+- `email`
+- `email_verified`
+- `email_verified_at`
+- `phone`
+- `password_hash`
+- `role`
+- `company_id`
+- `is_active`
+- `can_view_products`
+- `can_manage_products`
+- `can_manage_categories`
+- `can_manage_sales`
+- `can_manage_cash_register`
+- `can_view_reports`
+- `can_manage_payables`
+- `can_manage_settings`
+- `created_at`
 
-- `Category.products` para `Product`.
+Perfis atuais:
 
-Regra:
+- `master`
+- `admin`
+- `manager`
+- `operator`
 
-- Categoria com produtos vinculados não pode ser excluída pela tela atual.
+### `activation_keys`
 
-## Tabela `products`
+Representa keys geradas pelo master.
 
-Finalidade: armazenar produtos vendáveis e produtos do tipo kit.
+Campos principais:
 
-| Campo | Tipo | Obrigatório | Chave/Índice | Descrição |
-|---|---|---:|---|---|
-| `id` | Integer | Sim | PK | Identificador |
-| `name` | String(200) | Sim |  | Nome |
-| `barcode` | String(100) | Não | Unique | Código de barras |
-| `category_id` | Integer | Não | FK | Categoria |
-| `cost_price` | Float | Não |  | Preço de custo |
-| `sale_price` | Float | Não |  | Preço de venda |
-| `stock_quantity` | Integer | Não |  | Estoque físico |
-| `active` | Boolean | Não |  | Produto disponível para venda |
-| `is_kit` | Boolean | Não |  | Indica kit |
-| `kit_component_product_id` | Integer | Não | FK self | Produto base do kit |
-| `kit_component_quantity` | Integer | Não |  | Quantidade do produto base baixada por kit |
-| `created_at` | DateTime | Não |  | Data de criação |
+- `id`
+- `key`
+- `plan`
+- `renews_at`
+- `active`
+- `used_by_company_id`
+- `used_at`
+- `created_at`
 
-Relacionamentos:
+### `email_verification_codes`
 
-- `Product.category`.
-- `Product.kit_component`.
+Representa códigos temporários para confirmar e-mail no cadastro.
 
-Propriedades:
+Campos principais:
 
-- `effective_stock_quantity`: se kit, retorna `kit_component.stock_quantity // kit_component_quantity`; senão, `stock_quantity`.
-- `profit_amount`: `sale_price - cost_price`.
-- `profit_margin_percent`: `profit_amount / sale_price * 100`.
+- `id`
+- `user_id`
+- `code_hash`
+- `expires_at`
+- `used`
+- `attempts`
+- `created_at`
 
-## Tabela `cash_registers`
+### `password_reset_tokens`
 
-Finalidade: controlar abertura e fechamento de caixa.
+Representa tokens temporários para redefinição de senha.
 
-| Campo | Tipo | Obrigatório | Chave/Índice | Descrição |
-|---|---|---:|---|---|
-| `id` | Integer | Sim | PK | Identificador |
-| `opened_at` | DateTime | Não |  | Data/hora de abertura |
-| `closed_at` | DateTime | Não |  | Data/hora de fechamento |
-| `opening_amount` | Float | Não |  | Valor inicial |
-| `closing_amount` | Float | Não |  | Valor final informado |
-| `status` | String(20) | Não |  | `open` ou `closed` |
-| `user_id` | Integer | Não | FK | Usuário que abriu |
+Campos principais:
 
-Relacionamentos:
+- `id`
+- `user_id`
+- `token_hash`
+- `expires_at`
+- `used`
+- `created_at`
 
-- `CashRegister.sales`.
+### `email_change_requests`
 
-## Tabela `sales`
+Representa solicitações temporárias para trocar e-mail confirmando pelo e-mail antigo.
 
-Finalidade: cabeçalho da venda.
+Campos principais:
 
-| Campo | Tipo | Obrigatório | Chave/Índice | Descrição |
-|---|---|---:|---|---|
-| `id` | Integer | Sim | PK | Identificador |
-| `created_at` | DateTime | Não |  | Data/hora |
-| `total_amount` | Float | Não |  | Subtotal antes de desconto |
-| `discount_amount` | Float | Não |  | Desconto |
-| `final_amount` | Float | Não |  | Total final |
-| `payment_status` | String(20) | Não |  | Atual: `paid` nas vendas finalizadas |
-| `user_id` | Integer | Não | FK | Usuário vendedor |
-| `cash_register_id` | Integer | Não | FK | Caixa da venda |
+- `id`
+- `user_id`
+- `old_email`
+- `new_email`
+- `token_hash`
+- `expires_at`
+- `used`
+- `created_at`
+- `confirmed_at`
 
-Relacionamentos:
+### `email_alert_settings`
 
-- `Sale.items`.
-- `Sale.payments`.
+Representa a configuração de alertas críticos por e-mail por adega.
 
-## Tabela `sale_items`
+Campos principais:
 
-Finalidade: itens de venda.
+- `id`
+- `company_id`
+- `alert_type`
+- `enabled`
+- `recipients`
+- `created_at`
+- `updated_at`
 
-| Campo | Tipo | Obrigatório | Chave/Índice | Descrição |
-|---|---|---:|---|---|
-| `id` | Integer | Sim | PK | Identificador |
-| `sale_id` | Integer | Não | FK | Venda |
-| `product_id` | Integer | Não | FK | Produto |
-| `quantity` | Integer | Não |  | Quantidade |
-| `unit_price` | Float | Não |  | Preço unitário no momento da venda |
-| `unit_cost_price` | Float | Não |  | Custo unitário no momento da venda |
-| `total_price` | Float | Não |  | Total da linha |
-| `profit_amount` | Float | Não |  | Lucro bruto da linha |
+### `email_alert_deliveries`
 
-## Tabela `payments`
+Representa alertas por e-mail já enviados, evitando repetição do mesmo alerta.
 
-Finalidade: formas e valores pagos em uma venda.
+Campos principais:
 
-| Campo | Tipo | Obrigatório | Chave/Índice | Descrição |
-|---|---|---:|---|---|
-| `id` | Integer | Sim | PK | Identificador |
-| `sale_id` | Integer | Não | FK | Venda |
-| `method` | String(50) | Não |  | `money`, `pix`, `debit`, `credit` |
-| `amount` | Float | Não |  | Valor pago |
+- `id`
+- `company_id`
+- `alert_type`
+- `alert_key`
+- `recipients`
+- `sent_at`
 
-## Índices e Chaves
+## Banco da Adega
 
-Índices únicos automáticos:
+Cada adega possui as tabelas operacionais abaixo em seu próprio banco.
 
-- `users.username`.
-- `categories.name`.
-- `products.barcode`.
+### `categories`
 
-Chaves estrangeiras declaradas no ORM:
+- `id`
+- `name`
+- `company_id`
+- `created_at`
 
-- `products.category_id -> categories.id`.
-- `products.kit_component_product_id -> products.id`.
-- `cash_registers.user_id -> users.id`.
-- `sales.user_id -> users.id`.
-- `sales.cash_register_id -> cash_registers.id`.
-- `sale_items.sale_id -> sales.id`.
-- `sale_items.product_id -> products.id`.
-- `payments.sale_id -> sales.id`.
+Regra: o nome é único dentro da adega, não globalmente entre todas as adegas.
 
-## Migrações Manuais Atuais
+### `products`
 
-Arquivo: `app/__init__.py`.
+- `id`
+- `name`
+- `barcode`
+- `category_id`
+- `company_id`
+- `cost_price`
+- `sale_price`
+- `stock_quantity`
+- `min_stock_quantity`
+- `active`
+- `is_kit`
+- `kit_component_product_id`
+- `kit_component_quantity`
+- `created_at`
 
-- `ensure_product_kit_columns()`: adiciona `is_kit`, `kit_component_product_id`, `kit_component_quantity`.
-- `ensure_sale_discount_columns()`: adiciona `discount_amount`.
-- `ensure_sale_item_profit_columns()`: adiciona `unit_cost_price`, `profit_amount`.
-- `ensure_user_profile_columns()`: adiciona `first_name`, `last_name`, `email`, `phone`.
+Regras:
 
-Limitação: não há versionamento, rollback ou histórico formal de migração.
+- Código de barras não pode duplicar dentro da adega.
+- Kit baixa estoque do produto base.
+- Estoque mínimo gera notificação.
+
+### `cash_registers`
+
+- `id`
+- `opened_at`
+- `closed_at`
+- `opening_amount`
+- `closing_amount`
+- `status`
+- `user_id`
+- `company_id`
+
+### `sales`
+
+- `id`
+- `created_at`
+- `total_amount`
+- `discount_amount`
+- `final_amount`
+- `payment_status`
+- `user_id`
+- `company_id`
+- `cash_register_id`
+
+### `sale_items`
+
+- `id`
+- `sale_id`
+- `product_id`
+- `quantity`
+- `unit_price`
+- `unit_cost_price`
+- `total_price`
+- `profit_amount`
+
+### `payments`
+
+- `id`
+- `sale_id`
+- `method`
+- `amount`
+
+Métodos:
+
+- `money`
+- `pix`
+- `debit`
+- `credit`
+
+### `payables`
+
+- `id`
+- `company_id`
+- `description`
+- `category`
+- `amount`
+- `due_date`
+- `paid`
+- `paid_at`
+- `notes`
+- `created_at`
+
+## Tabelas Ainda Não Existentes
+
+- `stock_movements`: histórico de movimentação de estoque.
+- `audit_logs`: auditoria de ações de negócio.
+- `customers`: clientes.
+- `suppliers`: fornecedores.
+- `purchases`: compras/entrada de mercadoria.
+
+## Observações Importantes
+
+- `database_path` em `companies` guarda o nome do banco MySQL da adega.
+- O campo `company_id` também existe em tabelas operacionais para reforçar vínculo lógico.
+- A separação principal entre adegas é feita pelo banco selecionado em `tenant_session`.
+- O projeto ainda não usa Alembic; mudanças de schema são aplicadas por compatibilidade no start da aplicação.

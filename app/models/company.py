@@ -23,8 +23,14 @@ class Company(db.Model):
     pix_fee_percent = db.Column(db.Float, default=0.0)
     debit_fee_percent = db.Column(db.Float, default=0.0)
     credit_fee_percent = db.Column(db.Float, default=0.0)
+    backup_frequency = db.Column(db.String(20), default='manual')
+    backup_last_at = db.Column(db.DateTime, nullable=True)
+    backup_last_path = db.Column(db.String(255), default='')
+    backup_last_status = db.Column(db.String(40), default='')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     users = db.relationship('User', back_populates='company')
+    email_alert_settings = db.relationship('EmailAlertSetting', back_populates='company', cascade='all, delete-orphan')
+    email_alert_deliveries = db.relationship('EmailAlertDelivery', back_populates='company', cascade='all, delete-orphan')
 
     @property
     def subscription_expired(self):

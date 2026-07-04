@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-Testes automatizados estão em:
+Os testes automatizados ficam em:
 
 ```text
 tests/test_routes.py
@@ -10,136 +10,129 @@ tests/test_routes.py
 
 Framework:
 
-- `unittest`.
+- `unittest`
 
-Banco de teste:
-
-- SQLite em memória: `sqlite://`.
-
-Configuração:
-
-- `TESTING=True`.
-- `SECRET_KEY='test-secret-key'`.
-- `WTF_CSRF_ENABLED=False`, embora Flask-WTF não esteja em uso.
-
-## Como Executar
+Comando recomendado:
 
 ```bash
 source .venv/bin/activate
-python -m unittest
+python -m unittest discover
 ```
 
-Ou:
+Ou diretamente:
 
 ```bash
-python -m unittest tests.test_routes
+.venv/bin/python -m unittest discover
 ```
 
-## Cobertura Funcional Atual
+## Cobertura Atual
 
-Autenticação:
+Autenticação e assinatura:
 
-- Carregamento da página de login.
-- Cadastro de usuário.
-- Bloqueio de username duplicado.
-- Login válido.
-- Login inválido.
-- Redirecionamento de usuário autenticado para dashboard.
+- Login.
 - Logout.
-- Proteção de rotas anônimas.
+- Cadastro.
+- Verificação de e-mail.
+- Troca de e-mail com confirmação no e-mail antigo.
+- Recuperação e redefinição de senha.
+- Usuário duplicado.
+- Cadastro com e sem key.
+- Bloqueio por assinatura/key.
+- Ativação.
 
-Configurações:
+Multiadega:
 
-- Carregamento da página.
-- Atualização de perfil e email.
-- Alteração de senha.
-- Validação de senha atual.
+- Isolamento de empresas.
+- Produtos/categorias separados por adega.
+- Rotas usando tenant atual.
+- Painel master acessando adegas.
+
+Permissões:
+
+- Funcionário comum limitado.
+- Gerente/admin com permissões diferentes.
+- Rotas protegidas por `permission_required`.
+- Abas sensíveis escondidas para funcionário.
 
 Catálogo:
 
-- Proteção de rotas.
-- Listagem de produtos.
-- Criação, edição, inativação e exclusão de produto.
-- Código de barras duplicado.
-- Salvamento de valores monetários.
-- Produto kit e baixa do produto base.
-- Bloqueio de kit sem estoque base suficiente.
-- Edição rápida.
-- Criação de categoria.
-- Filtro e ordenação de categoria.
-- Edição de categoria.
-- Filtro de produtos por categoria, estoque, preço e ordenação.
+- Produtos.
+- Categorias.
+- Filtros.
+- Edição expandida.
+- Estoque mínimo.
+- Kits.
+- Importação.
 
 Vendas:
 
-- Páginas de vendas autenticadas.
-- Venda com múltiplos produtos.
-- Venda com múltiplas formas de pagamento.
-- Uso do preço cadastrado.
+- Caixa obrigatório.
+- Venda com múltiplos itens.
+- Pagamento misto.
 - Desconto.
-- Lucro.
-- Pagamento insuficiente.
-- Estoque insuficiente.
-- Exigência de caixa aberto.
+- Troco.
+- Erros sem resetar pedido.
+- Baixa de estoque.
+- Baixa de estoque por kit.
 
 Caixa:
 
 - Abertura.
 - Fechamento.
-- Bloqueio de fechamento com valor divergente.
-- Fechamento considerando abertura + vendas.
+- Validação exata de valor.
+- Detalhes de caixa anterior.
 
 Relatórios:
 
-- Totais por período.
-- Lucro.
-- Desconto.
-- Pagamento.
-- Produto vendido.
 - Períodos automáticos.
+- Totais.
+- Lucro.
+- Produtos mais vendidos.
+- Gráfico por período.
 
-## Lacunas de Teste
+Financeiro e operação:
 
-- CSRF, quando implementado.
-- Permissões por perfil, quando implementadas.
-- Usuário inativo.
-- Exclusão de categoria com produtos em teste específico.
-- Handler 500.
-- Concorrência em estoque.
-- Paginação futura.
-- Testes de frontend com navegador real.
-- Testes de acessibilidade.
-- Testes de responsividade visual.
-- Backup e restauração.
-- Migrações.
+- Contas a pagar.
+- Notificações.
+- Alertas por e-mail.
+- Taxas de Pix/débito/crédito.
+- Backup.
+- Exportação CSV.
+- Logs de erro.
 
-## Testes de Integração Recomendados
+## Última Validação Conhecida
 
-- Fluxo completo: login -> abrir caixa -> cadastrar produto -> vender -> relatório -> fechar caixa.
-- Venda de kit com múltiplas unidades.
-- Tentativa de venda simultânea do último item em estoque.
-- Recuperação de banco a partir de backup.
+Nesta atualização de documentação, a suíte completa passou com:
 
-## Testes de Carga Recomendados
+```text
+79 testes
+Ran 79 tests in 9.863s
+OK
+```
 
-Cenários:
+## Quando Adicionar Testes
 
-- 10 usuários consultando produtos.
-- 5 usuários registrando vendas.
-- Catálogo com 10 mil produtos.
-- Relatório com 100 mil vendas.
+Adicionar ou atualizar testes sempre que mexer em:
 
-Ferramentas possíveis:
+- Permissões.
+- Cadastro/login/key.
+- Isolamento por adega.
+- Venda e estoque.
+- Caixa.
+- Importação/exportação.
+- Backup.
+- Rotas do painel master.
 
-- Locust.
-- k6.
+## Testes Manuais Recomendados
 
-## Critérios de Homologação
+Após alterações grandes, validar manualmente:
 
-- Login e logout funcionam.
-- Senha inicial foi trocada.
-- Produto pode ser cadastrado.
-- Caixa abre e fecha.
-- Venda baixa estoque corretamente.
-- Relatório apresenta a venda.
-- Backup foi executado e restaurado em ambiente de teste.
+1. Entrar como `master`.
+2. Gerar uma key avulsa.
+3. Cadastrar uma nova adega com essa key.
+4. Cadastrar produto e categoria.
+5. Abrir caixa.
+6. Realizar venda com F2.
+7. Fechar caixa com valor exato.
+8. Exportar dados como admin.
+9. Entrar como funcionário e conferir restrições.

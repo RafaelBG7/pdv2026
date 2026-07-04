@@ -7,18 +7,41 @@ sequenceDiagram
     participant U as Usuario
     participant B as Browser
     participant A as Auth Route
-    participant DB as SQLite
+    participant C as MySQL Central
     U->>B: Envia usuario e senha
     B->>A: POST /login
-    A->>DB: Busca User por username
-    DB-->>A: User
-    A->>A: check_password
-    alt Senha valida
+    A->>C: Busca User por username
+    C-->>A: User
+    A->>A: check_password e is_active
+    alt Master do sistema
+        A-->>B: Redirect /master/adegas
+    else Adega exige ativacao
+        A-->>B: Redirect /assinatura
+    else Login valido
         A->>A: login_user
         A-->>B: Redirect /dashboard
-    else Senha invalida
-        A-->>B: Render login com flash
     end
+```
+
+## Cadastro com Key
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant B as Browser
+    participant A as Auth Route
+    participant C as MySQL Central
+    participant T as Tenant Service
+    participant D as MySQL da Adega
+    U->>B: Preenche cadastro e key
+    B->>A: POST /login form register
+    A->>C: Valida ActivationKey disponivel
+    A->>C: Cria Company e User admin
+    A->>T: Cria database da adega
+    T->>D: Cria tabelas operacionais
+    A->>C: Marca key como usada
+    A->>A: login_user
+    A-->>B: Redirect /dashboard ou /assinatura
 ```
 
 ## Nova Venda
@@ -28,28 +51,23 @@ sequenceDiagram
     participant U as Operador
     participant B as Browser
     participant R as Main Route
-    participant DB as SQLite
-    U->>B: Preenche venda
+    participant D as MySQL da Adega
+    U->>B: Seleciona produtos
     B->>R: POST /vendas/nova
-    R->>DB: Busca caixa aberto
-    DB-->>R: CashRegister
-    R->>DB: Busca produtos
-    R->>R: Calcula itens e estoque exigido
-    R->>DB: Confere estoque
-    alt Estoque insuficiente
-        R-->>B: Render formulario com erro
-    else Estoque suficiente
-        R->>R: Calcula desconto, total e pagamento
-        alt Pagamento insuficiente
-            R-->>B: Render formulario com falta
-        else Pagamento suficiente
-            R->>DB: Cria Sale
-            R->>DB: Cria SaleItem
-            R->>DB: Cria Payment
-            R->>DB: Baixa estoque
-            R->>DB: Commit
-            R-->>B: Redirect detalhe da venda
-        end
+    R->>D: Busca caixa aberto
+    R->>D: Busca produtos
+    R->>R: Calcula itens, desconto e pagamentos
+    alt Caixa fechado
+        R-->>B: Redirect /caixa
+    else Estoque insuficiente
+        R-->>B: Render formulario preservado
+    else Pagamento insuficiente
+        R-->>B: Render formulario preservado
+    else Venda valida
+        R->>D: Cria Sale, SaleItem e Payment
+        R->>D: Baixa estoque
+        R->>D: Commit
+        R-->>B: Redirect detalhe da venda
     end
 ```
 
@@ -60,16 +78,16 @@ sequenceDiagram
     participant R as Main Route
     participant K as Produto Kit
     participant P as Produto Base
-    participant DB as SQLite
-    R->>K: stock_source_for_product
-    K-->>R: kit_component e quantidade por kit
-    R->>P: Calcula required_quantity
-    R->>DB: Verifica P.stock_quantity
+    participant D as MySQL da Adega
+    R->>K: Identifica produto base e quantidade
+    K-->>R: Componente do kit
+    R->>P: Calcula quantidade exigida
+    R->>D: Confere estoque do produto base
     alt Sem estoque
         R-->>R: Bloqueia venda
     else Com estoque
         R->>P: Decrementa estoque base
-        R->>DB: Commit venda
+        R->>D: Commit venda
     end
 ```
 
@@ -80,60 +98,36 @@ sequenceDiagram
     participant U as Operador
     participant B as Browser
     participant R as Main Route
-    participant DB as SQLite
+    participant D as MySQL da Adega
     U->>B: Informa valor final
     B->>R: POST /caixa/fechar
-    R->>DB: Busca caixa aberto
-    DB-->>R: CashRegister
-    R->>R: Calcula opening_amount + vendas
-    alt Valor diferente
-        R-->>B: Redirect com flash de falta/excedente
-    else Valor confere
-        R->>DB: Atualiza closing_amount, closed_at, status
-        R->>DB: Commit
-        R-->>B: Redirect com sucesso
+    R->>D: Busca caixa aberto e vendas
+    R->>R: Calcula valor esperado
+    alt Valor menor
+        R-->>B: Mostra valor faltante
+    else Valor maior
+        R-->>B: Mostra valor excedido
+    else Valor exato
+        R->>D: Fecha caixa
+        R->>D: Commit
+        R-->>B: Redirect /caixa
     end
 ```
 
-## Relatórios
+## Backup Manual
 
 ```mermaid
 sequenceDiagram
-    participant U as Usuario
+    participant A as Admin
     participant B as Browser
-    participant R as Reports Route
-    participant DB as SQLite
-    U->>B: Seleciona periodo
-    B->>R: GET /relatorios
-    R->>R: report_period_range
-    R->>DB: Busca vendas no intervalo
-    DB-->>R: Vendas, itens, pagamentos
-    R->>R: build_sales_report
-    R->>R: build_sales_chart
-    R-->>B: Render reports/index.html
-```
-
-## Diagrama de Atividades - Venda
-
-```mermaid
-flowchart TD
-    A["Inicio"] --> B["Verificar caixa aberto"]
-    B --> C{"Caixa existe?"}
-    C -- "Nao" --> D["Redirecionar para caixa"]
-    C -- "Sim" --> E["Ler itens do formulario"]
-    E --> F["Validar produtos e quantidades"]
-    F --> G{"Ha itens validos?"}
-    G -- "Nao" --> H["Exibir erro"]
-    G -- "Sim" --> I["Calcular estoque exigido"]
-    I --> J{"Estoque suficiente?"}
-    J -- "Nao" --> H
-    J -- "Sim" --> K["Calcular total e desconto"]
-    K --> L["Somar pagamentos"]
-    L --> M{"Pago cobre total?"}
-    M -- "Nao" --> H
-    M -- "Sim" --> N["Criar venda"]
-    N --> O["Criar itens e pagamentos"]
-    O --> P["Baixar estoque"]
-    P --> Q["Commit"]
-    Q --> R["Exibir detalhe"]
+    participant R as Auth Route
+    participant BK as Backup Service
+    participant D as MySQL da Adega
+    A->>B: Clica Fazer backup agora
+    B->>R: POST /configuracoes
+    R->>BK: create_company_backup
+    BK->>D: Lê tabelas e registros
+    BK->>BK: Gera arquivo SQL
+    BK-->>R: Caminho do backup
+    R-->>B: Mensagem de sucesso
 ```

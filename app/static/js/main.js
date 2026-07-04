@@ -8,6 +8,12 @@ document.addEventListener('DOMContentLoaded', function () {
   const storedSidebar = localStorage.getItem('adega-jf-sidebar');
   const advancedFilterToggle = document.querySelector('[data-advanced-filter-toggle]');
   const advancedFilterPanel = document.querySelector('[data-advanced-filter-panel]');
+  const permissionOverrideModal = document.getElementById('permissionOverrideModal');
+  const permissionOverrideUsername = document.getElementById('permissionOverrideUsername');
+  const permissionOverridePassword = document.getElementById('permissionOverridePassword');
+  const permissionOverrideConfirm = document.querySelector('[data-permission-override-confirm]');
+  let pendingPermissionForm = null;
+  let pendingPermissionSubmitter = null;
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -23,6 +29,85 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   applyTheme(initialTheme);
+
+  function setHiddenField(form, name, value) {
+    let input = form.querySelector(`input[name="${name}"]`);
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      form.appendChild(input);
+    }
+    input.value = value;
+  }
+
+  function openPermissionOverride(form, submitter) {
+    pendingPermissionForm = form;
+    pendingPermissionSubmitter = submitter || null;
+
+    if (permissionOverrideUsername) {
+      permissionOverrideUsername.value = '';
+    }
+    if (permissionOverridePassword) {
+      permissionOverridePassword.value = '';
+    }
+
+    if (window.bootstrap && permissionOverrideModal) {
+      window.bootstrap.Modal.getOrCreateInstance(permissionOverrideModal).show();
+      setTimeout(function () {
+        if (permissionOverrideUsername) {
+          permissionOverrideUsername.focus();
+        }
+      }, 150);
+    }
+  }
+
+  document.addEventListener('submit', function (event) {
+    const form = event.target;
+    if (!form || !form.matches('form[data-permission-override="true"]')) {
+      return;
+    }
+    if (form.dataset.permissionOverrideReady === 'true') {
+      form.dataset.permissionOverrideReady = 'false';
+      return;
+    }
+
+    event.preventDefault();
+    openPermissionOverride(form, event.submitter);
+  }, true);
+
+  if (permissionOverrideConfirm) {
+    permissionOverrideConfirm.addEventListener('click', function () {
+      if (!pendingPermissionForm) {
+        return;
+      }
+
+      const username = permissionOverrideUsername ? permissionOverrideUsername.value.trim() : '';
+      const password = permissionOverridePassword ? permissionOverridePassword.value : '';
+      if (!username || !password) {
+        if (permissionOverridePassword) {
+          permissionOverridePassword.focus();
+        }
+        return;
+      }
+
+      setHiddenField(pendingPermissionForm, '_permission_override_username', username);
+      setHiddenField(pendingPermissionForm, '_permission_override_password', password);
+      pendingPermissionForm.dataset.permissionOverrideReady = 'true';
+
+      if (window.bootstrap && permissionOverrideModal) {
+        window.bootstrap.Modal.getOrCreateInstance(permissionOverrideModal).hide();
+      }
+
+      if (pendingPermissionSubmitter && typeof pendingPermissionForm.requestSubmit === 'function') {
+        pendingPermissionForm.requestSubmit(pendingPermissionSubmitter);
+      } else {
+        pendingPermissionForm.submit();
+      }
+      pendingPermissionForm = null;
+      pendingPermissionSubmitter = null;
+    });
+  }
 
   function applySidebar(collapsed) {
     if (!appShell) {
@@ -57,6 +142,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  document.querySelectorAll('[data-key-preset-days]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const target = document.getElementById(button.dataset.keyPresetTarget || '');
+      const days = Number.parseInt(button.dataset.keyPresetDays || '0', 10);
+      if (!target || !days) {
+        return;
+      }
+      const date = new Date();
+      date.setDate(date.getDate() + days);
+      target.value = date.toISOString().slice(0, 10);
+    });
+  });
+
   document.querySelectorAll('[data-settings-tabs]').forEach(function (tabs) {
     const buttons = Array.from(tabs.querySelectorAll('[data-settings-tab]'));
     const panels = Array.from(tabs.querySelectorAll('[data-settings-panel]'));
@@ -83,6 +181,238 @@ document.addEventListener('DOMContentLoaded', function () {
     if (storedTab && buttons.some(function (button) { return button.dataset.settingsTab === storedTab; })) {
       activateTab(storedTab);
     }
+  });
+
+  document.querySelectorAll('[data-employee-search]').forEach(function (searchArea) {
+    const input = searchArea.querySelector('[data-employee-search-input]');
+    const countLabel = searchArea.querySelector('[data-employee-search-count]');
+    const suggestionList = searchArea.querySelector('[data-employee-suggestion-list]');
+    const panel = searchArea.closest('[data-settings-panel]') || document;
+    const cards = Array.from(panel.querySelectorAll('[data-employee-card]'));
+    const emptyState = panel.querySelector('[data-employee-search-empty]');
+
+    function normalizeSearch(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[.-]/g, '');
+    }
+
+    function matchingCards() {
+      const term = normalizeSearch(input.value);
+      return cards.filter(function (card) {
+        const text = normalizeSearch(card.dataset.employeeSearchText || card.textContent);
+        return !term || text.includes(term);
+      });
+    }
+
+    function openEmployeeCard(card) {
+      const collapseElement = card.querySelector('.collapse');
+      if (!collapseElement) {
+        return;
+      }
+
+      if (window.bootstrap && window.bootstrap.Collapse) {
+        window.bootstrap.Collapse.getOrCreateInstance(collapseElement, { toggle: false }).show();
+      } else {
+        collapseElement.classList.add('show');
+      }
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function closeEmployeeSuggestions() {
+      if (!suggestionList) {
+        return;
+      }
+      suggestionList.classList.remove('is-open');
+      suggestionList.innerHTML = '';
+    }
+
+    function renderEmployeeSuggestions() {
+      if (!suggestionList) {
+        return;
+      }
+
+      const matches = matchingCards().slice(0, 8);
+      suggestionList.innerHTML = '';
+
+      if (!matches.length) {
+        const empty = document.createElement('div');
+        empty.className = 'product-suggestion-empty';
+        empty.textContent = 'Nenhum funcionário encontrado';
+        suggestionList.appendChild(empty);
+        suggestionList.classList.add('is-open');
+        return;
+      }
+
+      matches.forEach(function (card) {
+        const button = document.createElement('button');
+        const title = document.createElement('span');
+        const meta = document.createElement('span');
+
+        button.type = 'button';
+        button.className = 'product-suggestion-item';
+        title.className = 'product-suggestion-title';
+        meta.className = 'product-suggestion-meta';
+        title.textContent = card.dataset.employeeName || 'Funcionário';
+        meta.textContent = card.dataset.employeeMeta || '';
+
+        button.appendChild(title);
+        if (meta.textContent) {
+          button.appendChild(meta);
+        }
+        button.addEventListener('mousedown', function (event) {
+          event.preventDefault();
+          input.value = card.dataset.employeeName || input.value;
+          updateEmployeeList();
+          closeEmployeeSuggestions();
+          openEmployeeCard(card);
+        });
+        suggestionList.appendChild(button);
+      });
+
+      suggestionList.classList.add('is-open');
+    }
+
+    function updateEmployeeList() {
+      let visibleCount = 0;
+      const matches = matchingCards();
+
+      cards.forEach(function (card) {
+        const visible = matches.includes(card);
+        card.classList.toggle('is-hidden', !visible);
+        if (visible) {
+          visibleCount += 1;
+        }
+      });
+
+      if (countLabel) {
+        countLabel.textContent = `${visibleCount} encontrado${visibleCount === 1 ? '' : 's'}`;
+      }
+
+      if (emptyState) {
+        emptyState.classList.toggle('is-hidden', visibleCount !== 0);
+      }
+    }
+
+    if (input) {
+      input.addEventListener('input', function () {
+        updateEmployeeList();
+        renderEmployeeSuggestions();
+      });
+      input.addEventListener('focus', renderEmployeeSuggestions);
+      input.addEventListener('blur', function () {
+        setTimeout(closeEmployeeSuggestions, 120);
+      });
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          const first = matchingCards()[0];
+          if (first) {
+            event.preventDefault();
+            openEmployeeCard(first);
+            closeEmployeeSuggestions();
+          }
+        }
+      });
+      updateEmployeeList();
+    }
+  });
+
+  document.querySelectorAll('[data-email-list]').forEach(function (list) {
+    const hiddenInput = list.querySelector('[data-email-list-hidden]');
+    const emailInput = list.querySelector('[data-email-list-input]');
+    const addButton = list.querySelector('[data-email-list-add]');
+    const itemList = list.querySelector('[data-email-list-items]');
+
+    if (!hiddenInput || !emailInput || !addButton || !itemList) {
+      return;
+    }
+
+    let recipients = hiddenInput.value.split(',')
+      .map(function (email) { return email.trim(); })
+      .filter(Boolean);
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function syncRecipients() {
+      hiddenInput.value = recipients.join(', ');
+    }
+
+    function renderRecipients() {
+      itemList.innerHTML = '';
+
+      if (!recipients.length) {
+        const empty = document.createElement('span');
+        empty.className = 'email-recipient-empty';
+        empty.textContent = 'Nenhum email adicionado';
+        itemList.appendChild(empty);
+        return;
+      }
+
+      recipients.forEach(function (email) {
+        const item = document.createElement('span');
+        const label = document.createElement('span');
+        const removeButton = document.createElement('button');
+
+        item.className = 'email-recipient-chip';
+        label.textContent = email;
+        removeButton.type = 'button';
+        removeButton.className = 'email-recipient-remove';
+        removeButton.textContent = 'x';
+        removeButton.setAttribute('aria-label', `Remover ${email}`);
+        removeButton.addEventListener('click', function () {
+          recipients = recipients.filter(function (recipient) {
+            return recipient.toLowerCase() !== email.toLowerCase();
+          });
+          syncRecipients();
+          renderRecipients();
+        });
+
+        item.appendChild(label);
+        item.appendChild(removeButton);
+        itemList.appendChild(item);
+      });
+    }
+
+    function addRecipient() {
+      const email = emailInput.value.trim();
+      const duplicated = recipients.some(function (recipient) {
+        return recipient.toLowerCase() === email.toLowerCase();
+      });
+
+      if (!email) {
+        return;
+      }
+
+      if (!emailPattern.test(email)) {
+        emailInput.classList.add('is-invalid');
+        emailInput.focus();
+        return;
+      }
+
+      if (!duplicated) {
+        recipients.push(email);
+      }
+
+      emailInput.value = '';
+      emailInput.classList.remove('is-invalid');
+      syncRecipients();
+      renderRecipients();
+    }
+
+    addButton.addEventListener('click', addRecipient);
+    emailInput.addEventListener('input', function () {
+      emailInput.classList.remove('is-invalid');
+    });
+    emailInput.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        addRecipient();
+      }
+    });
+
+    syncRecipients();
+    renderRecipients();
   });
 
   if (advancedFilterToggle && advancedFilterPanel) {

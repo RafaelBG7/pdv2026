@@ -13,7 +13,10 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(80), unique=True, nullable=False)
     first_name = db.Column(db.String(120), default='')
     last_name = db.Column(db.String(120), default='')
+    cpf = db.Column(db.String(20), default='')
     email = db.Column(db.String(255), default='')
+    email_verified = db.Column(db.Boolean, default=True)
+    email_verified_at = db.Column(db.DateTime, nullable=True)
     phone = db.Column(db.String(40), default='')
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), default='admin')
@@ -29,9 +32,12 @@ class User(db.Model, UserMixin):
     can_manage_settings = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     company = db.relationship('Company', back_populates='users')
+    email_verification_codes = db.relationship('EmailVerificationCode', back_populates='user', cascade='all, delete-orphan')
+    password_reset_tokens = db.relationship('PasswordResetToken', back_populates='user', cascade='all, delete-orphan')
+    email_change_requests = db.relationship('EmailChangeRequest', back_populates='user', cascade='all, delete-orphan')
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+        self.password_hash = generate_password_hash(password, method='scrypt')
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -62,6 +68,8 @@ class User(db.Model, UserMixin):
     def has_permission(self, permission):
         if self.role in ('master', 'admin'):
             return True
+        if permission == 'can_view_products':
+            return True
         if permission == 'can_view_products' and self.can_manage_products:
             return True
         return bool(getattr(self, permission, False))
@@ -70,7 +78,8 @@ class User(db.Model, UserMixin):
     def role_label(self):
         labels = {
             'master': 'Master do sistema',
-            'admin': 'Master da adega',
+            'admin': 'Admin',
+            'manager': 'Gerente',
             'operator': 'Funcionário',
         }
         return labels.get(self.role, self.role)

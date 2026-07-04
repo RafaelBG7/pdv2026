@@ -26,7 +26,7 @@
   </div>
   <div>
     <span>Key</span>
-    <strong>{{ company.activation_key if company and company.activation_key else 'Não gerada' }}</strong>
+    <strong>{{ mask_secret(company.activation_key) if company else 'Não gerada' }}</strong>
   </div>
 </section>
 

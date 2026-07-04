@@ -34,27 +34,20 @@
               {% endif %}
               {% if current_user.role != 'master' or master_company_active %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}" title="Dashboard"><span class="nav-icon">D</span><span class="nav-label">Dashboard</span></a></li>
-              {% if current_user.has_permission('can_view_products') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['catalog.products', 'catalog.new_product', 'catalog.edit_product'] else '' }}" href="{{ url_for('catalog.products') }}" title="Produtos"><span class="nav-icon">P</span><span class="nav-label">Produtos</span></a></li>
-              {% endif %}
-              {% if current_user.has_permission('can_manage_categories') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'catalog.categories' else '' }}" href="{{ url_for('catalog.categories') }}" title="Categorias"><span class="nav-icon">C</span><span class="nav-label">Categorias</span></a></li>
-              {% endif %}
-              {% if current_user.has_permission('can_manage_sales') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['main.sales', 'main.new_sale', 'main.sale_detail'] else '' }}" href="{{ url_for('main.sales') }}" title="Vendas"><span class="nav-icon">V</span><span class="nav-label">Vendas</span></a></li>
-              {% endif %}
-              {% if current_user.has_permission('can_manage_cash_register') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.cash_register' else '' }}" href="{{ url_for('main.cash_register') }}" title="Caixa"><span class="nav-icon">R$</span><span class="nav-label">Caixa</span></a></li>
-              {% endif %}
-              {% if current_user.has_permission('can_manage_payables') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['main.payables', 'main.pay_payable', 'main.reopen_payable'] else '' }}" href="{{ url_for('main.payables') }}" title="Contas a pagar"><span class="nav-icon">CP</span><span class="nav-label">Contas a pagar</span></a></li>
-              {% endif %}
-              {% if current_user.has_permission('can_view_reports') %}
+              {% if can_view_permission('can_view_reports') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.reports' else '' }}" href="{{ url_for('main.reports') }}" title="Relatórios"><span class="nav-icon">R</span><span class="nav-label">Relatórios</span></a></li>
               {% endif %}
-              {% if current_user.role in ['admin', 'master'] or current_user.has_permission('can_manage_settings') %}
+              {% if can_view_permission('can_view_finance') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['auth.subscriptions', 'auth.subscription_activation'] else '' }}" href="{{ url_for('auth.subscriptions') }}" title="Assinaturas"><span class="nav-icon">AS</span><span class="nav-label">Assinaturas</span></a></li>
               {% endif %}
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.settings' else '' }}" href="{{ url_for('auth.settings') }}" title="Configurações"><span class="nav-icon">CFG</span><span class="nav-label">Configurações</span></a></li>
+              {% endif %}
+              {% if current_user.role == 'master' and not master_company_active %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.settings' else '' }}" href="{{ url_for('auth.settings') }}" title="Configurações"><span class="nav-icon">CFG</span><span class="nav-label">Configurações</span></a></li>
               {% endif %}
               <li class="nav-item mt-4"><a class="nav-link" href="{{ url_for('auth.logout') }}" title="Sair"><span class="nav-icon">S</span><span class="nav-label">Sair</span></a></li>
@@ -120,6 +113,41 @@
           </div>
         </main>
     </div>
+
+    {% if current_user.is_authenticated %}
+    <div class="modal fade permission-override-modal" id="permissionOverrideModal" tabindex="-1" aria-labelledby="permissionOverrideTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <h5 class="modal-title" id="permissionOverrideTitle">Autorização necessária</h5>
+              <p class="text-muted mb-0">Informe um usuário autorizado para concluir esta ação.</p>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label" for="permissionOverrideUsername">Usuário autorizado</label>
+              <input class="form-control" id="permissionOverrideUsername" list="permissionOverrideUsers" autocomplete="username" value="{{ permission_authorizer_users[0].username if permission_authorizer_users else '' }}">
+              <datalist id="permissionOverrideUsers">
+                {% for user in permission_authorizer_users %}
+                <option value="{{ user.username }}">{{ user.full_name or user.username }} · {{ user.role_label }}</option>
+                {% endfor %}
+              </datalist>
+            </div>
+            <div>
+              <label class="form-label" for="permissionOverridePassword">Senha</label>
+              <input class="form-control" id="permissionOverridePassword" type="password" autocomplete="current-password">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" data-permission-override-confirm>Autorizar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

@@ -1,96 +1,111 @@
 # 11 - Permissões
 
-## Status Atual
+## Visão Geral
 
-Permissões por perfil não estão implementadas.
+O sistema possui permissões por perfil e bloqueio no backend usando `permission_required`.
 
-O sistema possui:
+Arquivos principais:
 
-- Campo `User.role`.
-- Valor padrão `admin`.
-- Cadastro público que também cria `role='admin'`.
-- Uso de `@login_required` para exigir autenticação.
+- `app/models/user.py`
+- `app/permissions.py`
+- `app/routes/auth.py`
+- `app/routes/catalog.py`
+- `app/routes/main.py`
+- `app/templates/settings/index.html`
 
-O sistema não possui:
+## Perfis
 
-- Decorator de autorização por perfil.
-- Verificação de `role` nas rotas.
-- Matriz de acesso aplicada.
-- Tela administrativa de usuários.
-- Bloqueio real por perfil.
+| Perfil | Código | Uso |
+|---|---|---|
+| Master do sistema | `master` | Usuário global que gerencia todas as adegas, logs, keys e painel master. |
+| Admin da adega | `admin` | Dono/master da adega. Pode executar todas as ações da adega. |
+| Gerente | `manager` | Pode operar quase tudo, mas não deve acessar financeiro/plano sensível. |
+| Funcionário | `operator` | Pode vender, abrir caixa e acessar configurações pessoais. |
 
-## Perfis Recomendados
+Observação: o sistema agora permite mais de um `admin` por adega.
 
-- Administrador.
-- Gerente.
-- Supervisor.
-- Operador.
-- Cliente, se futuramente existir portal externo.
+## Permissões Técnicas
 
-## Matriz Planejada
+As permissões ficam no modelo `User`:
 
-| Funcionalidade | Administrador | Gerente | Supervisor | Operador | Cliente |
-|---|---:|---:|---:|---:|---:|
-| Login | Sim | Sim | Sim | Sim | Sim |
-| Dashboard | Sim | Sim | Sim | Sim | Parcial |
-| Produtos - consultar | Sim | Sim | Sim | Sim | Não |
-| Produtos - criar/editar | Sim | Sim | Parcial | Não | Não |
-| Produtos - excluir | Sim | Não | Não | Não | Não |
-| Categorias - consultar | Sim | Sim | Sim | Sim | Não |
-| Categorias - criar/editar | Sim | Sim | Parcial | Não | Não |
-| Categorias - excluir | Sim | Não | Não | Não | Não |
-| Abrir caixa | Sim | Sim | Sim | Sim | Não |
-| Fechar caixa | Sim | Sim | Sim | Sim | Não |
-| Registrar venda | Sim | Sim | Sim | Sim | Não |
-| Aplicar desconto | Sim | Sim | Sim | Parcial | Não |
-| Ver vendas | Sim | Sim | Sim | Parcial | Não |
-| Relatórios | Sim | Sim | Sim | Não | Não |
-| Configurações próprias | Sim | Sim | Sim | Sim | Sim |
-| Configurações do sistema | Sim | Não | Não | Não | Não |
-| Usuários e permissões | Sim | Não | Não | Não | Não |
+| Campo | Significado |
+|---|---|
+| `can_view_products` | Ver produtos. |
+| `can_manage_products` | Criar, editar, importar e alterar produtos. |
+| `can_manage_categories` | Criar, editar e excluir categorias. |
+| `can_manage_sales` | Registrar e consultar vendas. |
+| `can_manage_cash_register` | Abrir, fechar e consultar caixa. |
+| `can_view_reports` | Acessar relatórios. |
+| `can_manage_payables` | Gerenciar contas a pagar. |
+| `can_manage_settings` | Acessar configurações permitidas ao perfil. |
 
-## Regras Recomendadas
+`master` e `admin` retornam verdadeiro para todas as permissões em `User.has_permission()`.
 
-- Administrador: acesso total.
-- Gerente: acesso operacional e relatórios, sem exclusões críticas.
-- Supervisor: acompanha caixa, estoque e vendas, com edição limitada.
-- Operador: registra vendas e consulta informações necessárias.
-- Cliente: acesso externo futuro, se houver.
+## Matriz de Acesso
 
-## Implementação Recomendada
+| Área | Master sistema | Admin adega | Gerente | Funcionário |
+|---|---:|---:|---:|---:|
+| Painel master | Sim | Não | Não | Não |
+| Gerar key | Sim | Não | Não | Não |
+| Logs do sistema | Sim | Não | Não | Não |
+| Dashboard | Sim | Sim | Sim | Sim |
+| Produtos - ver | Sim | Sim | Sim | Sim |
+| Produtos - alterar | Sim | Sim | Sim | Não |
+| Categorias | Sim | Sim | Sim | Não |
+| Venda | Sim | Sim | Sim | Sim |
+| Caixa | Sim | Sim | Sim | Sim |
+| Relatórios | Sim | Sim | Sim | Não |
+| Contas a pagar | Sim | Sim | Sim | Não |
+| Configurações pessoais | Sim | Sim | Sim | Sim |
+| Equipe | Sim | Sim | Não | Não |
+| Financeiro/taxas | Sim | Sim | Não | Não |
+| Importação | Sim | Sim | Não | Não |
+| Exportação | Sim | Sim | Não | Não |
+| Plano/assinatura | Sim | Sim | Não | Não |
 
-Criar decorator:
+## Funcionário
 
-```python
-from functools import wraps
-from flask import abort
-from flask_login import current_user
+O funcionário comum deve ter acesso limitado:
 
-def roles_required(*roles):
-    def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            if not current_user.is_authenticated:
-                abort(401)
-            if current_user.role not in roles:
-                abort(403)
-            return fn(*args, **kwargs)
-        return wrapper
-    return decorator
-```
+- Pode realizar venda.
+- Pode abrir/operar caixa.
+- Pode ver produtos quando necessário para venda.
+- Pode alterar apenas configurações pessoais.
+- Não pode editar produto, categoria ou preço.
+- Não vê equipe, financeiro, plano, importação ou exportação.
 
-Aplicar em rotas sensíveis:
+## Gerente
 
-- Exclusão de produto.
-- Exclusão de categoria.
-- Relatórios.
-- Administração de usuários.
-- Configurações globais.
+O gerente é operacional:
 
-## Permissões Críticas Ausentes
+- Pode vender, abrir caixa, ver relatórios e gerenciar catálogo.
+- Não deve acessar financeiro sensível, plano/assinatura ou gestão avançada da equipe.
 
-- Qualquer usuário autenticado pode excluir produtos.
-- Qualquer usuário autenticado pode excluir categorias vazias.
-- Qualquer usuário autenticado pode abrir e fechar caixa.
-- Qualquer usuário autenticado pode ver relatórios.
-- Qualquer visitante pode criar uma conta admin pela tela de cadastro.
+## Admin da Adega
+
+O admin é o responsável pela adega:
+
+- Pode contratar funcionários.
+- Pode editar perfis e CPF.
+- Pode ativar/inativar usuários.
+- Pode importar/exportar dados.
+- Pode configurar taxas de Pix, débito e crédito.
+- Pode configurar backups.
+
+Proteções importantes:
+
+- O admin não deve conseguir inativar a si mesmo como último acesso prático.
+- CPF duplicado é bloqueado dentro da mesma adega.
+- Username continua único no sistema.
+
+## Master do Sistema
+
+O master do sistema:
+
+- Acessa `/master/adegas`.
+- Pode entrar em qualquer adega para suporte.
+- Gera keys avulsas ou vinculadas a uma adega.
+- Vê e limpa logs de erro.
+- Pode editar/inativar/excluir adegas.
+
+Esse usuário não representa o dono de uma adega específica.

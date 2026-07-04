@@ -7,7 +7,7 @@
       <p class="text-muted mb-2">Ativação necessária</p>
       <h2>Assinatura vencida ou bloqueada</h2>
       <p class="text-muted mb-0">
-        Para continuar usando o sistema da {{ company.name if company else 'adega' }}, informe a key de ativação enviada pelo suporte.
+        Para continuar usando o sistema da {{ company.name if company else 'adega' }}, informe a key de ativação gerada no painel master.
       </p>
     </div>
 
@@ -31,6 +31,9 @@
       <input class="form-control activation-key-input" id="activation_key" name="activation_key" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" required>
       <button class="btn btn-primary" type="submit">Ativar sistema</button>
     </form>
+    <p class="text-muted mb-0">
+      Sem key ou com plano vencido, a adega fica bloqueada até o master gerar uma key e definir um período ativo.
+    </p>
   </section>
 </div>
 {% endblock %}

@@ -1,34 +1,131 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
     <h2>Dashboard</h2>
-    <p class="text-muted">Bem-vindo ao painel inicial do PDV.</p>
+    <p class="text-muted mb-0">Visão rápida da operação de hoje.</p>
   </div>
-  <span class="badge badge-accent">Usuário: {{ current_user.username }}</span>
+  <div class="d-flex flex-wrap gap-2">
+    {% if open_cash_register %}
+    <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
+    {% else %}
+    <a class="btn btn-primary" href="{{ url_for('main.cash_register') }}">Abrir caixa</a>
+    {% endif %}
+    <span class="badge badge-accent">Usuário: {{ current_user.username }}</span>
+  </div>
 </div>
 
-<div class="mb-4">
-  {% if open_cash_register %}
-  <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
-  {% else %}
-  <a class="btn btn-primary" href="{{ url_for('main.cash_register') }}">Abrir caixa</a>
+<div class="dashboard-grid dashboard-kpi-grid mb-4">
+  <section class="card card-dark dashboard-kpi">
+    <span>Vendido hoje</span>
+    <strong>R$ {{ '%.2f'|format(dashboard_summary.sales_total or 0)|replace('.', ',') }}</strong>
+    <small>{{ dashboard_summary.sales_count }} venda{{ 's' if dashboard_summary.sales_count != 1 else '' }}</small>
+  </section>
+  {% if can_view_permission('can_view_reports') %}
+  <section class="card card-dark dashboard-kpi">
+    <span>Lucro hoje</span>
+    <strong>R$ {{ '%.2f'|format(dashboard_summary.profit or 0)|replace('.', ',') }}</strong>
+    <small>Ticket médio R$ {{ '%.2f'|format(dashboard_summary.average_ticket or 0)|replace('.', ',') }}</small>
+  </section>
+  {% endif %}
+  <section class="card card-dark dashboard-kpi">
+    <span>Caixa</span>
+    <strong>{{ dashboard_summary.cash_status }}</strong>
+    {% if can_view_permission('can_view_reports') %}
+    <small>Vendas no caixa R$ {{ '%.2f'|format(dashboard_summary.cash_total or 0)|replace('.', ',') }}</small>
+    {% else %}
+    <small>{{ 'Caixa em operação' if open_cash_register else 'Sem caixa aberto' }}</small>
+    {% endif %}
+  </section>
+  <section class="card card-dark dashboard-kpi">
+    <span>Estoque baixo</span>
+    <strong>{{ dashboard_summary.low_stock_count }}</strong>
+    <small>produto{{ 's' if dashboard_summary.low_stock_count != 1 else '' }} para revisar</small>
+  </section>
+  {% if can_view_permission('can_manage_payables') %}
+  <section class="card card-dark dashboard-kpi">
+    <span>Contas próximas</span>
+    <strong>{{ dashboard_summary.payables_due_count }}</strong>
+    <small>vencidas ou até 3 dias</small>
+  </section>
+  {% endif %}
+  {% if can_view_permission('can_view_reports') %}
+  <section class="card card-dark dashboard-kpi">
+    <span>Lucro do caixa</span>
+    <strong>R$ {{ '%.2f'|format(dashboard_summary.cash_profit or 0)|replace('.', ',') }}</strong>
+    <small>{{ 'Caixa em operação' if open_cash_register else 'Sem caixa aberto' }}</small>
+  </section>
   {% endif %}
 </div>
 
-<div class="dashboard-grid">
-  <div class="card card-dark p-3">
-    <h5>Resumo rápido</h5>
-    <p class="mb-0 text-muted">Estrutura pronta para módulos de vendas, estoque e caixa.</p>
-  </div>
-  <div class="card card-dark p-3">
-    <h5>Catálogo</h5>
-    <p class="mb-0 text-muted">Produtos, categorias e preços serão adicionados aqui.</p>
-  </div>
-  <div class="card card-dark p-3">
-    <h5>Caixa</h5>
-    <p class="mb-0 text-muted">Controle de abertura, fechamento e pagamentos.</p>
-  </div>
+<div class="dashboard-detail-grid">
+  <section class="card card-dark dashboard-panel">
+    <div class="dashboard-panel-header">
+      <h5>Produtos mais vendidos hoje</h5>
+      {% if can_view_permission('can_view_reports') %}
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('main.reports') }}">Relatórios</a>
+      {% endif %}
+    </div>
+    <div class="dashboard-list">
+      {% for product in top_products %}
+      <div class="dashboard-list-item">
+        <div>
+          <strong>{{ product.name }}</strong>
+          {% if can_view_permission('can_view_reports') %}
+          <small>{{ product.quantity }} un. · lucro R$ {{ '%.2f'|format(product.profit or 0)|replace('.', ',') }}</small>
+          {% else %}
+          <small>{{ product.quantity }} un.</small>
+          {% endif %}
+        </div>
+        <span>R$ {{ '%.2f'|format(product.total or 0)|replace('.', ',') }}</span>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">Nenhuma venda registrada hoje.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card card-dark dashboard-panel">
+    <div class="dashboard-panel-header">
+      <h5>Estoque baixo</h5>
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('catalog.products', stock='low') }}">Produtos</a>
+    </div>
+    <div class="dashboard-list">
+      {% for product in low_stock_products %}
+      <div class="dashboard-list-item">
+        <div>
+          <strong>{{ product.name }}</strong>
+          <small>Mínimo {{ product.min_stock_quantity or 0 }} un.</small>
+        </div>
+        <span>{{ product.effective_stock_quantity or 0 }} un.</span>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">Nenhum produto abaixo do mínimo.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if can_view_permission('can_manage_payables') %}
+  <section class="card card-dark dashboard-panel">
+    <div class="dashboard-panel-header">
+      <h5>Contas vencendo</h5>
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('main.payables') }}">Contas</a>
+    </div>
+    <div class="dashboard-list">
+      {% for payable in upcoming_payables %}
+      <div class="dashboard-list-item">
+        <div>
+          <strong>{{ payable.description }}</strong>
+          <small>{{ payable_status_label(payable) }} · {{ payable.due_date.strftime('%d/%m/%Y') }}</small>
+        </div>
+        <span>R$ {{ '%.2f'|format(payable.amount or 0)|replace('.', ',') }}</span>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">Nenhuma conta crítica agora.</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}

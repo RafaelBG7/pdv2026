@@ -1,11 +1,13 @@
+import csv
+import io
 from datetime import date, datetime, time, timedelta, timezone
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.models import CashRegister, Payable, Payment, Product, Sale, SaleItem
-from app.permissions import permission_required
+from app.permissions import authorize_role_override, has_permission_view_override, permission_required
 from app.tenant import current_tenant_company, tenant_session
 
 main_bp = Blueprint('main', __name__)
@@ -16,6 +18,7 @@ PAYMENT_METHODS = {
     'credit': 'Crédito',
 }
 PAYABLE_CATEGORIES = ('Aluguel', 'Luz', 'Água', 'Internet', 'Fornecedor', 'Impostos', 'Outros')
+EXPORT_TYPES = ('produtos', 'vendas', 'caixas', 'contas')
 
 
 def parse_money(value):
@@ -55,6 +58,107 @@ def payable_status_label(payable):
         'pending': 'Pendente',
     }
     return labels.get(status, 'Pendente')
+
+
+def can_export_data():
+    return current_user.role in ('admin', 'master') and current_tenant_company() is not None
+
+
+def can_view_cash_financials():
+    return current_user.has_permission('can_view_reports') or has_permission_view_override('can_view_reports')
+
+
+def csv_response(filename, headers, rows):
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=';')
+    writer.writerow(headers)
+    writer.writerows(rows)
+    content = '\ufeff' + buffer.getvalue()
+    return Response(
+        content,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
+def export_products_rows():
+    products = tenant_query(Product).order_by(Product.name.asc()).all()
+    return [
+        [
+            product.id,
+            product.name,
+            product.barcode or '',
+            product.category.name if product.category else '',
+            f'{product.cost_price or 0:.2f}',
+            f'{product.sale_price or 0:.2f}',
+            product.stock_quantity or 0,
+            product.effective_stock_quantity or 0,
+            product.min_stock_quantity or 0,
+            'Sim' if product.active else 'Não',
+            'Sim' if product.is_kit else 'Não',
+            product.kit_component.name if product.is_kit and product.kit_component else '',
+            product.kit_component_quantity or 0,
+        ]
+        for product in products
+    ]
+
+
+def export_sales_rows():
+    sales = tenant_query(Sale).order_by(Sale.created_at.desc()).all()
+    rows = []
+    for sale in sales:
+        payments = ', '.join(
+            f'{PAYMENT_METHODS.get(payment.method, payment.method)}: {payment.amount or 0:.2f}'
+            for payment in sale.payments
+        )
+        rows.append([
+            sale.id,
+            sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '',
+            f'{sale.total_amount or 0:.2f}',
+            f'{sale.discount_amount or 0:.2f}',
+            f'{sale.final_amount or 0:.2f}',
+            f'{sale_profit(sale):.2f}',
+            sale.payment_status,
+            payments,
+            sale.cash_register_id or '',
+        ])
+    return rows
+
+
+def export_cash_register_rows():
+    cash_registers = tenant_query(CashRegister).order_by(CashRegister.opened_at.desc()).all()
+    return [
+        [
+            cash_register.id,
+            cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '',
+            cash_register.closed_at.strftime('%d/%m/%Y %H:%M') if cash_register.closed_at else '',
+            cash_register.status,
+            f'{cash_register.opening_amount or 0:.2f}',
+            f'{cash_register.closing_amount or 0:.2f}',
+            f'{cash_register_total_sold(cash_register):.2f}',
+            f'{cash_register_profit(cash_register):.2f}',
+            len(cash_register.sales),
+        ]
+        for cash_register in cash_registers
+    ]
+
+
+def export_payables_rows():
+    payables = tenant_query(Payable).order_by(Payable.due_date.desc(), Payable.description.asc()).all()
+    return [
+        [
+            payable.id,
+            payable.description,
+            payable.category or '',
+            f'{payable.amount or 0:.2f}',
+            payable.due_date.strftime('%d/%m/%Y') if payable.due_date else '',
+            payable_status_label(payable),
+            'Sim' if payable.paid else 'Não',
+            payable.paid_at.strftime('%d/%m/%Y %H:%M') if payable.paid_at else '',
+            payable.notes or '',
+        ]
+        for payable in payables
+    ]
 
 
 def card_fee_total(company, payments, final_amount, paid_amount):
@@ -339,7 +443,58 @@ def cash_register_peak_hours(cash_register):
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html', open_cash_register=open_cash_register())
+    today = date.today()
+    company = current_tenant_company()
+    tenant_db = tenant_session()
+    current_cash_register = open_cash_register()
+
+    sales = tenant_db.query(Sale).filter_by(company_id=company.id).order_by(Sale.created_at.desc()).all()
+    today_sales = [
+        sale for sale in sales
+        if sale.created_at and sale.created_at.date() == today
+    ]
+    today_totals, today_payment_totals, today_top_products = build_sales_report(today_sales)
+
+    low_stock_products = tenant_db.query(Product).filter(
+        Product.company_id == company.id,
+        Product.active.is_(True),
+        Product.min_stock_quantity > 0,
+    ).order_by(Product.name.asc()).all()
+    low_stock_products = [
+        product for product in low_stock_products
+        if (product.effective_stock_quantity or 0) <= (product.min_stock_quantity or 0)
+    ]
+    low_stock_products.sort(key=lambda product: ((product.effective_stock_quantity or 0), product.name.lower()))
+
+    upcoming_payables = tenant_db.query(Payable).filter(
+        Payable.company_id == company.id,
+        Payable.paid.is_(False),
+        Payable.due_date <= today + timedelta(days=3),
+    ).order_by(Payable.due_date.asc(), Payable.description.asc()).limit(6).all()
+
+    dashboard_summary = {
+        'sales_total': today_totals['final'],
+        'sales_count': today_totals['sales_count'],
+        'profit': today_totals['profit'],
+        'average_ticket': today_totals['average_ticket'],
+        'cash_status': 'Aberto' if current_cash_register else 'Fechado',
+        'cash_total': cash_register_total_sold(current_cash_register),
+        'cash_profit': cash_register_profit(current_cash_register),
+        'low_stock_count': len(low_stock_products),
+        'payables_due_count': len(upcoming_payables),
+    }
+
+    return render_template(
+        'dashboard.html',
+        open_cash_register=current_cash_register,
+        dashboard_summary=dashboard_summary,
+        payment_methods=PAYMENT_METHODS,
+        today_payment_totals=today_payment_totals,
+        top_products=today_top_products[:5],
+        low_stock_products=low_stock_products[:6],
+        upcoming_payables=upcoming_payables,
+        payable_status_label=payable_status_label,
+    )
 
 
 @main_bp.route('/vendas')
@@ -352,6 +507,41 @@ def sales():
         sales=sales,
         payment_methods=PAYMENT_METHODS,
         open_cash_register=open_cash_register(),
+    )
+
+
+@main_bp.route('/exportacoes/<export_type>', methods=['GET', 'POST'])
+@login_required
+def export_data(export_type):
+    if not can_export_data() and not (request.method == 'POST' and authorize_role_override('admin', 'master')):
+        flash('Informe a senha de um admin para exportar dados.', 'danger')
+        return redirect(request.referrer or url_for('main.dashboard'))
+    if export_type not in EXPORT_TYPES:
+        abort(404)
+
+    today_label = date.today().strftime('%Y-%m-%d')
+    if export_type == 'produtos':
+        return csv_response(
+            f'produtos-{today_label}.csv',
+            ['id', 'produto', 'codigo', 'categoria', 'custo', 'venda', 'estoque', 'estoque_disponivel', 'estoque_minimo', 'ativo', 'kit', 'produto_base', 'quantidade_base'],
+            export_products_rows(),
+        )
+    if export_type == 'vendas':
+        return csv_response(
+            f'vendas-{today_label}.csv',
+            ['id', 'data', 'subtotal', 'desconto', 'total', 'lucro', 'status', 'pagamentos', 'caixa_id'],
+            export_sales_rows(),
+        )
+    if export_type == 'caixas':
+        return csv_response(
+            f'caixas-{today_label}.csv',
+            ['id', 'abertura', 'fechamento', 'status', 'valor_inicial', 'valor_fechamento', 'total_vendido', 'lucro', 'vendas'],
+            export_cash_register_rows(),
+        )
+    return csv_response(
+        f'contas-{today_label}.csv',
+        ['id', 'descricao', 'categoria', 'valor', 'vencimento', 'status', 'pago', 'pago_em', 'observacoes'],
+        export_payables_rows(),
     )
 
 
@@ -648,13 +838,15 @@ def sale_detail(sale_id):
 def cash_register():
     current_cash_register = open_cash_register()
     closed_registers = tenant_query(CashRegister).filter_by(status='closed').order_by(CashRegister.closed_at.desc()).limit(10).all()
+    show_cash_financials = can_view_cash_financials()
     return render_template(
         'cash_register.html',
         cash_register=current_cash_register,
-        cash_register_profit=cash_register_profit(current_cash_register),
-        cash_register_expected_amount=cash_register_expected_amount(current_cash_register),
-        closed_register_profits={item.id: cash_register_profit(item) for item in closed_registers},
+        cash_register_profit=cash_register_profit(current_cash_register) if show_cash_financials else 0,
+        cash_register_expected_amount=cash_register_expected_amount(current_cash_register) if show_cash_financials else 0,
+        closed_register_profits={item.id: cash_register_profit(item) for item in closed_registers} if show_cash_financials else {},
         closed_registers=closed_registers,
+        show_cash_financials=show_cash_financials,
     )
 
 
@@ -679,6 +871,7 @@ def cash_register_detail(cash_register_id):
         payment_methods=PAYMENT_METHODS,
         cash_register_profit=cash_register_profit(selected_cash_register),
         cash_register_total_sold=cash_register_total_sold(selected_cash_register),
+        show_cash_financials=can_view_cash_financials(),
     )
 
 
@@ -716,7 +909,9 @@ def close_cash_register_route():
     expected_amount = cash_register_expected_amount(cash_register)
     if closing_amount != expected_amount:
         difference = round(abs(expected_amount - closing_amount), 2)
-        if closing_amount < expected_amount:
+        if not can_view_cash_financials():
+            flash('Valor de fechamento não confere. Solicite a conferência de um usuário autorizado.', 'danger')
+        elif closing_amount < expected_amount:
             flash(f'Falta {format_brl(difference)} para fechar o caixa. Valor esperado: {format_brl(expected_amount)}.', 'danger')
         else:
             flash(f'O valor está excedido em {format_brl(difference)}. Valor esperado: {format_brl(expected_amount)}.', 'danger')

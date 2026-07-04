@@ -31,14 +31,17 @@
 
         <div class="cash-summary-grid mb-4">
           <div><span>Abertura</span><strong>{{ cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '-' }}</strong></div>
+          <div><span>Status</span><strong>Aberto</strong></div>
+          {% if show_cash_financials %}
           <div><span>Valor inicial</span><strong>R$ {{ '%.2f'|format(cash_register.opening_amount or 0)|replace('.', ',') }}</strong></div>
           <div><span>Vendas</span><strong>{{ cash_register.sales|length }}</strong></div>
           <div><span>Total vendido</span><strong>R$ {{ '%.2f'|format(cash_register.sales|sum(attribute='final_amount') or 0)|replace('.', ',') }}</strong></div>
           <div><span>Valor esperado</span><strong>R$ {{ '%.2f'|format(cash_register_expected_amount or 0)|replace('.', ',') }}</strong></div>
           <div><span>Lucro do caixa</span><strong>R$ {{ '%.2f'|format(cash_register_profit or 0)|replace('.', ',') }}</strong></div>
+          {% endif %}
         </div>
 
-        <form class="cash-action-form" method="post" action="{{ url_for('main.close_cash_register_route') }}">
+        <form class="cash-action-form" method="post" action="{{ url_for('main.close_cash_register_route') }}" {% if needs_permission_override('can_manage_cash_register') %}data-permission-override="true"{% endif %}>
           <div>
             <label class="form-label" for="closing_amount">Valor final em caixa</label>
             <input class="form-control" id="closing_amount" name="closing_amount" inputmode="numeric" placeholder="0,00" data-currency-input required>
@@ -53,7 +56,7 @@
           </div>
           <span class="badge text-bg-secondary">Fechado</span>
         </div>
-        <form class="cash-action-form" method="post" action="{{ url_for('main.open_cash_register_route') }}">
+        <form class="cash-action-form" method="post" action="{{ url_for('main.open_cash_register_route') }}" {% if needs_permission_override('can_manage_cash_register') %}data-permission-override="true"{% endif %}>
           <div>
             <label class="form-label" for="opening_amount">Valor inicial</label>
             <input class="form-control" id="opening_amount" name="opening_amount" inputmode="numeric" placeholder="0,00" data-currency-input required>
@@ -77,9 +80,14 @@
         {% for item in closed_registers %}
         <a class="cash-history-item" href="{{ url_for('main.cash_register_detail', cash_register_id=item.id) }}">
           <div>
+            <span>Abertura</span>
+            <strong>{{ item.opened_at.strftime('%d/%m/%Y %H:%M') if item.opened_at else '-' }}</strong>
+          </div>
+          <div>
             <span>Fechamento</span>
             <strong>{{ item.closed_at.strftime('%d/%m/%Y %H:%M') if item.closed_at else '-' }}</strong>
           </div>
+          {% if show_cash_financials %}
           <div>
             <span>Valor final</span>
             <strong>R$ {{ '%.2f'|format(item.closing_amount or 0)|replace('.', ',') }}</strong>
@@ -88,6 +96,7 @@
             <span>Lucro</span>
             <strong>R$ {{ '%.2f'|format(closed_register_profits.get(item.id, 0))|replace('.', ',') }}</strong>
           </div>
+          {% endif %}
         </a>
         {% else %}
         <p class="text-muted mb-0">Nenhum caixa fechado ainda.</p>

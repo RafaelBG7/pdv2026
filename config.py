@@ -1,6 +1,51 @@
 import os
+import sys
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import quote_plus
+
+
+def runtime_base_dir():
+    if os.environ.get('APP_BASE_DIR'):
+        return Path(os.environ['APP_BASE_DIR']).expanduser().resolve()
+
+    if getattr(sys, 'frozen', False):
+        executable_path = Path(sys.executable).resolve()
+        candidates = [Path.cwd(), executable_path.parent, *executable_path.parents]
+        for candidate in candidates:
+            if (candidate / '.env').exists():
+                return candidate
+        return executable_path.parent
+
+    return Path(__file__).resolve().parent
+
+
+BASE_DIR = runtime_base_dir()
+
+
+def load_env_file(path):
+    if not path.exists():
+        return
+
+    for raw_line in path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+
+
+load_env_file(BASE_DIR / '.env')
+
+
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
 def mysql_database_url(database=None):
@@ -16,11 +61,36 @@ def mysql_database_url(database=None):
 
 
 class Config:
-    BASE_DIR = Path(__file__).resolve().parent
+    BASE_DIR = BASE_DIR
     LOG_DIR = BASE_DIR / 'logs'
     LOG_DIR.mkdir(exist_ok=True)
+    BACKUP_DIR = BASE_DIR / 'backups'
+    BACKUP_DIR.mkdir(exist_ok=True)
 
+    ENVIRONMENT = os.environ.get('APP_ENV', os.environ.get('FLASK_ENV', 'development')).lower()
+    TESTING = env_bool('TESTING', False)
+    DEBUG = env_bool('FLASK_DEBUG', ENVIRONMENT == 'development')
     SECRET_KEY = os.environ.get('SECRET_KEY', 'adega-jf-secret-key')
+    MASTER_DEFAULT_USERNAME = os.environ.get('MASTER_DEFAULT_USERNAME', 'master')
+    MASTER_DEFAULT_PASSWORD = os.environ.get('MASTER_DEFAULT_PASSWORD', 'master123')
+    PASSWORD_MIN_LENGTH = int(os.environ.get('PASSWORD_MIN_LENGTH', '8'))
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', str(8 * 1024 * 1024)))
+    PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', '')
+    MAIL_SMTP_SERVER = os.environ.get('MAIL_SMTP_SERVER', os.environ.get('GMAIL_SMTP_SERVER', os.environ.get('BREVO_SMTP_SERVER', 'smtp.gmail.com')))
+    MAIL_SMTP_PORT = int(os.environ.get('MAIL_SMTP_PORT', os.environ.get('GMAIL_SMTP_PORT', os.environ.get('BREVO_SMTP_PORT', '587'))))
+    MAIL_SMTP_LOGIN = os.environ.get('MAIL_SMTP_LOGIN', os.environ.get('GMAIL_SMTP_LOGIN', os.environ.get('BREVO_SMTP_LOGIN', '')))
+    MAIL_SMTP_PASSWORD = os.environ.get('MAIL_SMTP_PASSWORD', os.environ.get('GMAIL_APP_PASSWORD', os.environ.get('BREVO_SMTP_PASSWORD', '')))
+    MAIL_FROM_EMAIL = os.environ.get('MAIL_FROM_EMAIL', os.environ.get('BREVO_FROM_EMAIL', MAIL_SMTP_LOGIN))
+    MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', os.environ.get('BREVO_FROM_NAME', 'Girofy'))
+    MAIL_SUPPRESS_SEND = env_bool('MAIL_SUPPRESS_SEND', TESTING)
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get('SESSION_LIFETIME_HOURS', '8')))
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+    SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', ENVIRONMENT == 'production')
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = SESSION_COOKIE_SAMESITE
+    REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
+    PREFERRED_URL_SCHEME = 'https' if SESSION_COOKIE_SECURE else 'http'
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL',
         mysql_database_url(),
@@ -29,4 +99,8 @@ class Config:
     MYSQL_TENANT_DATABASE_URL_TEMPLATE = os.environ.get('MYSQL_TENANT_DATABASE_URL_TEMPLATE', '')
     MYSQL_SERVER_DATABASE_URL = os.environ.get('MYSQL_SERVER_DATABASE_URL', mysql_database_url('mysql'))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    DEBUG = True
+
+    if ENVIRONMENT == 'production' and SECRET_KEY == 'adega-jf-secret-key':
+        raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em produção.')
+    if ENVIRONMENT == 'production' and MASTER_DEFAULT_PASSWORD == 'master123':
+        raise RuntimeError('Defina MASTER_DEFAULT_PASSWORD seguro antes de rodar em produção.')

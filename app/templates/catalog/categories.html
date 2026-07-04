@@ -9,7 +9,7 @@
   <a class="btn btn-outline-light" href="{{ url_for('catalog.products') }}">Ver produtos</a>
 </div>
 
-<form class="card card-dark p-4 mb-4" method="post">
+<form class="card card-dark p-4 mb-4" method="post" {% if needs_permission_override('can_manage_categories') %}data-permission-override="true"{% endif %}>
   <div class="row g-2 align-items-end">
     <div class="col-md-9">
       <label class="form-label" for="name">Nome da categoria</label>
@@ -89,7 +89,7 @@
           <td colspan="2" class="p-0">
             <div class="collapse" id="category-details-{{ category.id }}">
               <div class="product-details-panel">
-                <form method="post" action="{{ url_for('catalog.update_category', category_id=category.id) }}" class="category-inline-form">
+                <form method="post" action="{{ url_for('catalog.update_category', category_id=category.id) }}" class="category-inline-form" {% if needs_permission_override('can_manage_categories') %}data-permission-override="true"{% endif %}>
                   <div>
                     <label class="form-label" for="category_name_{{ category.id }}">Nome</label>
                     <input class="form-control" id="category_name_{{ category.id }}" name="name" value="{{ category.name }}" required>
@@ -98,7 +98,7 @@
                 </form>
 
                 <div class="product-danger-actions">
-                  <form method="post" action="{{ url_for('catalog.delete_category', category_id=category.id) }}" onsubmit="return confirm('Excluir esta categoria?');">
+                  <form method="post" action="{{ url_for('catalog.delete_category', category_id=category.id) }}" onsubmit="return confirm('Excluir esta categoria?');" {% if needs_permission_override('can_manage_categories') %}data-permission-override="true"{% endif %}>
                     <button class="btn btn-outline-danger" type="submit">Excluir</button>
                   </form>
                 </div>

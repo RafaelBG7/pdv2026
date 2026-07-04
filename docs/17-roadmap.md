@@ -4,139 +4,104 @@
 
 Implementado:
 
-- Flask monolítico.
-- SQLite local.
-- Login/logout/cadastro.
-- Configurações do usuário.
-- Catálogo de produtos e categorias.
-- Produtos kit.
+- Flask monolítico com templates Jinja2.
+- MySQL central e bancos separados por adega.
+- Login, logout, cadastro e sessão.
+- Verificação de e-mail por código.
+- Recuperação de senha por link temporário.
+- Cadastro com key ou opção "Não tenho key".
+- Bloqueio por assinatura/key vencida ou ausente.
+- Painel master para adegas, logs e keys.
+- Geração de key Basic/Pro com presets e data customizada.
+- Dashboard com venda, lucro, caixa, estoque e contas.
+- Produtos, categorias, filtros, kits e estoque mínimo.
+- Importação de produtos por planilha em Configurações.
+- Exportação CSV para admin.
 - Abertura e fechamento de caixa.
-- Registro de venda.
-- Múltiplas formas de pagamento.
-- Desconto.
-- Troco.
-- Baixa automática de estoque.
-- Relatórios por período.
-- Alertas de estoque baixo.
-- Testes automatizados principais.
+- Detalhe de caixas anteriores.
+- Registro de venda com autocomplete, desconto, F2/F3 e múltiplos pagamentos.
+- Relatórios e gráfico por período.
+- Contas a pagar e notificações.
+- Equipe com CPF, busca e perfis.
+- Taxas de Pix, débito e crédito para cálculo de lucro.
+- Backup manual e automático.
+- Logs de erro visíveis para o master.
+- Testes automatizados de rotas e regras principais.
 
-Parcial:
+## Prioridade Alta
 
-- Dashboard.
-- Segurança.
-- Deploy.
-- Permissões.
-- Migrações.
-- Monitoramento.
+- Implementar CSRF nos formulários.
+- Adicionar migrações versionadas com Alembic/Flask-Migrate.
+- Criar auditoria de ações de negócio.
+- Criar fluxo de restauração de backup.
+- Remover `debug=True` em ambiente de produção.
+- Forçar `SECRET_KEY` segura fora do desenvolvimento.
 
-## Próxima Versão
+## Operação do PDV
 
-Prioridade alta:
-
-- Corrigir `app.py`.
-- Remover `DEBUG=True` fixo.
-- Exigir `SECRET_KEY` segura.
-- Remover/proteger cadastro público.
-- Forçar troca da senha padrão.
-- Implementar CSRF.
-- Implementar permissões por perfil.
-- Criar migrações com Alembic/Flask-Migrate.
-- Criar backup automatizado.
-- Adicionar logs.
-
-## Melhorias Futuras
-
-Operação:
+Melhorias recomendadas:
 
 - Cancelamento de venda.
 - Estorno.
-- Sangria e reforço de caixa.
+- Sangria e suprimento de caixa.
 - Histórico de movimentação de estoque.
 - Ajuste manual de estoque com motivo.
 - Cadastro de fornecedores.
 - Registro de compras.
-- Cadastro de clientes.
 - Impressão de comprovante.
-- Exportação CSV/PDF.
+- Leitor de código de barras.
 
-Gestão:
+## Gestão
 
-- Dashboard com métricas reais.
+Melhorias recomendadas:
+
 - Curva ABC de produtos.
 - Margem por categoria.
 - Relatório de divergência de caixa.
 - Relatório de estoque mínimo.
+- Ranking de funcionários por venda.
+- Controle de metas.
+- Comparativo entre períodos.
+
+## SaaS e Assinatura
+
+Melhorias recomendadas:
+
+- Regras reais por plano Basic/Pro.
+- Tela de contratação/pagamento real.
+- Emissão de cobrança mensal/anual.
+- Avisos de vencimento de assinatura.
+- Bloqueio progressivo antes do vencimento.
+- Histórico de keys e renovações.
+- Painel de suporte por adega.
+
+## Segurança e Produção
+
+Melhorias recomendadas:
+
+- HTTPS.
+- Rate limit persistente/distribuído no login.
+- Política de senha mais forte.
+- Proteção do painel master por IP ou segundo fator.
+- Logs externos.
+- Backups externos.
+- Teste de restauração.
+- Monitoramento de disponibilidade.
 
 ## Integrações Futuras
 
 - Impressoras térmicas.
-- Leitor de código de barras.
 - TEF.
 - Emissão fiscal, se aplicável.
-- WhatsApp/email para relatórios.
-- Sistema contábil.
-- ERP.
+- Integrações externas para relatórios e alertas.
+- ERP/contabilidade.
+- API pública versionada.
 
-## Escalabilidade
-
-- PostgreSQL.
-- API JSON.
-- Separação frontend/backend.
-- Paginação e busca indexada.
-- Cache de relatórios.
-- Processamento assíncrono.
-- Deploy containerizado.
-
-## Mobile
+## Mobile/Desktop
 
 Possibilidades:
 
-- PWA.
-- Layout dedicado para operação em tablet.
+- PWA para operação em tablet.
+- Layout dedicado para celular.
 - Scanner por câmera.
-- App mobile para consulta de estoque.
-
-## Desktop
-
-Possibilidades:
-
 - Empacotamento com Electron/Tauri.
-- Instalador local.
-- Sincronização controlada com servidor.
-
-## API Pública
-
-Planejada:
-
-- `/api/v1/auth/login`.
-- `/api/v1/products`.
-- `/api/v1/categories`.
-- `/api/v1/sales`.
-- `/api/v1/cash-registers`.
-- `/api/v1/reports`.
-
-Requisitos:
-
-- JWT ou sessão API.
-- Rate limit.
-- Versionamento.
-- Documentação OpenAPI.
-- Testes de contrato.
-
-## Automações
-
-- Backup diário.
-- Alerta de estoque baixo.
-- Fechamento de caixa pendente.
-- Relatório diário por email.
-- Rotina de integridade do banco.
-
-## IA
-
-Possibilidades futuras:
-
-- Previsão de reposição de estoque.
-- Sugestão de compras.
-- Análise de produtos com baixa margem.
-- Assistente para consulta de vendas.
-- Detecção de anomalias em caixa.

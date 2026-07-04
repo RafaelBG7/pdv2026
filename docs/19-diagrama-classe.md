@@ -4,29 +4,122 @@
 
 ```mermaid
 classDiagram
+    class Company {
+        +Integer id
+        +String name
+        +String database_path
+        +Boolean active
+        +String subscription_plan
+        +String billing_cycle
+        +Date subscription_started_at
+        +Date subscription_renews_at
+        +String activation_key
+        +Boolean pix_fee_enabled
+        +Boolean debit_fee_enabled
+        +Boolean credit_fee_enabled
+        +Float pix_fee_percent
+        +Float debit_fee_percent
+        +Float credit_fee_percent
+        +String backup_frequency
+        +DateTime backup_last_at
+        +String backup_last_path
+        +String backup_last_status
+        +subscription_expired
+        +subscription_valid
+    }
+
+    class ActivationKey {
+        +Integer id
+        +String key
+        +String plan
+        +Date renews_at
+        +Boolean active
+        +Integer used_by_company_id
+        +DateTime used_at
+        +DateTime created_at
+    }
+
     class User {
         +Integer id
         +String username
         +String first_name
         +String last_name
+        +String cpf
         +String email
+        +Boolean email_verified
+        +DateTime email_verified_at
         +String phone
         +String password_hash
         +String role
+        +Integer company_id
         +Boolean is_active
-        +DateTime created_at
+        +Boolean can_view_products
+        +Boolean can_manage_products
+        +Boolean can_manage_categories
+        +Boolean can_manage_sales
+        +Boolean can_manage_cash_register
+        +Boolean can_view_reports
+        +Boolean can_manage_payables
+        +Boolean can_manage_settings
         +set_password(password)
         +check_password(password)
-        +full_name
-        +masked_email
-        +password_fingerprint
+        +has_permission(permission)
+        +role_label
+    }
+
+    class EmailVerificationCode {
+        +Integer id
+        +Integer user_id
+        +String code_hash
+        +DateTime expires_at
+        +Boolean used
+        +Integer attempts
+        +DateTime created_at
+    }
+
+    class PasswordResetToken {
+        +Integer id
+        +Integer user_id
+        +String token_hash
+        +DateTime expires_at
+        +Boolean used
+        +DateTime created_at
+    }
+
+    class EmailChangeRequest {
+        +Integer id
+        +Integer user_id
+        +String old_email
+        +String new_email
+        +String token_hash
+        +DateTime expires_at
+        +Boolean used
+        +DateTime confirmed_at
+    }
+
+    class EmailAlertSetting {
+        +Integer id
+        +Integer company_id
+        +String alert_type
+        +Boolean enabled
+        +Text recipients
+        +recipient_list
+    }
+
+    class EmailAlertDelivery {
+        +Integer id
+        +Integer company_id
+        +String alert_type
+        +String alert_key
+        +Text recipients
+        +DateTime sent_at
     }
 
     class Category {
         +Integer id
         +String name
+        +Integer company_id
         +DateTime created_at
-        +products
     }
 
     class Product {
@@ -34,14 +127,15 @@ classDiagram
         +String name
         +String barcode
         +Integer category_id
+        +Integer company_id
         +Float cost_price
         +Float sale_price
         +Integer stock_quantity
+        +Integer min_stock_quantity
         +Boolean active
         +Boolean is_kit
         +Integer kit_component_product_id
         +Integer kit_component_quantity
-        +DateTime created_at
         +effective_stock_quantity
         +profit_amount
         +profit_margin_percent
@@ -55,7 +149,7 @@ classDiagram
         +Float closing_amount
         +String status
         +Integer user_id
-        +sales
+        +Integer company_id
     }
 
     class Sale {
@@ -66,9 +160,8 @@ classDiagram
         +Float final_amount
         +String payment_status
         +Integer user_id
+        +Integer company_id
         +Integer cash_register_id
-        +items
-        +payments
     }
 
     class SaleItem {
@@ -89,6 +182,30 @@ classDiagram
         +Float amount
     }
 
+    class Payable {
+        +Integer id
+        +Integer company_id
+        +String description
+        +String category
+        +Float amount
+        +Date due_date
+        +Boolean paid
+        +DateTime paid_at
+        +String notes
+    }
+
+    Company "1" --> "0..*" User : users
+    Company "1" --> "0..*" ActivationKey : used_keys
+    User "1" --> "0..*" EmailVerificationCode : verification_codes
+    User "1" --> "0..*" PasswordResetToken : reset_tokens
+    User "1" --> "0..*" EmailChangeRequest : email_changes
+    Company "1" --> "0..*" EmailAlertSetting : email_alert_settings
+    Company "1" --> "0..*" EmailAlertDelivery : email_alert_deliveries
+    Company "1" --> "0..*" Category : tenant_data
+    Company "1" --> "0..*" Product : tenant_data
+    Company "1" --> "0..*" CashRegister : tenant_data
+    Company "1" --> "0..*" Sale : tenant_data
+    Company "1" --> "0..*" Payable : tenant_data
     Category "1" --> "0..*" Product : products
     Product "1" --> "0..*" Product : kit_component
     User "1" --> "0..*" CashRegister : opens
@@ -101,7 +218,9 @@ classDiagram
 
 ## Observações
 
+- `Company` fica no banco central e representa uma adega.
+- Os dados operacionais ficam no banco MySQL da adega selecionada.
+- `ActivationKey` permite gerar keys avulsas ou vinculadas a uma empresa.
 - `Product` possui relacionamento autorreferente para suportar kits.
-- `Sale` remove itens e pagamentos em cascata quando excluída pelo ORM.
-- Não há relacionamento explícito `User.sales` no model, embora a FK exista.
-- `CashRegister.sales` usa `backref`.
+- `Payable` alimenta alertas de contas vencidas e próximas do vencimento.
+- Permissões são controladas no modelo `User` e aplicadas nas rotas.

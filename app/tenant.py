@@ -2,7 +2,7 @@ import re
 
 from flask import current_app, g, session
 from flask_login import current_user
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
@@ -77,6 +77,30 @@ def sync_tenant_reference_data(company, engine):
     from app.models import User
 
     users = User.query.filter_by(company_id=company.id).all()
+    inspector = inspect(engine)
+    if 'companies' in inspector.get_table_names():
+        columns = {column['name'] for column in inspector.get_columns('companies')}
+        migrations = {
+            'backup_frequency': 'ALTER TABLE companies ADD COLUMN backup_frequency VARCHAR(20) DEFAULT "manual"',
+            'backup_last_at': 'ALTER TABLE companies ADD COLUMN backup_last_at DATETIME',
+            'backup_last_path': 'ALTER TABLE companies ADD COLUMN backup_last_path VARCHAR(255) DEFAULT ""',
+            'backup_last_status': 'ALTER TABLE companies ADD COLUMN backup_last_status VARCHAR(40) DEFAULT ""',
+        }
+        with engine.begin() as connection:
+            for column, statement in migrations.items():
+                if column not in columns:
+                    connection.execute(text(statement))
+
+    if 'users' in inspector.get_table_names():
+        columns = {column['name'] for column in inspector.get_columns('users')}
+        migrations = {
+            'cpf': 'ALTER TABLE users ADD COLUMN cpf VARCHAR(20) DEFAULT ""',
+        }
+        with engine.begin() as connection:
+            for column, statement in migrations.items():
+                if column not in columns:
+                    connection.execute(text(statement))
+
     with engine.begin() as connection:
         connection.execute(
             text(
@@ -86,14 +110,16 @@ def sync_tenant_reference_data(company, engine):
                     subscription_started_at, subscription_renews_at, activation_key,
                     activation_key_updated_at, card_fee_enabled, pix_fee_enabled,
                     debit_fee_enabled, credit_fee_enabled, pix_fee_percent,
-                    debit_fee_percent, credit_fee_percent, created_at
+                    debit_fee_percent, credit_fee_percent, backup_frequency,
+                    backup_last_at, backup_last_path, backup_last_status, created_at
                 )
                 VALUES (
                     :id, :name, :database_path, :active, :subscription_plan, :billing_cycle,
                     :subscription_started_at, :subscription_renews_at, :activation_key,
                     :activation_key_updated_at, :card_fee_enabled, :pix_fee_enabled,
                     :debit_fee_enabled, :credit_fee_enabled, :pix_fee_percent,
-                    :debit_fee_percent, :credit_fee_percent, :created_at
+                    :debit_fee_percent, :credit_fee_percent, :backup_frequency,
+                    :backup_last_at, :backup_last_path, :backup_last_status, :created_at
                 )
                 ON DUPLICATE KEY UPDATE
                     name = VALUES(name),
@@ -111,7 +137,11 @@ def sync_tenant_reference_data(company, engine):
                     credit_fee_enabled = VALUES(credit_fee_enabled),
                     pix_fee_percent = VALUES(pix_fee_percent),
                     debit_fee_percent = VALUES(debit_fee_percent),
-                    credit_fee_percent = VALUES(credit_fee_percent)
+                    credit_fee_percent = VALUES(credit_fee_percent),
+                    backup_frequency = VALUES(backup_frequency),
+                    backup_last_at = VALUES(backup_last_at),
+                    backup_last_path = VALUES(backup_last_path),
+                    backup_last_status = VALUES(backup_last_status)
                 '''
             ),
             {
@@ -132,6 +162,10 @@ def sync_tenant_reference_data(company, engine):
                 'pix_fee_percent': company.pix_fee_percent,
                 'debit_fee_percent': company.debit_fee_percent,
                 'credit_fee_percent': company.credit_fee_percent,
+                'backup_frequency': company.backup_frequency,
+                'backup_last_at': company.backup_last_at,
+                'backup_last_path': company.backup_last_path,
+                'backup_last_status': company.backup_last_status,
                 'created_at': company.created_at,
             },
         )
@@ -141,14 +175,14 @@ def sync_tenant_reference_data(company, engine):
                 text(
                     '''
                     INSERT INTO users (
-                        id, username, first_name, last_name, email, phone,
+                        id, username, first_name, last_name, cpf, email, phone,
                         password_hash, role, company_id, is_active,
                         can_view_products, can_manage_products, can_manage_categories,
                         can_manage_sales, can_manage_cash_register, can_view_reports,
                         can_manage_payables, can_manage_settings, created_at
                     )
                     VALUES (
-                        :id, :username, :first_name, :last_name, :email, :phone,
+                        :id, :username, :first_name, :last_name, :cpf, :email, :phone,
                         :password_hash, :role, :company_id, :is_active,
                         :can_view_products, :can_manage_products, :can_manage_categories,
                         :can_manage_sales, :can_manage_cash_register, :can_view_reports,
@@ -158,6 +192,7 @@ def sync_tenant_reference_data(company, engine):
                         username = VALUES(username),
                         first_name = VALUES(first_name),
                         last_name = VALUES(last_name),
+                        cpf = VALUES(cpf),
                         email = VALUES(email),
                         phone = VALUES(phone),
                         password_hash = VALUES(password_hash),
@@ -179,6 +214,7 @@ def sync_tenant_reference_data(company, engine):
                     'username': user.username,
                     'first_name': user.first_name,
                     'last_name': user.last_name,
+                    'cpf': user.cpf,
                     'email': user.email,
                     'phone': user.phone,
                     'password_hash': user.password_hash,

@@ -1,6 +1,6 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, abort, redirect, render_template, request, session, url_for
 from flask_login import current_user
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
@@ -111,6 +111,7 @@ def ensure_user_profile_columns():
     migrations = {
         'first_name': 'ALTER TABLE users ADD COLUMN first_name VARCHAR(120) DEFAULT ""',
         'last_name': 'ALTER TABLE users ADD COLUMN last_name VARCHAR(120) DEFAULT ""',
+        'cpf': 'ALTER TABLE users ADD COLUMN cpf VARCHAR(20) DEFAULT ""',
         'email': 'ALTER TABLE users ADD COLUMN email VARCHAR(255) DEFAULT ""',
         'phone': 'ALTER TABLE users ADD COLUMN phone VARCHAR(40) DEFAULT ""',
     }
@@ -120,7 +121,6 @@ def ensure_user_profile_columns():
             db.session.execute(text(statement))
 
     db.session.commit()
-
 
 def ensure_user_permission_columns():
     inspector = inspect(db.engine)
@@ -143,6 +143,25 @@ def ensure_user_permission_columns():
         if column not in columns:
             db.session.execute(text(statement))
 
+    db.session.commit()
+
+
+def ensure_user_email_security_columns():
+    inspector = inspect(db.engine)
+    if 'users' not in inspector.get_table_names():
+        return
+
+    columns = {column['name'] for column in inspector.get_columns('users')}
+    migrations = {
+        'email_verified': 'ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT 1',
+        'email_verified_at': 'ALTER TABLE users ADD COLUMN email_verified_at DATETIME',
+    }
+
+    for column, statement in migrations.items():
+        if column not in columns:
+            db.session.execute(text(statement))
+
+    db.session.execute(text('UPDATE users SET email_verified = 1 WHERE email_verified IS NULL'))
     db.session.commit()
 
 
@@ -255,6 +274,33 @@ def ensure_company_card_fee_columns():
     db.session.commit()
 
 
+def ensure_company_backup_columns():
+    inspector = inspect(db.engine)
+    if 'companies' not in inspector.get_table_names():
+        return
+
+    columns = {column['name'] for column in inspector.get_columns('companies')}
+    migrations = {
+        'backup_frequency': 'ALTER TABLE companies ADD COLUMN backup_frequency VARCHAR(20) DEFAULT "manual"',
+        'backup_last_at': 'ALTER TABLE companies ADD COLUMN backup_last_at DATETIME',
+        'backup_last_path': 'ALTER TABLE companies ADD COLUMN backup_last_path VARCHAR(255) DEFAULT ""',
+        'backup_last_status': 'ALTER TABLE companies ADD COLUMN backup_last_status VARCHAR(40) DEFAULT ""',
+    }
+
+    for column, statement in migrations.items():
+        if column not in columns:
+            try:
+                db.session.execute(text(statement))
+            except OperationalError:
+                db.session.rollback()
+
+    db.session.execute(text(
+        'UPDATE companies SET backup_frequency = "manual" '
+        'WHERE backup_frequency IS NULL OR backup_frequency = ""'
+    ))
+    db.session.commit()
+
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -280,19 +326,23 @@ def create_app(config_class=Config):
         ensure_sale_item_profit_columns()
         ensure_user_profile_columns()
         ensure_user_permission_columns()
+        ensure_user_email_security_columns()
         ensure_company_columns()
         ensure_company_subscription_columns()
         ensure_company_card_fee_columns()
+        ensure_company_backup_columns()
 
-        if not User.query.filter_by(username='master').first():
+        if not User.query.filter_by(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master')).first():
             company = Company(name='Painel Master')
+            company.activation_key = 'MASTER-SYSTEM-KEY'
+            company.activation_key_updated_at = datetime.now(timezone.utc)
             db.session.add(company)
             db.session.flush()
             tenant_database_identifier(company)
             tenant_engine(company)
-            master = User(username='master', role='master', is_active=True)
+            master = User(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master'), role='master', is_active=True)
             master.company_id = company.id
-            master.set_password('master123')
+            master.set_password(app.config.get('MASTER_DEFAULT_PASSWORD', 'master123'))
             db.session.add(master)
             db.session.commit()
         else:
@@ -321,6 +371,20 @@ def create_app(config_class=Config):
         return db.session.get(User, int(user_id))
 
     @app.before_request
+    def mark_session_permanent():
+        session.permanent = True
+        return None
+
+    @app.before_request
+    def reject_cross_origin_posts():
+        if request.method not in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+            return None
+        origin = request.headers.get('Origin')
+        if origin and origin.rstrip('/') != request.host_url.rstrip('/'):
+            abort(403)
+        return None
+
+    @app.before_request
     def block_expired_subscription():
         if not current_user.is_authenticated:
             return None
@@ -342,6 +406,26 @@ def create_app(config_class=Config):
             return redirect(url_for('auth.subscription_activation'))
         return None
 
+    @app.before_request
+    def run_scheduled_backup():
+        if not current_user.is_authenticated or not request.endpoint or request.endpoint == 'static':
+            return None
+        if current_user.role not in ('admin', 'master'):
+            return None
+
+        from app.backup import backup_due, create_company_backup
+        from app.tenant import current_tenant_company
+
+        company = current_tenant_company()
+        if not backup_due(company):
+            return None
+
+        try:
+            create_company_backup(company, reason='scheduled')
+        except Exception as error:
+            app.logger.error('Falha ao gerar backup agendado: %s', error, exc_info=True)
+        return None
+
     @app.errorhandler(404)
     def not_found_error(error):
         log_http_error(app, error)
@@ -353,39 +437,90 @@ def create_app(config_class=Config):
         log_http_error(app, error)
         return render_template('errors/500.html'), 500
 
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        return response
+
     @app.context_processor
     def inject_user():
         notifications = []
         master_company = None
+        permission_authorizer_users = []
+        from app.permissions import has_permission_view_override, needs_permission_override
+        from app.services.alert_service import send_configured_email_alert
+
+        def can_view_permission(permission):
+            if not current_user.is_authenticated:
+                return False
+            return current_user.has_permission(permission) or has_permission_view_override(permission)
+
+        def absolute_url(path):
+            base_url = (app.config.get('PUBLIC_BASE_URL') or request.host_url.rstrip('/')).rstrip('/')
+            return f'{base_url}{path}'
+
+        def mask_secret(value, visible=4):
+            text_value = str(value or '')
+            if not text_value:
+                return 'Não gerada'
+            compact = text_value.replace('-', '')
+            if len(compact) <= visible:
+                return '••••'
+            return f'•••• {compact[-visible:]}'
 
         if current_user.is_authenticated:
-            from app.models import Payable, Product
+            from app.models import Payable, Product, User
             from app.tenant import current_tenant_company, tenant_session
+
+            permission_authorizer_users = [
+                user for user in User.query.filter(
+                    User.is_active.is_(True),
+                    User.role.in_(('admin', 'manager', 'master')),
+                ).order_by(User.username.asc()).all()
+                if user.role == 'master' or user.company_id == current_user.company_id
+            ]
 
             low_stock_products = []
             dismissed_notifications = set(session.get('dismissed_low_stock_notifications', []))
             master_company = current_tenant_company() if current_user.role == 'master' else None
             tenant_db = tenant_session()
+            company = current_tenant_company()
             products = tenant_db.query(Product).filter(
-                Product.company_id == current_tenant_company().id,
+                Product.company_id == company.id,
                 Product.active.is_(True),
-            ).order_by(Product.name.asc()).all() if tenant_db and current_tenant_company() else []
+            ).order_by(Product.name.asc()).all() if tenant_db and company else []
             for product in products:
                 stock_quantity = product.effective_stock_quantity or 0
                 min_stock_quantity = product.min_stock_quantity or 0
-                notification_key = f'product-low-stock:{product.id}:{stock_quantity}:{min_stock_quantity}'
+                alert_type = 'product_out_of_stock' if stock_quantity <= 0 else 'product_low_stock'
+                notification_key = f'{alert_type}:{product.id}:{stock_quantity}:{min_stock_quantity}'
                 if min_stock_quantity > 0 and stock_quantity <= min_stock_quantity and notification_key not in dismissed_notifications:
                     low_stock_products.append((stock_quantity, min_stock_quantity, notification_key, product))
 
             low_stock_products.sort(key=lambda item: (item[0], item[3].name.lower()))
             for stock_quantity, min_stock_quantity, notification_key, product in low_stock_products[:10]:
                 if stock_quantity <= 0:
+                    title = 'Produto esgotado'
                     message = f'{product.name} está sem estoque. Mínimo: {min_stock_quantity} un.'
                 else:
+                    title = 'Estoque baixo'
                     message = f'{product.name} está com {stock_quantity} un. Mínimo: {min_stock_quantity} un.'
 
+                alert_type = 'product_out_of_stock' if stock_quantity <= 0 else 'product_low_stock'
+                product_url = url_for('catalog.products')
+                send_configured_email_alert(
+                    company,
+                    alert_type,
+                    notification_key,
+                    title,
+                    message,
+                    absolute_url(product_url),
+                )
                 notifications.append({
-                    'title': 'Estoque baixo',
+                    'title': title,
                     'message': message,
                     'url': url_for('catalog.dismiss_low_stock_notification', product_id=product.id),
                     'key': notification_key,
@@ -394,37 +529,78 @@ def create_app(config_class=Config):
             today = date.today()
             alert_limit = today + timedelta(days=3)
             payables = tenant_db.query(Payable).filter(
-                Payable.company_id == current_tenant_company().id,
+                Payable.company_id == company.id,
                 Payable.paid.is_(False),
                 Payable.due_date <= alert_limit,
-            ).order_by(Payable.due_date.asc(), Payable.description.asc()).all() if tenant_db and current_tenant_company() else []
+            ).order_by(Payable.due_date.asc(), Payable.description.asc()).all() if tenant_db and company else []
 
             for payable in payables[:10]:
                 amount = f'R$ {(payable.amount or 0):.2f}'.replace('.', ',')
                 if payable.due_date < today:
                     days = (today - payable.due_date).days
                     title = 'Conta vencida'
+                    alert_type = 'payable_overdue'
                     message = f'{payable.description} venceu há {days} dia{"s" if days != 1 else ""}. Valor: {amount}.'
                 elif payable.due_date == today:
                     title = 'Conta vence hoje'
+                    alert_type = 'payable_due_today'
                     message = f'{payable.description} vence hoje. Valor: {amount}.'
                 else:
                     days = (payable.due_date - today).days
                     title = 'Conta próxima do vencimento'
+                    alert_type = ''
                     message = f'{payable.description} vence em {days} dia{"s" if days != 1 else ""}. Valor: {amount}.'
 
-                notifications.append({
-                    'title': title,
-                    'message': message,
-                    'url': url_for('main.payables'),
-                    'key': f'payable:{payable.id}:{payable.due_date}',
-                })
+                if alert_type:
+                    alert_key = f'{alert_type}:{payable.id}:{payable.due_date}'
+                    send_configured_email_alert(
+                        company,
+                        alert_type,
+                        alert_key,
+                        title,
+                        message,
+                        absolute_url(url_for('main.payables')),
+                    )
+
+                if can_view_permission('can_manage_payables'):
+                    notifications.append({
+                        'title': title,
+                        'message': message,
+                        'url': url_for('main.payables'),
+                        'key': f'payable:{payable.id}:{payable.due_date}',
+                    })
+
+            if company and company.subscription_renews_at:
+                days_left = (company.subscription_renews_at - today).days
+                if 0 <= days_left <= 3:
+                    title = 'Assinatura perto do vencimento'
+                    message = f'A assinatura da adega {company.name} vence em {days_left} dia{"s" if days_left != 1 else ""}.'
+                    send_configured_email_alert(
+                        company,
+                        'subscription_expiring',
+                        f'subscription_expiring:{company.id}:{company.subscription_renews_at}:{days_left}',
+                        title,
+                        message,
+                        absolute_url(url_for('auth.subscriptions')),
+                    )
+                    if can_view_permission('can_view_finance'):
+                        notifications.append({
+                            'title': title,
+                            'message': message,
+                            'url': url_for('auth.subscriptions'),
+                            'key': f'subscription:{company.id}:{company.subscription_renews_at}:{days_left}',
+                        })
 
         return {
             'current_user': current_user,
             'app_notifications': notifications,
             'master_company': master_company,
             'master_company_active': bool(current_user.is_authenticated and current_user.role == 'master' and master_company and master_company.id != current_user.company_id),
+            'permission_authorizer_users': permission_authorizer_users,
+            'can_view_permission': can_view_permission,
+            'needs_permission_override': needs_permission_override,
+            'mask_secret': mask_secret,
+            'password_min_length': int(app.config.get('PASSWORD_MIN_LENGTH') or (3 if app.config.get('TESTING') else 8)),
         }
 
     from app.tenant import close_tenant_session

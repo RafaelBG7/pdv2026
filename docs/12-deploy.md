@@ -2,142 +2,127 @@
 
 ## Status Atual
 
-O projeto está preparado para execução local de desenvolvimento, mas não está pronto para produção sem ajustes.
+O projeto está pronto para desenvolvimento local com MySQL e pode ser preparado para produção, mas ainda precisa de hardening antes de ficar público na internet.
 
-Problemas principais:
+Já existe:
 
-- `app.py` contém import incorreto (`create_apppy`).
-- `DEBUG=True`.
-- `SECRET_KEY` padrão fraca.
-- Sem servidor WSGI configurado.
-- Sem Docker.
-- Sem HTTPS.
-- Sem backup.
-- Sem migrações formais.
+- `app.py` funcional usando `create_app`.
+- Porta padrão `5001`.
+- MySQL central e bancos por adega.
+- Variáveis de ambiente para conexão.
+- Logs de erro em arquivo.
+- Backup por adega.
 
-## Execução Local Recomendada
+Ainda falta para produção:
 
-Enquanto `app.py` não for corrigido:
+- Servidor WSGI dedicado.
+- `DEBUG=False`.
+- `SECRET_KEY` forte obrigatória.
+- HTTPS.
+- CSRF.
+- Migrações versionadas.
+- Rotina externa de backup.
+- Política de atualização e restauração.
+
+## Execução Local
 
 ```bash
 cd /Users/rafaelborges/pdv-adega-jf
 source .venv/bin/activate
-flask --app app:create_app run --host 0.0.0.0 --port 5001
-```
-
-Após corrigir `app.py`:
-
-```bash
 python app.py
 ```
 
-## Correção Necessária em `app.py`
+Acesse:
 
-Atual:
-
-```python
-from app import create_apppy
+```text
+http://127.0.0.1:5001
 ```
 
-Correto:
+Para trocar a porta:
 
-```python
-from app import create_app
+```bash
+PORT=5002 python app.py
+```
+
+## MySQL
+
+O MySQL precisa estar instalado e rodando.
+
+Banco central padrão:
+
+```text
+adega_central
+```
+
+Criar manualmente, se necessário:
+
+```sql
+CREATE DATABASE adega_central CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+Cada adega terá um banco próprio com prefixo configurável:
+
+```text
+adega_1_nome_da_adega
+adega_2_outra_adega
 ```
 
 ## Variáveis de Ambiente
 
-Produção deve definir:
+Modelo em `.env.example`:
 
-```bash
-export SECRET_KEY="valor-longo-aleatorio-e-seguro"
-export PORT=5001
+```env
+SECRET_KEY=troque-esta-chave-em-producao
+MYSQL_USER=root
+MYSQL_PASSWORD=
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=adega_central
+MYSQL_TENANT_DATABASE_PREFIX=adega
+MYSQL_TENANT_DATABASE_URL_TEMPLATE=
+MYSQL_SERVER_DATABASE_URL=mysql+pymysql://root@127.0.0.1:3306/mysql?charset=utf8mb4
+PORT=5001
 ```
 
-Recomendado adicionar:
+Observação: o projeto não carrega `.env` automaticamente. Exporte as variáveis no terminal ou configure no serviço de deploy.
 
-```bash
-export FLASK_ENV=production
-```
+## Servidor WSGI Recomendado
 
-E alterar `Config.DEBUG` para depender de variável de ambiente.
-
-## Deploy WSGI Sugerido
-
-Instalar Gunicorn:
+Para produção, usar Gunicorn ou outro WSGI:
 
 ```bash
 python -m pip install gunicorn
-```
-
-Executar:
-
-```bash
 gunicorn "app:create_app()" --bind 0.0.0.0:5001
 ```
 
-Observação:
-
-- Gunicorn não é listado em `requirements.txt` atualmente.
-
-## Nginx Sugerido
-
-Exemplo conceitual:
-
-```nginx
-server {
-    listen 80;
-    server_name pdv.local;
-
-    location / {
-        proxy_pass http://127.0.0.1:5001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-## Banco de Dados
-
-SQLite atual:
-
-```text
-database/adega_jf.db
-```
-
-Recomendações:
-
-- Garantir permissão de escrita para o usuário do processo.
-- Fazer backup antes de deploy.
-- Evitar múltiplos processos escrevendo intensamente no mesmo SQLite.
-- Considerar PostgreSQL para produção multiusuário.
+Em produção, colocar Nginx/Caddy na frente para HTTPS e proxy reverso.
 
 ## Checklist de Produção
 
-- Corrigir `app.py`.
-- Desativar `DEBUG`.
-- Configurar `SECRET_KEY`.
-- Remover ou proteger cadastro público.
-- Trocar senha padrão.
+- Definir `SECRET_KEY` longa e secreta.
+- Remover `debug=True` do ambiente de produção.
+- Criar usuário MySQL dedicado com permissões controladas.
+- Garantir permissão de criar bancos de adega ou provisionar bancos manualmente.
+- Ativar HTTPS.
+- Restringir acesso ao painel master.
+- Configurar backup externo fora da máquina do app.
+- Testar restauração de backup.
 - Adicionar CSRF.
-- Configurar backup automático.
-- Configurar logs.
-- Adicionar handler 500.
-- Configurar HTTPS.
-- Versionar migrações.
-- Adicionar servidor WSGI ao `requirements.txt`.
-- Criar rotina de restauração testada.
+- Adicionar Alembic/Flask-Migrate.
+- Configurar logs persistentes e rotação.
 
-## Rollback
+## Acesso na Rede Local
 
-Procedimento recomendado:
+O `app.py` roda com `host='0.0.0.0'`, permitindo acesso por outro dispositivo na mesma rede.
 
-1. Parar aplicação.
-2. Restaurar versão anterior do código.
-3. Restaurar backup do banco, se houve alteração de schema.
-4. Reiniciar aplicação.
-5. Validar login, catálogo, caixa e venda de teste.
+No Mac servidor:
 
-Sem migrações versionadas, rollback de schema precisa ser manual.
+```bash
+ipconfig getifaddr en0
+```
+
+Em outro dispositivo:
+
+```text
+http://IP_DO_SERVIDOR:5001
+```

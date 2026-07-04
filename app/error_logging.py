@@ -11,6 +11,11 @@ from flask_login import current_user
 
 
 SENSITIVE_FIELDS = {
+    '_permission_override_password',
+    'activation_key',
+    'api_key',
+    'authorization',
+    'cookie',
     'password',
     'confirm_password',
     'current_password',
@@ -18,6 +23,7 @@ SENSITIVE_FIELDS = {
     'csrf_token',
     'secret',
     'token',
+    'key',
 }
 
 
@@ -35,7 +41,8 @@ def _redact_mapping(mapping):
     redacted = {}
     for key in mapping:
         values = mapping.getlist(key) if hasattr(mapping, 'getlist') else [mapping.get(key)]
-        if key.lower() in SENSITIVE_FIELDS:
+        normalized_key = key.lower()
+        if normalized_key in SENSITIVE_FIELDS or any(term in normalized_key for term in ('password', 'secret', 'token', 'activation_key')):
             redacted[key] = '[protegido]'
             continue
 

@@ -1,6 +1,6 @@
 # Adega JF - PDV Web
 
-Sistema PDV web para adegas, pequenos mercados e comércios locais. O projeto roda em Flask, usa MySQL como banco relacional, templates HTML/Jinja no frontend e foi estruturado para operação local com evolução futura para um modelo SaaS multiempresa.
+Sistema PDV web para adegas, pequenos mercados e comércios locais. O projeto roda em Flask, usa MySQL como banco relacional, templates HTML/Jinja no frontend e já opera com base multiadega para um modelo SaaS.
 
 ## Visão Geral
 
@@ -20,7 +20,11 @@ O sistema cobre:
 - operação local em rede;
 - separação de dados por adega;
 - painel master para administração das adegas;
-- preparação técnica para evolução futura como SaaS.
+- assinatura/key de ativação por adega;
+- importação e exportação de dados;
+- backup por período ou manual;
+- logs de erro visíveis no painel master;
+- base multiadega para operação SaaS.
 
 ## Objetivo do Projeto
 
@@ -34,7 +38,30 @@ O projeto resolve problemas comuns de adegas e pequenos comércios:
 - acompanhar vendas por período;
 - alertar sobre estoque baixo e contas próximas do vencimento;
 - permitir que outro computador da mesma rede acesse o PDV pelo navegador;
-- criar uma base para evolução futura com múltiplas empresas, planos e assinatura.
+- operar múltiplas adegas com bancos separados, planos, assinatura e key de ativação.
+
+## Avaliação Atual
+
+O sistema já está em uma fase forte para uso como PDV SaaS local/controlado. A base multiadega, o painel master, o controle por key, as permissões, os backups, os logs e a separação por banco de dados tornam o projeto bem mais completo do que um PDV simples.
+
+Pontos mais maduros:
+
+- operação de venda, caixa, produtos e relatórios;
+- isolamento por adega com MySQL;
+- painel master para suporte e administração;
+- fluxo de assinatura/key inicial;
+- permissões para funcionário, gerente e admin;
+- importação, exportação, backup e logs;
+- dashboard operacional com indicadores úteis.
+
+Pontos que ainda merecem prioridade antes de produção pública:
+
+- CSRF nos formulários;
+- migrações versionadas com Alembic/Flask-Migrate;
+- auditoria de ações de negócio;
+- restauração guiada de backup;
+- cobrança real e regras concretas para Basic/Pro;
+- deploy com WSGI, HTTPS, `DEBUG=False` e `SECRET_KEY` forte.
 
 ## Tecnologias Utilizadas
 
@@ -54,7 +81,7 @@ O projeto resolve problemas comuns de adegas e pequenos comércios:
 | Bootstrap | CSS/JS carregado via CDN nos templates para base visual e componentes. |
 | unittest | Testes automatizados de rotas e regras principais. |
 
-Observação: o projeto não usa `python-dotenv` no `requirements.txt`. As variáveis de ambiente são lidas diretamente por `os.environ`.
+Observação: o projeto lê automaticamente um arquivo `.env` na raiz e também aceita variáveis exportadas no terminal.
 
 ## Estrutura de Pastas
 
@@ -86,7 +113,7 @@ pdv-adega-jf/
 
 | Arquivo/Pasta | Função |
 |---|---|
-| `app.py` | Ponto de entrada da aplicação. Cria o app e roda em `0.0.0.0` na porta definida por `PORT`, com padrão `5001`. |
+| `app.py` | Ponto de entrada da aplicação. Cria o app e roda em `0.0.0.0` na porta definida por `PORT`, com padrão `5003`. |
 | `config.py` | Configuração principal. Monta URLs MySQL, `SECRET_KEY`, banco central, prefixo de bancos das adegas e pasta de logs. |
 | `requirements.txt` | Dependências Python necessárias para rodar o projeto. |
 | `README.md` | Documentação principal do projeto. |
@@ -129,7 +156,10 @@ O sistema permite:
 - logout;
 - cadastro de uma nova adega pela tela de login;
 - criação automática de uma empresa/adega;
-- geração de key de ativação para a adega;
+- confirmação de e-mail por código antes do primeiro acesso;
+- recuperação de senha por link enviado por e-mail;
+- uso de key de ativação quando informada no cadastro;
+- opção "Não tenho key", criando a adega bloqueada até ativação;
 - criação do primeiro usuário como `admin`, chamado de master da adega.
 
 Regras importantes:
@@ -138,6 +168,8 @@ Regras importantes:
 - senha de cadastro precisa ter pelo menos 3 caracteres;
 - confirmação de senha precisa bater;
 - username deve ser único;
+- e-mail é obrigatório no cadastro inicial para receber o código de confirmação;
+- usuário sem e-mail confirmado não consegue entrar;
 - usuário inativo não consegue entrar;
 - adega inativa não permite login de usuários comuns;
 - usuário `master` do sistema é redirecionado ao painel master.
@@ -172,7 +204,10 @@ O master do sistema pode:
 - excluir adegas;
 - acessar a adega como master;
 - sair do acesso de uma adega;
-- consultar quantidade de usuários, produtos, vendas e caixas.
+- consultar quantidade de usuários, produtos, vendas e caixas;
+- ver logs de erro recentes;
+- limpar logs;
+- acompanhar plano, renovação e dias restantes.
 
 Regras importantes:
 
@@ -188,7 +223,7 @@ Onde fica:
 - Planos: `/assinaturas`
 - Código: `app/routes/auth.py`
 - Templates: `app/templates/subscription/activation.html` e `app/templates/subscription/plans.html`
-- Tabela: `companies`
+- Tabelas: `companies`, `activation_keys`
 
 O sistema possui controle de assinatura por adega:
 
@@ -204,8 +239,9 @@ Os planos Basic e Pro existem como tela estética/comercial, sem cobrança real 
 Regras importantes:
 
 - usuário comum/admin de adega vencida é redirecionado para `/assinatura`;
-- key precisa bater com a key cadastrada na empresa;
-- se a assinatura ainda estiver vencida, a key correta não libera o acesso sozinha;
+- key pode ser gerada pelo master como avulsa ou vinculada a uma adega;
+- key válida aplica plano e nova data de renovação;
+- cadastro sem key cria a adega, mas bloqueia ações até ativação;
 - usuário `master` do sistema não é bloqueado por assinatura.
 
 ### Configurações, usuário, aparência, equipe e financeiro
@@ -221,7 +257,9 @@ O sistema permite:
 
 - editar nome, sobrenome e telefone do usuário;
 - alterar email;
+- alterar email com confirmação pelo e-mail antigo quando já existe e-mail confirmado;
 - alterar senha;
+- configurar alertas críticos por e-mail por tipo de evento;
 - alternar tema light/dark pela aba Aparência;
 - gerenciar equipe da adega;
 - contratar usuário;
@@ -232,6 +270,8 @@ O sistema permite:
 Regras importantes:
 
 - senha atual precisa ser informada para trocar senha;
+- troca de e-mail confirmada envia link para o e-mail antigo;
+- alertas críticos podem ser direcionados para emails específicos por adega;
 - nova senha precisa ter pelo menos 3 caracteres;
 - funcionário comum não vê abas sensíveis como equipe, financeiro e plano;
 - cada adega pode ter usuário administrador próprio;
@@ -293,7 +333,9 @@ Regras importantes:
 
 Onde fica:
 
-- Rota: `/catalogo/produtos/importar`
+- Tela: `Configurações > Importação`
+- Envio: `POST /catalogo/produtos/importar`
+- Modelo: download pela aba de importação
 - Código: `app/routes/catalog.py`
 - Tabela: `products`, `categories`
 
@@ -308,14 +350,16 @@ Colunas reconhecidas:
 - produto, nome, nome_produto, product, name;
 - valor de custo, custo, preço de custo, cost_price, cost;
 - valor de venda, venda, preço de venda, sale_price, price.
+- estoque atual, estoque_atual, estoque, stock_quantity, stock;
+- estoque mínimo, estoque_minimo, min_stock_quantity, min_stock.
 
 Regras importantes:
 
-- apenas `admin` ou `master` pode importar;
+- apenas dono/admin autorizado da adega pode importar;
 - a importação é feita dentro da adega atual;
 - categoria é criada se não existir na adega;
 - produto existente com mesmo nome é atualizado;
-- produto novo é criado ativo com estoque inicial 0;
+- produto novo é criado ativo;
 - linhas sem nome de produto são ignoradas.
 
 ### Categorias
@@ -815,7 +859,7 @@ Copie o modelo:
 cp .env.example .env
 ```
 
-O projeto não carrega `.env` automaticamente porque não usa `python-dotenv`. Você pode exportar as variáveis no terminal ou rodar informando antes do comando.
+O projeto carrega `.env` automaticamente ao iniciar. Você também pode exportar as variáveis no terminal ou rodar informando antes do comando.
 
 Exemplo macOS/Linux:
 
@@ -843,16 +887,40 @@ python app.py
 Acesse:
 
 ```text
-http://127.0.0.1:5001
+http://127.0.0.1:5003
 ```
 
-A porta padrão é `5001` porque no macOS a porta `5000` pode estar ocupada pelo AirPlay.
+A porta padrão é `5003` porque no macOS a porta `5000` pode estar ocupada pelo AirPlay e a `5001` costuma ficar presa em testes locais.
 
 Para trocar a porta:
 
 ```bash
 PORT=5002 python app.py
 ```
+
+### 8. Compilar como aplicativo local no macOS
+
+O projeto pode ser empacotado como um aplicativo `.app`. Ele continua usando MySQL local e lê as configurações pelo arquivo `.env`, sem embutir senhas no executável.
+
+Compile com:
+
+```bash
+bash scripts/build_macos_app.sh
+```
+
+O aplicativo será gerado em:
+
+```text
+dist/GirofyPDV.app
+```
+
+Para abrir pelo terminal:
+
+```bash
+open dist/GirofyPDV.app
+```
+
+Ao abrir, o launcher sobe o servidor local em uma porta livre, abre o navegador automaticamente e usa `dist/.env` como configuração local. Se o MySQL não estiver rodando ou alguma configuração falhar, o arquivo `dist/launcher-error.log` será criado com o erro detalhado.
 
 ## Configuração do MySQL
 
@@ -912,6 +980,14 @@ MYSQL_DATABASE=adega_central
 MYSQL_TENANT_DATABASE_PREFIX=adega
 MYSQL_TENANT_DATABASE_URL_TEMPLATE=
 MYSQL_SERVER_DATABASE_URL=mysql+pymysql://root@127.0.0.1:3306/mysql?charset=utf8mb4
+PUBLIC_BASE_URL=http://127.0.0.1:5001
+MAIL_SMTP_SERVER=smtp.gmail.com
+MAIL_SMTP_PORT=587
+MAIL_SMTP_LOGIN=girofy2026@gmail.com
+MAIL_SMTP_PASSWORD=sua-senha-de-app-do-gmail
+MAIL_FROM_EMAIL=girofy2026@gmail.com
+MAIL_FROM_NAME=Girofy
+MAIL_SUPPRESS_SEND=0
 PORT=5001
 ```
 
@@ -922,6 +998,7 @@ DATABASE_URL=mysql+pymysql://root:senha@127.0.0.1:3306/adega_central?charset=utf
 ```
 
 Quando `DATABASE_URL` existe, ela substitui a montagem automática baseada em `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_HOST`, `MYSQL_PORT` e `MYSQL_DATABASE`.
+
 
 ## Como Acessar pela Rede Local
 
@@ -1085,8 +1162,8 @@ ip addr
 | `master/companies.html` | Painel master para gerenciar adegas. |
 | `subscription/activation.html` | Tela de ativação/regularização da assinatura. |
 | `subscription/plans.html` | Tela estética de planos Basic e Pro. |
-| `settings/index.html` | Configurações com abas de usuário, suporte, aparência, equipe e financeiro. |
-| `catalog/products.html` | Lista de produtos, filtros, importação e edição expandida. |
+| `settings/index.html` | Configurações com abas de usuário, keys, equipe, financeiro, backup, importação, exportação, suporte e aparência. |
+| `catalog/products.html` | Lista de produtos, filtros e edição expandida. |
 | `catalog/product_form.html` | Formulário de produto. |
 | `catalog/categories.html` | Lista, filtro, cadastro e edição de categorias. |
 | `sales/index.html` | Histórico de vendas. |
@@ -1123,8 +1200,13 @@ O projeto já possui:
 - consultas ORM/parametrizadas, reduzindo risco de SQL Injection;
 - logs com proteção de campos sensíveis como senhas;
 - `SECRET_KEY` configurável por variável de ambiente;
+- verificação de e-mail no cadastro;
+- troca de e-mail protegida por confirmação no e-mail antigo;
+- recuperação de senha por token temporário;
+- alertas críticos por e-mail com controle de envio duplicado;
 - usuário inativo bloqueado;
-- adega inativa bloqueada.
+- adega inativa bloqueada;
+- login com limite de tentativas temporário;
 
 ### Pontos de atenção de segurança
 
@@ -1132,8 +1214,6 @@ O projeto já possui:
 - O app roda com `debug=True` em `app.py`; isso não deve ser usado em produção.
 - Não há CSRF explícito nos formulários.
 - Não há política de força de senha além de tamanho mínimo 3.
-- Não há recuperação de senha.
-- Não há rate limit para tentativas de login.
 - Não há auditoria detalhada de alterações de dados.
 - O `.env` não deve ser versionado com senhas reais.
 - O usuário MySQL `root` não é recomendado em produção.
@@ -1141,6 +1221,15 @@ O projeto já possui:
 ## Backup do MySQL
 
 Backup é obrigatório para qualquer uso real. Como cada adega tem banco separado, faça backup do banco central e dos bancos das adegas.
+
+O sistema possui uma aba **Backup** em `/configuracoes`, visível para usuários com acesso administrativo. Nessa aba é possível:
+
+- escolher frequência `Somente manual`, `Diário`, `Semanal` ou `Mensal`;
+- gerar um backup manual na hora;
+- consultar último backup, status e nome do arquivo;
+- salvar arquivos `.sql` na pasta `backups/`.
+
+Além da interface, também é possível fazer backups pelo terminal com `mysqldump`.
 
 Backup do banco central:
 
@@ -1183,6 +1272,13 @@ python -m unittest tests.test_routes
 ```
 
 Os testes usam configuração própria com SQLite em memória (`TESTING = True`) para validar rotas e regras sem depender do MySQL real.
+
+Última validação completa:
+
+```text
+Ran 79 tests in 9.863s
+OK
+```
 
 ## Deploy Futuro
 
@@ -1245,7 +1341,6 @@ Próximos passos para SaaS completo:
 
 - Adotar Flask-Migrate/Alembic para migrações versionadas.
 - Criar Dockerfile e `docker-compose.yml`.
-- Adicionar `python-dotenv` se quiser carregar `.env` automaticamente.
 - Desativar debug em produção.
 - Adicionar CSRF nos formulários.
 - Criar camada de services para regras de venda/estoque.
@@ -1265,7 +1360,6 @@ Próximos passos para SaaS completo:
 - Cancelamento/estorno de venda.
 - Dashboard financeiro.
 - API JSON.
-- Backup automático pela interface.
 - Controle de produtos por código de barras com leitor físico.
 
 ## Status do Projeto
@@ -1301,13 +1395,14 @@ Próximos passos para SaaS completo:
 - [x] Tema claro/escuro
 - [x] Navbar colapsável
 - [x] Logs de erro
+- [x] Backup manual pela interface
+- [x] Backup por período
 - [x] Testes automatizados de rotas
 - [ ] Migrações com Alembic
 - [ ] Docker
 - [ ] CSRF
 - [ ] Impressão de comprovante
 - [ ] Integração real com pagamento
-- [ ] Backup automático
 - [ ] Deploy de produção
 - [ ] Auditoria completa
 - [ ] Cadastro de clientes

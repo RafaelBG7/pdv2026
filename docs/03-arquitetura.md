@@ -2,167 +2,115 @@
 
 ## Visão Arquitetural
 
-O projeto usa arquitetura monolítica web server-side:
+O Adega JF usa uma arquitetura monolítica web server-side:
 
-- Flask recebe requisições HTTP.
-- Blueprints organizam rotas por domínio.
+- Flask recebe as requisições HTTP.
+- Blueprints organizam as rotas por domínio.
 - Templates Jinja2 renderizam HTML no servidor.
-- JavaScript adiciona interações no cliente.
-- SQLAlchemy acessa o SQLite local.
+- JavaScript vanilla adiciona interações de venda, filtros, atalhos, tema e autocomplete.
+- SQLAlchemy acessa MySQL.
 - Flask-Login gerencia sessão autenticada.
+- A camada `tenant.py` seleciona o banco operacional da adega atual.
 
 ```mermaid
 graph TD
     Browser["Navegador"] --> Flask["Flask App"]
-    Flask --> Blueprints["Blueprints: auth, catalog, main"]
-    Blueprints --> Models["Modelos SQLAlchemy"]
-    Models --> SQLite["SQLite database/adega_jf.db"]
+    Flask --> Auth["auth_bp"]
+    Flask --> Catalog["catalog_bp"]
+    Flask --> Main["main_bp"]
+    Auth --> Central["MySQL central: empresas, usuários, keys"]
+    Catalog --> Tenant["tenant_session"]
+    Main --> Tenant
+    Tenant --> AdegaDB["MySQL da adega"]
     Flask --> Templates["Templates Jinja2"]
     Templates --> Static["CSS e JavaScript"]
 ```
+
+## Bancos
+
+O sistema trabalha com dois níveis de banco:
+
+- Banco central: cadastro de empresas, usuários, assinatura, keys e dados administrativos.
+- Banco por adega: produtos, categorias, vendas, caixa, pagamentos e contas a pagar.
+
+Essa separação evita que uma adega enxergue ou conflite com dados de outra.
 
 ## Camadas
 
 ### Frontend
 
-Implementado em:
+Arquivos principais:
 
-- `app/templates/`
+- `app/templates/base.html`
+- `app/templates/login.html`
+- `app/templates/dashboard.html`
+- `app/templates/catalog/`
+- `app/templates/sales/`
+- `app/templates/settings/index.html`
 - `app/static/css/style.css`
 - `app/static/js/main.js`
 
-Características:
+Responsabilidades:
 
-- Renderização server-side.
-- Bootstrap 5 via CDN.
-- Tema light/dark salvo em `localStorage`.
-- Menu lateral recolhível salvo em `localStorage`.
-- Autocomplete de produtos e categorias.
-- Cálculo visual de totais, desconto, pagamento, falta e troco.
-- Atalhos `F2` para pagamento e `F3` para desconto.
+- Layout responsivo com menu lateral recolhível.
+- Tema claro/escuro.
+- Autocomplete de produtos, categorias e funcionários.
+- Venda com produtos, desconto, pagamentos, falta e troco.
+- Atalhos `F2` para finalização e `F3` para desconto.
+- Abas de configurações, caixa, relatórios e painel master.
 
 ### Backend
 
-Implementado em:
+Arquivos principais:
 
 - `app/__init__.py`
 - `app/routes/auth.py`
 - `app/routes/catalog.py`
 - `app/routes/main.py`
 - `app/models/`
-- `app/extensions.py`
+- `app/tenant.py`
+- `app/permissions.py`
+- `app/backup.py`
+- `app/error_logging.py`
 
 Responsabilidades:
 
-- Criar aplicação.
-- Registrar blueprints.
-- Inicializar banco.
-- Garantir colunas adicionadas manualmente.
+- Criar aplicação e registrar blueprints.
+- Criar banco central e bancos das adegas.
+- Sincronizar tabelas/colunas esperadas.
 - Autenticar usuários.
-- Executar regras de venda, estoque, caixa e relatórios.
-
-### Banco de Dados
-
-SQLite local:
-
-```text
-database/adega_jf.db
-```
-
-Tabelas:
-
-- `users`
-- `categories`
-- `products`
-- `cash_registers`
-- `sales`
-- `sale_items`
-- `payments`
-
-## Fluxo de Requisição
-
-```mermaid
-sequenceDiagram
-    participant U as Usuario
-    participant B as Navegador
-    participant F as Flask
-    participant R as Rota
-    participant DB as SQLite
-    U->>B: Acao na tela
-    B->>F: GET/POST HTTP
-    F->>R: Resolve blueprint/rota
-    R->>DB: Consulta ou grava via SQLAlchemy
-    DB-->>R: Dados
-    R-->>F: Template + contexto ou redirect
-    F-->>B: HTML
-    B-->>U: Tela atualizada
-```
-
-## Fluxo de Autenticação
-
-```mermaid
-flowchart TD
-    A["GET /login"] --> B["Exibe formulário"]
-    B --> C["POST /login"]
-    C --> D{"form_type=register?"}
-    D -- "Sim" --> E["Valida usuario, senha e confirmacao"]
-    E --> F["Cria usuario admin e autentica"]
-    D -- "Nao" --> G["Busca User por username"]
-    G --> H{"Senha confere?"}
-    H -- "Sim" --> I["login_user"]
-    H -- "Nao" --> J["Flash erro"]
-    F --> K["Redirect /dashboard"]
-    I --> K
-```
-
-## Fluxo de Persistência
-
-- Modelos são declarados com Flask-SQLAlchemy.
-- `db.create_all()` cria tabelas ausentes.
-- Funções `ensure_*_columns()` adicionam colunas ausentes com `ALTER TABLE`.
-- Operações usam `db.session.add()`, `db.session.flush()`, `db.session.commit()` e `db.session.rollback()` quando há erro de integridade.
+- Bloquear adegas sem assinatura/key ativa.
+- Aplicar permissões por perfil.
+- Executar regras de venda, estoque, caixa, relatórios e backup.
 
 ## Blueprints
 
-| Blueprint | Prefixo | Arquivo | Responsabilidade |
-|---|---|---|---|
-| `auth` | sem prefixo | `app/routes/auth.py` | Login, logout, configurações |
-| `catalog` | `/catalogo` | `app/routes/catalog.py` | Produtos e categorias |
-| `main` | sem prefixo | `app/routes/main.py` | Dashboard, vendas, caixa, relatórios |
+| Blueprint | Arquivo | Responsabilidade |
+|---|---|---|
+| `auth_bp` | `app/routes/auth.py` | Login, cadastro, master, configurações, assinatura, keys, equipe, backup, importação/exportação visual. |
+| `catalog_bp` | `app/routes/catalog.py` | Produtos, categorias, kits, estoque mínimo, importação de planilha. |
+| `main_bp` | `app/routes/main.py` | Dashboard, vendas, caixa, relatórios, contas a pagar e exportação CSV. |
 
-## Ponto de Entrada
+## Serviços de Apoio
 
-Fábrica real:
+| Arquivo | Função |
+|---|---|
+| `app/tenant.py` | Cria/seleciona banco por adega e abre sessões isoladas. |
+| `app/permissions.py` | Decorator `permission_required` e nomes de permissões. |
+| `app/backup.py` | Gera dump SQL do banco da adega e controla frequência. |
+| `app/error_logging.py` | Registra erros com contexto, request id e dados protegidos. |
 
-```python
-from app import create_app
-```
+## Decisões Arquiteturais
 
-Problema atual:
+- Manter Flask monolítico para acelerar evolução do produto.
+- Usar MySQL para permitir bancos separados por adega.
+- Evitar API separada neste momento; as telas são renderizadas no servidor.
+- Usar permissões no backend, não apenas esconder botões no frontend.
+- Gerar backups por adega, pois os dados operacionais ficam fora do banco central.
 
-```python
-from app import create_apppy
-```
+## Limitações Técnicas
 
-em `app.py`. Deve ser corrigido para:
-
-```python
-from app import create_app
-```
-
-## Decisões Técnicas Atuais
-
-- Monólito simples para reduzir complexidade.
-- SQLite para operação local.
-- Templates server-side para acelerar entrega.
-- Sem camada Service/Repository dedicada; regras ficam nas rotas e funções auxiliares.
-- Migrações manuais provisórias.
-
-## Pontos de Evolução Arquitetural
-
-- Criar camada de serviços para venda, caixa e estoque.
-- Adotar Alembic/Flask-Migrate.
-- Separar validações de formulário.
-- Criar API JSON versionada.
-- Adicionar paginação e índices adicionais.
-- Centralizar logs e tratamento de exceções.
+- Ainda não há migração versionada com Alembic.
+- Algumas alterações de schema são feitas por funções de compatibilidade em `app/__init__.py`.
+- O servidor local usa `debug=True` em `app.py`, adequado apenas para desenvolvimento.
+- Não há fila/background worker; backups automáticos rodam durante requisições autenticadas elegíveis.

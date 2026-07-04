@@ -9,7 +9,7 @@
   <a class="btn btn-outline-light" href="{{ url_for('main.sales') }}">Voltar</a>
 </div>
 
-<form method="post" data-sale-form>
+<form method="post" data-sale-form {% if needs_permission_override('can_manage_sales') %}data-permission-override="true"{% endif %}>
   <datalist id="sale-product-suggestions">
     {% for product in products %}
     <option

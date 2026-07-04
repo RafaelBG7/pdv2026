@@ -19,6 +19,15 @@
     <strong>{{ 'Fechado' if cash_register.status == 'closed' else 'Aberto' }}</strong>
   </div>
   <div class="card card-dark">
+    <span>Abertura</span>
+    <strong>{{ cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '-' }}</strong>
+  </div>
+  <div class="card card-dark">
+    <span>Fechamento</span>
+    <strong>{{ cash_register.closed_at.strftime('%d/%m/%Y %H:%M') if cash_register.closed_at else 'em aberto' }}</strong>
+  </div>
+  {% if show_cash_financials %}
+  <div class="card card-dark">
     <span>Valor inicial</span>
     <strong>R$ {{ '%.2f'|format(cash_register.opening_amount or 0)|replace('.', ',') }}</strong>
   </div>
@@ -38,8 +47,10 @@
     <span>Lucro</span>
     <strong>R$ {{ '%.2f'|format(cash_register_profit or 0)|replace('.', ',') }}</strong>
   </div>
+  {% endif %}
 </div>
 
+{% if show_cash_financials %}
 <div class="cash-detail-layout">
   <section class="card card-dark cash-panel">
     <div class="cash-panel-header">
@@ -103,4 +114,5 @@
     </div>
   </section>
 </div>
+{% endif %}
 {% endblock %}

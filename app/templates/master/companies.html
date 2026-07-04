@@ -19,6 +19,52 @@
 </div>
 {% endif %}
 
+<section class="card card-dark sale-panel master-log-panel mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <h5 class="mb-1">Logs recentes</h5>
+      <p class="text-muted mb-0">Falhas e avisos registrados pelo sistema.</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="badge badge-accent">{{ recent_error_logs|length }} registro{{ 's' if recent_error_logs|length != 1 else '' }}</span>
+      <form method="post" action="{{ url_for('auth.clear_master_logs') }}" onsubmit="return confirm('Limpar todos os logs recentes?');">
+        <button class="btn btn-outline-danger btn-sm" type="submit">Limpar logs</button>
+      </form>
+    </div>
+  </div>
+
+  {% if recent_error_logs %}
+  <div class="master-log-list">
+    {% for log in recent_error_logs %}
+    {% set context = log.context or {} %}
+    {% set user = context.get('user', {}) %}
+    <details class="master-log-item">
+      <summary>
+        <span class="subscription-pill subscription-{{ 'danger' if log.level == 'ERROR' else 'warning' }}">{{ log.level }}</span>
+        <strong>{{ log.message }}</strong>
+        <small>{{ log.created_at }}{% if context.get('path') %} · {{ context.get('method') }} {{ context.get('path') }}{% endif %}</small>
+      </summary>
+      <div class="master-log-details">
+        <div class="settings-summary">
+          <div><span>Request ID</span><strong>{{ context.get('request_id', '-') }}</strong></div>
+          <div><span>Endpoint</span><strong>{{ context.get('endpoint', '-') }}</strong></div>
+          <div><span>Usuário</span><strong>{{ user.get('username', 'não autenticado') if user else 'não autenticado' }}</strong></div>
+          <div><span>Adega</span><strong>{{ user.get('company_id', '-') if user else '-' }}</strong></div>
+          <div><span>Tempo</span><strong>{{ context.get('elapsed_ms', '-') }} ms</strong></div>
+          <div><span>Origem</span><strong>{{ context.get('remote_addr', '-') }}</strong></div>
+        </div>
+        {% if log.traceback %}
+        <pre class="master-log-trace">{{ log.traceback }}</pre>
+        {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-muted mb-0">Nenhum log registrado até agora.</p>
+  {% endif %}
+</section>
+
 {% macro company_actions(company) %}
 <div class="table-actions justify-content-end">
   <a class="btn btn-primary btn-sm" href="{{ url_for('auth.access_company', company_id=company.id) }}">Acessar</a>
@@ -42,7 +88,7 @@
     <div class="company-card-header">
       <div>
         <h5 class="mb-1">{{ company.name }}</h5>
-        <p class="text-muted mb-0">Banco {{ company.id }} · {{ company.subscription_plan or 'Essencial' }} · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }} · Key {{ company.activation_key or 'não gerada' }}</p>
+        <p class="text-muted mb-0">Banco {{ company.id }} · {{ company.subscription_plan or 'Essencial' }} · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }} · Key {{ mask_secret(company.activation_key) }}</p>
       </div>
       {% if company.active %}
       <span class="badge text-bg-success">Ativa</span>
@@ -58,7 +104,7 @@
       <div><span>Caixas</span><strong>{{ stats.get('cash_registers', 0) }}</strong></div>
       <div><span>Renovação</span><strong>{{ subscription.get('renewal_label', '-') }}</strong></div>
       <div><span>Prazo</span><strong>{{ subscription.get('days_label', 'Sem renovação') }}</strong></div>
-      <div><span>Key</span><strong>{{ company.activation_key or 'Gerar key' }}</strong></div>
+      <div><span>Key</span><strong>{{ mask_secret(company.activation_key) }}</strong></div>
     </div>
 
     <form class="company-edit-form" method="post" action="{{ url_for('auth.edit_company', company_id=company.id) }}">
@@ -98,7 +144,7 @@
         </div>
         <div>
           <label class="form-label" for="card_key_{{ company.id }}">Key de ativação</label>
-          <input class="form-control activation-key-field" id="card_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Gerar automaticamente">
+          <input class="form-control activation-key-field" id="card_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Sem key cadastrada">
         </div>
         <label class="form-check form-switch mb-0 company-key-toggle">
           <input class="form-check-input" name="generate_activation_key" type="checkbox">
@@ -144,7 +190,7 @@
                 Banco {{ company.id }}
                 · {{ company.subscription_plan or 'Essencial' }}
                 · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }}
-                · Key {{ company.activation_key or 'não gerada' }}
+                · Key {{ mask_secret(company.activation_key) }}
                 {% if company.id == current_user.company_id %}
                 · Adega do master
                 {% endif %}
@@ -180,7 +226,7 @@
                   <div><span>Pagamento</span><strong>{{ billing_cycles.get(company.billing_cycle, 'Mensal') }}</strong></div>
                   <div><span>Renova em</span><strong>{{ subscription.get('renewal_label', '-') }}</strong></div>
                   <div><span>Prazo</span><strong>{{ subscription.get('days_label', 'Sem renovação') }}</strong></div>
-                  <div><span>Key</span><strong>{{ company.activation_key or 'Gerar key' }}</strong></div>
+                  <div><span>Key</span><strong>{{ mask_secret(company.activation_key) }}</strong></div>
                 </div>
 
                 <div>
@@ -228,7 +274,7 @@
                     </div>
                     <div>
                       <label class="form-label" for="activation_key_{{ company.id }}">Key de ativação</label>
-                      <input class="form-control activation-key-field" id="activation_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Gerar automaticamente">
+                      <input class="form-control activation-key-field" id="activation_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Sem key cadastrada">
                     </div>
                     <label class="form-check form-switch mb-0 company-key-toggle">
                       <input class="form-check-input" name="generate_activation_key" type="checkbox">

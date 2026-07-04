@@ -1,115 +1,124 @@
 # 05 - Regras de Negócio
 
-## Autenticação
+## Autenticação e Cadastro
 
-- Usuário autenticado não acessa novamente `/login`; é redirecionado para `/dashboard`.
-- Usuário anônimo é redirecionado para login ao acessar rotas com `@login_required`.
+- Usuário anônimo é redirecionado para login ao acessar rota protegida.
 - Login usa `username` e `password`.
-- Senhas são conferidas com hash Werkzeug.
-- Cadastro exige usuário, senha com pelo menos 6 caracteres e confirmação igual.
-- Cadastro cria usuário com `role='admin'`.
-- Usuário inicial `admin/admin123` é criado automaticamente se não existir.
+- Senhas são armazenadas e conferidas com hash Werkzeug.
+- Usuário inativo não deve operar o sistema.
+- Usuário `master` do sistema acessa o painel master.
+- Cadastro cria uma empresa/adega e o primeiro usuário como `admin`.
+- Cadastro pode receber uma key válida ou marcar "Não tenho key".
+- Cadastro sem key é permitido, mas a adega fica bloqueada para operação.
+- Cada nova adega deve ter seu banco MySQL operacional próprio.
+- O usuário inicial global é `master/master123`.
+
+## Assinatura e Key
+
+- Key é gerada pelo master do sistema.
+- Key pode ser avulsa ou vinculada a uma adega.
+- Key possui plano e data de validade.
+- Key usada fica vinculada à empresa.
+- Adega sem key, vencida ou inativa é redirecionada para `/assinatura`.
+- Planos Basic e Pro existem como estrutura comercial inicial, sem cobrança real integrada.
 
 ## Usuário e Configurações
 
-- Nome, sobrenome e telefone podem ser editados pelo usuário conectado.
-- Email pode ser alterado sem confirmação.
+- Usuário pode editar nome, sobrenome, telefone, email e senha.
 - Senha só pode ser alterada informando a senha atual.
-- Nova senha deve ter pelo menos 6 caracteres.
-- Confirmação da nova senha deve coincidir.
+- Funcionário comum não vê equipe, financeiro, plano, importação ou exportação.
+- Admin da adega pode contratar e editar funcionários.
+- CPF duplicado é bloqueado dentro da mesma adega.
+- Pode existir mais de um admin por adega.
 
 ## Produtos
 
 - Produto deve ter nome.
-- Código de barras é opcional, mas se informado deve ser único.
+- Código de barras é opcional, mas não pode duplicar dentro da mesma adega.
 - Preço de custo, preço de venda e estoque são normalizados para valores não negativos.
 - Produto ativo aparece como vendável.
-- Produto inativo não é selecionado na venda.
-- Produto pode ser ativado/inativado.
-- Produto pode ser excluído fisicamente.
-- Lucro unitário é `sale_price - cost_price`.
-- Margem é calculada sobre o preço de venda.
+- Produto inativo não deve ser vendido.
+- Produto possui estoque mínimo para alerta.
+- Lucro unitário base é `sale_price - cost_price`.
+- Taxas de Pix/débito/crédito podem reduzir o lucro final conforme configuração.
 
 ## Kits
 
-- Produto kit deve informar produto base e quantidade de baixa.
-- Produto kit não pode usar a si mesmo como produto base.
+- Produto kit é opcional.
+- Kit deve informar produto base e quantidade consumida.
+- Kit não pode usar a si mesmo como produto base.
 - Estoque efetivo do kit é `estoque_produto_base // quantidade_por_kit`.
-- Venda de kit baixa estoque do produto base, não do produto kit.
+- Venda de kit baixa estoque do produto base.
 - Kit sem configuração válida não pode ser vendido.
-- Kit exige estoque suficiente no produto base.
 
 ## Categorias
 
 - Categoria deve ter nome.
-- Nome da categoria deve ser único.
-- Categoria pode ser filtrada por busca, uso e ordenação.
+- Nome da categoria é único dentro da adega atual.
+- Adegas diferentes podem usar o mesmo nome de categoria.
 - Categoria com produto vinculado não pode ser excluída.
 
 ## Caixa
 
-- Só pode haver um caixa aberto por vez.
+- Só pode haver um caixa aberto por vez na adega.
 - Venda só pode ser registrada com caixa aberto.
 - Abertura registra valor inicial e usuário.
 - Fechamento exige informar valor final.
-- Valor esperado para fechamento é `valor_inicial + total_vendido_no_caixa`.
-- Se valor final for menor que o esperado, o fechamento é bloqueado e o sistema informa falta.
-- Se valor final for maior que o esperado, o fechamento é bloqueado e o sistema informa excedente.
-- Fechamento correto define `closed_at`, `closing_amount` e `status='closed'`.
+- Valor esperado é `valor_inicial + total_vendido_no_caixa`.
+- Se valor final for menor, o sistema informa quanto falta.
+- Se valor final for maior, o sistema informa quanto excedeu.
+- Fechamento só conclui quando o valor bate exatamente.
 
 ## Venda
 
 - Venda exige pelo menos um produto válido.
 - Quantidade deve ser maior que zero.
-- Produto deve existir e estar ativo.
-- Estoque deve ser suficiente antes da venda ser gravada.
-- Subtotal é soma de `sale_price * quantity`.
-- Desconto não pode ultrapassar subtotal; é limitado por `min(desconto, subtotal)`.
+- Produto deve existir, estar ativo e pertencer à adega.
+- Estoque precisa ser suficiente.
+- Pedido não deve ser resetado quando houver erro.
+- Desconto em reais não pode ultrapassar o subtotal.
 - Total final é `subtotal - desconto`.
 - Pagamento total deve ser maior ou igual ao total final.
-- Pagamento menor bloqueia a venda e preserva estado do formulário.
 - Pagamento maior gera troco.
-- Venda finalizada recebe `payment_status='paid'`.
-- Itens gravam preço de venda e custo do momento da venda.
-- Lucro do item é `(unit_price - unit_cost_price) * quantity`.
-- Lucro da venda é soma dos lucros dos itens menos desconto.
-- Após gravar a venda, o estoque é baixado.
+- Venda pode ter dinheiro, Pix, débito e crédito juntos.
+- Itens gravam preço e custo do momento da venda.
+- Venda finalizada baixa estoque.
+- Atalho `F2` abre/conclui finalização.
+- Atalho `F3` abre desconto.
 
-## Formas de Pagamento
+## Importação e Exportação
 
-Métodos implementados:
-
-- `money`: Dinheiro.
-- `pix`: Pix.
-- `debit`: Débito.
-- `credit`: Crédito.
-
-Uma venda pode ter uma ou mais formas de pagamento, desde que o total pago cubra o valor final.
+- Importação de produtos fica em Configurações > Importação.
+- Apenas dono/admin autorizado da adega deve importar.
+- Planilha aceita CSV/XLSX.
+- Categoria é criada se não existir na adega.
+- Produto existente é atualizado quando identificado pelo nome.
+- Exportação fica em Configurações > Exportação.
+- Apenas admin/master deve exportar dados.
 
 ## Relatórios
 
-- Período diário usa a data atual ou data inicial informada.
-- Período semanal usa últimos 7 dias.
-- Período mensal usa últimos 30 dias.
-- Período anual usa últimos 365 dias.
-- Período personalizado aceita data inicial e final; se final for menor que inicial, o sistema inverte.
-- Relatório calcula: quantidade de vendas, itens, subtotal, descontos, total final, lucro e ticket médio.
-- Produtos mais vendidos são ordenados por total vendido.
+- Diário usa a data atual por padrão.
+- Semanal usa últimos 7 dias.
+- Mensal usa últimos 30 dias.
+- Anual usa últimos 365 dias.
+- Personalizado usa datas escolhidas.
+- Relatório calcula vendas, descontos, total, lucro, ticket médio, pagamentos e produtos mais vendidos.
 
-## Alertas
+## Notificações
 
-- Produtos ativos com estoque efetivo menor ou igual a 5 geram alerta.
-- Produtos zerados exibem mensagem de sem estoque.
-- Apenas os 10 primeiros alertas são exibidos.
-- Alertas são ordenados por quantidade e nome.
+- Produto sem estoque gera alerta.
+- Produto com estoque igual ou abaixo do mínimo gera alerta.
+- Conta vencida gera alerta.
+- Conta vencendo hoje gera alerta.
+- Conta vencendo em até 3 dias gera alerta.
+- Notificações pertencem à adega atual.
 
-## Regras Planejadas ou Ausentes
+## Pendências de Negócio
 
-- Administrador exclusivo para excluir produtos.
-- Controle por perfil.
-- Logs de auditoria.
-- Histórico de movimentação de estoque.
-- Cancelamento ou estorno de venda.
+- Cancelamento/estorno de venda.
 - Sangria e reforço de caixa.
-- Recuperação de senha.
-- Bloqueio de usuário inativo.
+- Histórico de movimentação de estoque.
+- Auditoria de alterações.
+- Fornecedores e compras.
+- Cobrança real de assinatura.

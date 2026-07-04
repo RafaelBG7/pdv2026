@@ -12,9 +12,28 @@
 <div class="settings-tabs" data-settings-tabs>
   <div class="settings-tab-nav" role="tablist" aria-label="Configurações">
     <button class="settings-tab-button is-active" type="button" data-settings-tab="user" role="tab" aria-selected="true">Usuário</button>
+    {% if current_user.role == 'master' %}
+    <button class="settings-tab-button" type="button" data-settings-tab="keys" role="tab" aria-selected="false">Gerar key</button>
+    {% endif %}
     {% if can_view_admin_tabs %}
     <button class="settings-tab-button" type="button" data-settings-tab="team" role="tab" aria-selected="false">Equipe</button>
+    {% if can_view_finance_tab %}
     <button class="settings-tab-button" type="button" data-settings-tab="finance" role="tab" aria-selected="false">Financeiro</button>
+    {% else %}
+    <a class="settings-tab-button" href="{{ url_for('auth.permission_unlock', permission='can_view_finance', next=url_for('auth.settings')) }}">Autorizar Financeiro</a>
+    {% endif %}
+    <button class="settings-tab-button" type="button" data-settings-tab="email-alerts" role="tab" aria-selected="false">Alertas</button>
+    <button class="settings-tab-button" type="button" data-settings-tab="backup" role="tab" aria-selected="false">Backup</button>
+    {% else %}
+    <a class="settings-tab-button" href="{{ url_for('auth.permission_unlock', permission='can_manage_settings', next=url_for('auth.settings')) }}">Autorizar Gestão</a>
+    {% endif %}
+    {% if can_import_products %}
+    <button class="settings-tab-button" type="button" data-settings-tab="import" role="tab" aria-selected="false">Importação</button>
+    {% endif %}
+    {% if can_export_data %}
+    <button class="settings-tab-button" type="button" data-settings-tab="export" role="tab" aria-selected="false">Exportação</button>
+    {% elif can_view_admin_tabs %}
+    <a class="settings-tab-button" href="{{ url_for('auth.permission_unlock', permission='can_export_data', next=url_for('auth.settings')) }}">Autorizar Exportação</a>
     {% endif %}
     <button class="settings-tab-button" type="button" data-settings-tab="support" role="tab" aria-selected="false">Suporte</button>
     <button class="settings-tab-button" type="button" data-settings-tab="appearance" role="tab" aria-selected="false">Aparência</button>
@@ -55,13 +74,14 @@
         <h5 class="mb-3">Email</h5>
         <div class="settings-summary mb-4">
           <div><span>Email protegido</span><strong>{{ current_user.masked_email }}</strong></div>
+          <div><span>Status</span><strong>{{ 'Confirmado' if current_user.email_verified else 'Pendente' }}</strong></div>
         </div>
 
         <form method="post">
           <input type="hidden" name="form_type" value="email">
-          <label class="form-label" for="email">Alterar email</label>
+          <label class="form-label" for="email">Novo email</label>
           <input class="form-control" id="email" name="email" type="email" value="{{ current_user.email or '' }}" placeholder="email@exemplo.com">
-          <button class="btn btn-primary mt-3" type="submit">Alterar email</button>
+          <button class="btn btn-primary mt-3" type="submit">Solicitar troca</button>
         </form>
       </section>
 
@@ -80,11 +100,11 @@
             </div>
             <div>
               <label class="form-label" for="new_password">Nova senha</label>
-              <input class="form-control" id="new_password" name="new_password" type="password" autocomplete="new-password">
+              <input class="form-control" id="new_password" name="new_password" type="password" minlength="{{ password_min_length }}" autocomplete="new-password">
             </div>
             <div>
               <label class="form-label" for="confirm_password">Confirmar senha</label>
-              <input class="form-control" id="confirm_password" name="confirm_password" type="password" autocomplete="new-password">
+              <input class="form-control" id="confirm_password" name="confirm_password" type="password" minlength="{{ password_min_length }}" autocomplete="new-password">
             </div>
           </div>
           <button class="btn btn-primary mt-3" type="submit">Alterar senha</button>
@@ -93,50 +113,161 @@
     </div>
   </section>
 
+  {% if current_user.role == 'master' %}
+  <section class="settings-tab-panel" data-settings-panel="keys" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Gerar key</h5>
+        <form method="post">
+          <input type="hidden" name="form_type" value="master_generate_key">
+          <div class="settings-form-grid">
+            <div>
+              <label class="form-label" for="key_company_id">Adega</label>
+              <select class="form-select" id="key_company_id" name="key_company_id">
+                <option value="">Key avulsa, sem adega</option>
+                {% for company in key_companies %}
+                <option value="{{ company.id }}">{{ company.name }} · {{ mask_secret(company.activation_key) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="key_plan">Assinatura</label>
+              <select class="form-select" id="key_plan" name="key_plan">
+                {% for plan in key_plans %}
+                <option value="{{ plan }}">{{ plan }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="key_renews_at">Validade da key</label>
+              <input class="form-control" id="key_renews_at" name="key_renews_at" type="date" value="{{ default_key_renews_at.isoformat() }}" required>
+            </div>
+          </div>
+          <div class="key-preset-grid mt-3">
+            {% for preset_value, preset_label, preset_days in key_presets %}
+            <button class="btn btn-outline-light btn-sm" type="button" data-key-preset-days="{{ preset_days }}" data-key-preset-target="key_renews_at">{{ preset_label }}</button>
+            {% endfor %}
+          </div>
+          <button class="btn btn-primary mt-3" type="submit">Gerar key</button>
+        </form>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Keys geradas</h5>
+        <div class="settings-summary">
+          {% for key in key_records %}
+          <div>
+            <span>{{ key.company.name if key.company else 'Avulsa' }}</span>
+            <strong>{{ key.plan }} · {{ key.renews_at.strftime('%d/%m/%Y') }} · {{ mask_secret(key.key) }}{% if key.used_by_company_id %} · usada{% endif %}</strong>
+          </div>
+          {% else %}
+          <div><span>Keys</span><strong>Nenhuma key gerada</strong></div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </section>
+  {% endif %}
+
   {% if can_view_admin_tabs %}
   <section class="settings-tab-panel" data-settings-panel="team" role="tabpanel">
     <div class="settings-layout">
       <section class="card card-dark sale-panel">
         <h5 class="mb-3">Gestão de funcionários</h5>
-        <div class="employee-list">
+        <div class="employee-search-panel" data-employee-search>
+          <label class="form-label" for="employee_search">Buscar funcionário</label>
+          <div class="employee-search-row catalog-autocomplete">
+            <input class="form-control" id="employee_search" type="search" placeholder="Digite nome, login ou CPF" data-employee-search-input autocomplete="off">
+            <div class="product-suggestion-list" data-employee-suggestion-list></div>
+            <span class="badge badge-accent" data-employee-search-count>{{ company_users|length }} encontrado{{ 's' if company_users|length != 1 else '' }}</span>
+          </div>
+        </div>
+        <div class="employee-list" data-employee-list>
           {% for user in company_users %}
-          <form class="employee-card" method="post">
-            <input type="hidden" name="form_type" value="update_employee">
+          <form class="employee-card" method="post" data-employee-card data-employee-id="{{ user.id }}" data-employee-name="{{ user.full_name or user.username }}" data-employee-meta="{{ user.username }} · {{ user.role_label }}{% if user.cpf %} · CPF {{ user.cpf }}{% endif %}" data-employee-search-text="{{ user.full_name }} {{ user.username }} {{ user.cpf }} {{ user.role_label }}" {% if needs_permission_override('can_manage_settings') %}data-permission-override="true"{% endif %}>
             <input type="hidden" name="employee_id" value="{{ user.id }}">
-            <div class="employee-card-header">
+            <div class="employee-card-header employee-card-summary">
               <div>
-                <strong>{{ user.full_name or user.username }}</strong>
-                <small>{{ user.username }} · {{ user.role_label }}</small>
+                <button class="product-name-button employee-name-button" type="button" data-bs-toggle="collapse" data-bs-target="#employee-details-{{ user.id }}" aria-expanded="false" aria-controls="employee-details-{{ user.id }}">
+                  <span>{{ user.full_name or user.username }}</span>
+                  <small>{{ user.username }} · {{ user.role_label }}{% if user.cpf %} · CPF {{ user.cpf }}{% endif %}</small>
+                </button>
               </div>
               <label class="form-check form-switch mb-0">
-                <input class="form-check-input" name="is_active" type="checkbox" {% if user.is_active %}checked{% endif %} {% if not can_manage_employees or user.role == 'admin' %}disabled{% endif %}>
+                <input class="form-check-input" name="is_active" type="checkbox" {% if user.is_active %}checked{% endif %}>
                 <span class="form-check-label">{{ 'Ativo' if user.is_active else 'Inativo' }}</span>
               </label>
             </div>
-            <div class="permission-grid">
-              {% for permission in employee_permissions %}
-              <label class="form-check">
-                <input class="form-check-input" name="{{ permission }}" type="checkbox" {% if user.has_permission(permission) %}checked{% endif %} {% if not can_manage_employees or user.role == 'admin' %}disabled{% endif %}>
-                <span class="form-check-label">{{ permission_labels.get(permission, permission) }}</span>
-              </label>
-              {% endfor %}
+            <div class="collapse" id="employee-details-{{ user.id }}">
+              <div class="employee-details-panel">
+                <div class="settings-form-grid">
+                  <div>
+                    <label class="form-label" for="employee_first_name_{{ user.id }}">Nome</label>
+                    <input class="form-control" id="employee_first_name_{{ user.id }}" name="employee_first_name" value="{{ user.first_name or '' }}">
+                  </div>
+                  <div>
+                    <label class="form-label" for="employee_last_name_{{ user.id }}">Sobrenome</label>
+                    <input class="form-control" id="employee_last_name_{{ user.id }}" name="employee_last_name" value="{{ user.last_name or '' }}">
+                  </div>
+                  <div>
+                    <label class="form-label" for="employee_cpf_{{ user.id }}">CPF</label>
+                    <input class="form-control" id="employee_cpf_{{ user.id }}" name="employee_cpf" value="{{ user.cpf or '' }}" inputmode="numeric">
+                  </div>
+                  <div>
+                    <label class="form-label" for="employee_email_{{ user.id }}">Email</label>
+                    <input class="form-control" id="employee_email_{{ user.id }}" name="employee_email" type="email" value="{{ user.email or '' }}" placeholder="email@exemplo.com">
+                  </div>
+                  <div>
+                    <label class="form-label" for="employee_role_{{ user.id }}">Perfil</label>
+                    <select class="form-select" id="employee_role_{{ user.id }}" name="employee_role" {% if user.id == current_user.id and user.role == 'admin' %}disabled{% endif %}>
+                      {% for role_key, role_data in employee_roles.items() %}
+                      <option value="{{ role_key }}" {% if user.role == role_key %}selected{% endif %}>{{ role_data.label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="form-label">Permissões</label>
+                    <div class="settings-summary">
+                      {% if user.role == 'operator' %}
+                      <div><span>Funcionário</span><strong>Vendas, caixa e configurações pessoais</strong></div>
+                      {% elif user.role == 'manager' %}
+                      <div><span>Gerente</span><strong>Tudo menos financeiro</strong></div>
+                      {% else %}
+                      <div><span>Admin</span><strong>Acesso completo</strong></div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <button class="btn btn-outline-light btn-sm" type="submit" name="form_type" value="update_employee">Salvar perfil</button>
+                </div>
+              </div>
             </div>
-            {% if can_manage_employees and user.role != 'admin' %}
-            <button class="btn btn-outline-light btn-sm" type="submit">Salvar permissões</button>
-            {% endif %}
           </form>
           {% else %}
           <p class="text-muted mb-0">Nenhum usuário contratado ainda.</p>
           {% endfor %}
+          <p class="employee-search-empty is-hidden" data-employee-search-empty>Nenhum funcionário encontrado.</p>
         </div>
       </section>
 
       <section class="card card-dark sale-panel">
         <h5 class="mb-3">Contratar funcionário</h5>
-        {% if can_manage_employees %}
-        <form method="post">
+        <form method="post" {% if needs_permission_override('can_manage_settings') %}data-permission-override="true"{% endif %}>
           <input type="hidden" name="form_type" value="hire_user">
           <div class="settings-form-grid">
+            <div>
+              <label class="form-label" for="hire_first_name">Nome</label>
+              <input class="form-control" id="hire_first_name" name="hire_first_name">
+            </div>
+            <div>
+              <label class="form-label" for="hire_last_name">Sobrenome</label>
+              <input class="form-control" id="hire_last_name" name="hire_last_name">
+            </div>
+            <div>
+              <label class="form-label" for="hire_cpf">CPF</label>
+              <input class="form-control" id="hire_cpf" name="hire_cpf" inputmode="numeric" placeholder="000.000.000-00">
+            </div>
             <div>
               <label class="form-label" for="hire_username">Login</label>
               <input class="form-control" id="hire_username" name="hire_username" required>
@@ -147,33 +278,29 @@
             </div>
             <div>
               <label class="form-label" for="hire_password">Senha inicial</label>
-              <input class="form-control" id="hire_password" name="hire_password" type="password" minlength="3" required>
+              <input class="form-control" id="hire_password" name="hire_password" type="password" minlength="{{ password_min_length }}" required>
             </div>
             <div>
               <label class="form-label" for="hire_role">Perfil</label>
               <select class="form-select" id="hire_role" name="hire_role">
-                <option value="operator">Operador</option>
-                <option value="admin">Master da adega</option>
+                {% for role_key, role_data in employee_roles.items() %}
+                <option value="{{ role_key }}">{{ role_data.label }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
-          <div class="permission-grid mt-3">
-            {% for permission in employee_permissions %}
-            <label class="form-check">
-              <input class="form-check-input" name="{{ permission }}" type="checkbox" {% if permission in ['can_view_products', 'can_manage_sales', 'can_manage_cash_register'] %}checked{% endif %}>
-              <span class="form-check-label">{{ permission_labels.get(permission, permission) }}</span>
-            </label>
+          <div class="settings-summary mt-3">
+            {% for role_key, role_data in employee_roles.items() %}
+            <div><span>{{ role_data.label }}</span><strong>{{ role_data.description }}</strong></div>
             {% endfor %}
           </div>
           <button class="btn btn-primary mt-3" type="submit">Contratar</button>
         </form>
-        {% else %}
-        <p class="text-muted mb-0">Apenas o master da adega pode contratar e editar funcionários.</p>
-        {% endif %}
       </section>
     </div>
   </section>
 
+  {% if can_view_finance_tab %}
   <section class="settings-tab-panel" data-settings-panel="finance" role="tabpanel">
     <div class="settings-layout">
       <section class="card card-dark sale-panel">
@@ -184,8 +311,7 @@
           <div><span>Crédito</span><strong>{{ 'Ativo' if settings_company and settings_company.credit_fee_enabled else 'Inativo' }} · {{ '%.2f'|format(settings_company.credit_fee_percent or 0)|replace('.', ',') if settings_company else '0,00' }}%</strong></div>
         </div>
 
-        {% if current_user.role in ['admin', 'master'] %}
-        <form method="post">
+        <form method="post" {% if current_user.role not in ['admin', 'master'] %}data-permission-override="true"{% endif %}>
           <input type="hidden" name="form_type" value="card_fees">
           <div class="machine-fee-grid">
             <label class="machine-fee-row" for="pix_fee_enabled">
@@ -221,9 +347,6 @@
           </div>
           <button class="btn btn-primary mt-3" type="submit">Salvar taxas</button>
         </form>
-        {% else %}
-        <p class="text-muted mb-0">Apenas o usuário master pode alterar as taxas da maquininha.</p>
-        {% endif %}
       </section>
 
       <section class="card card-dark sale-panel">
@@ -233,6 +356,179 @@
           <div><span>Pix</span><strong>Desconta apenas se o Pix estiver ativo</strong></div>
           <div><span>Débito</span><strong>Desconta apenas se o débito estiver ativo</strong></div>
           <div><span>Crédito</span><strong>Desconta apenas se o crédito estiver ativo</strong></div>
+        </div>
+      </section>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if can_view_admin_tabs %}
+  <section class="settings-tab-panel" data-settings-panel="email-alerts" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Alertas por email</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Adega</span><strong>{{ settings_company.name if settings_company else 'Não vinculada' }}</strong></div>
+          <div><span>Envio</span><strong>Gmail SMTP configurado no .env</strong></div>
+        </div>
+        <form method="post" {% if needs_permission_override('can_manage_settings') %}data-permission-override="true"{% endif %}>
+          <input type="hidden" name="form_type" value="email_alerts">
+          <div class="employee-list">
+            {% for alert_type, alert_meta in email_alert_types.items() %}
+            {% set setting = email_alert_settings.get(alert_type) %}
+            <div class="employee-card">
+              <div class="employee-card-header employee-card-summary">
+                <div>
+                  <strong>{{ alert_meta.label }}</strong>
+                  <small>{{ alert_meta.description }}</small>
+                </div>
+                <label class="form-check form-switch mb-0">
+                  <input class="form-check-input" name="alert_enabled_{{ alert_type }}" type="checkbox" {% if setting and setting.enabled %}checked{% endif %}>
+                  <span class="form-check-label">Enviar</span>
+                </label>
+              </div>
+              {% set recipient_value = setting.recipients if setting else '' %}
+              <div class="email-recipient-list mt-3" data-email-list>
+                <input type="hidden" id="alert_recipients_{{ alert_type }}" name="alert_recipients_{{ alert_type }}" value="{{ recipient_value|e }}" data-email-list-hidden>
+                <label class="form-label" for="alert_recipients_input_{{ alert_type }}">Emails que recebem este alerta</label>
+                <div class="email-recipient-input-row">
+                  <input class="form-control" id="alert_recipients_input_{{ alert_type }}" type="email" inputmode="email" autocomplete="email" placeholder="email@exemplo.com" data-email-list-input>
+                  <button class="btn btn-primary email-recipient-add" type="button" data-email-list-add aria-label="Adicionar email">+</button>
+                </div>
+                <div class="email-recipient-items" data-email-list-items aria-live="polite"></div>
+                <small class="text-muted">Adicione um email por vez. Use o botão + ou Enter.</small>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <button class="btn btn-primary mt-3" type="submit">Salvar alertas</button>
+        </form>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Como funciona</h5>
+        <div class="settings-summary">
+          <div><span>Sem repetição</span><strong>O mesmo alerta só é enviado uma vez enquanto a situação não mudar</strong></div>
+          <div><span>Estoque</span><strong>Envia quando esgota ou fica abaixo do mínimo</strong></div>
+          <div><span>Contas</span><strong>Envia no vencimento e quando estiver vencida</strong></div>
+          <div><span>Assinatura</span><strong>Envia quando faltarem até 3 dias para vencer</strong></div>
+        </div>
+      </section>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="settings-tab-panel" data-settings-panel="backup" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Backup da adega</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Período</span><strong>{{ backup_frequency_label(settings_company.backup_frequency) if settings_company else 'Somente manual' }}</strong></div>
+          <div>
+            <span>Último backup</span>
+            <strong>
+              {% if settings_company and settings_company.backup_last_at %}
+              {{ settings_company.backup_last_at.strftime('%d/%m/%Y %H:%M') }}
+              {% else %}
+              Nunca realizado
+              {% endif %}
+            </strong>
+          </div>
+          <div><span>Status</span><strong>{{ settings_company.backup_last_status or 'Sem execução' if settings_company else 'Sem execução' }}</strong></div>
+          <div>
+            <span>Arquivo</span>
+            <strong>
+              {% if settings_company and settings_company.backup_last_path %}
+              {{ settings_company.backup_last_path.rsplit('/', 1)[-1] }}
+              {% else %}
+              Nenhum arquivo gerado
+              {% endif %}
+            </strong>
+          </div>
+        </div>
+
+        <form method="post" {% if needs_permission_override('can_manage_settings') %}data-permission-override="true"{% endif %}>
+          <input type="hidden" name="form_type" value="backup_settings">
+          <label class="form-label" for="backup_frequency">Frequência automática</label>
+          <select class="form-select" id="backup_frequency" name="backup_frequency">
+            {% for value, label in backup_frequencies.items() %}
+            <option value="{{ value }}" {% if settings_company and settings_company.backup_frequency == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-primary mt-3" type="submit">Salvar período</button>
+        </form>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Backup manual</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Destino</span><strong>Pasta backups</strong></div>
+          <div><span>Formato</span><strong>Arquivo .sql</strong></div>
+          <div><span>Banco</span><strong>{{ settings_company.database_path if settings_company else 'Adega atual' }}</strong></div>
+        </div>
+        <form method="post" {% if needs_permission_override('can_manage_settings') %}data-permission-override="true"{% endif %}>
+          <input type="hidden" name="form_type" value="manual_backup">
+          <button class="btn btn-primary" type="submit">Fazer backup agora</button>
+        </form>
+      </section>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if can_import_products %}
+  <section class="settings-tab-panel" data-settings-panel="import" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Importação de produtos</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Adega</span><strong>{{ settings_company.name if settings_company else 'Adega atual' }}</strong></div>
+          <div><span>Formato</span><strong>CSV ou XLSX</strong></div>
+          <div><span>Modelo</span><strong>Importação de produtos</strong></div>
+        </div>
+        <a class="btn btn-outline-light" href="{{ url_for('auth.import_template_download') }}">Baixar planilha exemplo</a>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Enviar planilha</h5>
+        <p class="text-muted">
+          Use o modelo com as colunas categoria, produto, preco_custo, preco_venda, estoque_minimo e estoque_atual.
+        </p>
+        <form method="post" action="{{ url_for('catalog.import_products') }}" enctype="multipart/form-data" {% if needs_permission_override('can_manage_products') %}data-permission-override="true"{% endif %}>
+          <input type="hidden" name="return_to" value="settings">
+          <input class="form-control" name="spreadsheet" type="file" accept=".csv,.xlsx" required>
+          <button class="btn btn-primary mt-3" type="submit">Importar produtos</button>
+        </form>
+      </section>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if can_export_data %}
+  <section class="settings-tab-panel" data-settings-panel="export" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Exportação de dados</h5>
+        <div class="settings-summary mb-4">
+          <div><span>Adega</span><strong>{{ settings_company.name if settings_company else 'Adega atual' }}</strong></div>
+          <div><span>Formato</span><strong>CSV para Excel/Planilhas</strong></div>
+          <div><span>Permissão</span><strong>Admin</strong></div>
+        </div>
+        <div class="export-action-grid">
+          {% for export_type, export_label in [('produtos', 'Produtos'), ('vendas', 'Vendas'), ('caixas', 'Caixas'), ('contas', 'Contas a pagar')] %}
+          <form method="post" action="{{ url_for('main.export_data', export_type=export_type) }}" {% if current_user.role not in ['admin', 'master'] %}data-permission-override="true"{% endif %}>
+            <button class="btn btn-outline-light w-100" type="submit">{{ export_label }}</button>
+          </form>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Arquivos gerados</h5>
+        <div class="settings-summary">
+          <div><span>Produtos</span><strong>Cadastro, preço, estoque e kits</strong></div>
+          <div><span>Vendas</span><strong>Total, desconto, lucro e pagamentos</strong></div>
+          <div><span>Caixas</span><strong>Abertura, fechamento e total vendido</strong></div>
+          <div><span>Contas</span><strong>Vencimento, status e valor</strong></div>
         </div>
       </section>
     </div>

@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="auth-page permission-page">
+  <section class="card card-dark activation-card">
+    <div class="activation-header">
+      <div>
+        <span class="badge badge-accent">Acesso protegido</span>
+        <h2>Autorizar {{ permission_label }}</h2>
+        <p class="text-muted mb-0">Escolha um usuário autorizado e informe a senha para visualizar esta área.</p>
+      </div>
+    </div>
+
+    <form method="post" class="activation-form">
+      <input type="hidden" name="permission" value="{{ permission }}">
+      <input type="hidden" name="next" value="{{ next_url }}">
+
+      <label class="form-label" for="permission_authorizer">Usuário autorizado</label>
+      <input
+        class="form-control"
+        id="permission_authorizer"
+        name="_permission_override_username"
+        list="permission_authorizers"
+        autocomplete="username"
+        value="{{ authorizers[0].username if authorizers else '' }}"
+        placeholder="Digite ou selecione o usuário"
+        required
+      >
+      <datalist id="permission_authorizers">
+        {% for user in authorizers %}
+        <option value="{{ user.username }}">{{ user.full_name or user.username }} · {{ user.role_label }}</option>
+        {% endfor %}
+      </datalist>
+
+      <label class="form-label mt-3" for="permission_password">Senha</label>
+      <input
+        class="form-control"
+        id="permission_password"
+        name="_permission_override_password"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Senha do usuário autorizado"
+        required
+      >
+
+      <div class="d-flex flex-wrap gap-2 mt-4">
+        <button class="btn btn-primary" type="submit">Liberar acesso</button>
+        <a class="btn btn-outline-light" href="{{ url_for('main.dashboard') }}">Voltar</a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

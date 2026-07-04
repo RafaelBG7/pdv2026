@@ -3,44 +3,69 @@
 ## Guia para Novos Desenvolvedores
 
 1. Leia `README.md`.
-2. Leia `docs/03-arquitetura.md`.
-3. Leia modelos em `app/models/`.
-4. Leia rotas em `app/routes/`.
-5. Execute os testes.
-6. Faça uma venda manual em ambiente local.
+2. Leia `docs/01-visao-geral.md`.
+3. Leia `docs/03-arquitetura.md`.
+4. Leia `docs/04-modelagem-banco.md`.
+5. Leia os modelos em `app/models/`.
+6. Leia as rotas em `app/routes/`.
+7. Execute os testes.
+8. Faça uma venda manual em ambiente local.
+
+## Rodar Localmente
+
+```bash
+cd /Users/rafaelborges/pdv-adega-jf
+source .venv/bin/activate
+python app.py
+```
+
+Acesse:
+
+```text
+http://127.0.0.1:5001
+```
 
 ## Criar Nova Funcionalidade
 
-Procedimento:
-
 1. Definir regra de negócio.
-2. Identificar domínio: auth, catalog, main ou novo blueprint.
-3. Criar ou alterar modelo, se necessário.
-4. Criar migração formal ou, no estado atual, função de compatibilidade temporária.
-5. Criar rota.
-6. Criar template.
-7. Adicionar validações no servidor.
-8. Adicionar testes.
-9. Atualizar documentação.
+2. Identificar domínio: `auth`, `catalog`, `main` ou novo módulo.
+3. Verificar se a informação é central ou pertence à adega.
+4. Criar/alterar modelo.
+5. Ajustar criação/compatibilidade de colunas se necessário.
+6. Criar rota.
+7. Criar template.
+8. Aplicar permissão no backend.
+9. Adicionar teste.
+10. Atualizar documentação.
 
-## Criar Nova Tela
+## Banco Central ou Banco da Adega
 
-1. Criar template em `app/templates/`.
-2. Estender `base.html`.
-3. Criar rota no blueprint adequado.
-4. Adicionar link no menu, se aplicável.
-5. Adicionar CSS se necessário.
-6. Adicionar JavaScript usando atributos `data-*`, seguindo padrão atual.
-7. Adicionar teste de carregamento e permissão.
+Use banco central para:
+
+- Empresas.
+- Usuários.
+- Keys.
+- Assinatura.
+- Dados do painel master.
+
+Use banco da adega para:
+
+- Produtos.
+- Categorias.
+- Vendas.
+- Caixa.
+- Pagamentos.
+- Contas a pagar.
 
 ## Criar Nova Rota
 
-1. Escolher blueprint.
-2. Usar `@login_required` quando não for pública.
-3. Validar entradas do formulário.
-4. Usar `flash()` para mensagens ao usuário.
-5. Usar `redirect(url_for(...))` após POST bem-sucedido.
-6. Tratar `IntegrityError` quando houver unicidade.
+1. Usar `@login_required` quando não for pública.
+2. Usar `@permission_required` se a ação for sensível.
+3. Usar `tenant_session()` para dados operacionais da adega.
+4. Validar entradas do formulário.
+5. Usar `flash()` para mensagens.
+6. Usar redirect após POST bem-sucedido.
+7. Criar teste de acesso permitido e negado.
 
 ## Criar Nova Tabela
 
@@ -48,7 +73,8 @@ Estado atual:
 
 - Criar model em `app/models/`.
 - Exportar em `app/models/__init__.py`.
-- `db.create_all()` criará a tabela em bancos novos.
+- Garantir criação no banco correto.
+- Se for operacional, garantir criação em bancos de tenant.
 
 Recomendação profissional:
 
@@ -56,75 +82,57 @@ Recomendação profissional:
 - Criar migração versionada.
 - Testar upgrade e downgrade.
 
-## Criar Relatório
+## Backup
 
-1. Definir período e filtros.
-2. Criar função auxiliar em `main.py` ou serviço específico.
-3. Buscar dados com SQLAlchemy.
-4. Agregar valores no backend.
-5. Renderizar cards/tabelas/gráficos.
-6. Testar com dados conhecidos.
+O backup atual é gerado por adega em arquivo `.sql` dentro de:
 
-## Criar Permissão
+```text
+backups/
+```
 
-1. Definir perfil no modelo de usuário.
-2. Criar decorator de autorização.
-3. Aplicar em rotas sensíveis.
-4. Ajustar menu para esconder ações indisponíveis.
-5. Garantir bloqueio no servidor, não apenas no frontend.
-6. Criar testes por perfil.
+Pode ser:
+
+- Manual.
+- Diário.
+- Semanal.
+- Mensal.
+
+Configuração:
+
+- Configurações > Backup.
+
+Recomendação:
+
+- Copiar os arquivos para armazenamento externo.
+- Testar restauração periodicamente.
+- Não considerar backup válido até testar restauração.
+
+## Logs
+
+Logs de erro ficam em:
+
+```text
+logs/errors.log
+```
+
+O master do sistema também vê logs recentes no painel master e pode limpar o arquivo.
 
 ## Corrigir Bug
 
 1. Reproduzir.
-2. Criar teste que falha.
-3. Corrigir com menor alteração segura.
-4. Executar testes.
-5. Atualizar documentação se mudar comportamento.
+2. Criar ou ajustar teste.
+3. Corrigir a menor área possível.
+4. Rodar testes.
+5. Validar manualmente se for fluxo visual.
+6. Atualizar documentação se a regra mudou.
 
-## Atualizar Dependências
+## Antes de Produção
 
-1. Revisar `requirements.txt`.
-2. Atualizar em ambiente isolado.
-3. Executar testes.
-4. Validar login, catálogo, venda e relatório.
-5. Registrar mudanças relevantes.
-
-## Backup
-
-Backup manual do SQLite:
-
-```bash
-cp database/adega_jf.db backups/adega_jf-$(date +%Y%m%d-%H%M%S).db
-```
-
-Recomendações:
-
-- Parar aplicação ou usar API de backup SQLite para consistência.
-- Guardar cópia fora da máquina.
-- Testar restauração periodicamente.
-
-## Restauração
-
-1. Parar aplicação.
-2. Fazer cópia do banco atual.
-3. Substituir `database/adega_jf.db` pelo backup.
-4. Iniciar aplicação.
-5. Validar dados.
-
-## Rollback de Código
-
-1. Identificar versão anterior estável.
-2. Parar aplicação.
-3. Retornar código.
-4. Restaurar banco, se schema mudou.
-5. Rodar testes.
-6. Subir aplicação.
-
-## Pontos de Atenção
-
-- Não excluir o banco local sem backup.
-- Não usar senha padrão em produção.
-- Não confiar em validação apenas do JavaScript.
-- Não editar schema manualmente sem registrar.
-- Não habilitar múltiplos processos de escrita pesada em SQLite sem análise.
+- Remover `debug=True`.
+- Definir `SECRET_KEY` segura.
+- Ativar CSRF.
+- Criar usuário MySQL dedicado.
+- Configurar HTTPS.
+- Configurar backup externo.
+- Adicionar migrações versionadas.
+- Criar auditoria de ações críticas.

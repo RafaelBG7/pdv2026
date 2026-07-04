@@ -2,69 +2,149 @@
 
 ## Tecnologia
 
-Autenticação baseada em sessão com Flask-Login.
+A autenticação usa Flask-Login com sessão de navegador.
 
-Arquivos:
+Arquivos principais:
 
-- `app/extensions.py`.
-- `app/routes/auth.py`.
-- `app/models/user.py`.
+- `app/extensions.py`
+- `app/routes/auth.py`
+- `app/models/user.py`
+- `app/models/company.py`
+- `app/models/activation_key.py`
 
 ## Login
 
 Rota:
 
-- `GET/POST /login`.
+- `GET/POST /login`
 
 Fluxo:
 
-1. Usuário informa `username` e `password`.
-2. Sistema busca `User` por `username`.
-3. Sistema chama `user.check_password(password)`.
-4. Em sucesso, chama `login_user(user)`.
-5. Usuário é redirecionado para `/dashboard`.
+1. Usuário informa login e senha.
+2. Sistema busca `User.username`.
+3. Sistema valida `check_password()`.
+4. Se o usuário estiver inativo, o acesso é bloqueado.
+5. Se o e-mail ainda não foi confirmado, redireciona para `/verify-email`.
+6. Se for `master`, redireciona para o painel master.
+7. Se a adega exigir ativação, redireciona para `/assinatura`.
+8. Caso contrário, entra no dashboard.
 
-## Logout
+## Cadastro de Adega
+
+O cadastro fica na própria tela `/login`.
+
+Campos principais:
+
+- Nome da adega.
+- Usuário.
+- E-mail.
+- Senha e confirmação.
+- Key de ativação.
+- Opção "Não tenho key".
+
+Comportamento:
+
+- Cria `Company`.
+- Cria primeiro usuário como `admin` com `email_verified = false`.
+- Cria banco MySQL separado da adega.
+- Se uma key válida for informada, aplica plano e validade.
+- Gera código de 6 dígitos e envia por Gmail SMTP.
+- Só libera login depois da confirmação do código em `/verify-email`.
+- Se o usuário marcar "Não tenho key" ou deixar sem key, a conta é criada, mas fica bloqueada para uso operacional.
+
+## Verificação de E-mail
+
+Rotas:
+
+- `GET/POST /verify-email`
+- `POST /verify-email/resend`
+
+Regras:
+
+- Código numérico de 6 dígitos.
+- Expiração em 15 minutos.
+- Código anterior é invalidado ao reenviar.
+- Reenvio limitado por tempo.
+- Login é bloqueado enquanto `email_verified = false`.
+
+## Recuperação de Senha
+
+Rotas:
+
+- `GET/POST /forgot-password`
+- `GET/POST /reset-password/<token>`
+
+Regras:
+
+- Token seguro gerado com `secrets.token_urlsafe()`.
+- Expiração em 30 minutos.
+- Tokens antigos do usuário são invalidados ao solicitar novo link.
+- Token é marcado como usado depois da redefinição.
+
+## Troca de E-mail
 
 Rota:
 
-- `GET /logout`.
+- `GET /confirmar-troca-email/<token>`
 
-Fluxo:
+Regras:
 
-1. Exige usuário autenticado.
-2. Chama `logout_user()`.
-3. Mostra mensagem de saída.
-4. Redireciona para `/login`.
+- Se o usuário já possui e-mail confirmado, a troca envia um link para o e-mail antigo.
+- O novo e-mail só é aplicado depois da confirmação pelo e-mail antigo.
+- O token expira em 30 minutos.
+- Se o usuário ainda não possui e-mail, o primeiro cadastro de e-mail é salvo diretamente.
 
-## Cadastro
+## Key de Ativação
 
-O cadastro é feito na própria rota `/login` quando `form_type='register'`.
+Modelo:
 
-Validações:
+- `ActivationKey`
 
-- `username` obrigatório.
-- Senha com pelo menos 6 caracteres.
-- Confirmação deve coincidir.
-- `username` deve ser único.
+Campos principais:
 
-Comportamento atual:
+- `key`
+- `plan`
+- `renews_at`
+- `active`
+- `used_by_company_id`
+- `used_at`
 
-- Todo usuário cadastrado recebe `role='admin'`.
-- Usuário é autenticado automaticamente após cadastro.
+Regras:
 
-Risco:
+- Key avulsa pode ser gerada pelo master.
+- Key pode ser vinculada a uma adega no momento da geração.
+- Key usada é marcada com empresa e data de uso.
+- Key inválida ou vencida não libera uso.
+- Adega sem key ativa pode visualizar a tela de ativação, mas não operar.
 
-- Cadastro público de administradores. Em produção, deve ser removido, protegido por convite ou restrito a administradores.
+## Usuário Master do Sistema
+
+Na inicialização, o sistema garante um usuário global:
+
+```text
+Usuário: master
+Senha: master123
+```
+
+Esse usuário administra o SaaS inteiro e não deve ser confundido com o admin de uma adega.
+
+## Admin da Adega
+
+Cada adega pode ter mais de um usuário `admin`.
+
+O admin da adega:
+
+- Gerencia produtos, categorias, vendas, caixa, relatórios e contas.
+- Gerencia equipe.
+- Acessa financeiro, importação, exportação e backup.
+- Não acessa o painel master global, exceto se também for o usuário `master` do sistema.
 
 ## Hash de Senha
 
-Arquivo: `app/models/user.py`.
-
-Método:
+Senhas são armazenadas com hash:
 
 ```python
-generate_password_hash(password, method='pbkdf2:sha256')
+generate_password_hash(password, method='scrypt')
 ```
 
 Verificação:
@@ -75,83 +155,27 @@ check_password_hash(self.password_hash, password)
 
 ## Sessão
 
-Flask-Login usa sessão Flask assinada por `SECRET_KEY`.
+Flask-Login armazena o identificador do usuário na sessão assinada do Flask.
 
-Configuração atual:
+Configuração importante:
 
-- `SECRET_KEY` pode vir de variável de ambiente.
-- Padrão: `adega-jf-secret-key`.
+- `SECRET_KEY` deve ser forte em produção.
+- A chave padrão existe apenas para desenvolvimento local.
 
-Risco:
+## Bloqueios de Segurança
 
-- Valor padrão não deve ser usado em produção.
+O sistema bloqueia:
 
-## Expiração
+- Login de usuário inativo.
+- Login após muitas tentativas inválidas em curto período.
+- Login de usuário com e-mail ainda não confirmado.
+- Uso de adega inativa.
+- Operação de adega sem assinatura/key ativa.
+- Acesso a rotas sem autenticação.
+- Acesso a rotas protegidas sem permissão.
 
-Não há configuração explícita de expiração de sessão permanente.
+## Pendências
 
-Status: não implementado.
-
-## Refresh Token
-
-Não aplicável no modelo atual, pois não há autenticação por token ou API JSON.
-
-Status: não implementado.
-
-## JWT
-
-Não implementado.
-
-## Recuperação de Senha
-
-Não implementado.
-
-Não há:
-
-- Solicitação de reset.
-- Envio de email.
-- Token temporário.
-- Expiração de token.
-
-## Proteção de Rotas
-
-Implementada com:
-
-```python
-@login_required
-```
-
-Rotas protegidas:
-
-- Dashboard.
-- Produtos.
-- Categorias.
-- Vendas.
-- Caixa.
-- Relatórios.
-- Configurações.
-- Logout.
-
-## Usuário Inativo
-
-Campo `is_active` existe no modelo.
-
-Status:
-
-- Parcial. O campo é armazenado, mas a lógica de login não bloqueia explicitamente usuários inativos.
-
-## Usuário Inicial
-
-Criado em `create_app()`:
-
-```text
-username: admin
-password: admin123
-role: admin
-```
-
-Recomendação:
-
-- Trocar senha imediatamente.
-- Permitir configurar senha inicial por variável de ambiente.
-- Bloquear criação automática em produção após bootstrap.
+- CSRF nos formulários.
+- Rate limit persistente/distribuído para produção.
+- Política de senha mais forte.

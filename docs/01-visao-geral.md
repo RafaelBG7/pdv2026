@@ -2,86 +2,87 @@
 
 ## Propósito
 
-O Adega JF é um sistema PDV web local para apoiar a rotina de venda, caixa, estoque e acompanhamento financeiro básico de uma adega ou pequeno comércio.
+O Adega JF é um PDV web para adegas e pequenos comércios, com operação local pelo navegador e estrutura multiadega para uso em modelo SaaS.
 
-Ele centraliza:
+O sistema centraliza:
 
-- Cadastro de produtos e categorias.
-- Controle de estoque simples.
-- Operação de caixa.
-- Registro de vendas.
-- Formas de pagamento.
-- Relatórios de venda, lucro e produtos vendidos.
-- Configurações do usuário autenticado.
+- Vendas com múltiplos produtos e múltiplas formas de pagamento.
+- Abertura, acompanhamento e fechamento de caixa.
+- Produtos, categorias, kits, estoque e estoque mínimo.
+- Relatórios por período e gráfico de vendas.
+- Contas a pagar com alertas de vencimento.
+- Notificações operacionais no topo da interface.
+- Usuários, funcionários e permissões por perfil.
+- Assinatura/key de ativação por adega.
+- Banco de dados MySQL central e banco separado para cada adega.
+- Painel master para gerenciar adegas, keys, logs e acesso administrativo.
 
 ## Público-alvo
 
-- Operador de caixa.
-- Proprietário ou administrador da adega.
-- Responsável por estoque.
-- Responsável por suporte e manutenção técnica.
-- Futuro time de desenvolvimento.
+- Dono da adega.
+- Administrador da adega.
+- Gerente operacional.
+- Funcionário de caixa.
+- Master do sistema/SaaS.
+- Suporte técnico e desenvolvimento.
+
+## Situação Atual
+
+O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MySQL multiadega:
+
+- O banco central guarda empresas, usuários, assinaturas e keys.
+- Cada adega tem um banco MySQL próprio para dados operacionais.
+- O cadastro pode ser feito com key de ativação ou sem key, mas sem key o uso fica bloqueado.
+- O master do sistema pode gerar keys, definir validade, ver logs e administrar adegas.
 
 ## Benefícios
 
-- Operação simples em navegador.
-- Baixo custo de infraestrutura por usar SQLite local.
-- Cadastro e venda no mesmo sistema.
-- Redução manual de estoque ao vender.
-- Relatórios básicos por período.
-- Facilidade para evoluir por estar organizado em blueprints, modelos e templates.
-
-## Problemas Resolvidos
-
-- Controle manual de vendas sem histórico centralizado.
-- Falta de visibilidade de estoque baixo.
-- Dificuldade de fechar caixa com valor esperado.
-- Falta de apuração rápida de lucro por venda/período.
-- Dificuldade de consultar produtos, categorias e vendas realizadas.
+- Separação real dos dados entre adegas.
+- Fluxo de venda rápido com atalhos e autocomplete.
+- Controle de permissões para funcionário, gerente e admin.
+- Alertas de estoque baixo e contas a pagar.
+- Relatórios e dashboard para acompanhamento diário.
+- Backup por adega em arquivo SQL.
+- Base pronta para evoluir para cobrança, suporte e operação SaaS.
 
 ## Status do Produto
 
 | Área | Status | Observações |
 |---|---|---|
-| Login e sessão | Implementado | Usa Flask-Login e sessão de navegador |
-| Cadastro de usuário | Implementado com risco | Cadastro público cria usuário admin |
-| Catálogo | Implementado | Produtos, categorias, filtros, kits simples |
-| Estoque | Parcial | Baixa em venda; não há histórico de movimentação |
-| Caixa | Implementado | Abertura, fechamento e valor esperado |
-| Vendas | Implementado | Itens, desconto, pagamentos, troco e baixa |
-| Relatórios | Implementado | Períodos e totais operacionais |
-| Permissões | Planejado | Campo `role` existe, mas não restringe rotas |
-| API JSON | Não implementado | Rotas são HTML/formulário |
-| Auditoria | Não implementado | Sem trilha de alterações |
-| Deploy | Parcial | Apenas execução local; `app.py` tem erro de import |
-| Backup | Não implementado | Diretórios existem, mas não há rotina |
+| Login e sessão | Implementado | Flask-Login com usuário ativo/inativo. |
+| Cadastro de adega | Implementado | Cria empresa, usuário admin e banco da adega. |
+| Assinatura/key | Implementado | Key pode ser gerada pelo master e bloqueia uso quando ausente/vencida. |
+| Multiadega | Implementado | Banco central + banco MySQL separado por adega. |
+| Painel master | Implementado | Gestão de adegas, logs, keys e acesso administrativo. |
+| Produtos e categorias | Implementado | Filtros, edição expandida, kits, estoque mínimo e importação. |
+| Vendas | Implementado | Produtos antes do pagamento, desconto, F2/F3, pagamentos mistos e troco. |
+| Caixa | Implementado | Abertura obrigatória, fechamento validado e histórico. |
+| Relatórios | Implementado | Diário, semanal, mensal, anual e período personalizado. |
+| Dashboard | Implementado | Indicadores de venda, lucro, caixa, estoque e contas. |
+| Contas a pagar | Implementado | Alertas 3 dias antes e no vencimento. |
+| Notificações | Implementado | Estoque baixo, sem estoque e contas a pagar. |
+| Backup | Implementado | Manual e automático por período. |
+| Importação/exportação | Implementado | Importação de produtos por planilha e exportação CSV para admin. |
+| Logs de erro | Implementado | Arquivo `logs/errors.log` e visualização no painel master. |
+| Auditoria de ações | Não implementado | Ainda falta log de alterações de negócio. |
+| API pública | Não implementado | Rotas atuais são HTML/formulário. |
 
-## Objetivos de Negócio
+## Pontos Fortes Atuais
 
-- Permitir venda rápida e controle básico de estoque.
-- Reduzir erros de fechamento de caixa.
-- Dar visibilidade de produtos sem estoque ou com estoque baixo.
-- Permitir leitura rápida de resultados por período.
-- Criar base técnica para evolução do PDV.
+- A base multiadega já está desenhada para SaaS.
+- As principais rotinas de uma adega estão cobertas.
+- O controle de permissões já reduz risco operacional de funcionário comum.
+- O dashboard dá uma visão rápida de vendas, lucro, caixa e alertas.
+- A arquitetura ainda é simples o suficiente para manutenção rápida.
 
-## Escalabilidade Futura
+## O Que Ainda Faz Falta
 
-O projeto atual é adequado para uso local ou pequeno volume. Para escalar, recomenda-se:
-
-- Migrar SQLite para PostgreSQL.
-- Criar migrações versionadas.
-- Separar API e frontend, se houver múltiplos clientes.
-- Implementar permissões e auditoria.
-- Criar filas ou eventos para integrações fiscais, impressão e relatórios.
-- Adicionar cache e paginação em listagens quando o catálogo crescer.
-
-## Limitações Atuais Importantes
-
-- `app.py` contém import incorreto de `create_apppy`; a aplicação deve ser iniciada por `flask --app app:create_app run` ou o arquivo deve ser corrigido.
-- `DEBUG=True` está definido em `config.py`.
-- A chave secreta padrão é fraca para produção.
-- Não há proteção CSRF explícita nos formulários.
-- Não há bloqueio por perfil.
-- Não há logs estruturados.
-- Não há backup automático.
-- Não há tratamento transacional avançado para concorrência em estoque.
+- Migrações versionadas com Alembic/Flask-Migrate.
+- CSRF nos formulários.
+- Recuperação de senha por email.
+- Auditoria de ações críticas, como alteração de preço, exclusão e fechamento de caixa.
+- Histórico de movimentação de estoque.
+- Sangria e suprimento de caixa.
+- Cadastro de fornecedores e compras.
+- Regras comerciais reais para Basic/Pro.
+- Deploy de produção com WSGI, HTTPS, backup externo e variáveis seguras.

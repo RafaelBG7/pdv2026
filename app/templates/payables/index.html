@@ -30,7 +30,7 @@
 
 <section class="card card-dark sale-panel mb-4">
   <h5 class="mb-3">Nova conta</h5>
-  <form class="payable-form" method="post">
+  <form class="payable-form" method="post" {% if needs_permission_override('can_manage_payables') %}data-permission-override="true"{% endif %}>
     <div>
       <label class="form-label" for="description">Descrição</label>
       <input class="form-control" id="description" name="description" placeholder="Ex: Aluguel, luz, internet" required>
@@ -88,11 +88,11 @@
           <td class="text-end">R$ {{ '%.2f'|format(payable.amount or 0)|replace('.', ',') }}</td>
           <td class="text-end">
             {% if payable.paid %}
-            <form method="post" action="{{ url_for('main.reopen_payable', payable_id=payable.id) }}">
+            <form method="post" action="{{ url_for('main.reopen_payable', payable_id=payable.id) }}" {% if needs_permission_override('can_manage_payables') %}data-permission-override="true"{% endif %}>
               <button class="btn btn-outline-light btn-sm" type="submit">Reabrir</button>
             </form>
             {% else %}
-            <form method="post" action="{{ url_for('main.pay_payable', payable_id=payable.id) }}">
+            <form method="post" action="{{ url_for('main.pay_payable', payable_id=payable.id) }}" {% if needs_permission_override('can_manage_payables') %}data-permission-override="true"{% endif %}>
               <button class="btn btn-primary btn-sm" type="submit">Marcar pago</button>
             </form>
             {% endif %}

@@ -11,7 +11,7 @@ from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.models import Category, Product
-from app.permissions import permission_required
+from app.permissions import authorize_permission_override, permission_required
 from app.tenant import current_tenant_company, tenant_session
 
 
@@ -59,7 +59,14 @@ def current_company_categories_query():
 
 
 def can_import_products():
-    return current_user.role in ('admin', 'master')
+    return current_user.role in ('admin', 'manager', 'master')
+
+
+def import_redirect_target():
+    target = request.form.get('return_to')
+    if target == 'settings':
+        return redirect(url_for('auth.settings'))
+    return redirect(url_for('catalog.products', status='all'))
 
 
 def parse_money(value):
@@ -225,8 +232,10 @@ def import_products_from_rows(rows):
             continue
 
         category_name = import_column(row, 'categoria', 'category')
-        cost_price = parse_money(import_column(row, 'valor de custo', 'custo', 'preco de custo', 'cost_price', 'cost'))
-        sale_price = parse_money(import_column(row, 'valor de venda', 'venda', 'preco de venda', 'sale_price', 'price'))
+        cost_price = parse_money(import_column(row, 'valor de custo', 'custo', 'preco de custo', 'preco_custo', 'cost_price', 'cost'))
+        sale_price = parse_money(import_column(row, 'valor de venda', 'venda', 'preco de venda', 'preco_venda', 'sale_price', 'price'))
+        stock_quantity = parse_int(import_column(row, 'estoque atual', 'estoque_atual', 'estoque', 'stock_quantity', 'stock'))
+        min_stock_quantity = parse_int(import_column(row, 'estoque minimo', 'estoque_minimo', 'min_stock_quantity', 'min_stock'))
         category = find_or_create_category(category_name, tenant_db, company_id)
 
         product = tenant_query(Product).filter(func.lower(Product.name) == product_name.lower()).first()
@@ -242,6 +251,8 @@ def import_products_from_rows(rows):
         product.category_id = category.id if category else None
         product.cost_price = cost_price
         product.sale_price = sale_price
+        product.stock_quantity = stock_quantity
+        product.min_stock_quantity = min_stock_quantity
         product.active = True
 
     tenant_db.commit()
@@ -345,31 +356,31 @@ def products():
 @login_required
 @permission_required('can_manage_products')
 def import_products():
-    if not can_import_products():
+    if not can_import_products() and not authorize_permission_override('can_manage_products'):
         flash('Apenas o dono da adega pode importar planilhas.', 'danger')
-        return redirect(url_for('catalog.products'))
+        return import_redirect_target()
 
     file_storage = request.files.get('spreadsheet')
     if not file_storage or not file_storage.filename:
         flash('Envie uma planilha para importar.', 'danger')
-        return redirect(url_for('catalog.products'))
+        return import_redirect_target()
 
     try:
         rows = read_import_rows(file_storage)
         created, updated, skipped = import_products_from_rows(rows)
     except (ValueError, KeyError, zipfile.BadZipFile, ElementTree.ParseError) as error:
         flash(str(error) or 'Não foi possível ler a planilha.', 'danger')
-        return redirect(url_for('catalog.products'))
+        return import_redirect_target()
     except IntegrityError:
         tenant_session().rollback()
         flash('A planilha possui dados duplicados ou inválidos.', 'danger')
-        return redirect(url_for('catalog.products'))
+        return import_redirect_target()
 
     flash(
         f'Importação concluída: {created} produto(s) criado(s), {updated} atualizado(s), {skipped} linha(s) ignorada(s).',
         'success',
     )
-    return redirect(url_for('catalog.products', status='all'))
+    return import_redirect_target()
 
 
 @catalog_bp.route('/produtos/novo', methods=['GET', 'POST'])
@@ -500,7 +511,8 @@ def dismiss_low_stock_notification(product_id):
     product = tenant_get_or_404(Product, product_id)
     stock_quantity = product.effective_stock_quantity or 0
     min_stock_quantity = product.min_stock_quantity or 0
-    notification_key = f'product-low-stock:{product.id}:{stock_quantity}:{min_stock_quantity}'
+    alert_type = 'product_out_of_stock' if stock_quantity <= 0 else 'product_low_stock'
+    notification_key = f'{alert_type}:{product.id}:{stock_quantity}:{min_stock_quantity}'
     dismissed_notifications = set(session.get('dismissed_low_stock_notifications', []))
     dismissed_notifications.add(notification_key)
     session['dismissed_low_stock_notifications'] = sorted(dismissed_notifications)

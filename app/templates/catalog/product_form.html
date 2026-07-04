@@ -9,7 +9,7 @@
   <a class="btn btn-outline-light" href="{{ url_for('catalog.products') }}">Voltar</a>
 </div>
 
-<form class="card card-dark p-4 product-form-card" method="post">
+<form class="card card-dark p-4 product-form-card" method="post" {% if needs_permission_override('can_manage_products') %}data-permission-override="true"{% endif %}>
   <div class="row g-3">
     <div class="col-md-8">
       <label class="form-label" for="name">Nome do produto</label>

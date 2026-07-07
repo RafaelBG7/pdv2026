@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$ServiceName = "GirofyPDVMySQL"
+$ServiceName = "GirofyMySQL"
 
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($service) {
@@ -11,5 +11,5 @@ if ($service) {
     sc.exe delete $ServiceName | Out-Null
 }
 
-# Os dados ficam em C:\ProgramData\GirofyPDV para evitar remoção acidental
+# Os dados ficam em C:\ProgramData\Girofy para evitar remoção acidental
 # de vendas, produtos e caixas durante uma desinstalação comum.

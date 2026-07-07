@@ -14,10 +14,10 @@ cd "$ROOT_DIR"
 
 "$VENV_PYTHON" -m pip install -r requirements.txt -r requirements-build.txt
 
-rm -rf build dist/GirofyPDV dist/GirofyPDV.app
+rm -rf build dist/Girofy dist/Girofy.app
 
 "$VENV_PYTHON" -m PyInstaller \
-  --name GirofyPDV \
+  --name Girofy \
   --windowed \
   --onedir \
   --clean \
@@ -52,7 +52,7 @@ fi
 
 echo
 echo "Aplicativo gerado em:"
-echo "  $ROOT_DIR/dist/GirofyPDV.app"
+echo "  $ROOT_DIR/dist/Girofy.app"
 echo
 echo "Para abrir:"
-echo "  open \"$ROOT_DIR/dist/GirofyPDV.app\""
+echo "  open \"$ROOT_DIR/dist/Girofy.app\""

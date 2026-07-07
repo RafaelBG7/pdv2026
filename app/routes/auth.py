@@ -10,12 +10,12 @@ import time
 from flask import Blueprint, current_app, redirect, render_template, request, send_file, session, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.backup import BACKUP_FREQUENCIES, backup_frequency_label, create_company_backup
 from app.extensions import db
-from app.models import ActivationKey, CashRegister, Company, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Product, Sale, User
+from app.models import ActivationKey, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, User
 from app.permissions import (
     PERMISSION_LABELS,
     authorize_permission_override,
@@ -307,11 +307,24 @@ def generate_activation_key():
     return '-'.join(groups)
 
 
+def generate_unique_activation_key():
+    for _ in range(20):
+        key = generate_activation_key()
+        if not ActivationKey.query.filter_by(key=key).first():
+            return key
+    raise RuntimeError('Não foi possível gerar uma key única.')
+
+
 def available_activation_key(value):
     key = (value or '').strip().upper()
     if not key:
         return None
-    return ActivationKey.query.filter_by(key=key, active=True, used_by_company_id=None).first()
+    activation_key = ActivationKey.query.filter_by(key=key, active=True, used_by_company_id=None).first()
+    if not activation_key:
+        return None
+    if activation_key.renews_at and activation_key.renews_at < date.today():
+        return None
+    return activation_key
 
 
 def apply_activation_key_to_company(activation_key, company):
@@ -324,6 +337,68 @@ def apply_activation_key_to_company(activation_key, company):
     company.active = True
     activation_key.used_by_company_id = company.id
     activation_key.used_at = datetime.now(timezone.utc)
+
+
+def renewal_date_from_request(default_cycle='monthly'):
+    billing_cycle = request.form.get('billing_cycle', default_cycle).strip()
+    if billing_cycle not in BILLING_CYCLES:
+        billing_cycle = default_cycle if default_cycle in BILLING_CYCLES else 'monthly'
+
+    preset_days = request.form.get('preset_days', '').strip()
+    custom_renews_at = parse_date_field(request.form.get('renews_at'))
+    days = None
+    if preset_days:
+        try:
+            days = max(int(preset_days), 1)
+        except ValueError:
+            days = None
+
+    if custom_renews_at:
+        renews_at = custom_renews_at
+    elif days:
+        renews_at = date.today() + timedelta(days=days)
+    else:
+        renews_at = date.today() + timedelta(days=365 if billing_cycle == 'annual' else 30)
+
+    return billing_cycle, renews_at
+
+
+def apply_subscription_to_company(company, plan, billing_cycle, renews_at, activation_key=''):
+    company.subscription_plan = plan
+    company.billing_cycle = billing_cycle
+    company.subscription_started_at = date.today()
+    company.subscription_renews_at = renews_at
+    company.active = True
+    if activation_key:
+        company.activation_key = activation_key
+        company.activation_key_updated_at = datetime.now(timezone.utc)
+
+
+def activation_key_status(activation_key):
+    today = date.today()
+    if not activation_key.active:
+        return {
+            'label': 'Cancelada',
+            'state': 'danger',
+            'available': False,
+        }
+    if activation_key.used_by_company_id:
+        return {
+            'label': 'Usada',
+            'state': 'ok',
+            'available': False,
+        }
+    if activation_key.renews_at and activation_key.renews_at < today:
+        return {
+            'label': 'Vencida',
+            'state': 'danger',
+            'available': False,
+        }
+    return {
+        'label': 'Disponível',
+        'state': 'warning',
+        'available': True,
+    }
 
 
 def read_recent_error_logs(limit=20):
@@ -443,6 +518,22 @@ def company_cpf_exists(company_id, cpf, user_id=None):
 
 
 def subscription_status(company):
+    if not company:
+        return {
+            'renewal_label': '-',
+            'days_left': None,
+            'days_label': 'Sem adega vinculada',
+            'state': 'danger',
+            'locked': True,
+        }
+    if not company.active:
+        return {
+            'renewal_label': company.subscription_renews_at.strftime('%d/%m/%Y') if company.subscription_renews_at else '-',
+            'days_left': None,
+            'days_label': 'Adega inativa',
+            'state': 'danger',
+            'locked': True,
+        }
     renewal = company.subscription_renews_at
     today = date.today()
     if not renewal:
@@ -475,15 +566,11 @@ def subscription_status(company):
 
 
 def company_requires_activation(company):
-    if not company:
-        return True
-    if not company.active:
-        return True
-    if not (company.activation_key or '').strip():
-        return True
-    if not company.subscription_renews_at:
-        return True
-    return company.subscription_renews_at < date.today()
+    return not bool(company and company.subscription_valid)
+
+
+def company_uses_key_license(company):
+    return bool(company and (company.activation_key or '').strip())
 
 
 def current_basic_pro_plan(company):
@@ -492,6 +579,29 @@ def current_basic_pro_plan(company):
     if company.subscription_plan in ('Pro', 'Premium', 'Profissional'):
         return 'Pro'
     return 'Basic'
+
+
+def login_form_values():
+    return {
+        'username': request.form.get('username', '').strip(),
+    }
+
+
+def register_form_values():
+    return {
+        'username': request.form.get('username', '').strip(),
+        'company_name': request.form.get('company_name', '').strip(),
+        'email': request.form.get('email', '').strip(),
+    }
+
+
+def render_auth_form(auth_tab='login', form_values=None, field_errors=None):
+    return render_template(
+        'login.html',
+        auth_tab=auth_tab,
+        form_values=form_values or {},
+        field_errors=field_errors or {},
+    )
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -510,56 +620,39 @@ def login():
             email = request.form.get('email', '').strip()
             company_name = request.form.get('company_name', '').strip() or username
             confirm_password = request.form.get('confirm_password', '')
-            provided_key = request.form.get('activation_key', '').strip().upper()
-            no_activation_key = request.form.get('no_activation_key') == 'on'
+            form_values = register_form_values()
 
             if not username:
                 flash('Informe o usuário para cadastro.', 'danger')
-                return render_template('login.html', auth_tab='register')
+                return render_auth_form('register', form_values, {'username': 'Informe um usuário.'})
             if not email:
                 flash('Informe um e-mail para receber o código de verificação.', 'danger')
-                return render_template('login.html', auth_tab='register')
+                return render_auth_form('register', form_values, {'email': 'Informe um e-mail.'})
             if not valid_email(email):
                 flash('Informe um e-mail válido.', 'danger')
-                return render_template('login.html', auth_tab='register')
+                return render_auth_form('register', form_values, {'email': 'Este e-mail não parece válido.'})
             if password_too_short(password):
                 flash(f'A senha deve ter pelo menos {password_min_length()} caracteres.', 'danger')
-                return render_template('login.html', auth_tab='register')
+                return render_auth_form('register', form_values, {'password': f'Use pelo menos {password_min_length()} caracteres.'})
             if password != confirm_password:
                 flash('A confirmação da senha não confere.', 'danger')
-                return render_template('login.html', auth_tab='register')
+                return render_auth_form('register', form_values, {'confirm_password': 'A confirmação não confere com a senha.'})
             if User.query.filter_by(username=username).first():
                 flash('Já existe um usuário com este login.', 'danger')
-                return render_template('login.html', auth_tab='register')
+                return render_auth_form('register', form_values, {'username': 'Este usuário já está em uso.'})
 
-            company = Company(name=company_name)
-            activation_key = None
-            if provided_key and not no_activation_key:
-                activation_key = available_activation_key(provided_key)
-                if not activation_key:
-                    flash('Key de ativação inválida ou já utilizada.', 'danger')
-                    return render_template('login.html', auth_tab='register')
-
-            if no_activation_key or not provided_key:
-                company.activation_key = ''
-                company.activation_key_updated_at = None
-                company.subscription_started_at = None
-                company.subscription_renews_at = None
-            else:
-                company.activation_key = activation_key.key
-                company.activation_key_updated_at = datetime.now(timezone.utc)
-                company.subscription_plan = activation_key.plan
-                company.subscription_started_at = date.today()
-                company.subscription_renews_at = activation_key.renews_at
-                company.billing_cycle = 'annual' if (activation_key.renews_at - date.today()).days >= 365 else 'monthly'
+            company = Company(
+                name=company_name,
+                activation_key='',
+                activation_key_updated_at=None,
+                subscription_started_at=None,
+                subscription_renews_at=None,
+            )
             db.session.add(company)
             db.session.flush()
             tenant_database_identifier(company)
-            if no_activation_key or not provided_key:
-                company.subscription_started_at = None
-                company.subscription_renews_at = None
-            elif activation_key:
-                apply_activation_key_to_company(activation_key, company)
+            company.subscription_started_at = None
+            company.subscription_renews_at = None
             user = User(
                 username=username,
                 email=email,
@@ -576,7 +669,7 @@ def login():
             except IntegrityError:
                 db.session.rollback()
                 flash('Já existe um usuário com este login.', 'danger')
-                return render_template('login.html', auth_tab='register')
+                return render_auth_form('register', form_values, {'username': 'Este usuário já está em uso.'})
 
             remember_verification_user(user)
             sent, message = create_email_verification_code(user, force=True)
@@ -584,37 +677,53 @@ def login():
             flash('Cadastro criado. Confirme seu e-mail para acessar o sistema.', 'info')
             return redirect(url_for('auth.verify_email'))
 
+        if not username:
+            flash('Informe usuário ou e-mail para entrar.', 'danger')
+            return render_auth_form('login', login_form_values(), {'username': 'Informe usuário ou e-mail.'})
+        if not password:
+            flash('Informe a senha para entrar.', 'danger')
+            return render_auth_form('login', login_form_values(), {'password': 'Informe a senha.'})
+
         if login_is_blocked(username):
             flash('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.', 'danger')
-            return render_template('login.html', auth_tab='login')
+            return render_auth_form('login', login_form_values(), {'username': 'Muitas tentativas para este acesso.'})
 
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter(
+            (User.username == username) | (User.email == username)
+        ).first()
 
         if user and user.check_password(password):
             clear_login_failures(username)
             if not user.is_active:
                 flash('Este usuário está inativo. Fale com o master da adega.', 'danger')
-                return render_template('login.html', auth_tab='login')
+                return render_auth_form('login', login_form_values(), {'username': 'Este usuário está inativo.'})
             if not user.email_verified:
                 remember_verification_user(user)
                 flash('Seu e-mail ainda não foi confirmado.', 'warning')
                 return redirect(url_for('auth.verify_email'))
             if user.role != 'master' and user.company and not user.company.active:
                 flash('Esta adega está inativa. Fale com o usuário master.', 'danger')
-                return render_template('login.html', auth_tab='login')
+                return render_auth_form('login', login_form_values(), {'username': 'A adega deste usuário está inativa.'})
             login_user(user)
             flash('Login realizado com sucesso.', 'success')
             if user.role == 'master':
                 return redirect(url_for('auth.master_companies'))
             if company_requires_activation(user.company):
-                flash('A assinatura desta adega venceu. Ative com a key para continuar.', 'warning')
-                return redirect(url_for('auth.subscription_activation'))
+                flash('A assinatura desta adega está bloqueada.', 'warning')
+                if company_uses_key_license(user.company):
+                    return redirect(url_for('auth.subscription_activation'))
+                return redirect(url_for('auth.subscriptions'))
             return redirect(url_for('main.dashboard'))
 
         register_login_failure(username)
-        flash('Usuário ou senha inválidos.', 'danger')
+        if user:
+            flash('Senha incorreta.', 'danger')
+            return render_auth_form('login', login_form_values(), {'password': 'Senha incorreta.'})
 
-    return render_template('login.html', auth_tab='login')
+        flash('Usuário ou e-mail não encontrado.', 'danger')
+        return render_auth_form('login', login_form_values(), {'username': 'Usuário ou e-mail não encontrado.'})
+
+    return render_auth_form('login')
 
 
 @auth_bp.route('/verify-email', methods=['GET', 'POST'])
@@ -667,8 +776,8 @@ def verify_email():
         if user.role == 'master':
             return redirect(url_for('auth.master_companies'))
         if company_requires_activation(user.company):
-            flash('Cadastro realizado, mas esta adega ainda não possui plano/key ativa.', 'warning')
-            return redirect(url_for('auth.subscription_activation'))
+            flash('Cadastro realizado. Escolha um plano para ativar sua assinatura.', 'warning')
+            return redirect(url_for('auth.subscriptions'))
         flash('Cadastro realizado com sucesso.', 'success')
         return redirect(url_for('main.dashboard'))
 
@@ -894,6 +1003,15 @@ def subscription_activation():
 @auth_bp.route('/assinaturas')
 @login_required
 def subscriptions():
+    company = current_tenant_company()
+    if current_user.role == 'master' and not company:
+        return redirect(url_for('auth.master_companies'))
+
+    subscription = subscription_status(company) if company else {}
+    active_subscription = bool(company and company.subscription_valid)
+    license_mode = company_uses_key_license(company)
+    show_plans = request.args.get('planos') == '1' or not active_subscription
+
     if not can_view_finance_settings():
         return redirect(url_for(
             'auth.permission_unlock',
@@ -901,16 +1019,15 @@ def subscriptions():
             next=request.full_path if request.query_string else request.path,
         ))
 
-    company = current_tenant_company()
-    if current_user.role == 'master' and not company:
-        return redirect(url_for('auth.master_companies'))
-
     return render_template(
         'subscription/plans.html',
         company=company,
-        subscription=subscription_status(company) if company else {},
+        subscription=subscription,
         plans=BASIC_PRO_PLANS,
         current_plan=current_basic_pro_plan(company),
+        active_subscription=active_subscription,
+        show_plans=show_plans,
+        license_mode=license_mode,
     )
 
 
@@ -941,24 +1058,49 @@ def master_companies():
     }
     company_stats = {}
     for company in companies:
-        tenant_db = sessionmaker(bind=tenant_engine(company))()
+        tenant_db = None
         try:
+            tenant_db = sessionmaker(bind=tenant_engine(company))()
             company_stats[company.id] = {
                 'products': tenant_db.query(Product).count(),
                 'sales': tenant_db.query(Sale).count(),
                 'cash_registers': tenant_db.query(CashRegister).count(),
             }
+        except SQLAlchemyError as error:
+            current_app.logger.warning(
+                'Não foi possível carregar estatísticas da adega %s no painel master: %s',
+                company.id,
+                error,
+                exc_info=True,
+            )
+            company_stats[company.id] = {
+                'products': 0,
+                'sales': 0,
+                'cash_registers': 0,
+            }
         finally:
-            tenant_db.close()
+            if tenant_db:
+                tenant_db.close()
+    activation_keys = ActivationKey.query.filter(
+        ActivationKey.active.is_(True)
+    ).order_by(ActivationKey.created_at.desc(), ActivationKey.id.desc()).limit(80).all()
+    activation_key_statuses = {
+        activation_key.id: activation_key_status(activation_key)
+        for activation_key in activation_keys
+    }
 
     return render_template(
         'master/companies.html',
         companies=companies,
+        activation_keys=activation_keys,
+        activation_key_statuses=activation_key_statuses,
         user_counts=user_counts,
         company_stats=company_stats,
         subscription_statuses=subscription_statuses,
         subscription_plans=SUBSCRIPTION_PLANS,
+        master_key_plans=MASTER_KEY_PLANS,
         billing_cycles=BILLING_CYCLES,
+        key_presets=KEY_PRESETS,
         view_mode=view_mode,
         active_master_company_id=session.get('master_company_id'),
         recent_error_logs=read_recent_error_logs(),
@@ -973,6 +1115,97 @@ def clear_master_logs():
 
     clear_error_log_file()
     flash('Logs limpos com sucesso.', 'success')
+    return redirect(url_for('auth.master_companies'))
+
+
+@auth_bp.route('/master/assinaturas/keys/gerar', methods=['POST'])
+@login_required
+def generate_master_activation_key():
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    plan = request.form.get('plan', 'Basic').strip()
+    if plan not in MASTER_KEY_PLANS:
+        flash('Plano inválido para geração de key.', 'danger')
+        return redirect(url_for('auth.master_companies'))
+
+    billing_cycle, renews_at = renewal_date_from_request()
+
+    if renews_at < date.today():
+        flash('A data de vencimento da key não pode estar no passado.', 'danger')
+        return redirect(url_for('auth.master_companies'))
+
+    try:
+        quantity = min(max(int(request.form.get('quantity', '1')), 1), 50)
+    except ValueError:
+        quantity = 1
+
+    generated_keys = []
+    for _ in range(quantity):
+        activation_key = ActivationKey(
+            key=generate_unique_activation_key(),
+            plan=plan,
+            renews_at=renews_at,
+            active=True,
+        )
+        db.session.add(activation_key)
+        generated_keys.append(activation_key)
+
+    db.session.commit()
+    if len(generated_keys) == 1:
+        flash(f'Key avulsa gerada: {generated_keys[0].key}', 'success')
+    else:
+        flash(f'{len(generated_keys)} keys avulsas geradas: {", ".join(key.key for key in generated_keys)}', 'success')
+    return redirect(url_for('auth.master_companies'))
+
+
+@auth_bp.route('/master/assinaturas/renovar', methods=['POST'])
+@login_required
+def renew_master_subscription():
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    company_id = request.form.get('company_id', '').strip()
+    try:
+        linked_company_id = int(company_id)
+    except ValueError:
+        linked_company_id = 0
+
+    company = db.session.get(Company, linked_company_id)
+    if not company:
+        flash('Selecione uma adega para renovar a assinatura.', 'danger')
+        return redirect(url_for('auth.master_companies'))
+
+    plan = request.form.get('plan', 'Basic').strip()
+    if plan not in SUBSCRIPTION_PLANS:
+        flash('Plano inválido para assinatura.', 'danger')
+        return redirect(url_for('auth.master_companies'))
+
+    billing_cycle, renews_at = renewal_date_from_request(default_cycle=company.billing_cycle or 'monthly')
+    if renews_at < date.today():
+        flash('A data de renovação não pode estar no passado.', 'danger')
+        return redirect(url_for('auth.master_companies'))
+
+    apply_subscription_to_company(company, plan, billing_cycle, renews_at)
+    db.session.commit()
+    flash(f'Assinatura da adega {company.name} renovada até {renews_at.strftime("%d/%m/%Y")}.', 'success')
+    return redirect(url_for('auth.master_companies'))
+
+
+@auth_bp.route('/master/assinaturas/keys/<int:key_id>/cancelar', methods=['POST'])
+@login_required
+def cancel_master_activation_key(key_id):
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    activation_key = db.get_or_404(ActivationKey, key_id)
+    if activation_key.used_by_company_id:
+        flash('Não é possível remover uma key já usada por uma adega.', 'danger')
+        return redirect(url_for('auth.master_companies'))
+
+    db.session.delete(activation_key)
+    db.session.commit()
+    flash('Key removida da lista com sucesso.', 'success')
     return redirect(url_for('auth.master_companies'))
 
 
@@ -1013,10 +1246,39 @@ def edit_company(company_id):
 
     activation_key = request.form.get('activation_key', '').strip().upper()
     if request.form.get('generate_activation_key') == 'on':
-        activation_key = generate_activation_key()
+        generated_record = ActivationKey(
+            key=generate_unique_activation_key(),
+            plan=company.subscription_plan if company.subscription_plan in MASTER_KEY_PLANS else 'Basic',
+            renews_at=company.subscription_renews_at or date.today() + timedelta(days=365 if company.billing_cycle == 'annual' else 30),
+            active=True,
+        )
+        db.session.add(generated_record)
+        apply_activation_key_to_company(generated_record, company)
+        company.billing_cycle = billing_cycle if billing_cycle in BILLING_CYCLES else company.billing_cycle
+    elif not activation_key:
+        if company.activation_key:
+            company.activation_key = ''
+            company.activation_key_updated_at = None
+            company.subscription_started_at = None
+            company.subscription_renews_at = None
+    elif activation_key != (company.activation_key or ''):
+        existing_key = ActivationKey.query.filter_by(key=activation_key).first()
+        if existing_key:
+            if not existing_key.active:
+                flash('Esta key está cancelada.', 'danger')
+                return redirect(url_for('auth.master_companies', view=request.form.get('view_mode', 'table')))
+            if existing_key.used_by_company_id and existing_key.used_by_company_id != company.id:
+                flash('Esta key já está vinculada a outra adega.', 'danger')
+                return redirect(url_for('auth.master_companies', view=request.form.get('view_mode', 'table')))
+            if existing_key.renews_at and existing_key.renews_at < date.today():
+                flash('Esta key está vencida.', 'danger')
+                return redirect(url_for('auth.master_companies', view=request.form.get('view_mode', 'table')))
+            apply_activation_key_to_company(existing_key, company)
+        else:
+            company.activation_key = activation_key
+            company.activation_key_updated_at = datetime.now(timezone.utc)
     if activation_key != (company.activation_key or ''):
-        company.activation_key = activation_key
-        company.activation_key_updated_at = datetime.now(timezone.utc)
+        company.activation_key_updated_at = company.activation_key_updated_at or datetime.now(timezone.utc)
 
     db.session.commit()
     flash('Adega atualizada com sucesso.', 'success')
@@ -1076,12 +1338,66 @@ def delete_company(company_id):
         return redirect(url_for('auth.master_companies'))
 
     database_name = company.database_path
-    User.query.filter_by(company_id=company.id).delete()
-    db.session.delete(company)
-    db.session.commit()
+    try:
+        ActivationKey.query.filter_by(used_by_company_id=company.id).update(
+            {'used_by_company_id': None, 'used_at': None},
+            synchronize_session=False,
+        )
+        user_ids = [
+            user_id
+            for (user_id,) in db.session.query(User.id).filter_by(company_id=company.id).all()
+        ]
+        cash_register_ids = [
+            cash_register_id
+            for (cash_register_id,) in db.session.query(CashRegister.id).filter_by(company_id=company.id).all()
+        ]
+        sale_query = db.session.query(Sale.id).filter(Sale.company_id == company.id)
+        if user_ids:
+            sale_query = sale_query.union(db.session.query(Sale.id).filter(Sale.user_id.in_(user_ids)))
+        if cash_register_ids:
+            sale_query = sale_query.union(db.session.query(Sale.id).filter(Sale.cash_register_id.in_(cash_register_ids)))
+        sale_ids = [sale_id for (sale_id,) in sale_query.all()]
+
+        if user_ids:
+            db.session.execute(db.delete(EmailVerificationCode).where(EmailVerificationCode.user_id.in_(user_ids)))
+            db.session.execute(db.delete(PasswordResetToken).where(PasswordResetToken.user_id.in_(user_ids)))
+            db.session.execute(db.delete(EmailChangeRequest).where(EmailChangeRequest.user_id.in_(user_ids)))
+        if sale_ids:
+            db.session.execute(db.delete(Payment).where(Payment.sale_id.in_(sale_ids)))
+            db.session.execute(db.delete(SaleItem).where(SaleItem.sale_id.in_(sale_ids)))
+            db.session.execute(db.delete(Sale).where(Sale.id.in_(sale_ids)))
+        if cash_register_ids or user_ids:
+            cash_filter = CashRegister.company_id == company.id
+            if user_ids:
+                cash_filter = cash_filter | CashRegister.user_id.in_(user_ids)
+            db.session.execute(db.delete(CashRegister).where(cash_filter))
+        db.session.execute(db.delete(Payable).where(Payable.company_id == company.id))
+        db.session.execute(db.delete(EmailAlertDelivery).where(EmailAlertDelivery.company_id == company.id))
+        db.session.execute(db.delete(EmailAlertSetting).where(EmailAlertSetting.company_id == company.id))
+        db.session.execute(
+            db.update(Product)
+            .where(Product.company_id == company.id)
+            .values(kit_component_product_id=None)
+        )
+        db.session.execute(db.delete(Product).where(Product.company_id == company.id))
+        db.session.execute(db.delete(Category).where(Category.company_id == company.id))
+        if user_ids:
+            User.query.filter(User.id.in_(user_ids)).delete(synchronize_session=False)
+        db.session.delete(company)
+        db.session.commit()
+    except SQLAlchemyError as error:
+        db.session.rollback()
+        current_app.logger.error('Falha ao excluir adega %s: %s', company_id, error, exc_info=True)
+        flash('Não foi possível excluir esta adega porque ainda existem vínculos no banco central.', 'danger')
+        return redirect(url_for('auth.master_companies'))
 
     if database_name:
-        drop_mysql_database(database_name)
+        try:
+            drop_mysql_database(database_name)
+        except Exception as error:
+            current_app.logger.error('Falha ao excluir banco da adega %s: %s', database_name, error, exc_info=True)
+            flash('Adega removida do painel, mas não foi possível apagar o banco de dados dela automaticamente.', 'warning')
+            return redirect(url_for('auth.master_companies'))
 
     flash('Adega excluída com sucesso.', 'success')
     return redirect(url_for('auth.master_companies'))
@@ -1240,8 +1556,6 @@ def settings():
                 flash('Apenas o master do sistema pode gerar keys.', 'danger')
                 return redirect(url_for('auth.settings'))
 
-            company_id = request.form.get('key_company_id')
-            company = db.session.get(Company, int(company_id)) if company_id and company_id.isdigit() else None
             plan = request.form.get('key_plan', 'Basic')
             renews_at = parse_date_field(request.form.get('key_renews_at'))
             if plan not in MASTER_KEY_PLANS:
@@ -1250,20 +1564,26 @@ def settings():
                 flash('Informe a data de validade da key.', 'danger')
                 return redirect(url_for('auth.settings'))
 
-            activation_key = generate_activation_key()
-            while ActivationKey.query.filter_by(key=activation_key).first():
-                activation_key = generate_activation_key()
+            try:
+                quantity = min(max(int(request.form.get('key_quantity', '1')), 1), 50)
+            except ValueError:
+                quantity = 1
 
-            key_record = ActivationKey(key=activation_key, plan=plan, renews_at=renews_at, active=True)
-            db.session.add(key_record)
-            db.session.flush()
-            if company:
-                apply_activation_key_to_company(key_record, company)
+            generated_keys = []
+            for _ in range(quantity):
+                key_record = ActivationKey(
+                    key=generate_unique_activation_key(),
+                    plan=plan,
+                    renews_at=renews_at,
+                    active=True,
+                )
+                db.session.add(key_record)
+                generated_keys.append(key_record)
             db.session.commit()
-            if company:
-                flash(f'Key gerada para {company.name}: {activation_key}', 'success')
+            if len(generated_keys) == 1:
+                flash(f'Key avulsa gerada: {generated_keys[0].key}', 'success')
             else:
-                flash(f'Key avulsa gerada: {activation_key}', 'success')
+                flash(f'{len(generated_keys)} keys avulsas geradas: {", ".join(key.key for key in generated_keys)}', 'success')
             return redirect(url_for('auth.settings'))
 
         if form_type == 'hire_user':
@@ -1353,8 +1673,9 @@ def settings():
     can_view_admin_tabs = can_view_admin_settings()
     can_view_finance_tab = can_view_finance_settings()
     company_users = User.query.filter_by(company_id=settings_company.id).order_by(User.username.asc()).all() if settings_company and can_view_admin_tabs else []
-    key_companies = Company.query.order_by(Company.name.asc()).all() if current_user.role == 'master' else []
-    key_records = ActivationKey.query.order_by(ActivationKey.created_at.desc()).limit(20).all() if current_user.role == 'master' else []
+    key_records = ActivationKey.query.filter(
+        ActivationKey.active.is_(True)
+    ).order_by(ActivationKey.created_at.desc()).limit(20).all() if current_user.role == 'master' else []
     email_alert_settings = alert_settings_for_company(settings_company) if settings_company and can_view_admin_tabs else {}
     return render_template(
         'settings/index.html',
@@ -1370,7 +1691,6 @@ def settings():
         backup_frequency_label=backup_frequency_label,
         can_import_products=can_import_products_settings(),
         can_export_data=can_export_data_settings(),
-        key_companies=key_companies,
         key_records=key_records,
         key_plans=MASTER_KEY_PLANS,
         key_presets=KEY_PRESETS,

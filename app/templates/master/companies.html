@@ -12,12 +12,152 @@
   </div>
 </div>
 
-{% if master_company_active %}
-<div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2" role="alert">
-  <span>Você está acessando a adega <strong>{{ master_company.name }}</strong>.</span>
-  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('auth.leave_company_access') }}">Voltar ao painel master</a>
-</div>
-{% endif %}
+<section class="card card-dark sale-panel master-subscription-panel mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+      <h5 class="mb-1">Assinaturas e keys</h5>
+      <p class="text-muted mb-0">Gere keys para uso futuro do cliente ou renove uma assinatura vinculada a uma adega.</p>
+    </div>
+  </div>
+
+  <div class="master-subscription-actions">
+    <div class="master-subscription-box">
+      <div>
+        <strong>Gerar key</strong>
+        <p class="text-muted mb-0">Crie keys avulsas para copiar e enviar ao cliente quando ele for ativar o sistema.</p>
+      </div>
+      <form class="master-key-form" method="post" action="{{ url_for('auth.generate_master_activation_key') }}">
+        <div>
+          <label class="form-label" for="key_plan">Plano</label>
+          <select class="form-select" id="key_plan" name="plan">
+            {% for plan in master_key_plans %}
+            <option value="{{ plan }}">{{ plan }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="key_billing_cycle">Pagamento</label>
+          <select class="form-select" id="key_billing_cycle" name="billing_cycle">
+            {% for cycle, label in billing_cycles.items() %}
+            <option value="{{ cycle }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="key_quantity">Quantidade</label>
+          <input class="form-control" id="key_quantity" name="quantity" type="number" min="1" max="50" value="1">
+        </div>
+        <div>
+          <label class="form-label" for="key_renews_at">Vencimento</label>
+          <input class="form-control" id="key_renews_at" name="renews_at" type="date" value="">
+        </div>
+        <div class="master-key-presets" aria-label="Presets de vencimento">
+          {% for preset_id, label, days in key_presets %}
+          <button class="btn btn-outline-light btn-sm" type="button" data-key-preset-days="{{ days }}" data-key-preset-target="key_renews_at">{{ label }}</button>
+          {% endfor %}
+          <input type="hidden" name="preset_days" value="">
+        </div>
+        <button class="btn btn-primary" type="submit">Gerar key</button>
+      </form>
+    </div>
+
+    <div class="master-subscription-box">
+      <div>
+        <strong>Renovar assinatura</strong>
+        <p class="text-muted mb-0">Vincule ou renove plano e vencimento diretamente em uma adega.</p>
+      </div>
+      <form class="master-key-form" method="post" action="{{ url_for('auth.renew_master_subscription') }}">
+        <div>
+          <label class="form-label" for="renew_plan">Plano</label>
+          <select class="form-select" id="renew_plan" name="plan">
+            {% for plan in subscription_plans %}
+            <option value="{{ plan }}">{{ plan }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="renew_billing_cycle">Pagamento</label>
+          <select class="form-select" id="renew_billing_cycle" name="billing_cycle">
+            {% for cycle, label in billing_cycles.items() %}
+            <option value="{{ cycle }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="renew_company_id">Adega</label>
+          <select class="form-select" id="renew_company_id" name="company_id" required>
+            <option value="">Selecione</option>
+            {% for company in companies %}
+            <option value="{{ company.id }}">{{ company.name }} · {{ company.subscription_plan or 'Sem plano' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="renew_renews_at">Renova em</label>
+          <input class="form-control" id="renew_renews_at" name="renews_at" type="date" value="">
+        </div>
+        <div class="master-key-presets" aria-label="Presets de renovação">
+          {% for preset_id, label, days in key_presets %}
+          <button class="btn btn-outline-light btn-sm" type="button" data-key-preset-days="{{ days }}" data-key-preset-target="renew_renews_at">{{ label }}</button>
+          {% endfor %}
+          <input type="hidden" name="preset_days" value="">
+        </div>
+        <button class="btn btn-outline-light" type="submit">Renovar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="master-key-list mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <strong>Keys recentes</strong>
+      <span class="text-muted">{{ activation_keys|length }} registro{{ 's' if activation_keys|length != 1 else '' }}</span>
+    </div>
+    {% if activation_keys %}
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle mb-0 app-table">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Status</th>
+            <th>Plano</th>
+            <th>Vencimento</th>
+            <th>Adega</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for activation_key in activation_keys %}
+          {% set key_status = activation_key_statuses.get(activation_key.id, {}) %}
+          <tr>
+            <td>
+              <div class="activation-key-copy">
+                <strong class="activation-key-display">{{ activation_key.key }}</strong>
+                <button class="btn btn-outline-light btn-sm copy-key-button" type="button" data-copy-key="{{ activation_key.key }}" aria-label="Copiar key {{ activation_key.key }}">Copiar</button>
+              </div>
+            </td>
+            <td><span class="subscription-pill subscription-{{ key_status.get('state', 'neutral') }}">{{ key_status.get('label', '-') }}</span></td>
+            <td>{{ activation_key.plan }}</td>
+            <td>{{ activation_key.renews_at.strftime('%d/%m/%Y') if activation_key.renews_at else '-' }}</td>
+            <td>{{ activation_key.company.name if activation_key.company else 'Avulsa' }}</td>
+            <td class="text-end">
+              {% if key_status.get('available') %}
+              <form method="post" action="{{ url_for('auth.cancel_master_activation_key', key_id=activation_key.id) }}" onsubmit="return confirm('Cancelar esta key? Ela não poderá mais ser usada.');">
+                <button class="btn btn-outline-danger btn-sm" type="submit">Remover</button>
+              </form>
+              {% else %}
+              <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Nenhuma key gerada até agora.</p>
+    {% endif %}
+  </div>
+</section>
 
 <section class="card card-dark sale-panel master-log-panel mb-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -146,10 +286,7 @@
           <label class="form-label" for="card_key_{{ company.id }}">Key de ativação</label>
           <input class="form-control activation-key-field" id="card_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Sem key cadastrada">
         </div>
-        <label class="form-check form-switch mb-0 company-key-toggle">
-          <input class="form-check-input" name="generate_activation_key" type="checkbox">
-          <span class="form-check-label">Gerar nova key</span>
-        </label>
+        <p class="text-muted mb-0 company-key-note">Para gerar uma key nova, use o painel de assinaturas acima.</p>
       </div>
       <button class="btn btn-outline-light btn-sm" type="submit">Salvar</button>
     </form>
@@ -276,10 +413,7 @@
                       <label class="form-label" for="activation_key_{{ company.id }}">Key de ativação</label>
                       <input class="form-control activation-key-field" id="activation_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Sem key cadastrada">
                     </div>
-                    <label class="form-check form-switch mb-0 company-key-toggle">
-                      <input class="form-check-input" name="generate_activation_key" type="checkbox">
-                      <span class="form-check-label">Gerar nova key</span>
-                    </label>
+                    <p class="text-muted mb-0 company-key-note">Para gerar uma key nova, use o painel de assinaturas acima.</p>
                   </div>
                   <button class="btn btn-outline-light" type="submit">Salvar</button>
                 </form>

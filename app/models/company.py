@@ -38,4 +38,8 @@ class Company(db.Model):
 
     @property
     def subscription_valid(self):
-        return bool(self.active and self.subscription_renews_at and self.subscription_renews_at >= date.today())
+        return bool(
+            self.active
+            and self.subscription_renews_at
+            and self.subscription_renews_at >= date.today()
+        )

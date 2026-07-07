@@ -1,10 +1,10 @@
-# Adega JF - PDV Web
+# Girofy - PDV Web
 
 Sistema PDV web para adegas, pequenos mercados e comércios locais. O projeto roda em Flask, usa MySQL como banco relacional, templates HTML/Jinja no frontend e já opera com base multiadega para um modelo SaaS.
 
 ## Visão Geral
 
-O Adega JF é um sistema de ponto de venda criado para organizar a operação diária de uma adega. Ele substitui controles manuais em papel ou planilhas por uma interface web acessível pelo navegador.
+O Girofy é um sistema de ponto de venda criado para organizar a operação diária de uma adega. Ele substitui controles manuais em papel ou planilhas por uma interface web acessível pelo navegador.
 
 O sistema cobre:
 
@@ -52,7 +52,9 @@ Pontos mais maduros:
 - fluxo de assinatura/key inicial;
 - permissões para funcionário, gerente e admin;
 - importação, exportação, backup e logs;
-- dashboard operacional com indicadores úteis.
+- dashboard operacional com indicadores úteis;
+- ambiente OCI Free Tier publicado em porta alta;
+- deploy automatizado por GitHub Actions.
 
 Pontos que ainda merecem prioridade antes de produção pública:
 
@@ -61,7 +63,8 @@ Pontos que ainda merecem prioridade antes de produção pública:
 - auditoria de ações de negócio;
 - restauração guiada de backup;
 - cobrança real e regras concretas para Basic/Pro;
-- deploy com WSGI, HTTPS, `DEBUG=False` e `SECRET_KEY` forte.
+- domínio definitivo com HTTPS;
+- assinatura digital dos instaladores desktop.
 
 ## Tecnologias Utilizadas
 
@@ -591,7 +594,7 @@ As configurações reais lidas por `config.py` são:
 | `MYSQL_TENANT_DATABASE_PREFIX` | `adega` | Prefixo dos bancos de cada adega. |
 | `MYSQL_TENANT_DATABASE_URL_TEMPLATE` | vazio | Template opcional para URL dos bancos das adegas. Usa `{database}`. |
 | `MYSQL_SERVER_DATABASE_URL` | MySQL no banco `mysql` | URL administrativa usada para criar/dropar databases. |
-| `PORT` | `5001` | Porta do servidor Flask local. |
+| `PORT` | `5003` | Porta do servidor Flask local. |
 
 Exemplo de URL:
 
@@ -911,13 +914,13 @@ bash scripts/build_macos_app.sh
 O aplicativo será gerado em:
 
 ```text
-dist/GirofyPDV.app
+dist/Girofy.app
 ```
 
 Para abrir pelo terminal:
 
 ```bash
-open dist/GirofyPDV.app
+open dist/Girofy.app
 ```
 
 Ao abrir, o launcher sobe o servidor local em uma porta livre e mostra o sistema dentro de uma janela de aplicativo. Ele usa `dist/.env` como configuração local. Se o MySQL não estiver rodando ou alguma configuração falhar, o arquivo `dist/launcher-error.log` será criado com o erro detalhado.
@@ -928,9 +931,9 @@ O repositório possui o workflow `.github/workflows/build-desktop.yml` para gera
 
 Ele gera:
 
-- `GirofyPDV-macOS.zip`, contendo `GirofyPDV.app`;
-- `GirofyPDV-Windows.zip`, contendo `GirofyPDV.exe`;
-- `GirofyPDV-Setup.exe`, instalador Windows com MySQL local embutido;
+- `Girofy-macOS.zip`, contendo `Girofy.app`;
+- `Girofy-Windows.zip`, contendo `Girofy.exe`;
+- `Girofy-Setup.exe`, instalador Windows com MySQL local embutido;
 - um modelo `.env.example` junto do pacote quando não houver `.env`.
 
 O workflow roda de duas formas:
@@ -960,9 +963,9 @@ GitHub > Releases
 
 Essa Release recebe estes anexos:
 
-- `GirofyPDV-macOS.zip`;
-- `GirofyPDV-Windows.zip`.
-- `GirofyPDV-Setup.exe`.
+- `Girofy-macOS.zip`;
+- `Girofy-Windows.zip`.
+- `Girofy-Setup.exe`.
 
 Observação: por segurança, o GitHub não deve receber o `.env` real. Cada instalação precisa criar/copiar seu próprio `.env` ao lado do app baixado.
 
@@ -971,14 +974,14 @@ Observação: por segurança, o GitHub não deve receber o `.env` real. Cada ins
 Para clientes Windows, o arquivo recomendado é:
 
 ```text
-GirofyPDV-Setup.exe
+Girofy-Setup.exe
 ```
 
 Esse instalador faz automaticamente:
 
-- instala o aplicativo em `Arquivos de Programas\GirofyPDV`;
+- instala o aplicativo em `Arquivos de Programas\Girofy`;
 - instala o MySQL Community Server local em uma pasta interna do Girofy;
-- cria o serviço Windows `GirofyPDVMySQL`;
+- cria o serviço Windows `GirofyMySQL`;
 - usa a porta local `3307`, evitando conflito com outro MySQL na porta `3306`;
 - cria o banco `adega_central`;
 - cria o usuário `girofy_app` com senha segura gerada automaticamente;
@@ -988,16 +991,134 @@ Esse instalador faz automaticamente:
 Os dados do banco ficam em:
 
 ```text
-C:\ProgramData\GirofyPDV\mysql-data
+C:\ProgramData\Girofy\mysql-data
 ```
 
 As senhas geradas ficam em:
 
 ```text
-C:\ProgramData\GirofyPDV\secrets
+C:\ProgramData\Girofy\secrets
 ```
 
-Na desinstalação, o serviço `GirofyPDVMySQL` é removido, mas os dados em `C:\ProgramData\GirofyPDV` são preservados para evitar perda acidental de vendas, produtos e caixas.
+Na desinstalação, o serviço `GirofyMySQL` é removido, mas os dados em `C:\ProgramData\Girofy` são preservados para evitar perda acidental de vendas, produtos e caixas.
+
+### 11. Assinatura digital dos instaladores
+
+Windows Smart App Control, Microsoft Defender SmartScreen e Apple Gatekeeper podem bloquear builds sem assinatura. Isso não é resolvido por HTML, Flask ou PyInstaller; é necessário assinar os arquivos com certificados reconhecidos.
+
+O workflow `Build desktop apps` já está preparado para assinar automaticamente quando os secrets existirem.
+
+#### Windows
+
+Compre/obtenha um certificado **Code Signing** para Windows, preferencialmente OV ou EV. Depois gere/exporte um arquivo `.pfx` com chave privada e cadastre estes secrets no GitHub:
+
+```text
+WINDOWS_CODESIGN_PFX_BASE64
+WINDOWS_CODESIGN_PFX_PASSWORD
+```
+
+O valor `WINDOWS_CODESIGN_PFX_BASE64` deve ser o `.pfx` convertido para Base64. Também é possível configurar a variável:
+
+```text
+WINDOWS_CODESIGN_TIMESTAMP_URL
+```
+
+Se não configurar, o workflow usa:
+
+```text
+http://timestamp.digicert.com
+```
+
+Quando configurado, o workflow assina:
+
+- `dist\Girofy\Girofy.exe`;
+- `dist\installer\Girofy-Setup.exe`.
+
+#### macOS
+
+Para o macOS, é necessário uma conta Apple Developer e um certificado **Developer ID Application**. Cadastre estes secrets no GitHub:
+
+```text
+APPLE_DEVELOPER_ID_CERTIFICATE_BASE64
+APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD
+APPLE_DEVELOPER_IDENTITY
+APPLE_ID
+APPLE_TEAM_ID
+APPLE_APP_SPECIFIC_PASSWORD
+APPLE_BUILD_KEYCHAIN_PASSWORD
+```
+
+Quando configurado, o workflow:
+
+- importa o certificado no keychain temporário do runner;
+- assina `Girofy.app`;
+- envia para notarização da Apple;
+- aplica `stapler` no app notarizado;
+- empacota o `.app` assinado em `Girofy-macOS.zip`.
+
+Sem esses certificados, os sistemas operacionais podem continuar exibindo alertas de app não confiável.
+
+### 12. Deploy automatizado na OCI
+
+O repositório possui o workflow `.github/workflows/deploy-oci.yml` para publicar o Girofy na VM da Oracle Cloud. A pipeline faz:
+
+- checkout do código;
+- instalação das dependências Python;
+- execução da suíte `unittest`;
+- validação de sintaxe dos scripts de infraestrutura;
+- sincronização do projeto para a VM com `rsync`;
+- rebuild dos containers Docker;
+- health check interno e público em `/login`.
+
+Configure estes secrets no GitHub antes de rodar:
+
+```text
+OCI_DEPLOY_HOST
+OCI_DEPLOY_USER
+OCI_DEPLOY_PATH
+OCI_SSH_PRIVATE_KEY
+```
+
+Opcionalmente configure a variável do ambiente `production`:
+
+```text
+OCI_DEPLOY_PORT=18080
+```
+
+O deploy pode ser executado manualmente em:
+
+```text
+GitHub > Actions > Deploy OCI > Run workflow
+```
+
+Também roda automaticamente em pushes para `main`, ignorando alterações somente em documentação.
+
+O script usado pela pipeline é:
+
+```text
+scripts/deploy_oci_app.sh
+```
+
+Ele não envia `.env`, bancos, backups, logs, builds locais ou ambientes virtuais. O `.env` real fica preservado na VM.
+
+### 13. Ambiente OCI atual
+
+O ambiente online atual roda em uma VM Always Free compatível:
+
+- aplicação pública em `http://IP_PUBLICO:18080`;
+- Docker Compose com app Flask, MySQL e Caddy;
+- MySQL sem porta pública;
+- SSH restrito ao IP administrativo;
+- portas 80 e 443 fechadas enquanto não houver domínio/HTTPS;
+- fail2ban ativo para SSH;
+- UFW com entrada pública apenas na porta alta do Girofy.
+
+Para detalhes, veja:
+
+```text
+docs/22-oci-free-tier.md
+docs/23-pipeline-deploy.md
+```
 
 ## Configuração do MySQL
 
@@ -1057,7 +1178,7 @@ MYSQL_DATABASE=adega_central
 MYSQL_TENANT_DATABASE_PREFIX=adega
 MYSQL_TENANT_DATABASE_URL_TEMPLATE=
 MYSQL_SERVER_DATABASE_URL=mysql+pymysql://root@127.0.0.1:3306/mysql?charset=utf8mb4
-PUBLIC_BASE_URL=http://127.0.0.1:5001
+PUBLIC_BASE_URL=http://127.0.0.1:5003
 MAIL_SMTP_SERVER=smtp.gmail.com
 MAIL_SMTP_PORT=587
 MAIL_SMTP_LOGIN=girofy2026@gmail.com
@@ -1065,7 +1186,7 @@ MAIL_SMTP_PASSWORD=sua-senha-de-app-do-gmail
 MAIL_FROM_EMAIL=girofy2026@gmail.com
 MAIL_FROM_NAME=Girofy
 MAIL_SUPPRESS_SEND=0
-PORT=5001
+PORT=5003
 ```
 
 Também é possível usar:
@@ -1096,7 +1217,7 @@ python app.py
 Em outro computador da mesma rede, acesse:
 
 ```text
-http://IP_DO_SERVIDOR:5001
+http://IP_DO_SERVIDOR:5003
 ```
 
 ### Descobrir IP no macOS
@@ -1517,4 +1638,4 @@ Este projeto ainda não possui uma licença definida.
 ## Autor
 
 Desenvolvido por Rafael Borges Pontes  
-Projeto Adega JF
+Projeto Girofy

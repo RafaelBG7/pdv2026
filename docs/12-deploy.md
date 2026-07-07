@@ -2,27 +2,22 @@
 
 ## Status Atual
 
-O projeto está pronto para desenvolvimento local com MySQL e pode ser preparado para produção, mas ainda precisa de hardening antes de ficar público na internet.
+O Girofy já possui três formas principais de execução:
 
-Já existe:
+- local, para desenvolvimento e testes;
+- desktop, para distribuição como app local;
+- OCI Free Tier, para ambiente online usando Docker.
 
-- `app.py` funcional usando `create_app`.
-- Porta padrão `5001`.
-- MySQL central e bancos por adega.
-- Variáveis de ambiente para conexão.
-- Logs de erro em arquivo.
-- Backup por adega.
+O ambiente OCI atual usa:
 
-Ainda falta para produção:
-
-- Servidor WSGI dedicado.
-- `DEBUG=False`.
-- `SECRET_KEY` forte obrigatória.
-- HTTPS.
-- CSRF.
-- Migrações versionadas.
-- Rotina externa de backup.
-- Política de atualização e restauração.
+- VM `VM.Standard.E2.1.Micro`;
+- Docker Compose;
+- container da aplicação Flask;
+- container MySQL;
+- Caddy como proxy interno na porta pública alta `18080`;
+- MySQL sem porta pública;
+- SSH restrito ao IP administrativo;
+- 80/443 fechadas até existir domínio/HTTPS.
 
 ## Execução Local
 
@@ -35,7 +30,7 @@ python app.py
 Acesse:
 
 ```text
-http://127.0.0.1:5001
+http://127.0.0.1:5003
 ```
 
 Para trocar a porta:
@@ -44,9 +39,11 @@ Para trocar a porta:
 PORT=5002 python app.py
 ```
 
-## MySQL
+O projeto carrega `.env` automaticamente ao iniciar. Variáveis exportadas no terminal também funcionam.
 
-O MySQL precisa estar instalado e rodando.
+## MySQL Local
+
+O MySQL precisa estar instalado e rodando para execução local.
 
 Banco central padrão:
 
@@ -60,7 +57,7 @@ Criar manualmente, se necessário:
 CREATE DATABASE adega_central CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Cada adega terá um banco próprio com prefixo configurável:
+Cada adega possui um banco operacional próprio, usando o prefixo configurado:
 
 ```text
 adega_1_nome_da_adega
@@ -81,48 +78,116 @@ MYSQL_DATABASE=adega_central
 MYSQL_TENANT_DATABASE_PREFIX=adega
 MYSQL_TENANT_DATABASE_URL_TEMPLATE=
 MYSQL_SERVER_DATABASE_URL=mysql+pymysql://root@127.0.0.1:3306/mysql?charset=utf8mb4
-PORT=5001
+PUBLIC_BASE_URL=http://127.0.0.1:5003
+PORT=5003
 ```
 
-Observação: o projeto não carrega `.env` automaticamente. Exporte as variáveis no terminal ou configure no serviço de deploy.
+## Deploy Manual na OCI
 
-## Servidor WSGI Recomendado
+O deploy manual usa:
 
-Para produção, usar Gunicorn ou outro WSGI:
+```text
+scripts/deploy_oci_app.sh
+```
+
+Variáveis esperadas:
+
+```env
+OCI_DEPLOY_HOST=IP_PUBLICO_DA_VM
+OCI_DEPLOY_USER=ubuntu
+OCI_DEPLOY_PATH=/opt/girofy/app
+OCI_DEPLOY_PORT=18080
+```
+
+Executar:
 
 ```bash
-python -m pip install gunicorn
-gunicorn "app:create_app()" --bind 0.0.0.0:5001
+scripts/deploy_oci_app.sh
 ```
 
-Em produção, colocar Nginx/Caddy na frente para HTTPS e proxy reverso.
+O script sincroniza o código, preserva o `.env` remoto, reconstrói os containers e valida `/login`.
+
+## Pipeline GitHub Actions
+
+Workflow:
+
+```text
+.github/workflows/deploy-oci.yml
+```
+
+Ele executa:
+
+- testes automatizados;
+- validação dos scripts de infraestrutura;
+- deploy via SSH/rsync;
+- rebuild dos containers;
+- health check público.
+
+Secrets obrigatórios no GitHub:
+
+```text
+OCI_DEPLOY_HOST
+OCI_DEPLOY_USER
+OCI_DEPLOY_PATH
+OCI_SSH_PRIVATE_KEY
+```
+
+Variável opcional no ambiente `production`:
+
+```text
+OCI_DEPLOY_PORT=18080
+```
+
+Execução manual:
+
+```text
+GitHub > Actions > Deploy OCI > Run workflow
+```
+
+Execução automática:
+
+- push para `main`;
+- alterações somente em `docs/**` ou `*.md` não disparam deploy.
+
+## Desktop
+
+Builds desktop são gerados pelo workflow:
+
+```text
+.github/workflows/build-desktop.yml
+```
+
+Artefatos:
+
+- `Girofy-macOS.zip`;
+- `Girofy-Windows.zip`;
+- `Girofy-Setup.exe`.
+
+Para reduzir bloqueios do Windows SmartScreen e Apple Gatekeeper, configure certificados de assinatura nos secrets do GitHub. Sem assinatura reconhecida, o sistema operacional pode avisar que o app não é confiável.
 
 ## Checklist de Produção
 
-- Definir `SECRET_KEY` longa e secreta.
-- Remover `debug=True` do ambiente de produção.
-- Criar usuário MySQL dedicado com permissões controladas.
-- Garantir permissão de criar bancos de adega ou provisionar bancos manualmente.
-- Ativar HTTPS.
-- Restringir acesso ao painel master.
-- Configurar backup externo fora da máquina do app.
-- Testar restauração de backup.
-- Adicionar CSRF.
-- Adicionar Alembic/Flask-Migrate.
-- Configurar logs persistentes e rotação.
+Itens já aplicados no ambiente OCI atual:
 
-## Acesso na Rede Local
+- `DEBUG=False`;
+- app e banco em Docker;
+- MySQL sem exposição pública;
+- SSH sem senha;
+- SSH root desativado;
+- SSH restrito ao IP administrativo;
+- fail2ban para SSH;
+- UFW ativo;
+- porta pública alta `18080`;
+- 80/443 fechadas enquanto não houver domínio.
 
-O `app.py` roda com `host='0.0.0.0'`, permitindo acesso por outro dispositivo na mesma rede.
+Itens ainda recomendados:
 
-No Mac servidor:
-
-```bash
-ipconfig getifaddr en0
-```
-
-Em outro dispositivo:
-
-```text
-http://IP_DO_SERVIDOR:5001
-```
+- domínio definitivo;
+- HTTPS com Caddy;
+- CSRF nos formulários;
+- Alembic/Flask-Migrate;
+- auditoria de ações de negócio;
+- backup externo fora da VM;
+- restauração guiada de backup;
+- política real de cobrança Basic/Pro;
+- assinatura digital dos instaladores desktop.

@@ -1,29 +1,29 @@
 <!doctype html>
 <html lang="pt-BR">
-  <body style="margin:0;background:#f4f7f6;font-family:Arial,sans-serif;color:#10231f;">
+  <body style="margin:0;background:#f7f5ff;font-family:Arial,sans-serif;color:#050b2d;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:8px;border:1px solid #dfe8e5;overflow:hidden;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:8px;border:1px solid #ddd7f3;overflow:hidden;">
             <tr>
-              <td style="padding:24px 28px;background:#0b1f1b;color:#ffffff;">
+              <td style="padding:24px 28px;background:#030820;color:#ffffff;">
                 <strong style="font-size:22px;">Girofy</strong>
-                <div style="font-size:13px;color:#b7cac5;margin-top:4px;">{{ company.name }}</div>
+                <div style="font-size:13px;color:#b7b2dc;margin-top:4px;">{{ company.name }}</div>
               </td>
             </tr>
             <tr>
               <td style="padding:28px;">
                 <h1 style="margin:0 0 12px;font-size:24px;">{{ alert_title }}</h1>
-                <p style="margin:0 0 20px;color:#52615d;line-height:1.5;">{{ alert_message }}</p>
+                <p style="margin:0 0 20px;color:#68708f;line-height:1.5;">{{ alert_message }}</p>
                 {% if alert_url %}
                 <p style="text-align:center;margin:26px 0;">
-                  <a href="{{ alert_url }}" style="display:inline-block;background:#31d1c0;color:#08211d;text-decoration:none;font-weight:bold;border-radius:8px;padding:14px 22px;">Abrir no sistema</a>
+                  <a href="{{ alert_url }}" style="display:inline-block;background:#6b12f1;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:8px;padding:14px 22px;">Abrir no sistema</a>
                 </p>
                 {% endif %}
               </td>
             </tr>
             <tr>
-              <td style="padding:18px 28px;background:#f7faf9;color:#7b8a86;font-size:13px;">Alerta enviado conforme configuração da adega.</td>
+              <td style="padding:18px 28px;background:#f7f5ff;color:#68708f;font-size:13px;">Alerta enviado conforme configuração da adega.</td>
             </tr>
           </table>
         </td>
@@ -31,4 +31,3 @@
     </table>
   </body>
 </html>
-

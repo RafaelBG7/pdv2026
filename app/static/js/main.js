@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const storedTheme = localStorage.getItem('adega-jf-theme');
+  const storedTheme = localStorage.getItem('girofy-theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const initialTheme = storedTheme || (prefersDark ? 'dark' : 'light');
   const appShell = document.querySelector('.app-shell');
@@ -12,12 +12,13 @@ document.addEventListener('DOMContentLoaded', function () {
   const permissionOverrideUsername = document.getElementById('permissionOverrideUsername');
   const permissionOverridePassword = document.getElementById('permissionOverridePassword');
   const permissionOverrideConfirm = document.querySelector('[data-permission-override-confirm]');
+  const userMenu = document.querySelector('[data-user-menu]');
   let pendingPermissionForm = null;
   let pendingPermissionSubmitter = null;
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('adega-jf-theme', theme);
+    localStorage.setItem('girofy-theme', theme);
     document.querySelectorAll('[data-settings-theme-label]').forEach(function (label) {
       label.textContent = theme === 'dark' ? 'Dark' : 'Light';
     });
@@ -142,6 +143,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  if (userMenu) {
+    document.addEventListener('click', function (event) {
+      if (userMenu.open && !userMenu.contains(event.target)) {
+        userMenu.removeAttribute('open');
+      }
+    });
+  }
+
   document.querySelectorAll('[data-key-preset-days]').forEach(function (button) {
     button.addEventListener('click', function () {
       const target = document.getElementById(button.dataset.keyPresetTarget || '');
@@ -152,6 +161,58 @@ document.addEventListener('DOMContentLoaded', function () {
       const date = new Date();
       date.setDate(date.getDate() + days);
       target.value = date.toISOString().slice(0, 10);
+      const form = button.closest('form');
+      const presetInput = form ? form.querySelector('input[name="preset_days"]') : null;
+      if (presetInput) {
+        presetInput.value = String(days);
+      }
+    });
+  });
+
+  function copyTextToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+      document.execCommand('copy');
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(error);
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+
+  document.querySelectorAll('[data-copy-key]').forEach(function (button) {
+    const originalLabel = button.textContent;
+    button.addEventListener('click', function () {
+      const key = button.dataset.copyKey || '';
+      if (!key) {
+        return;
+      }
+
+      copyTextToClipboard(key).then(function () {
+        button.textContent = 'Copiada';
+        button.classList.add('is-copied');
+        setTimeout(function () {
+          button.textContent = originalLabel;
+          button.classList.remove('is-copied');
+        }, 1800);
+      }).catch(function () {
+        button.textContent = 'Erro';
+        setTimeout(function () {
+          button.textContent = originalLabel;
+        }, 1800);
+      });
     });
   });
 

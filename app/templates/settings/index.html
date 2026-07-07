@@ -6,7 +6,6 @@
     <h2>Configurações</h2>
     <p class="text-muted mb-0">Gerencie os dados do usuário conectado.</p>
   </div>
-  <span class="badge badge-accent">Usuário: {{ current_user.username }}</span>
 </div>
 
 <div class="settings-tabs" data-settings-tabs>
@@ -36,7 +35,6 @@
     <a class="settings-tab-button" href="{{ url_for('auth.permission_unlock', permission='can_export_data', next=url_for('auth.settings')) }}">Autorizar Exportação</a>
     {% endif %}
     <button class="settings-tab-button" type="button" data-settings-tab="support" role="tab" aria-selected="false">Suporte</button>
-    <button class="settings-tab-button" type="button" data-settings-tab="appearance" role="tab" aria-selected="false">Aparência</button>
   </div>
 
   <section class="settings-tab-panel is-active" data-settings-panel="user" role="tabpanel">
@@ -118,17 +116,13 @@
     <div class="settings-layout">
       <section class="card card-dark sale-panel">
         <h5 class="mb-3">Gerar key</h5>
+        <p class="text-muted">Keys são avulsas e servem para o cliente ativar o sistema quando precisar. Para vincular plano em uma adega, use assinatura.</p>
         <form method="post">
           <input type="hidden" name="form_type" value="master_generate_key">
           <div class="settings-form-grid">
             <div>
-              <label class="form-label" for="key_company_id">Adega</label>
-              <select class="form-select" id="key_company_id" name="key_company_id">
-                <option value="">Key avulsa, sem adega</option>
-                {% for company in key_companies %}
-                <option value="{{ company.id }}">{{ company.name }} · {{ mask_secret(company.activation_key) }}</option>
-                {% endfor %}
-              </select>
+              <label class="form-label" for="key_quantity">Quantidade</label>
+              <input class="form-control" id="key_quantity" name="key_quantity" type="number" min="1" max="50" value="1">
             </div>
             <div>
               <label class="form-label" for="key_plan">Assinatura</label>
@@ -158,7 +152,10 @@
           {% for key in key_records %}
           <div>
             <span>{{ key.company.name if key.company else 'Avulsa' }}</span>
-            <strong>{{ key.plan }} · {{ key.renews_at.strftime('%d/%m/%Y') }} · {{ mask_secret(key.key) }}{% if key.used_by_company_id %} · usada{% endif %}</strong>
+            <strong>
+              {{ key.plan }} · {{ key.renews_at.strftime('%d/%m/%Y') }} · {{ mask_secret(key.key) }}{% if key.used_by_company_id %} · usada{% endif %}
+              <button class="btn btn-outline-light btn-sm copy-key-button ms-2" type="button" data-copy-key="{{ key.key }}" aria-label="Copiar key {{ key.key }}">Copiar</button>
+            </strong>
           </div>
           {% else %}
           <div><span>Keys</span><strong>Nenhuma key gerada</strong></div>
@@ -549,7 +546,7 @@
       <section class="card card-dark sale-panel">
         <h5 class="mb-3">Informações do sistema</h5>
         <div class="settings-summary">
-          <div><span>Aplicação</span><strong>Adega JF</strong></div>
+          <div><span>Aplicação</span><strong>Girofy</strong></div>
           <div><span>Ambiente</span><strong>PDV Local</strong></div>
           <div><span>Status</span><strong>Operacional</strong></div>
         </div>
@@ -557,27 +554,5 @@
     </div>
   </section>
 
-  <section class="settings-tab-panel" data-settings-panel="appearance" role="tabpanel">
-    <div class="settings-layout">
-      <section class="card card-dark sale-panel">
-        <h5 class="mb-3">Aparência</h5>
-        <div class="settings-summary mb-4">
-          <div><span>Tema ativo</span><strong data-settings-theme-label>Atual</strong></div>
-        </div>
-        <div class="settings-theme-options">
-          <button class="settings-theme-choice" type="button" data-settings-theme-choice="light">Light</button>
-          <button class="settings-theme-choice" type="button" data-settings-theme-choice="dark">Dark</button>
-        </div>
-      </section>
-
-      <section class="card card-dark sale-panel">
-        <h5 class="mb-3">Preferências visuais</h5>
-        <div class="settings-summary">
-          <div><span>Tema ativo</span><strong data-settings-theme-label>Atual</strong></div>
-          <div><span>Layout responsivo</span><strong>Ativo</strong></div>
-        </div>
-      </section>
-    </div>
-  </section>
 </div>
 {% endblock %}

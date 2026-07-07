@@ -1,5 +1,5 @@
-#define MyAppName "Girofy PDV"
-#define MyAppExeName "GirofyPDV.exe"
+#define MyAppName "Girofy"
+#define MyAppExeName "Girofy.exe"
 #define MyAppPublisher "Girofy"
 #define MyAppVersion GetEnv("APP_VERSION")
 
@@ -12,11 +12,11 @@ AppId={{C4C53F43-FA31-44C5-A9F9-7E2E211E3A91}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\GirofyPDV
+DefaultDirName={autopf}\Girofy
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\..\dist\installer
-OutputBaseFilename=GirofyPDV-Setup
+OutputBaseFilename=Girofy-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -29,13 +29,13 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Files]
-Source: "..\..\dist\GirofyPDV\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\dist\Girofy\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "mysql\mysql-winx64.zip"; DestDir: "{app}\installer"; DestName: "mysql.zip"; Flags: ignoreversion
 Source: "install_mysql_windows.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "uninstall_mysql_windows.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 
 [Dirs]
-Name: "{commonappdata}\GirofyPDV"
+Name: "{commonappdata}\Girofy"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

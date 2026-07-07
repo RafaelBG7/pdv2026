@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 
-from flask import Flask, abort, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
 from flask_login import current_user
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
@@ -20,7 +20,7 @@ def ensure_mysql_database_exists(database_uri):
     if not database_name:
         return
 
-    admin_url = url.set(database='mysql')
+    admin_url = make_url(Config.MYSQL_SERVER_DATABASE_URL)
     admin_engine = create_engine(admin_url)
     safe_name = ''.join(char for char in database_name if char.isalnum() or char == '_')
     if safe_name != database_name:
@@ -238,11 +238,17 @@ def ensure_company_subscription_columns():
         'WHERE billing_cycle IS NULL OR billing_cycle = ""'
     ))
     db.session.execute(
-        text('UPDATE companies SET subscription_started_at = :today WHERE subscription_started_at IS NULL'),
+        text(
+            'UPDATE companies SET subscription_started_at = :today '
+            'WHERE subscription_started_at IS NULL AND activation_key IS NOT NULL AND activation_key != ""'
+        ),
         {'today': today.isoformat()},
     )
     db.session.execute(
-        text('UPDATE companies SET subscription_renews_at = :renewal WHERE subscription_renews_at IS NULL'),
+        text(
+            'UPDATE companies SET subscription_renews_at = :renewal '
+            'WHERE subscription_renews_at IS NULL AND activation_key IS NOT NULL AND activation_key != ""'
+        ),
         {'renewal': renewal.isoformat()},
     )
     db.session.commit()
@@ -333,11 +339,13 @@ def create_app(config_class=Config):
         ensure_company_backup_columns()
 
         if not User.query.filter_by(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master')).first():
-            company = Company(name='Painel Master')
+            company = Company.query.filter_by(name='Painel Master').order_by(Company.id.asc()).first()
+            if not company:
+                company = Company(name='Painel Master')
+                db.session.add(company)
+                db.session.flush()
             company.activation_key = 'MASTER-SYSTEM-KEY'
             company.activation_key_updated_at = datetime.now(timezone.utc)
-            db.session.add(company)
-            db.session.flush()
             tenant_database_identifier(company)
             tenant_engine(company)
             master = User(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master'), role='master', is_active=True)
@@ -350,7 +358,7 @@ def create_app(config_class=Config):
             if users_without_company:
                 company = Company.query.order_by(Company.id.asc()).first()
                 if not company:
-                    company = Company(name='Adega JF')
+                    company = Company(name='Girofy')
                     db.session.add(company)
                     db.session.flush()
                 tenant_database_identifier(company)
@@ -402,8 +410,11 @@ def create_app(config_class=Config):
             return None
 
         company = current_user.company
-        if not company or not company.active or not company.subscription_renews_at or company.subscription_renews_at < date.today():
-            return redirect(url_for('auth.subscription_activation'))
+        if not company or not company.subscription_valid:
+            flash('Este recurso é apenas para assinantes.', 'warning')
+            if company and (company.activation_key or '').strip():
+                return redirect(url_for('auth.subscription_activation'))
+            return redirect(url_for('auth.subscriptions'))
         return None
 
     @app.before_request
@@ -435,7 +446,7 @@ def create_app(config_class=Config):
     def internal_error(error):
         db.session.rollback()
         log_http_error(app, error)
-        return render_template('errors/500.html'), 500
+        return render_template('errors/500.html', request_id=getattr(g, 'request_id', None)), 500
 
     @app.after_request
     def add_security_headers(response):
@@ -450,11 +461,14 @@ def create_app(config_class=Config):
         notifications = []
         master_company = None
         permission_authorizer_users = []
+        subscription_locked = False
         from app.permissions import has_permission_view_override, needs_permission_override
         from app.services.alert_service import send_configured_email_alert
 
         def can_view_permission(permission):
             if not current_user.is_authenticated:
+                return False
+            if subscription_locked and current_user.role != 'master':
                 return False
             return current_user.has_permission(permission) or has_permission_view_override(permission)
 
@@ -475,6 +489,9 @@ def create_app(config_class=Config):
             from app.models import Payable, Product, User
             from app.tenant import current_tenant_company, tenant_session
 
+            company = current_tenant_company()
+            subscription_locked = bool(current_user.role != 'master' and (not company or not company.subscription_valid))
+
             permission_authorizer_users = [
                 user for user in User.query.filter(
                     User.is_active.is_(True),
@@ -483,11 +500,24 @@ def create_app(config_class=Config):
                 if user.role == 'master' or user.company_id == current_user.company_id
             ]
 
+            if subscription_locked:
+                return {
+                    'current_user': current_user,
+                    'app_notifications': notifications,
+                    'master_company': master_company,
+                    'master_company_active': False,
+                    'permission_authorizer_users': permission_authorizer_users,
+                    'subscription_locked': subscription_locked,
+                    'can_view_permission': can_view_permission,
+                    'needs_permission_override': needs_permission_override,
+                    'mask_secret': mask_secret,
+                    'password_min_length': int(app.config.get('PASSWORD_MIN_LENGTH') or (3 if app.config.get('TESTING') else 8)),
+                }
+
             low_stock_products = []
             dismissed_notifications = set(session.get('dismissed_low_stock_notifications', []))
             master_company = current_tenant_company() if current_user.role == 'master' else None
             tenant_db = tenant_session()
-            company = current_tenant_company()
             products = tenant_db.query(Product).filter(
                 Product.company_id == company.id,
                 Product.active.is_(True),
@@ -597,6 +627,7 @@ def create_app(config_class=Config):
             'master_company': master_company,
             'master_company_active': bool(current_user.is_authenticated and current_user.role == 'master' and master_company and master_company.id != current_user.company_id),
             'permission_authorizer_users': permission_authorizer_users,
+            'subscription_locked': subscription_locked,
             'can_view_permission': can_view_permission,
             'needs_permission_override': needs_permission_override,
             'mask_secret': mask_secret,

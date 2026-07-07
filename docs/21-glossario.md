@@ -1,6 +1,6 @@
 # 21 - Glossário
 
-## Adega JF
+## Girofy
 
 Nome do sistema e da operação representada pelo PDV.
 

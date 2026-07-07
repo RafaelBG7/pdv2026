@@ -5,12 +5,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ServiceName = "GirofyPDVMySQL"
+$ServiceName = "GirofyMySQL"
 $DatabaseName = "adega_central"
 $DatabaseUser = "girofy_app"
 $DatabaseHost = "127.0.0.1"
 $DatabasePort = 3307
-$ProgramDataDir = Join-Path $env:ProgramData "GirofyPDV"
+$ProgramDataDir = Join-Path $env:ProgramData "Girofy"
 $DataDir = Join-Path $ProgramDataDir "mysql-data"
 $LogDir = Join-Path $ProgramDataDir "logs"
 $SecretsDir = Join-Path $ProgramDataDir "secrets"

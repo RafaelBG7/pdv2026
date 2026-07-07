@@ -231,6 +231,15 @@ def tenant_get_or_404(model, record_id):
     return record
 
 
+def tenant_actor_user_id():
+    company = current_tenant_company()
+    if not company or not current_user.is_authenticated:
+        return None
+    if current_user.company_id != company.id:
+        return None
+    return current_user.id
+
+
 def stock_source_for_product(product):
     if product.is_kit:
         if not product.kit_component or product.kit_component_quantity <= 0:
@@ -775,7 +784,7 @@ def new_sale():
             discount_amount=discount_amount,
             final_amount=final_amount,
             payment_status='paid',
-            user_id=current_user.id,
+            user_id=tenant_actor_user_id(),
             company_id=company.id,
             cash_register_id=cash_register.id,
         )
@@ -886,7 +895,7 @@ def open_cash_register_route():
     cash_register = CashRegister(
         opening_amount=parse_money(request.form.get('opening_amount')),
         status='open',
-        user_id=current_user.id,
+        user_id=tenant_actor_user_id(),
         company_id=current_tenant_company().id,
     )
     tenant_db = tenant_session()

@@ -2,7 +2,7 @@
 
 ## Visão Arquitetural
 
-O Adega JF usa uma arquitetura monolítica web server-side:
+O Girofy usa uma arquitetura monolítica web server-side:
 
 - Flask recebe as requisições HTTP.
 - Blueprints organizam as rotas por domínio.

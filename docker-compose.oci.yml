@@ -1,0 +1,64 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-adega_central}
+      MYSQL_USER: ${MYSQL_USER:-girofy_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - girofy_mysql_data:/var/lib/mysql
+      - ./deploy/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      FLASK_DEBUG: "0"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_SERVER_DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/mysql?charset=utf8mb4
+      PORT: "5003"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - girofy_backups:/app/backups
+      - girofy_logs:/app/logs
+      - girofy_reports:/app/reports
+    ports:
+      - "127.0.0.1:5003:5003"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      GIROFY_SITE_ADDRESS: ${GIROFY_SITE_ADDRESS:-:18080}
+    ports:
+      - "${GIROFY_PUBLIC_HTTP_PORT:-18080}:18080"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  girofy_mysql_data:
+  girofy_backups:
+  girofy_logs:
+  girofy_reports:
+  caddy_data:
+  caddy_config:

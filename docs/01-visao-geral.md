@@ -2,7 +2,7 @@
 
 ## Propósito
 
-O Adega JF é um PDV web para adegas e pequenos comércios, com operação local pelo navegador e estrutura multiadega para uso em modelo SaaS.
+O Girofy é um PDV web para adegas e pequenos comércios, com operação local pelo navegador e estrutura multiadega para uso em modelo SaaS.
 
 O sistema centraliza:
 

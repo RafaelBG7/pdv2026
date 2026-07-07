@@ -6,6 +6,28 @@ O projeto possui segurança básica funcional para uso local/controlado, mas ain
 
 ## Implementado
 
+### Hardening do Servidor OCI
+
+No ambiente online atual, a VM foi configurada com medidas sem custo:
+
+- SSH liberado apenas para o IP administrativo configurado;
+- login SSH por senha desativado;
+- login SSH do usuário `root` desativado;
+- limite de tentativas SSH por conexão;
+- fail2ban ativo para SSH;
+- UFW com entrada pública apenas para a porta alta do Girofy;
+- portas 80 e 443 fechadas enquanto não houver domínio/HTTPS;
+- MySQL sem porta pública;
+- aplicação Flask acessível apenas pelo proxy Caddy dentro da rede Docker.
+
+O acesso público temporário fica em porta alta:
+
+```text
+http://IP_PUBLICO:18080
+```
+
+Essa configuração reduz a superfície de ataque, mas ainda não substitui HTTPS e controles de aplicação.
+
 ### Hash de Senha
 
 Senhas são armazenadas com hash Werkzeug:
@@ -113,7 +135,7 @@ Não existe tabela de auditoria para ações críticas.
 - Trocar senha padrão do `master`.
 - Definir `SECRET_KEY` forte.
 - Rodar com `DEBUG=False`.
-- Usar HTTPS.
+- Usar domínio com HTTPS.
 - Criar usuário MySQL dedicado.
 - Restringir painel master.
 - Ativar CSRF.
@@ -121,3 +143,4 @@ Não existe tabela de auditoria para ações críticas.
 - Guardar backups fora do servidor.
 - Criar auditoria de alterações.
 - Monitorar erros 500 e tentativas negadas.
+- Configurar certificados de assinatura para os instaladores desktop.

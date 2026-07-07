@@ -1,0 +1,4 @@
+{$GIROFY_SITE_ADDRESS::18080} {
+	reverse_proxy app:5003
+	encode gzip
+}

@@ -59,7 +59,7 @@
 | Segurança | Permissão no backend | Implementado | `permission_required`. |
 | Segurança | Bloqueio por assinatura/key | Implementado | `company_requires_activation()`. |
 | Segurança | CSRF | Não implementado | Recomendado Flask-WTF ou proteção equivalente. |
-| Disponibilidade | Execução local | Implementado | `python app.py` na porta 5001. |
+| Disponibilidade | Execução local | Implementado | `python app.py` na porta 5003. |
 | Backup | Dump SQL por adega | Implementado | Pasta `backups/`. |
 | Logs | Logs detalhados de erro | Implementado | `logs/errors.log`. |
 | Escalabilidade | Multiempresa | Implementado inicial | Banco por tenant, sem fila ou balanceamento. |

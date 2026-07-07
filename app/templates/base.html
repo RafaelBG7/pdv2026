@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Adega JF</title>
+    <title>Girofy</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}">
     <script>
       (function () {
-        var theme = localStorage.getItem('adega-jf-theme');
+        var theme = localStorage.getItem('girofy-theme');
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         document.documentElement.setAttribute('data-theme', theme || (prefersDark ? 'dark' : 'light'));
       }());
@@ -21,7 +23,7 @@
           <div class="sidebar-sticky">
             <div class="sidebar-header">
               <div class="brand-block">
-                <h4>Adega JF</h4>
+                <h4>Girofy</h4>
                 <p class="text-muted">PDV Local</p>
               </div>
               <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Minimizar menu" title="Minimizar menu">
@@ -30,9 +32,12 @@
             </div>
             <ul class="nav flex-column mt-4">
               {% if current_user.role == 'master' %}
-              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['auth.master_companies'] else '' }}" href="{{ url_for('auth.master_companies') }}" title="Adegas"><span class="nav-icon">A</span><span class="nav-label">Adegas</span></a></li>
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['auth.master_companies'] else '' }}" href="{{ url_for('auth.master_companies') }}" title="Painel master"><span class="nav-icon">M</span><span class="nav-label">Painel master</span></a></li>
               {% endif %}
-              {% if current_user.role != 'master' or master_company_active %}
+              {% if subscription_locked and current_user.role != 'master' %}
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.subscription_activation' else '' }}" href="{{ url_for('auth.subscription_activation') }}" title="Ativação"><span class="nav-icon">KEY</span><span class="nav-label">Ativação</span></a></li>
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.subscriptions' else '' }}" href="{{ url_for('auth.subscriptions') }}" title="Planos"><span class="nav-icon">AS</span><span class="nav-label">Planos</span></a></li>
+              {% elif current_user.role != 'master' or master_company_active %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}" title="Dashboard"><span class="nav-icon">D</span><span class="nav-label">Dashboard</span></a></li>
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['catalog.products', 'catalog.new_product', 'catalog.edit_product'] else '' }}" href="{{ url_for('catalog.products') }}" title="Produtos"><span class="nav-icon">P</span><span class="nav-label">Produtos</span></a></li>
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'catalog.categories' else '' }}" href="{{ url_for('catalog.categories') }}" title="Categorias"><span class="nav-icon">C</span><span class="nav-label">Categorias</span></a></li>
@@ -50,7 +55,6 @@
               {% if current_user.role == 'master' and not master_company_active %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.settings' else '' }}" href="{{ url_for('auth.settings') }}" title="Configurações"><span class="nav-icon">CFG</span><span class="nav-label">Configurações</span></a></li>
               {% endif %}
-              <li class="nav-item mt-4"><a class="nav-link" href="{{ url_for('auth.logout') }}" title="Sair"><span class="nav-icon">S</span><span class="nav-label">Sair</span></a></li>
             </ul>
           </div>
         </nav>
@@ -60,7 +64,6 @@
           <div class="content-frame">
           {% if current_user.is_authenticated %}
             <header class="topbar">
-              <div></div>
               <div class="topbar-user-area">
                 <details class="notification-menu">
                   <summary class="notification-button" aria-label="Abrir alertas" title="Alertas">
@@ -88,12 +91,43 @@
                     {% endif %}
                   </div>
                 </details>
-                <span class="topbar-username">
-                  {{ current_user.full_name or current_user.username }}
-                  {% if master_company_active %}
-                  · {{ master_company.name }}
-                  {% endif %}
-                </span>
+                <details class="user-menu" data-user-menu>
+                  <summary class="user-menu-button" aria-label="Abrir menu do usuário">
+                    <span class="user-menu-avatar" aria-hidden="true">{{ (current_user.full_name or current_user.username)[0]|upper }}</span>
+                    <span class="user-menu-identity">
+                      <strong>{{ current_user.full_name or current_user.username }}</strong>
+                      <small>
+                        {{ current_user.role_label }}
+                        {% if master_company_active %} · {{ master_company.name }}{% endif %}
+                      </small>
+                    </span>
+                    <span class="user-menu-chevron" aria-hidden="true">⌄</span>
+                  </summary>
+                  <div class="user-menu-dropdown">
+                    <div class="user-menu-header">
+                      <span class="user-menu-avatar user-menu-avatar-large" aria-hidden="true">{{ (current_user.full_name or current_user.username)[0]|upper }}</span>
+                      <div>
+                        <strong>{{ current_user.full_name or current_user.username }}</strong>
+                        <small>@{{ current_user.username }}</small>
+                      </div>
+                    </div>
+                    <div class="user-menu-section">
+                      <span class="user-menu-label">Aparência</span>
+                      <div class="user-theme-options" role="group" aria-label="Selecionar tema">
+                        <button class="user-theme-choice" type="button" data-settings-theme-choice="light" aria-pressed="false">
+                          <span aria-hidden="true">☀</span> Claro
+                        </button>
+                        <button class="user-theme-choice" type="button" data-settings-theme-choice="dark" aria-pressed="false">
+                          <span aria-hidden="true">☾</span> Escuro
+                        </button>
+                      </div>
+                    </div>
+                    <a class="user-menu-logout" href="{{ url_for('auth.logout') }}">
+                      <span aria-hidden="true">↪</span>
+                      Sair da conta
+                    </a>
+                  </div>
+                </details>
               </div>
             </header>
           {% endif %}
@@ -108,6 +142,16 @@
               {% endfor %}
             {% endif %}
           {% endwith %}
+
+          {% if current_user.is_authenticated and current_user.role == 'master' and master_company_active %}
+            <div class="alert alert-info master-access-banner d-flex flex-wrap justify-content-between align-items-center gap-2" role="status">
+              <span>Você está acessando a adega <strong>{{ master_company.name }}</strong>. Seu <strong>painel master</strong> continua disponível no menu.</span>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary btn-sm" href="{{ url_for('auth.master_companies') }}">Abrir painel master</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('auth.leave_company_access') }}">Sair desta adega</a>
+              </div>
+            </div>
+          {% endif %}
 
           {% block content %}{% endblock %}
           </div>

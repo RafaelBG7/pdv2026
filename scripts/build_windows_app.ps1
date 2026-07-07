@@ -14,10 +14,10 @@ Set-Location $RootDir
 & $VenvPython -m pip install -r requirements.txt -r requirements-build.txt
 
 Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force dist\GirofyPDV -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force dist\Girofy -ErrorAction SilentlyContinue
 
 & $VenvPython -m PyInstaller `
-    --name GirofyPDV `
+    --name Girofy `
     --windowed `
     --onedir `
     --clean `
@@ -53,4 +53,4 @@ PORT=5003
 
 Write-Host ""
 Write-Host "Aplicativo gerado em:"
-Write-Host "  $RootDir\dist\GirofyPDV\GirofyPDV.exe"
+Write-Host "  $RootDir\dist\Girofy\Girofy.exe"

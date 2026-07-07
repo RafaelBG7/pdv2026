@@ -1,15 +1,19 @@
 import re
+import time
 
 from flask import current_app, g, session
 from flask_login import current_user
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from app.extensions import db
 
 
 _engines = {}
+CONCURRENT_DDL_ERROR_CODE = 1684
+TENANT_SCHEMA_RETRIES = 4
 
 
 def slugify(value):
@@ -57,6 +61,31 @@ def create_mysql_database_if_needed(database_name):
     admin_engine.dispose()
 
 
+def is_concurrent_ddl_error(error):
+    original = getattr(error, 'orig', error)
+    args = getattr(original, 'args', ())
+    if args and args[0] == CONCURRENT_DDL_ERROR_CODE:
+        return True
+    return 'concurrent DDL statement' in str(error)
+
+
+def run_with_concurrent_ddl_retry(operation, label):
+    for attempt in range(TENANT_SCHEMA_RETRIES):
+        try:
+            return operation()
+        except OperationalError as error:
+            if not is_concurrent_ddl_error(error) or attempt == TENANT_SCHEMA_RETRIES - 1:
+                raise
+            wait_seconds = 0.35 * (attempt + 1)
+            current_app.logger.warning(
+                'DDL concorrente ao preparar tenant %s. Tentando novamente em %.2fs.',
+                label,
+                wait_seconds,
+            )
+            time.sleep(wait_seconds)
+    return None
+
+
 def drop_mysql_database(database_name):
     if current_app.config.get('TESTING'):
         return
@@ -65,12 +94,19 @@ def drop_mysql_database(database_name):
     if safe_name != database_name:
         raise ValueError('Nome do banco da adega inválido.')
 
+    engine_key = f'mysql:{database_name}'
+    existing_engine = _engines.pop(engine_key, None)
+    if existing_engine:
+        existing_engine.dispose()
+
     admin_url = current_app.config.get('MYSQL_SERVER_DATABASE_URL')
+    if not admin_url:
+        central_url = make_url(current_app.config['SQLALCHEMY_DATABASE_URI'])
+        admin_url = central_url.set(database='mysql')
     admin_engine = create_engine(admin_url)
     with admin_engine.begin() as connection:
         connection.execute(text(f'DROP DATABASE IF EXISTS `{database_name}`'))
     admin_engine.dispose()
-    _engines.pop(f'mysql:{database_name}', None)
 
 
 def sync_tenant_reference_data(company, engine):
@@ -243,9 +279,15 @@ def tenant_engine(company):
     if cache_key not in _engines:
         create_mysql_database_if_needed(identifier)
         engine = create_engine(mysql_tenant_url(identifier))
-        db.Model.metadata.create_all(bind=engine)
+        run_with_concurrent_ddl_retry(
+            lambda: db.Model.metadata.create_all(bind=engine),
+            identifier,
+        )
         _engines[cache_key] = engine
-    sync_tenant_reference_data(company, _engines[cache_key])
+    run_with_concurrent_ddl_retry(
+        lambda: sync_tenant_reference_data(company, _engines[cache_key]),
+        identifier,
+    )
     return _engines[cache_key]
 
 

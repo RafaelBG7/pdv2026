@@ -80,7 +80,7 @@ def build_database_dump(engine, database_name):
     ]
     generated_at = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
     lines = [
-        f'-- Backup Adega JF',
+        f'-- Backup Girofy',
         f'-- Banco: {database_name}',
         f'-- Gerado em: {generated_at}',
         'SET FOREIGN_KEY_CHECKS=0;',

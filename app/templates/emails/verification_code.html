@@ -1,25 +1,25 @@
 <!doctype html>
 <html lang="pt-BR">
-  <body style="margin:0;background:#f4f7f6;font-family:Arial,sans-serif;color:#10231f;">
+  <body style="margin:0;background:#f7f5ff;font-family:Arial,sans-serif;color:#050b2d;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:8px;border:1px solid #dfe8e5;overflow:hidden;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:8px;border:1px solid #ddd7f3;overflow:hidden;">
             <tr>
-              <td style="padding:24px 28px;background:#0b1f1b;color:#ffffff;">
+              <td style="padding:24px 28px;background:#030820;color:#ffffff;">
                 <strong style="font-size:22px;">Girofy</strong>
               </td>
             </tr>
             <tr>
               <td style="padding:28px;">
                 <h1 style="margin:0 0 12px;font-size:24px;">Código de verificação</h1>
-                <p style="margin:0 0 18px;color:#52615d;">Olá, {{ user.full_name or user.username }}. Use o código abaixo para confirmar sua conta.</p>
-                <div style="font-size:34px;letter-spacing:8px;font-weight:bold;text-align:center;background:#e9fbf7;color:#0b5b4f;border-radius:8px;padding:18px;margin:20px 0;">{{ code }}</div>
-                <p style="margin:0;color:#52615d;">Este código expira em 15 minutos.</p>
+                <p style="margin:0 0 18px;color:#68708f;">Olá, {{ user.full_name or user.username }}. Use o código abaixo para confirmar sua conta.</p>
+                <div style="font-size:34px;letter-spacing:8px;font-weight:bold;text-align:center;background:#f0edff;color:#6b12f1;border-radius:8px;padding:18px;margin:20px 0;">{{ code }}</div>
+                <p style="margin:0;color:#68708f;">Este código expira em 15 minutos.</p>
               </td>
             </tr>
             <tr>
-              <td style="padding:18px 28px;background:#f7faf9;color:#7b8a86;font-size:13px;">Se você não criou esta conta, ignore este e-mail.</td>
+              <td style="padding:18px 28px;background:#f7f5ff;color:#68708f;font-size:13px;">Se você não criou esta conta, ignore este e-mail.</td>
             </tr>
           </table>
         </td>
@@ -27,4 +27,3 @@
     </table>
   </body>
 </html>
-

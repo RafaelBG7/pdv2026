@@ -135,7 +135,7 @@ def migrate_tenant(app, company_id, tenant_database_name, sqlite_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Migra dados SQLite do Adega JF para MySQL.')
+    parser = argparse.ArgumentParser(description='Migra dados SQLite do Girofy para MySQL.')
     parser.add_argument('--yes', action='store_true', help='Confirma que o destino MySQL pode ser limpo antes da cópia.')
     args = parser.parse_args()
 

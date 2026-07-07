@@ -11,7 +11,7 @@ from pathlib import Path
 from werkzeug.serving import make_server
 
 
-APP_NAME = 'Girofy PDV'
+APP_NAME = 'Girofy'
 DEFAULT_PORT = 5003
 WINDOW_WIDTH = 1366
 WINDOW_HEIGHT = 820
@@ -91,7 +91,7 @@ def main():
     except Exception:
         log_path = base_dir / 'launcher-error.log'
         log_path.write_text(traceback.format_exc(), encoding='utf-8')
-        show_error('Não foi possível iniciar o Girofy PDV.', log_path)
+        show_error('Não foi possível iniciar o Girofy.', log_path)
         return 1
 
     url = f'http://127.0.0.1:{port}/'
@@ -119,7 +119,7 @@ def main():
     except Exception:
         log_path = base_dir / 'launcher-error.log'
         log_path.write_text(traceback.format_exc(), encoding='utf-8')
-        show_error('O Girofy PDV foi encerrado por uma falha inesperada.', log_path)
+        show_error('O Girofy foi encerrado por uma falha inesperada.', log_path)
         return 1
     finally:
         server.shutdown()

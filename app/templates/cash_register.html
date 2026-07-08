@@ -6,9 +6,7 @@
     <h2>Caixa</h2>
     <p class="text-muted mb-0">Abra o caixa antes de iniciar vendas e feche ao final do turno.</p>
   </div>
-  {% if cash_register %}
-  <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
-  {% endif %}
+  <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}" data-global-new-sale>Realizar Venda - F3</a>
 </div>
 
 <div class="settings-tabs" data-settings-tabs>
@@ -76,32 +74,96 @@
           <p class="text-muted mb-0">Últimos fechamentos registrados.</p>
         </div>
       </div>
-      <div class="cash-history-list">
-        {% for item in closed_registers %}
-        <a class="cash-history-item" href="{{ url_for('main.cash_register_detail', cash_register_id=item.id) }}">
-          <div>
-            <span>Abertura</span>
-            <strong>{{ item.opened_at.strftime('%d/%m/%Y %H:%M') if item.opened_at else '-' }}</strong>
-          </div>
-          <div>
-            <span>Fechamento</span>
-            <strong>{{ item.closed_at.strftime('%d/%m/%Y %H:%M') if item.closed_at else '-' }}</strong>
-          </div>
-          {% if show_cash_financials %}
-          <div>
-            <span>Valor final</span>
-            <strong>R$ {{ '%.2f'|format(item.closing_amount or 0)|replace('.', ',') }}</strong>
-          </div>
-          <div>
-            <span>Lucro</span>
-            <strong>R$ {{ '%.2f'|format(closed_register_profits.get(item.id, 0))|replace('.', ',') }}</strong>
-          </div>
-          {% endif %}
-        </a>
-        {% else %}
-        <p class="text-muted mb-0">Nenhum caixa fechado ainda.</p>
-        {% endfor %}
+      {% if closed_registers %}
+      <div class="table-responsive cash-register-table-wrap">
+        <table class="table table-dark align-middle mb-0 cash-register-table">
+          <thead>
+            <tr>
+              <th>Caixa</th>
+              <th>Abertura</th>
+              <th>Fechamento</th>
+              <th>Status</th>
+              {% if show_cash_financials %}
+              <th class="text-end">Valor inicial</th>
+              <th class="text-end">Valor final</th>
+              <th class="text-end">Total vendido</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in closed_registers %}
+            {% set history = cash_history.get(item.id, {}) %}
+            <tr class="cash-register-summary-row" data-cash-register-toggle data-bs-toggle="collapse" data-bs-target="#cash-history-{{ item.id }}" aria-expanded="false" aria-controls="cash-history-{{ item.id }}" role="button" tabindex="0">
+              <td data-label="Caixa">
+                <span class="cash-register-number">#{{ item.id }}</span>
+              </td>
+              <td data-label="Abertura">{{ item.opened_at.strftime('%d/%m/%Y') if item.opened_at else '-' }}</td>
+              <td data-label="Fechamento">{{ item.closed_at.strftime('%d/%m/%Y') if item.closed_at else '-' }}</td>
+              <td data-label="Status"><span class="badge text-bg-secondary">Fechado</span></td>
+              {% if show_cash_financials %}
+              <td data-label="Valor inicial" class="text-end">R$ {{ '%.2f'|format(item.opening_amount or 0)|replace('.', ',') }}</td>
+              <td data-label="Valor final" class="text-end">R$ {{ '%.2f'|format(item.closing_amount or 0)|replace('.', ',') }}</td>
+              <td data-label="Total vendido" class="text-end">R$ {{ '%.2f'|format(history.get('total_sold', 0))|replace('.', ',') }}</td>
+              {% endif %}
+            </tr>
+            <tr class="cash-register-detail-row">
+              <td colspan="{{ 7 if show_cash_financials else 4 }}" class="p-0">
+                <div class="collapse" id="cash-history-{{ item.id }}">
+                  <div class="cash-register-inline-detail">
+                    <div class="cash-register-meta">
+                      <div><span>Horário de abertura</span><strong>{{ item.opened_at.strftime('%H:%M') if item.opened_at else '-' }}</strong></div>
+                      <div><span>Horário de fechamento</span><strong>{{ item.closed_at.strftime('%H:%M') if item.closed_at else '-' }}</strong></div>
+                      <div><span>Responsável</span><strong>{{ history.get('responsible', '-') }}</strong></div>
+                      {% if show_cash_financials %}
+                      <div><span>Vendas vinculadas</span><strong>{{ history.get('sales_count', 0) }}</strong></div>
+                      <div><span>Diferença</span><strong>R$ {{ '%.2f'|format(history.get('difference', 0)|abs)|replace('.', ',') }} {{ 'excedente' if history.get('difference', 0) > 0 else ('faltante' if history.get('difference', 0) < 0 else 'correto') }}</strong></div>
+                      {% endif %}
+                    </div>
+
+                    {% if show_cash_financials %}
+                    <div class="cash-register-detail-columns">
+                      <div>
+                        <strong>Formas de pagamento</strong>
+                        <div class="cash-inline-list">
+                          {% if history.get('payment_totals') %}
+                          {% for method, label in payment_methods.items() %}
+                          {% if history.get('payment_totals', {}).get(method) %}
+                          <span>{{ label }} <b>R$ {{ '%.2f'|format(history.get('payment_totals', {}).get(method, 0))|replace('.', ',') }}</b></span>
+                          {% endif %}
+                          {% endfor %}
+                          {% else %}
+                          <span>Nenhum pagamento registrado.</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                      <div>
+                        <strong>Vendas</strong>
+                        <div class="cash-inline-list">
+                          {% for sale in history.get('sales', [])[:6] %}
+                          <a href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">Venda #{{ sale.id }} · {{ sale.created_at.strftime('%H:%M') if sale.created_at else '-' }} · R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</a>
+                          {% else %}
+                          <span>Nenhuma venda vinculada.</span>
+                          {% endfor %}
+                        </div>
+                      </div>
+                      <div>
+                        <strong>Movimentações</strong>
+                        <p class="text-muted mb-0">Nenhuma sangria ou suprimento registrado neste caixa.</p>
+                      </div>
+                    </div>
+                    {% endif %}
+                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('main.cash_register_detail', cash_register_id=item.id) }}">Abrir análise completa</a>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+      {% else %}
+      <p class="text-muted mb-0">Nenhum caixa fechado ainda.</p>
+      {% endif %}
     </div>
   </section>
 </div>

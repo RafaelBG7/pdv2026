@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import time
+from threading import Lock
 
 from flask import current_app
 
@@ -34,6 +36,19 @@ EMAIL_ALERT_TYPES = {
         'default_enabled': True,
     },
 }
+
+_email_alert_check_times = {}
+_email_alert_check_lock = Lock()
+
+
+def claim_email_alert_check(company_id, interval_seconds=60):
+    now = time.monotonic()
+    with _email_alert_check_lock:
+        last_check = _email_alert_check_times.get(company_id, 0)
+        if now - last_check < interval_seconds:
+            return False
+        _email_alert_check_times[company_id] = now
+        return True
 
 
 def parse_recipients(value):
@@ -81,11 +96,11 @@ def alert_settings_for_company(company):
     return ensure_email_alert_settings(company)
 
 
-def send_configured_email_alert(company, alert_type, alert_key, title, message, url=None):
+def send_configured_email_alert(company, alert_type, alert_key, title, message, url=None, settings=None):
     if not company or alert_type not in EMAIL_ALERT_TYPES:
         return False
 
-    settings = alert_settings_for_company(company)
+    settings = settings if settings is not None else alert_settings_for_company(company)
     setting = settings.get(alert_type)
     if not setting or not setting.enabled:
         return False
@@ -120,4 +135,3 @@ def send_configured_email_alert(company, alert_type, alert_key, title, message, 
     ))
     db.session.commit()
     return True
-

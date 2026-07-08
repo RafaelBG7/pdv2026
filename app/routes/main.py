@@ -4,9 +4,11 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 
 from app.extensions import db
-from app.models import CashRegister, Payable, Payment, Product, Sale, SaleItem
+from app.models import CashRegister, Payable, Payment, Product, Sale, SaleItem, User
 from app.permissions import authorize_role_override, has_permission_view_override, permission_required
 from app.tenant import current_tenant_company, tenant_session
 
@@ -419,6 +421,69 @@ def build_sales_chart(period, start, end, sales):
     return buckets
 
 
+def build_daily_sales_activity(start_datetime, end_datetime, metric='revenue'):
+    """Aggregate daily sales in SQL and return a stable 24-hour chart structure."""
+    metric = metric if metric in ('revenue', 'quantity') else 'revenue'
+    hour_expression = func.extract('hour', Sale.created_at)
+    rows = tenant_query(Sale).with_entities(
+        hour_expression.label('sale_hour'),
+        func.count(Sale.id).label('sales_count'),
+        func.coalesce(func.sum(Sale.final_amount), 0).label('revenue'),
+    ).filter(
+        Sale.created_at >= start_datetime,
+        Sale.created_at < end_datetime,
+    ).group_by(hour_expression).all()
+
+    aggregated = {
+        int(row.sale_hour): {
+            'sales_count': int(row.sales_count or 0),
+            'total': round(float(row.revenue or 0), 2),
+        }
+        for row in rows
+        if row.sale_hour is not None
+    }
+    buckets = []
+    for hour in range(24):
+        values = aggregated.get(hour, {'sales_count': 0, 'total': 0.0})
+        buckets.append({
+            'hour': hour,
+            'label': f'{hour:02d}h',
+            'title': f'{hour:02d}:00 às {hour:02d}:59',
+            'sales_count': values['sales_count'],
+            'total': values['total'],
+        })
+
+    active_buckets = [bucket for bucket in buckets if bucket['sales_count'] > 0]
+    peak_by_quantity = max(
+        active_buckets,
+        key=lambda item: (item['sales_count'], item['total'], -item['hour']),
+        default=None,
+    )
+    peak_by_revenue = max(
+        active_buckets,
+        key=lambda item: (item['total'], item['sales_count'], -item['hour']),
+        default=None,
+    )
+    selected_peak = peak_by_quantity if metric == 'quantity' else peak_by_revenue
+    max_value = max(
+        (bucket['sales_count'] if metric == 'quantity' else bucket['total'] for bucket in buckets),
+        default=0,
+    )
+
+    for bucket in buckets:
+        value = bucket['sales_count'] if metric == 'quantity' else bucket['total']
+        bucket['percent'] = round((value / max_value) * 100, 2) if max_value else 0
+        bucket['is_peak'] = bool(selected_peak and bucket['hour'] == selected_peak['hour'])
+
+    return {
+        'buckets': buckets,
+        'metric': metric,
+        'peak': peak_by_quantity,
+        'peak_by_quantity': peak_by_quantity,
+        'peak_by_revenue': peak_by_revenue,
+    }
+
+
 def cash_register_peak_hours(cash_register):
     hours = {}
     if not cash_register:
@@ -642,6 +707,9 @@ def reopen_payable(payable_id):
 @permission_required('can_view_reports')
 def reports():
     selected_period = request.args.get('period', 'daily')
+    chart_metric = request.args.get('chart_metric', 'revenue')
+    if chart_metric not in ('revenue', 'quantity'):
+        chart_metric = 'revenue'
     start_date = parse_date(request.args.get('start_date'))
     end_date = parse_date(request.args.get('end_date'))
     period, start, end, start_datetime, end_datetime, label = report_period_range(
@@ -649,12 +717,16 @@ def reports():
         start_date=start_date,
         end_date=end_date,
     )
-    sales = tenant_query(Sale).filter(
+    sales = tenant_query(Sale).options(
+        selectinload(Sale.payments),
+        selectinload(Sale.items).selectinload(SaleItem.product),
+    ).filter(
         Sale.created_at >= start_datetime,
         Sale.created_at < end_datetime,
     ).order_by(Sale.created_at.desc()).all()
     totals, payment_totals, top_products = build_sales_report(sales)
-    chart_data = build_sales_chart(period, start, end, sales)
+    daily_activity = build_daily_sales_activity(start_datetime, end_datetime, chart_metric) if period == 'daily' else None
+    chart_data = daily_activity['buckets'] if daily_activity else build_sales_chart(period, start, end, sales)
 
     return render_template(
         'reports/index.html',
@@ -665,6 +737,8 @@ def reports():
         sales=sales,
         totals=totals,
         chart_data=chart_data,
+        chart_metric=chart_metric,
+        daily_activity=daily_activity,
         payment_totals=payment_totals,
         top_products=top_products,
         payment_methods=PAYMENT_METHODS,
@@ -681,6 +755,7 @@ def new_sale():
         flash('Abra o caixa antes de registrar uma venda.', 'warning')
         return redirect(url_for('main.cash_register'))
 
+    company = current_tenant_company()
     products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
     form_state = {
         'items': [{'product_id': '', 'quantity': '1'}],
@@ -695,6 +770,7 @@ def new_sale():
         quantities = request.form.getlist('quantity[]')
         selected_items = []
         stock_requirements = {}
+        stock_warnings = []
         total_amount = 0.0
 
         for product_id, quantity_value in zip(product_ids, quantities):
@@ -736,14 +812,17 @@ def new_sale():
             stock_product = tenant_query(Product).filter_by(id=stock_product_id).first()
             if not stock_product:
                 continue
-            if stock_product.stock_quantity < required_quantity:
-                flash(f'Estoque insuficiente para {stock_product.name}.', 'danger')
-                return render_template(
-                    'sales/form.html',
-                    products=products,
-                    payment_methods=PAYMENT_METHODS,
-                    form_state=form_state,
-                )
+            if (stock_product.stock_quantity or 0) < required_quantity:
+                if not company.allow_negative_stock:
+                    flash(f'Estoque insuficiente para {stock_product.name}.', 'danger')
+                    return render_template(
+                        'sales/form.html',
+                        products=products,
+                        payment_methods=PAYMENT_METHODS,
+                        form_state=form_state,
+                    )
+                resulting_stock = (stock_product.stock_quantity or 0) - required_quantity
+                stock_warnings.append(f'{stock_product.name}: {resulting_stock} un.')
 
         if not selected_items:
             flash('Adicione pelo menos um produto à venda.', 'danger')
@@ -763,7 +842,16 @@ def new_sale():
                 paid_amount += amount
 
         total_amount = round(total_amount, 2)
-        discount_amount = min(parse_money(request.form.get('discount_amount')), total_amount)
+        requested_discount = parse_money(request.form.get('discount_amount'))
+        if requested_discount > total_amount:
+            flash(f'O desconto não pode ser maior que o subtotal de {format_brl(total_amount)}.', 'danger')
+            return render_template(
+                'sales/form.html',
+                products=products,
+                payment_methods=PAYMENT_METHODS,
+                form_state=form_state,
+            )
+        discount_amount = requested_discount
         final_amount = round(total_amount - discount_amount, 2)
         paid_amount = round(paid_amount, 2)
         if paid_amount < final_amount:
@@ -776,7 +864,6 @@ def new_sale():
                 form_state=form_state,
             )
 
-        company = current_tenant_company()
         machine_fee_total = card_fee_total(company, payments, final_amount, paid_amount)
 
         sale = Sale(
@@ -794,7 +881,7 @@ def new_sale():
 
         for product, quantity, line_total in selected_items:
             stock_product, units_per_sale = stock_source_for_product(product)
-            stock_product.stock_quantity -= units_per_sale * quantity
+            stock_product.stock_quantity = (stock_product.stock_quantity or 0) - (units_per_sale * quantity)
             unit_cost_price = product.cost_price or 0.0
             item_fee = machine_fee_total * (line_total / total_amount) if total_amount > 0 else 0.0
             tenant_db.add(SaleItem(
@@ -812,6 +899,8 @@ def new_sale():
 
         tenant_db.commit()
         change_amount = max(paid_amount - final_amount, 0.0)
+        if stock_warnings:
+            flash(f'Estoque insuficiente permitido. Saldo após a venda: {", ".join(stock_warnings)}', 'warning')
         flash(f'Venda finalizada com sucesso. Troco: {format_brl(change_amount)}.', 'success')
         return redirect(url_for('main.sale_detail', sale_id=sale.id))
 
@@ -846,8 +935,30 @@ def sale_detail(sale_id):
 @permission_required('can_manage_cash_register')
 def cash_register():
     current_cash_register = open_cash_register()
-    closed_registers = tenant_query(CashRegister).filter_by(status='closed').order_by(CashRegister.closed_at.desc()).limit(10).all()
+    closed_registers = tenant_query(CashRegister).options(
+        selectinload(CashRegister.sales).selectinload(Sale.payments),
+        selectinload(CashRegister.sales).selectinload(Sale.items),
+    ).filter_by(status='closed').order_by(CashRegister.closed_at.desc()).limit(10).all()
     show_cash_financials = can_view_cash_financials()
+    user_ids = {item.user_id for item in closed_registers if item.user_id}
+    responsible_users = {
+        user.id: user.full_name or user.username
+        for user in tenant_session().query(User).filter(User.id.in_(user_ids)).all()
+    } if user_ids else {}
+    cash_history = {}
+    for item in closed_registers:
+        sales = sorted(item.sales, key=lambda sale: sale.created_at or datetime.min, reverse=True)
+        totals, payment_totals, _ = build_sales_report(sales)
+        expected_amount = cash_register_expected_amount(item)
+        cash_history[item.id] = {
+            'responsible': responsible_users.get(item.user_id, 'Usuário não identificado'),
+            'sales': sales,
+            'sales_count': len(sales),
+            'total_sold': totals['final'],
+            'payment_totals': payment_totals,
+            'expected_amount': expected_amount,
+            'difference': round((item.closing_amount or 0.0) - expected_amount, 2),
+        }
     return render_template(
         'cash_register.html',
         cash_register=current_cash_register,
@@ -855,6 +966,8 @@ def cash_register():
         cash_register_expected_amount=cash_register_expected_amount(current_cash_register) if show_cash_financials else 0,
         closed_register_profits={item.id: cash_register_profit(item) for item in closed_registers} if show_cash_financials else {},
         closed_registers=closed_registers,
+        cash_history=cash_history,
+        payment_methods=PAYMENT_METHODS,
         show_cash_financials=show_cash_financials,
     )
 

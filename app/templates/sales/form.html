@@ -15,6 +15,7 @@
     <option
       value="{{ product.name }}{% if product.is_kit %} (kit){% endif %}"
       data-id="{{ product.id }}"
+      data-barcode="{{ product.barcode or '' }}"
       data-price="{{ '%.2f'|format(product.sale_price or 0) }}"
       data-stock="{{ product.effective_stock_quantity or 0 }}"
     ></option>
@@ -23,13 +24,22 @@
 
   <div class="sale-layout">
     <section class="card card-dark sale-panel">
-      <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
-        <h5 class="mb-0">Produtos da venda</h5>
-        <button class="btn btn-outline-light" type="button" data-add-sale-item>Adicionar produto</button>
+      <div class="mb-3">
+        <h5 class="mb-1">Produtos da venda</h5>
+        <p class="text-muted mb-0">Pesquise, selecione o produto e informe a quantidade.</p>
+      </div>
+
+      <div class="sale-product-picker mb-3" data-sale-product-picker>
+        <label class="form-label" for="sale_product_search">Pesquisar produto</label>
+        <div class="product-autocomplete">
+          <input class="form-control" id="sale_product_search" placeholder="Digite o nome do produto" data-sale-picker-search autocomplete="off">
+          <div class="product-suggestion-list" data-sale-picker-suggestion-list></div>
+        </div>
       </div>
 
       <div class="sale-items" data-sale-items>
         {% for item in form_state['items'] %}
+        {% if item.product_id %}
         {% set selected = namespace(name='') %}
         {% for product in products %}
           {% if item.product_id == product.id|string %}
@@ -39,10 +49,7 @@
         <div class="sale-item-row" data-sale-item-row>
           <div>
             <label class="form-label">Produto</label>
-            <div class="product-autocomplete" data-product-autocomplete>
-              <input class="form-control" value="{{ selected.name }}" placeholder="Digite o nome do produto" data-product-search autocomplete="off" required>
-              <div class="product-suggestion-list" data-product-suggestion-list></div>
-            </div>
+            <input class="form-control" value="{{ selected.name }}" data-product-search readonly>
             <input type="hidden" name="product_id[]" value="{{ item.product_id or '' }}" data-product-id>
           </div>
           <div>
@@ -52,6 +59,7 @@
           <div>
             <label class="form-label">Estoque</label>
             <input class="form-control" value="0 un." data-stock-available readonly>
+            <small class="sale-stock-warning" data-stock-warning>Estoque insuficiente</small>
           </div>
           <div>
             <label class="form-label">Qtd.</label>
@@ -65,8 +73,40 @@
             <button class="btn btn-outline-danger" type="button" data-remove-sale-item>Remover</button>
           </div>
         </div>
+        {% endif %}
         {% endfor %}
+        <p class="sale-items-empty mb-0" data-sale-items-empty>Nenhum produto adicionado.</p>
       </div>
+
+      <template data-sale-row-template>
+        <div class="sale-item-row" data-sale-item-row>
+          <div>
+            <label class="form-label">Produto</label>
+            <input class="form-control" value="" data-product-search readonly>
+            <input type="hidden" name="product_id[]" value="" data-product-id>
+          </div>
+          <div>
+            <label class="form-label">Valor un.</label>
+            <input class="form-control" value="R$ 0,00" data-unit-price readonly>
+          </div>
+          <div>
+            <label class="form-label">Estoque</label>
+            <input class="form-control" value="0 un." data-stock-available readonly>
+            <small class="sale-stock-warning" data-stock-warning>Estoque insuficiente</small>
+          </div>
+          <div>
+            <label class="form-label">Qtd.</label>
+            <input class="form-control" name="quantity[]" type="number" min="1" value="1" data-quantity-input required>
+          </div>
+          <div>
+            <label class="form-label">Subtotal</label>
+            <input class="form-control" value="R$ 0,00" data-line-total readonly>
+          </div>
+          <div class="sale-row-action">
+            <button class="btn btn-outline-danger" type="button" data-remove-sale-item>Remover</button>
+          </div>
+        </div>
+      </template>
     </section>
 
     <aside class="card card-dark sale-panel">
@@ -76,23 +116,21 @@
         <span>Total</span>
         <strong data-sale-total>R$ 0,00</strong>
       </div>
-
-      <div class="payment-summary mt-3">
-        <div><span>Subtotal</span><strong data-sale-subtotal>R$ 0,00</strong></div>
-        <div><span>Desconto</span><strong data-sale-discount-label>R$ 0,00</strong></div>
+      <div class="sale-discount-summary mt-2">
+        <span>Desconto</span>
+        <strong data-sale-discount-label>R$ 0,00 (0,00%)</strong>
       </div>
 
-      <input type="hidden" name="discount_amount" value="{{ form_state.get('discount_amount', '') }}" data-discount-input data-currency-input>
-      <button class="btn btn-outline-light w-100 mt-3" type="button" data-discount-open>Desconto <span class="shortcut-label">F3</span></button>
-      <button class="btn btn-primary w-100 mt-3" type="button" data-open-payment-step>Concluir venda <span class="shortcut-label shortcut-label-light">F2</span></button>
+      <button class="btn btn-outline-light w-100 mt-3" type="button" data-discount-open>Aplicar desconto <span class="shortcut-label">F3</span></button>
+      <button class="btn btn-primary w-100 mt-3" type="button" data-open-payment-step>Finalizar venda <span class="shortcut-label shortcut-label-light">F2</span></button>
     </aside>
   </div>
 
-  <section class="card card-dark sale-panel sale-payment-step mt-4 {% if form_state.get('show_payment_step') %}is-open{% endif %}" data-payment-step>
+  <section class="card card-dark sale-panel sale-payment-step {% if form_state.get('show_payment_step') %}is-open{% endif %}" data-payment-step role="dialog" aria-modal="true" aria-label="Finalizar venda" aria-hidden="{{ 'false' if form_state.get('show_payment_step') else 'true' }}">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
       <div>
-        <h5 class="mb-1">Formas de pagamento</h5>
-        <p class="text-muted mb-0">Escolha uma ou mais formas para finalizar o pedido.</p>
+        <h5 class="mb-1">Finalizar venda</h5>
+        <p class="text-muted mb-0">Escolha uma ou mais formas. A próxima opção completa automaticamente o valor que falta.</p>
       </div>
       <button class="btn btn-outline-light" type="button" data-close-payment-step>Voltar aos produtos</button>
     </div>
@@ -108,6 +146,8 @@
       </div>
 
       <div class="payment-summary sale-payment-summary mt-3">
+        <div><span>Subtotal</span><strong data-sale-subtotal>R$ 0,00</strong></div>
+        <div><span>Desconto</span><strong data-sale-discount-label>R$ 0,00</strong></div>
         <div><span>Total</span><strong data-payment-step-total>R$ 0,00</strong></div>
         <div><span>Pago</span><strong data-paid-total>R$ 0,00</strong></div>
         <div><span>Falta</span><strong data-missing-total>R$ 0,00</strong></div>
@@ -115,8 +155,27 @@
       </div>
     </div>
 
+    <input type="hidden" name="discount_amount" value="{{ form_state.get('discount_amount', '') }}" data-discount-input>
+    <button class="btn btn-outline-light w-100 mt-3" type="button" data-discount-open>Aplicar desconto <span class="shortcut-label">F3</span></button>
     <button class="btn btn-primary w-100 mt-3" type="submit" data-finalize-sale>Finalizar pedido <span class="shortcut-label shortcut-label-light">F2</span></button>
   </section>
+
+  <div class="sale-quantity-modal" data-sale-quantity-modal aria-hidden="true">
+    <div class="sale-quantity-dialog card card-dark" role="dialog" aria-modal="true" aria-labelledby="sale_quantity_title">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <div>
+          <h5 class="mb-1" id="sale_quantity_title">Quantidade</h5>
+          <p class="text-muted mb-0" data-sale-quantity-product>Produto selecionado</p>
+        </div>
+        <button class="btn btn-outline-light" type="button" data-sale-quantity-close>Fechar</button>
+      </div>
+
+      <p class="sale-quantity-meta" data-sale-quantity-meta></p>
+      <label class="form-label" for="sale_product_quantity">Quantidade do produto</label>
+      <input class="form-control" id="sale_product_quantity" type="number" min="1" step="1" value="1" data-sale-quantity-input>
+      <button class="btn btn-primary w-100 mt-3" type="button" data-sale-quantity-add>Adicionar produto</button>
+    </div>
+  </div>
 
   <div class="discount-modal" data-discount-modal aria-hidden="true">
     <div class="discount-dialog card card-dark">
@@ -131,6 +190,11 @@
       <label class="form-label" for="discount_modal_amount">Valor do desconto</label>
       <input class="form-control" id="discount_modal_amount" inputmode="numeric" placeholder="0,00" data-discount-modal-input data-currency-input>
       <p class="discount-percent mt-2 mb-0" data-discount-percent>0,00% de desconto</p>
+
+      <div class="discount-preview mt-3">
+        <div><span>Subtotal</span><strong data-discount-subtotal>R$ 0,00</strong></div>
+        <div><span>Novo total</span><strong data-discount-new-total>R$ 0,00</strong></div>
+      </div>
 
       <button class="btn btn-primary w-100 mt-3" type="button" data-discount-apply>Aplicar desconto</button>
     </div>

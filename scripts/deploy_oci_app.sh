@@ -38,6 +38,7 @@ ssh $SSH_OPTS "$OCI_DEPLOY_USER@$OCI_DEPLOY_HOST" bash -s <<REMOTE
 set -euo pipefail
 cd "$OCI_DEPLOY_PATH"
 test -f .env
+mkdir -p /opt/girofy/backups
 docker compose -f docker-compose.oci.yml up -d --build --remove-orphans
 docker image prune -f >/dev/null
 for attempt in {1..30}; do

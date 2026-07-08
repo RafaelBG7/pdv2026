@@ -6,11 +6,12 @@
     <h2>Vendas</h2>
     <p class="text-muted mb-0">Consulte vendas realizadas e inicie novos pedidos.</p>
   </div>
-  {% if open_cash_register %}
-  <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
-  {% else %}
-  <a class="btn btn-primary" href="{{ url_for('main.cash_register') }}">Abrir caixa</a>
-  {% endif %}
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}" data-global-new-sale>Realizar Venda - F3</a>
+    {% if not open_cash_register %}
+    <a class="btn btn-outline-light" href="{{ url_for('main.cash_register') }}">Abrir caixa</a>
+    {% endif %}
+  </div>
 </div>
 
 <div class="card card-dark table-card p-0">

@@ -84,7 +84,8 @@
 - Itens gravam preço e custo do momento da venda.
 - Venda finalizada baixa estoque.
 - Atalho `F2` abre/conclui finalização.
-- Atalho `F3` abre desconto.
+- Em Dashboard, Vendas e Caixa, `F3` inicia uma nova venda quando o foco não está em um campo.
+- Na tela de registrar venda, `F3` abre o desconto e não recarrega a página.
 
 ## Importação e Exportação
 
@@ -104,6 +105,9 @@
 - Anual usa últimos 365 dias.
 - Personalizado usa datas escolhidas.
 - Relatório calcula vendas, descontos, total, lucro, ticket médio, pagamentos e produtos mais vendidos.
+- No período diário, vendas são agrupadas no banco em intervalos de uma hora, das 00h às 23h.
+- O pico por quantidade e o pico por faturamento são calculados separadamente.
+- Horas sem venda permanecem no gráfico com valor zero.
 
 ## Notificações
 

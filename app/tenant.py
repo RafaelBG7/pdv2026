@@ -1,7 +1,8 @@
 import re
 import time
+from threading import Lock
 
-from flask import current_app, g, session
+from flask import current_app, g, has_request_context, session
 from flask_login import current_user
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
@@ -12,8 +13,12 @@ from app.extensions import db
 
 
 _engines = {}
+_reference_sync_times = {}
+_reference_sync_locks = {}
+_reference_sync_locks_guard = Lock()
 CONCURRENT_DDL_ERROR_CODE = 1684
 TENANT_SCHEMA_RETRIES = 4
+TENANT_REFERENCE_SYNC_SECONDS = 300
 
 
 def slugify(value):
@@ -96,6 +101,8 @@ def drop_mysql_database(database_name):
 
     engine_key = f'mysql:{database_name}'
     existing_engine = _engines.pop(engine_key, None)
+    _reference_sync_times.pop(engine_key, None)
+    _reference_sync_locks.pop(engine_key, None)
     if existing_engine:
         existing_engine.dispose()
 
@@ -117,6 +124,7 @@ def sync_tenant_reference_data(company, engine):
     if 'companies' in inspector.get_table_names():
         columns = {column['name'] for column in inspector.get_columns('companies')}
         migrations = {
+            'allow_negative_stock': 'ALTER TABLE companies ADD COLUMN allow_negative_stock BOOLEAN DEFAULT 0',
             'backup_frequency': 'ALTER TABLE companies ADD COLUMN backup_frequency VARCHAR(20) DEFAULT "manual"',
             'backup_last_at': 'ALTER TABLE companies ADD COLUMN backup_last_at DATETIME',
             'backup_last_path': 'ALTER TABLE companies ADD COLUMN backup_last_path VARCHAR(255) DEFAULT ""',
@@ -142,7 +150,7 @@ def sync_tenant_reference_data(company, engine):
             text(
                 '''
                 INSERT INTO companies (
-                    id, name, database_path, active, subscription_plan, billing_cycle,
+                    id, name, database_path, active, allow_negative_stock, subscription_plan, billing_cycle,
                     subscription_started_at, subscription_renews_at, activation_key,
                     activation_key_updated_at, card_fee_enabled, pix_fee_enabled,
                     debit_fee_enabled, credit_fee_enabled, pix_fee_percent,
@@ -150,7 +158,7 @@ def sync_tenant_reference_data(company, engine):
                     backup_last_at, backup_last_path, backup_last_status, created_at
                 )
                 VALUES (
-                    :id, :name, :database_path, :active, :subscription_plan, :billing_cycle,
+                    :id, :name, :database_path, :active, :allow_negative_stock, :subscription_plan, :billing_cycle,
                     :subscription_started_at, :subscription_renews_at, :activation_key,
                     :activation_key_updated_at, :card_fee_enabled, :pix_fee_enabled,
                     :debit_fee_enabled, :credit_fee_enabled, :pix_fee_percent,
@@ -161,6 +169,7 @@ def sync_tenant_reference_data(company, engine):
                     name = VALUES(name),
                     database_path = VALUES(database_path),
                     active = VALUES(active),
+                    allow_negative_stock = VALUES(allow_negative_stock),
                     subscription_plan = VALUES(subscription_plan),
                     billing_cycle = VALUES(billing_cycle),
                     subscription_started_at = VALUES(subscription_started_at),
@@ -185,6 +194,7 @@ def sync_tenant_reference_data(company, engine):
                 'name': company.name,
                 'database_path': company.database_path,
                 'active': company.active,
+                'allow_negative_stock': company.allow_negative_stock,
                 'subscription_plan': company.subscription_plan,
                 'billing_cycle': company.billing_cycle,
                 'subscription_started_at': company.subscription_started_at,
@@ -270,6 +280,44 @@ def sync_tenant_reference_data(company, engine):
             )
 
 
+def tenant_reference_sync_lock(cache_key):
+    with _reference_sync_locks_guard:
+        return _reference_sync_locks.setdefault(cache_key, Lock())
+
+
+def current_user_missing_from_tenant(company, engine):
+    if not has_request_context() or not current_user.is_authenticated:
+        return False
+    if current_user.company_id != company.id:
+        return False
+
+    with engine.connect() as connection:
+        user_id = connection.execute(
+            text('SELECT id FROM users WHERE id = :user_id LIMIT 1'),
+            {'user_id': current_user.id},
+        ).scalar()
+    return user_id is None
+
+
+def ensure_tenant_reference_data(company, engine, cache_key):
+    last_sync = _reference_sync_times.get(cache_key, 0)
+    sync_due = (time.monotonic() - last_sync) >= TENANT_REFERENCE_SYNC_SECONDS
+    if not sync_due and not current_user_missing_from_tenant(company, engine):
+        return
+
+    with tenant_reference_sync_lock(cache_key):
+        last_sync = _reference_sync_times.get(cache_key, 0)
+        sync_due = (time.monotonic() - last_sync) >= TENANT_REFERENCE_SYNC_SECONDS
+        if not sync_due and not current_user_missing_from_tenant(company, engine):
+            return
+
+        run_with_concurrent_ddl_retry(
+            lambda: sync_tenant_reference_data(company, engine),
+            company.database_path,
+        )
+        _reference_sync_times[cache_key] = time.monotonic()
+
+
 def tenant_engine(company):
     identifier = tenant_database_identifier(company)
     if current_app.config.get('TESTING'):
@@ -284,10 +332,7 @@ def tenant_engine(company):
             identifier,
         )
         _engines[cache_key] = engine
-    run_with_concurrent_ddl_retry(
-        lambda: sync_tenant_reference_data(company, _engines[cache_key]),
-        identifier,
-    )
+    ensure_tenant_reference_data(company, _engines[cache_key], cache_key)
     return _engines[cache_key]
 
 

@@ -86,7 +86,7 @@
             data-id="{{ category.id }}"
             data-value="{{ category.name }}"
             data-title="{{ category.name }}"
-            data-meta="{{ category.products|length }} produto{{ '' if category.products|length == 1 else 's' }}"
+            data-meta="{{ category_counts.get(category.id, 0) }} produto{{ '' if category_counts.get(category.id, 0) == 1 else 's' }}"
           ></span>
           {% endfor %}
         </div>
@@ -112,6 +112,18 @@
   </div>
 </form>
 
+<div class="d-none" id="kit-product-autocomplete-options">
+  {% for kit_product in kit_products %}
+  <span
+    data-autocomplete-option
+    data-id="{{ kit_product.id }}"
+    data-value="{{ kit_product.name }}"
+    data-title="{{ kit_product.name }}"
+    data-meta="Estoque {{ kit_product.effective_stock_quantity or 0 }} un."
+  ></span>
+  {% endfor %}
+</div>
+
 <div class="card card-dark table-card p-0">
   <div class="table-responsive">
     <table class="table table-dark table-hover align-middle mb-0 app-table product-table">
@@ -127,7 +139,7 @@
       <tbody>
         {% for product in products %}
         <tr class="product-summary-row">
-          <td>
+          <td data-label="Produto">
             <button class="product-name-button" type="button" data-bs-toggle="collapse" data-bs-target="#product-details-{{ product.id }}" aria-expanded="false" aria-controls="product-details-{{ product.id }}">
               <span>{{ product.name }}</span>
               <small>
@@ -141,15 +153,15 @@
               </small>
             </button>
           </td>
-          <td>{{ product.category.name if product.category else '-' }}</td>
-          <td class="text-end">R$ {{ '%.2f'|format(product.sale_price or 0)|replace('.', ',') }}</td>
-          <td class="text-end">
+          <td data-label="Categoria">{{ product.category.name if product.category else '-' }}</td>
+          <td data-label="Venda" class="text-end">R$ {{ '%.2f'|format(product.sale_price or 0)|replace('.', ',') }}</td>
+          <td data-label="Estoque" class="text-end">
             {{ product.effective_stock_quantity or 0 }}
             {% if product.is_kit %}
             <span class="text-muted">kits</span>
             {% endif %}
           </td>
-          <td>
+          <td data-label="Status">
             {% if product.active %}
             <span class="badge text-bg-success">Ativo</span>
             {% else %}
@@ -211,7 +223,7 @@
                           data-id="{{ category.id }}"
                           data-value="{{ category.name }}"
                           data-title="{{ category.name }}"
-                          data-meta="{{ category.products|length }} produto{{ '' if category.products|length == 1 else 's' }}"
+                          data-meta="{{ category_counts.get(category.id, 0) }} produto{{ '' if category_counts.get(category.id, 0) == 1 else 's' }}"
                         ></span>
                       {% endfor %}
                       </div>
@@ -243,14 +255,11 @@
                     </div>
                     <div class="kit-fields" id="kit-fields-{{ product.id }}">
                       <label class="form-label" for="kit_component_{{ product.id }}">Produto base</label>
-                      <select class="form-select" id="kit_component_{{ product.id }}" name="kit_component_product_id">
-                        <option value="">Selecione</option>
-                        {% for kit_product in kit_products %}
-                        {% if kit_product.id != product.id %}
-                        <option value="{{ kit_product.id }}" {% if product.kit_component_product_id == kit_product.id %}selected{% endif %}>{{ kit_product.name }}</option>
-                        {% endif %}
-                        {% endfor %}
-                      </select>
+                      <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode data-autocomplete-options-source="#kit-product-autocomplete-options">
+                        <input class="form-control" id="kit_component_{{ product.id }}" value="{{ product.kit_component.name if product.kit_component else '' }}" placeholder="Selecione" autocomplete="off" data-autocomplete-input>
+                        <input name="kit_component_product_id" type="hidden" value="{{ product.kit_component_product_id or '' }}" data-autocomplete-hidden>
+                        <div class="product-suggestion-list" data-autocomplete-list></div>
+                      </div>
                     </div>
                     <div class="kit-fields" id="kit-fields-{{ product.id }}-quantity">
                       <label class="form-label" for="kit_quantity_{{ product.id }}">Unidades descontadas</label>
@@ -281,4 +290,19 @@
     </table>
   </div>
 </div>
+
+{% if total_products %}
+<nav class="catalog-pagination" aria-label="Paginação de produtos">
+  <span>Exibindo {{ ((page - 1) * per_page) + 1 }}–{{ [page * per_page, total_products]|min }} de {{ total_products }} produtos</span>
+  <div class="catalog-pagination-actions">
+    {% if page > 1 %}
+    <a class="btn btn-outline-light btn-sm" href="{{ url_for('catalog.products', page=page - 1, **pagination_query) }}">Anterior</a>
+    {% endif %}
+    <strong>Página {{ page }} de {{ total_pages }}</strong>
+    {% if page < total_pages %}
+    <a class="btn btn-outline-light btn-sm" href="{{ url_for('catalog.products', page=page + 1, **pagination_query) }}">Próxima</a>
+    {% endif %}
+  </div>
+</nav>
+{% endif %}
 {% endblock %}

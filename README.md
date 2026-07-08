@@ -463,7 +463,9 @@ Regras importantes:
 - lucro por item considera custo, desconto do produto e taxas configuradas de Pix/débito/crédito;
 - erro de pagamento ou estoque não reseta o pedido;
 - atalho F2 abre/conclui a etapa de finalização;
-- atalho F3 abre desconto.
+- em Dashboard, Vendas e Caixa, `F3` abre a tela de registrar venda;
+- dentro da tela de registrar venda, `F3` continua abrindo o desconto;
+- o atalho global é ignorado enquanto o usuário digita em campos de formulário.
 
 ### Relatórios
 
@@ -484,7 +486,14 @@ O sistema permite:
 - ver ticket médio;
 - ver formas de pagamento;
 - ver produtos mais vendidos;
-- ver gráfico de colunas por período.
+- ver gráfico de colunas por período;
+- no relatório diário, alternar o gráfico entre faturamento e quantidade de vendas por hora;
+- identificar automaticamente o pico por quantidade e o pico por faturamento;
+- consultar no tooltip de cada hora a quantidade de vendas e o valor faturado.
+
+O relatório diário agrega as vendas no banco em 24 faixas de uma hora. A função
+`build_daily_sales_activity` devolve uma estrutura estável de buckets e picos, preparada
+para receber futuramente séries comparativas, como hoje x ontem e média dos últimos 7 dias.
 
 Períodos automáticos:
 
@@ -548,7 +557,8 @@ Regras importantes:
 Onde fica:
 
 - Código: `app/error_logging.py`
-- Arquivo: `logs/errors.log`
+- Erros e exceções: `logs/errors.log`
+- Eventos externos de segurança: `logs/security.log`
 
 O sistema registra:
 
@@ -562,6 +572,10 @@ O sistema registra:
 - usuário autenticado;
 - tempo da requisição;
 - `X-Request-ID`.
+
+Campos como senha, token, secret, API key e key de ativação são mascarados. Exceções
+não tratadas geram uma única entrada contextual com traceback. O botão `Limpar logs`
+do painel master limpa os dois arquivos.
 
 ## Banco de Dados MySQL
 

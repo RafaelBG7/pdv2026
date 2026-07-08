@@ -6,6 +6,7 @@ from xml.etree import ElementTree
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 
@@ -293,8 +294,14 @@ def products():
     min_price = parse_optional_money(request.args.get('min_price'))
     max_price = parse_optional_money(request.args.get('max_price'))
     sort = request.args.get('sort', 'name_asc')
+    page = request.args.get('page', 1, type=int) or 1
+    page = max(page, 1)
+    per_page = 20
 
-    query = tenant_query(Product)
+    query = tenant_query(Product).options(
+        joinedload(Product.category),
+        joinedload(Product.kit_component),
+    )
     if search:
         term = f'%{search}%'
         query = query.filter((Product.name.ilike(term)) | (Product.barcode.ilike(term)))
@@ -328,8 +335,19 @@ def products():
         'created_desc': Product.created_at.desc(),
     }
 
-    products = query.order_by(sort_options.get(sort, Product.name.asc())).all()
+    ordered_query = query.order_by(sort_options.get(sort, Product.name.asc()))
+    total_products = query.order_by(None).count()
+    total_pages = max((total_products + per_page - 1) // per_page, 1)
+    page = min(page, total_pages)
+    products = ordered_query.offset((page - 1) * per_page).limit(per_page).all()
+    product_suggestions = ordered_query.all()
     categories = current_company_categories_query().order_by(Category.name.asc()).all()
+    category_counts = dict(
+        tenant_session().query(Product.category_id, func.count(Product.id)).filter(
+            Product.company_id == current_tenant_company().id,
+            Product.category_id.is_not(None),
+        ).group_by(Product.category_id).all()
+    )
     kit_products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
     filters = {
         'search': search,
@@ -340,13 +358,20 @@ def products():
         'max_price': request.args.get('max_price', '').strip(),
         'sort': sort,
     }
+    pagination_query = {key: value for key, value in request.args.items() if key != 'page'}
     return render_template(
         'catalog/products.html',
         products=products,
-        product_suggestions=products,
+        product_suggestions=product_suggestions,
         categories=categories,
+        category_counts=category_counts,
         kit_products=kit_products,
         filters=filters,
+        page=page,
+        per_page=per_page,
+        total_products=total_products,
+        total_pages=total_pages,
+        pagination_query=pagination_query,
         can_import_products=can_import_products(),
         import_company=current_tenant_company(),
     )
@@ -603,6 +628,7 @@ def categories():
     }
     categories = query.order_by(sort_options.get(sort, Category.name.asc())).all()
     category_suggestions = [category for category, _product_count in categories]
+    category_counts = {category.id: count for category, count in categories}
     filters = {
         'search': search,
         'usage': usage,
@@ -613,6 +639,7 @@ def categories():
         'catalog/categories.html',
         categories=categories,
         category_suggestions=category_suggestions,
+        category_counts=category_counts,
         filters=filters,
     )
 

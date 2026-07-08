@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const permissionOverridePassword = document.getElementById('permissionOverridePassword');
   const permissionOverrideConfirm = document.querySelector('[data-permission-override-confirm]');
   const userMenu = document.querySelector('[data-user-menu]');
+  const globalNewSaleLink = document.querySelector('[data-global-new-sale]');
   let pendingPermissionForm = null;
   let pendingPermissionSubmitter = null;
 
@@ -30,6 +31,26 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   applyTheme(initialTheme);
+
+  if (globalNewSaleLink) {
+    document.addEventListener('keydown', function (event) {
+      const target = event.target;
+      const isEditing = target instanceof HTMLElement && (
+        target.matches('input, textarea, select') || target.isContentEditable
+      );
+      if (event.key !== 'F3' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || isEditing) {
+        return;
+      }
+
+      const destination = new URL(globalNewSaleLink.href, window.location.href);
+      if (window.location.pathname === destination.pathname) {
+        return;
+      }
+
+      event.preventDefault();
+      window.location.assign(destination.href);
+    });
+  }
 
   function setHiddenField(form, name, value) {
     let input = form.querySelector(`input[name="${name}"]`);
@@ -251,6 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const panel = searchArea.closest('[data-settings-panel]') || document;
     const cards = Array.from(panel.querySelectorAll('[data-employee-card]'));
     const emptyState = panel.querySelector('[data-employee-search-empty]');
+    let activeEmployeeIndex = 0;
 
     function normalizeSearch(value) {
       return String(value || '')
@@ -295,8 +317,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      if (!input.value.trim()) {
+        closeEmployeeSuggestions();
+        return;
+      }
+
       const matches = matchingCards().slice(0, 8);
       suggestionList.innerHTML = '';
+      activeEmployeeIndex = Math.min(activeEmployeeIndex, Math.max(matches.length - 1, 0));
 
       if (!matches.length) {
         const empty = document.createElement('div');
@@ -307,13 +335,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      matches.forEach(function (card) {
+      matches.forEach(function (card, index) {
         const button = document.createElement('button');
         const title = document.createElement('span');
         const meta = document.createElement('span');
 
         button.type = 'button';
         button.className = 'product-suggestion-item';
+        button.classList.toggle('is-active', index === activeEmployeeIndex);
         title.className = 'product-suggestion-title';
         meta.className = 'product-suggestion-meta';
         title.textContent = card.dataset.employeeName || 'Funcionário';
@@ -359,21 +388,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (input) {
       input.addEventListener('input', function () {
+        activeEmployeeIndex = 0;
         updateEmployeeList();
-        renderEmployeeSuggestions();
+        if (input.value.trim()) {
+          renderEmployeeSuggestions();
+        } else {
+          closeEmployeeSuggestions();
+        }
       });
-      input.addEventListener('focus', renderEmployeeSuggestions);
       input.addEventListener('blur', function () {
         setTimeout(closeEmployeeSuggestions, 120);
       });
       input.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter') {
-          const first = matchingCards()[0];
-          if (first) {
+        const matches = input.value.trim() ? matchingCards().slice(0, 8) : [];
+        if (event.key === 'ArrowDown' && matches.length) {
+          event.preventDefault();
+          activeEmployeeIndex = (activeEmployeeIndex + 1) % matches.length;
+          renderEmployeeSuggestions();
+        } else if (event.key === 'ArrowUp' && matches.length) {
+          event.preventDefault();
+          activeEmployeeIndex = (activeEmployeeIndex - 1 + matches.length) % matches.length;
+          renderEmployeeSuggestions();
+        } else if (event.key === 'Enter' && matches.length) {
+          const selected = matches[activeEmployeeIndex] || matches[0];
+          if (selected) {
             event.preventDefault();
-            openEmployeeCard(first);
+            input.value = selected.dataset.employeeName || input.value;
+            updateEmployeeList();
+            openEmployeeCard(selected);
             closeEmployeeSuggestions();
           }
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          closeEmployeeSuggestions();
+        }
+      });
+      document.addEventListener('mousedown', function (event) {
+        if (!searchArea.contains(event.target)) {
+          closeEmployeeSuggestions();
         }
       });
       updateEmployeeList();
@@ -503,7 +555,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const hiddenInput = autocomplete.querySelector('[data-autocomplete-hidden]');
     const list = autocomplete.querySelector('[data-autocomplete-list]');
     const idMode = autocomplete.hasAttribute('data-autocomplete-id-mode');
-    const options = Array.from(autocomplete.querySelectorAll('[data-autocomplete-option]')).map(function (option) {
+    const optionsSourceSelector = autocomplete.dataset.autocompleteOptionsSource;
+    const optionsSource = optionsSourceSelector ? document.querySelector(optionsSourceSelector) : autocomplete;
+    let activeOptionIndex = 0;
+    const options = Array.from((optionsSource || autocomplete).querySelectorAll('[data-autocomplete-option]')).map(function (option) {
       return {
         id: option.dataset.id || '',
         value: option.dataset.value || '',
@@ -515,7 +570,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function matchingOptions() {
       const term = normalizeSuggestionText(input.value);
       if (!term) {
-        return options.slice(0, 8);
+        return [];
       }
 
       return options.filter(function (option) {
@@ -544,9 +599,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderSuggestions() {
+      if (!input.value.trim()) {
+        list.classList.remove('is-open');
+        list.innerHTML = '';
+        return;
+      }
+
       const matches = matchingOptions();
       closeCatalogSuggestionLists(list);
       list.innerHTML = '';
+      activeOptionIndex = Math.min(activeOptionIndex, Math.max(matches.length - 1, 0));
 
       if (!matches.length) {
         const empty = document.createElement('div');
@@ -557,13 +619,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      matches.forEach(function (option) {
+      matches.forEach(function (option, index) {
         const button = document.createElement('button');
         const title = document.createElement('span');
         const meta = document.createElement('span');
 
         button.type = 'button';
         button.className = 'product-suggestion-item';
+        button.classList.toggle('is-active', index === activeOptionIndex);
         title.className = 'product-suggestion-title';
         meta.className = 'product-suggestion-meta';
         title.textContent = option.title;
@@ -584,10 +647,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     input.addEventListener('input', function () {
+      activeOptionIndex = 0;
       syncHiddenInput();
-      renderSuggestions();
+      if (input.value.trim()) {
+        renderSuggestions();
+      } else {
+        list.classList.remove('is-open');
+        list.innerHTML = '';
+      }
     });
-    input.addEventListener('focus', renderSuggestions);
     input.addEventListener('change', syncHiddenInput);
     input.addEventListener('blur', function () {
       setTimeout(function () {
@@ -595,14 +663,33 @@ document.addEventListener('DOMContentLoaded', function () {
       }, 120);
     });
     input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter' && list.classList.contains('is-open')) {
-        const first = matchingOptions()[0];
-        if (first) {
+      const matches = input.value.trim() ? matchingOptions() : [];
+      if (event.key === 'ArrowDown' && matches.length) {
+        event.preventDefault();
+        activeOptionIndex = (activeOptionIndex + 1) % matches.length;
+        renderSuggestions();
+      } else if (event.key === 'ArrowUp' && matches.length) {
+        event.preventDefault();
+        activeOptionIndex = (activeOptionIndex - 1 + matches.length) % matches.length;
+        renderSuggestions();
+      } else if (event.key === 'Enter' && list.classList.contains('is-open')) {
+        const selected = matches[activeOptionIndex] || matches[0];
+        if (selected) {
           event.preventDefault();
-          chooseOption(first);
+          chooseOption(selected);
         }
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        list.classList.remove('is-open');
+        list.innerHTML = '';
       }
     });
+  });
+
+  document.addEventListener('mousedown', function (event) {
+    if (!event.target.closest('[data-catalog-autocomplete]')) {
+      closeCatalogSuggestionLists();
+    }
   });
 
   function formatCurrencyInputValue(value) {
@@ -644,25 +731,44 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  document.querySelectorAll('[data-cash-register-toggle]').forEach(function (row) {
+    row.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        row.click();
+      }
+    });
+  });
+
   const saleForm = document.querySelector('[data-sale-form]');
   if (saleForm) {
     const saleItems = saleForm.querySelector('[data-sale-items]');
-    const firstRow = saleForm.querySelector('[data-sale-item-row]');
-    const addButton = saleForm.querySelector('[data-add-sale-item]');
+    const saleRowTemplate = saleForm.querySelector('[data-sale-row-template]');
+    const saleItemsEmpty = saleForm.querySelector('[data-sale-items-empty]');
+    const productPickerInput = saleForm.querySelector('[data-sale-picker-search]');
+    const productPickerList = saleForm.querySelector('[data-sale-picker-suggestion-list]');
+    const quantityModal = saleForm.querySelector('[data-sale-quantity-modal]');
+    const quantityProduct = saleForm.querySelector('[data-sale-quantity-product]');
+    const quantityMeta = saleForm.querySelector('[data-sale-quantity-meta]');
+    const quantityInput = saleForm.querySelector('[data-sale-quantity-input]');
+    const quantityCloseButton = saleForm.querySelector('[data-sale-quantity-close]');
+    const quantityAddButton = saleForm.querySelector('[data-sale-quantity-add]');
     const totalTarget = saleForm.querySelector('[data-sale-total]');
     const paymentStepTotalTarget = saleForm.querySelector('[data-payment-step-total]');
     const subtotalTarget = saleForm.querySelector('[data-sale-subtotal]');
-    const discountLabel = saleForm.querySelector('[data-sale-discount-label]');
+    const discountLabels = Array.from(saleForm.querySelectorAll('[data-sale-discount-label]'));
     const paidTarget = saleForm.querySelector('[data-paid-total]');
     const missingTarget = saleForm.querySelector('[data-missing-total]');
     const changeTarget = saleForm.querySelector('[data-change-total]');
     const discountInput = saleForm.querySelector('[data-discount-input]');
-    const discountOpenButton = saleForm.querySelector('[data-discount-open]');
+    const discountOpenButtons = Array.from(saleForm.querySelectorAll('[data-discount-open]'));
     const discountModal = saleForm.querySelector('[data-discount-modal]');
     const discountModalInput = saleForm.querySelector('[data-discount-modal-input]');
     const discountCloseButton = saleForm.querySelector('[data-discount-close]');
     const discountApplyButton = saleForm.querySelector('[data-discount-apply]');
     const discountPercent = saleForm.querySelector('[data-discount-percent]');
+    const discountSubtotal = saleForm.querySelector('[data-discount-subtotal]');
+    const discountNewTotal = saleForm.querySelector('[data-discount-new-total]');
     const paymentStep = saleForm.querySelector('[data-payment-step]');
     const openPaymentStepButton = saleForm.querySelector('[data-open-payment-step]');
     const closePaymentStepButton = saleForm.querySelector('[data-close-payment-step]');
@@ -671,10 +777,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let autoPaymentInput = null;
     let autoPaymentValue = '';
     let isAutofillingPayment = false;
+    let pendingProduct = null;
+    let activeProductIndex = 0;
     const productSuggestions = Array.from(document.querySelectorAll('#sale-product-suggestions option')).map(function (option) {
       return {
         id: option.dataset.id,
         name: option.value,
+        barcode: option.dataset.barcode || '',
         price: Number.parseFloat(option.dataset.price || '0'),
         stock: Number.parseInt(option.dataset.stock || '0', 10),
       };
@@ -715,16 +824,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function selectedProductOption(row) {
-      const searchInput = row.querySelector('[data-product-search]');
+      const productId = row.querySelector('[data-product-id]').value;
       return productSuggestions.find(function (option) {
-        return option.name === searchInput.value;
+        return option.id === productId;
       });
     }
 
     function syncProductId(row) {
       const productOption = selectedProductOption(row);
       const productIdInput = row.querySelector('[data-product-id]');
-      productIdInput.value = productOption ? productOption.id : '';
+      if (!productOption) {
+        productIdInput.value = '';
+      }
     }
 
     function normalizeSearch(value) {
@@ -737,43 +848,40 @@ document.addEventListener('DOMContentLoaded', function () {
     function matchingProducts(term) {
       const normalizedTerm = normalizeSearch(term);
       if (!normalizedTerm) {
-        return productSuggestions.slice(0, 8);
+        return [];
       }
 
       return productSuggestions.filter(function (product) {
-        return normalizeSearch(product.name).includes(normalizedTerm);
+        return normalizeSearch(product.name).includes(normalizedTerm)
+          || normalizeSearch(product.barcode).includes(normalizedTerm)
+          || product.id === normalizedTerm;
+      }).sort(function (left, right) {
+        const leftExact = normalizeSearch(left.name) === normalizedTerm
+          || normalizeSearch(left.barcode) === normalizedTerm
+          || left.id === normalizedTerm;
+        const rightExact = normalizeSearch(right.name) === normalizedTerm
+          || normalizeSearch(right.barcode) === normalizedTerm
+          || right.id === normalizedTerm;
+        return Number(rightExact) - Number(leftExact);
       }).slice(0, 8);
     }
 
-    function closeSuggestionLists(exceptList) {
-      saleForm.querySelectorAll('[data-product-suggestion-list]').forEach(function (list) {
-        if (list !== exceptList) {
-          list.classList.remove('is-open');
-          list.innerHTML = '';
-        }
-      });
+    function closeSuggestionLists() {
+      if (productPickerList) {
+        productPickerList.classList.remove('is-open');
+        productPickerList.innerHTML = '';
+      }
     }
 
-    function chooseProduct(row, product) {
+    function setRowProduct(row, product, quantity) {
       row.querySelector('[data-product-search]').value = product.name;
       row.querySelector('[data-product-id]').value = product.id;
-      const list = row.querySelector('[data-product-suggestion-list]');
-      list.classList.remove('is-open');
-      list.innerHTML = '';
-      updateSaleTotals();
-    }
-
-    function firstMatchingProduct(row) {
-      const input = row.querySelector('[data-product-search]');
-      const exactMatch = selectedProductOption(row);
-      return exactMatch || matchingProducts(input.value)[0] || null;
+      row.querySelector('[data-quantity-input]').value = String(quantity || 1);
     }
 
     function clearSaleRow(row) {
       row.querySelector('[data-product-search]').value = '';
       row.querySelector('[data-product-id]').value = '';
-      row.querySelector('[data-product-suggestion-list]').innerHTML = '';
-      row.querySelector('[data-product-suggestion-list]').classList.remove('is-open');
       row.querySelector('[data-quantity-input]').value = '1';
       row.querySelector('[data-unit-price]').value = formatCurrency(0);
       row.querySelector('[data-stock-available]').value = '0 un.';
@@ -781,58 +889,41 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function createSaleRow() {
-      const row = firstRow.cloneNode(true);
+      const row = saleRowTemplate.content.firstElementChild.cloneNode(true);
       clearSaleRow(row);
       saleItems.appendChild(row);
       bindSaleRow(row);
       return row;
     }
 
-    function focusProductSearch(row) {
-      const input = row.querySelector('[data-product-search]');
-      input.focus();
-      input.select();
+    function focusProductSearch() {
+      if (productPickerInput) {
+        productPickerInput.focus();
+        productPickerInput.select();
+      }
     }
 
-    function registerCurrentRow(row) {
-      const product = firstMatchingProduct(row);
-      const quantityInput = row.querySelector('[data-quantity-input]');
-      const quantity = Number.parseInt(quantityInput.value || '0', 10);
-
-      if (!product) {
-        renderProductSuggestions(row);
-        row.querySelector('[data-product-search]').focus();
+    function renderProductSuggestions() {
+      if (!productPickerInput.value.trim()) {
+        closeSuggestionLists();
         return;
       }
 
-      if (!quantity || quantity < 1) {
-        quantityInput.value = '1';
-      }
+      const products = matchingProducts(productPickerInput.value);
 
-      chooseProduct(row, product);
-      const nextRow = createSaleRow();
-      updateSaleTotals();
-      focusProductSearch(nextRow);
-    }
-
-    function renderProductSuggestions(row) {
-      const input = row.querySelector('[data-product-search]');
-      const list = row.querySelector('[data-product-suggestion-list]');
-      const products = matchingProducts(input.value);
-
-      closeSuggestionLists(list);
-      list.innerHTML = '';
+      productPickerList.innerHTML = '';
+      activeProductIndex = Math.min(activeProductIndex, Math.max(products.length - 1, 0));
 
       if (!products.length) {
         const empty = document.createElement('div');
         empty.className = 'product-suggestion-empty';
         empty.textContent = 'Nenhum produto encontrado';
-        list.appendChild(empty);
-        list.classList.add('is-open');
+        productPickerList.appendChild(empty);
+        productPickerList.classList.add('is-open');
         return;
       }
 
-      products.forEach(function (product) {
+      products.forEach(function (product, index) {
         const button = document.createElement('button');
         const title = document.createElement('span');
         const meta = document.createElement('span');
@@ -842,18 +933,77 @@ document.addEventListener('DOMContentLoaded', function () {
         title.className = 'product-suggestion-title';
         meta.className = 'product-suggestion-meta';
         title.textContent = product.name;
-        meta.textContent = `${formatCurrency(product.price)} · estoque ${Number.isFinite(product.stock) ? product.stock : 0} un.`;
+        const barcodeLabel = product.barcode ? ` · código ${product.barcode}` : '';
+        meta.textContent = `${formatCurrency(product.price)}${barcodeLabel} · estoque ${Number.isFinite(product.stock) ? product.stock : 0} un.`;
+        button.classList.toggle('is-active', index === activeProductIndex);
 
         button.appendChild(title);
         button.appendChild(meta);
         button.addEventListener('mousedown', function (event) {
           event.preventDefault();
-          chooseProduct(row, product);
+          openQuantityModal(product);
         });
-        list.appendChild(button);
+        productPickerList.appendChild(button);
       });
 
-      list.classList.add('is-open');
+      productPickerList.classList.add('is-open');
+    }
+
+    function openQuantityModal(product) {
+      if (!quantityModal || !quantityInput || !product) {
+        return;
+      }
+
+      pendingProduct = product;
+      quantityProduct.textContent = product.name;
+      quantityMeta.textContent = `${formatCurrency(product.price)} · estoque ${Number.isFinite(product.stock) ? product.stock : 0} un.`;
+      quantityInput.value = '1';
+      closeSuggestionLists();
+      quantityModal.classList.add('is-open');
+      quantityModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('sale-quantity-open');
+      setTimeout(function () {
+        quantityInput.focus();
+        quantityInput.select();
+      }, 0);
+    }
+
+    function closeQuantityModal() {
+      if (!quantityModal) {
+        return;
+      }
+
+      quantityModal.classList.remove('is-open');
+      quantityModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('sale-quantity-open');
+      pendingProduct = null;
+      focusProductSearch();
+    }
+
+    function addPendingProduct() {
+      const quantity = Number.parseInt(quantityInput.value || '1', 10);
+      if (!pendingProduct || !Number.isFinite(quantity) || quantity < 1) {
+        quantityInput.value = '1';
+        quantityInput.focus();
+        quantityInput.select();
+        return;
+      }
+
+      const existingRow = Array.from(saleForm.querySelectorAll('[data-sale-item-row]')).find(function (row) {
+        return row.querySelector('[data-product-id]').value === pendingProduct.id;
+      });
+
+      if (existingRow) {
+        const existingQuantity = Number.parseInt(existingRow.querySelector('[data-quantity-input]').value || '0', 10);
+        existingRow.querySelector('[data-quantity-input]').value = String(Math.max(existingQuantity || 0, 0) + quantity);
+      } else {
+        const row = createSaleRow();
+        setRowProduct(row, pendingProduct, quantity);
+      }
+
+      productPickerInput.value = '';
+      updateSaleTotals();
+      closeQuantityModal();
     }
 
     function updateSaleTotals() {
@@ -865,13 +1015,24 @@ document.addEventListener('DOMContentLoaded', function () {
         const stock = productOption ? productOption.stock : 0;
         const unitPriceInput = row.querySelector('[data-unit-price]');
         const stockInput = row.querySelector('[data-stock-available]');
+        const stockWarning = row.querySelector('[data-stock-warning]');
+        const quantity = Number.parseInt(row.querySelector('[data-quantity-input]').value || '0', 10);
         const totalInput = row.querySelector('[data-line-total]');
         const lineTotal = rowTotal(row);
+        const insufficientStock = Boolean(productOption && Math.max(quantity || 0, 0) > stock);
         subtotal += lineTotal;
         unitPriceInput.value = formatCurrency(price);
         stockInput.value = `${Number.isFinite(stock) ? stock : 0} un.`;
         totalInput.value = formatCurrency(lineTotal);
+        row.classList.toggle('has-stock-warning', insufficientStock);
+        if (stockWarning) {
+          stockWarning.classList.toggle('is-visible', insufficientStock);
+        }
       });
+
+      if (saleItemsEmpty) {
+        saleItemsEmpty.classList.toggle('is-hidden', Boolean(saleForm.querySelector('[data-sale-item-row]')));
+      }
 
       const discount = Math.min(parseCurrency(discountInput ? discountInput.value : '0'), subtotal);
       const discountRate = subtotal > 0 ? (discount / subtotal) * 100 : 0;
@@ -888,9 +1049,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (subtotalTarget) {
         subtotalTarget.textContent = formatCurrency(subtotal);
       }
-      if (discountLabel) {
-        discountLabel.textContent = `${formatCurrency(discount)} (${formatPercent(discountRate)})`;
-      }
+      discountLabels.forEach(function (label) {
+        label.textContent = `${formatCurrency(discount)} (${formatPercent(discountRate)})`;
+      });
       if (discountPercent) {
         discountPercent.textContent = `${formatPercent(discountRate)} de desconto`;
       }
@@ -903,15 +1064,45 @@ document.addEventListener('DOMContentLoaded', function () {
       changeTarget.textContent = formatCurrency(change);
     }
 
+    function currentSubtotalAmount() {
+      return Array.from(saleForm.querySelectorAll('[data-sale-item-row]')).reduce(function (sum, row) {
+        return sum + rowTotal(row);
+      }, 0);
+    }
+
+    function updateDiscountPreview() {
+      const subtotal = currentSubtotalAmount();
+      const requestedDiscount = parseCurrency(discountModalInput ? discountModalInput.value : '0');
+      const discount = Math.min(requestedDiscount, subtotal);
+      const discountRate = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+
+      if (discountSubtotal) {
+        discountSubtotal.textContent = formatCurrency(subtotal);
+      }
+      if (discountNewTotal) {
+        discountNewTotal.textContent = formatCurrency(Math.max(subtotal - discount, 0));
+      }
+      if (discountPercent) {
+        discountPercent.textContent = requestedDiscount > subtotal
+          ? `O desconto máximo é ${formatCurrency(subtotal)}`
+          : `${formatPercent(discountRate)} de desconto`;
+      }
+    }
+
     function openDiscountModal() {
       if (!discountModal || !discountModalInput) {
         return;
       }
 
+      if (quantityModal && quantityModal.classList.contains('is-open')) {
+        closeQuantityModal();
+      }
+
       discountModalInput.value = discountInput ? discountInput.value : '0,00';
       discountModal.classList.add('is-open');
       discountModal.setAttribute('aria-hidden', 'false');
-      updateSaleTotals();
+      document.body.classList.add('sale-discount-open');
+      updateDiscountPreview();
       setTimeout(function () {
         discountModalInput.focus();
         discountModalInput.select();
@@ -925,11 +1116,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
       discountModal.classList.remove('is-open');
       discountModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('sale-discount-open');
     }
 
     function applyDiscount() {
       if (discountInput && discountModalInput) {
-        discountInput.value = discountModalInput.value;
+        const subtotal = currentSubtotalAmount();
+        const discount = parseCurrency(discountModalInput.value);
+        if (discount > subtotal) {
+          updateDiscountPreview();
+          discountModalInput.focus();
+          discountModalInput.select();
+          return;
+        }
+        discountInput.value = formatCurrencyField(discount);
+        if (autoPaymentInput && autoPaymentInput.value === autoPaymentValue) {
+          const remaining = Math.max(currentOrderTotal() - paidAmountExcluding(autoPaymentInput), 0);
+          autoPaymentInput.value = formatCurrencyField(remaining);
+          autoPaymentValue = autoPaymentInput.value;
+        }
       }
       updateSaleTotals();
       closeDiscountModal();
@@ -947,6 +1152,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function currentPaidAmount() {
       return paymentInputs.reduce(function (sum, input) {
+        return sum + parseCurrency(input.value);
+      }, 0);
+    }
+
+    function paidAmountExcluding(excludedInput) {
+      return paymentInputs.reduce(function (sum, input) {
+        if (input === excludedInput) {
+          return sum;
+        }
         return sum + parseCurrency(input.value);
       }, 0);
     }
@@ -983,16 +1197,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const invalidRow = firstInvalidSaleRow();
       if (invalidRow) {
-        renderProductSuggestions(invalidRow);
-        focusProductSearch(invalidRow);
+        focusProductSearch();
         return false;
       }
 
       if (!Array.from(saleForm.querySelectorAll('[data-product-id]')).some(function (input) { return Boolean(input.value); })) {
-        const firstProductInput = saleForm.querySelector('[data-product-search]');
-        if (firstProductInput) {
-          firstProductInput.focus();
-        }
+        focusProductSearch();
         return false;
       }
 
@@ -1020,15 +1230,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (autoPaymentInput && autoPaymentInput !== input && autoPaymentInput.value === autoPaymentValue) {
         autoPaymentInput.value = formatCurrencyField(0);
+        autoPaymentInput = null;
+        autoPaymentValue = '';
       }
 
       if (input !== autoPaymentInput && parseCurrency(input.value) > 0) {
         updateSaleTotals();
+        input.select();
         return;
       }
 
+      const remaining = Math.max(total - paidAmountExcluding(input), 0);
       isAutofillingPayment = true;
-      input.value = formatCurrencyField(total);
+      input.value = formatCurrencyField(remaining);
       autoPaymentInput = input;
       autoPaymentValue = input.value;
       isAutofillingPayment = false;
@@ -1041,7 +1255,13 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      if (quantityModal && quantityModal.classList.contains('is-open')) {
+        closeQuantityModal();
+      }
+
       paymentStep.classList.add('is-open');
+      paymentStep.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('sale-payment-open');
       updateSaleTotals();
       setTimeout(function () {
         if (paymentInputs[0]) {
@@ -1053,6 +1273,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function closePaymentStep() {
       if (paymentStep) {
         paymentStep.classList.remove('is-open');
+        paymentStep.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('sale-payment-open');
       }
     }
 
@@ -1078,42 +1300,80 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function bindSaleRow(row) {
-      row.querySelector('[data-product-search]').addEventListener('input', function () {
-        syncProductId(row);
-        renderProductSuggestions(row);
-        updateSaleTotals();
-      });
-      row.querySelector('[data-product-search]').addEventListener('focus', function () {
-        renderProductSuggestions(row);
-      });
-      row.querySelector('[data-product-search]').addEventListener('blur', function () {
-        setTimeout(function () {
-          row.querySelector('[data-product-suggestion-list]').classList.remove('is-open');
-        }, 120);
-      });
-      row.querySelector('[data-product-search]').addEventListener('change', updateSaleTotals);
       row.querySelector('[data-quantity-input]').addEventListener('input', updateSaleTotals);
-      row.querySelector('[data-product-search]').addEventListener('keydown', function (event) {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          registerCurrentRow(row);
-        }
-      });
       row.querySelector('[data-quantity-input]').addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
           event.preventDefault();
-          registerCurrentRow(row);
+          updateSaleTotals();
+          focusProductSearch();
         }
       });
       row.querySelector('[data-remove-sale-item]').addEventListener('click', function () {
-        if (saleForm.querySelectorAll('[data-sale-item-row]').length > 1) {
-          row.remove();
-          updateSaleTotals();
+        row.remove();
+        updateSaleTotals();
+        focusProductSearch();
+      });
+    }
+
+    saleForm.querySelectorAll('[data-sale-item-row]').forEach(bindSaleRow);
+    if (productPickerInput && productPickerList) {
+      productPickerInput.addEventListener('input', function () {
+        activeProductIndex = 0;
+        if (productPickerInput.value.trim()) {
+          renderProductSuggestions();
+        } else {
+          closeSuggestionLists();
+        }
+      });
+      productPickerInput.addEventListener('blur', function () {
+        setTimeout(closeSuggestionLists, 120);
+      });
+      productPickerInput.addEventListener('keydown', function (event) {
+        const products = matchingProducts(productPickerInput.value);
+
+        if (event.key === 'ArrowDown' && products.length) {
+          event.preventDefault();
+          activeProductIndex = (activeProductIndex + 1) % products.length;
+          renderProductSuggestions();
+        } else if (event.key === 'ArrowUp' && products.length) {
+          event.preventDefault();
+          activeProductIndex = (activeProductIndex - 1 + products.length) % products.length;
+          renderProductSuggestions();
+        } else if (event.key === 'Enter' && products.length) {
+          event.preventDefault();
+          openQuantityModal(products[activeProductIndex] || products[0]);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          closeSuggestionLists();
         }
       });
     }
 
-    bindSaleRow(firstRow);
+    if (quantityInput) {
+      quantityInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          addPendingProduct();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          closeQuantityModal();
+        }
+      });
+    }
+    if (quantityAddButton) {
+      quantityAddButton.addEventListener('click', addPendingProduct);
+    }
+    if (quantityCloseButton) {
+      quantityCloseButton.addEventListener('click', closeQuantityModal);
+    }
+    if (quantityModal) {
+      quantityModal.addEventListener('mousedown', function (event) {
+        if (event.target === quantityModal) {
+          closeQuantityModal();
+        }
+      });
+    }
+
     paymentInputs.forEach(function (input) {
       input.addEventListener('input', function () {
         if (!isAutofillingPayment && input === autoPaymentInput) {
@@ -1153,13 +1413,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (discountModalInput) {
-      discountModalInput.addEventListener('input', function () {
-        if (discountInput) {
-          discountInput.value = discountModalInput.value;
-        }
-        updateSaleTotals();
-      });
-      discountModalInput.addEventListener('currencychange', updateSaleTotals);
+      discountModalInput.addEventListener('input', updateDiscountPreview);
+      discountModalInput.addEventListener('currencychange', updateDiscountPreview);
       discountModalInput.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
           event.preventDefault();
@@ -1168,9 +1423,9 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    if (discountOpenButton) {
-      discountOpenButton.addEventListener('click', openDiscountModal);
-    }
+    discountOpenButtons.forEach(function (button) {
+      button.addEventListener('click', openDiscountModal);
+    });
 
     if (discountCloseButton) {
       discountCloseButton.addEventListener('click', closeDiscountModal);
@@ -1223,20 +1478,27 @@ document.addEventListener('DOMContentLoaded', function () {
         openDiscountModal();
       }
 
-      if (event.key === 'Escape' && discountModal && discountModal.classList.contains('is-open')) {
-        closeDiscountModal();
+      if (event.key === 'Escape') {
+        if (quantityModal && quantityModal.classList.contains('is-open')) {
+          closeQuantityModal();
+        } else if (discountModal && discountModal.classList.contains('is-open')) {
+          closeDiscountModal();
+        } else if (paymentStep && paymentStep.classList.contains('is-open')) {
+          closePaymentStep();
+        }
       }
     }, true);
 
-    addButton.addEventListener('click', function () {
-      const row = createSaleRow();
-      focusProductSearch(row);
-    });
-
     updateSaleTotals();
+    focusProductSearch();
+    if (paymentStep && paymentStep.classList.contains('is-open')) {
+      paymentStep.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('sale-payment-open');
+    }
 
     document.addEventListener('mousedown', function (event) {
-      if (!saleForm.contains(event.target)) {
+      const productPicker = saleForm.querySelector('[data-sale-product-picker]');
+      if (!productPicker || !productPicker.contains(event.target)) {
         closeSuggestionLists();
       }
     });
@@ -1281,4 +1543,58 @@ document.addEventListener('DOMContentLoaded', function () {
       periodInput.addEventListener('change', applyReportDates);
     }
   }
+
+  document.querySelectorAll('.report-chart').forEach(function (chart) {
+    const tooltip = chart.querySelector('[data-report-chart-tooltip]');
+    const columns = Array.from(chart.querySelectorAll('[data-chart-label]'));
+    if (!tooltip || !columns.length) {
+      return;
+    }
+
+    function showChartTooltip(column) {
+      tooltip.innerHTML = '';
+      const label = document.createElement('strong');
+      label.textContent = column.dataset.chartLabel || '-';
+      tooltip.appendChild(label);
+
+      if (column.dataset.chartCount !== undefined) {
+        const count = document.createElement('span');
+        const revenue = document.createElement('span');
+        count.textContent = `Vendas: ${column.dataset.chartCount || '0'}`;
+        revenue.textContent = `Faturamento: ${column.dataset.chartValue || 'R$ 0,00'}`;
+        tooltip.appendChild(count);
+        tooltip.appendChild(revenue);
+
+        if (column.dataset.chartPeak === 'true') {
+          const peak = document.createElement('span');
+          peak.className = 'report-chart-tooltip-peak';
+          peak.textContent = 'Horário de pico';
+          tooltip.appendChild(peak);
+        }
+      } else {
+        const value = document.createElement('span');
+        value.textContent = `Total vendido: ${column.dataset.chartValue || 'R$ 0,00'}`;
+        tooltip.appendChild(value);
+      }
+      tooltip.classList.add('is-visible');
+
+      const chartRect = chart.getBoundingClientRect();
+      const columnRect = column.getBoundingClientRect();
+      const tooltipWidth = tooltip.offsetWidth;
+      const preferredLeft = columnRect.left - chartRect.left + (columnRect.width / 2) - (tooltipWidth / 2);
+      const maximumLeft = Math.max(chart.clientWidth - tooltipWidth - 8, 8);
+      tooltip.style.left = `${Math.min(Math.max(preferredLeft, 8), maximumLeft)}px`;
+    }
+
+    function hideChartTooltip() {
+      tooltip.classList.remove('is-visible');
+    }
+
+    columns.forEach(function (column) {
+      column.addEventListener('mouseenter', function () { showChartTooltip(column); });
+      column.addEventListener('focus', function () { showChartTooltip(column); });
+      column.addEventListener('mouseleave', hideChartTooltip);
+      column.addEventListener('blur', hideChartTooltip);
+    });
+  });
 });

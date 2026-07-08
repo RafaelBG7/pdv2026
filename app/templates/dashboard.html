@@ -7,9 +7,8 @@
     <p class="text-muted mb-0">Visão rápida da operação de hoje.</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
-    {% if open_cash_register %}
-    <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
-    {% else %}
+    <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}" data-global-new-sale>Realizar Venda - F3</a>
+    {% if not open_cash_register %}
     <a class="btn btn-primary" href="{{ url_for('main.cash_register') }}">Abrir caixa</a>
     {% endif %}
   </div>

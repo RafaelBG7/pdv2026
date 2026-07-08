@@ -9,6 +9,8 @@ from app import create_app
 from app.extensions import db
 from app.models import ActivationKey, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, User
 from sqlalchemy.exc import SQLAlchemyError
+from app import tenant as tenant_module
+from app.services import alert_service
 
 
 class TestConfig:
@@ -54,10 +56,19 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Girofy'.encode(), response.data)
+        self.assertNotIn('Gestão que faz girar o seu negócio'.encode(), response.data)
+        self.assertNotIn('Sistema PDV Local'.encode(), response.data)
         self.assertIn('Entrar'.encode(), response.data)
         self.assertIn('Cadastrar'.encode(), response.data)
         self.assertNotIn('Key de ativação'.encode(), response.data)
         self.assertNotIn('Não tenho key'.encode(), response.data)
+
+    def test_browser_default_favicon_route_loads(self):
+        response = self.client.get('/favicon.ico')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'image/png')
+        response.close()
 
     def test_register_creates_user_but_requires_subscription(self):
         response = self.client.post(
@@ -1189,15 +1200,36 @@ class RouteTestCase(unittest.TestCase):
         response = self.login()
 
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.location.endswith('/master/adegas'))
+        self.assertTrue(response.location.endswith('/master'))
 
     def test_valid_login_loads_company_panel_when_following_redirects(self):
         response = self.login(follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Painel master'.encode(), response.data)
-        self.assertIn('Gerencie, acesse e acompanhe as adegas cadastradas.'.encode(), response.data)
+        self.assertIn('Visão geral'.encode(), response.data)
+        self.assertIn('Acompanhe a operação da plataforma em um só lugar.'.encode(), response.data)
         self.assertIn('master'.encode(), response.data)
+
+    def test_master_areas_are_available_on_separate_pages(self):
+        self.login()
+
+        expectations = {
+            '/master': 'Visão geral',
+            '/master/adegas': 'Gerencie, acesse e acompanhe as adegas cadastradas.',
+            '/master/usuarios': 'Consulte os usuários',
+            '/master/assinaturas': 'Assinaturas e keys',
+            '/master/logs': 'Investigue falhas e avisos',
+        }
+        for route, expected_text in expectations.items():
+            with self.subTest(route=route):
+                response = self.client.get(route)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(expected_text.encode(), response.data)
+
+        companies_response = self.client.get('/master/adegas')
+        self.assertNotIn('Gerar key'.encode(), companies_response.data)
+        self.assertNotIn('Limpar logs'.encode(), companies_response.data)
 
     def test_low_stock_notification_appears_for_authenticated_user(self):
         self.login()
@@ -1415,7 +1447,7 @@ class RouteTestCase(unittest.TestCase):
         response = self.login(username='master@example.com', password='master123')
 
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.location.endswith('/master/adegas'))
+        self.assertTrue(response.location.endswith('/master'))
 
     def test_unverified_email_blocks_login_and_allows_confirmation(self):
         with self.app.app_context():
@@ -1500,7 +1532,7 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.get('/login')
 
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.location.endswith('/master/adegas'))
+        self.assertTrue(response.location.endswith('/master'))
 
     def test_logout_redirects_to_login(self):
         self.login()
@@ -1528,24 +1560,26 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_404_is_written_to_error_log_with_request_context(self):
+    def test_anonymous_404_is_written_to_security_log_with_request_context(self):
         response = self.client.get('/rota-inexistente?origem=teste')
 
         self.assertEqual(response.status_code, 404)
 
-        log_path = Path(self.app.config['LOG_DIR']) / 'errors.log'
-        log_content = log_path.read_text(encoding='utf-8')
+        error_log_path = Path(self.app.config['LOG_DIR']) / 'errors.log'
+        security_log_path = Path(self.app.config['LOG_DIR']) / 'security.log'
+        security_log_content = security_log_path.read_text(encoding='utf-8')
 
-        self.assertIn('Erro HTTP 404', log_content)
-        self.assertIn('/rota-inexistente', log_content)
-        self.assertIn('origem', log_content)
+        self.assertNotIn('/rota-inexistente', error_log_path.read_text(encoding='utf-8'))
+        self.assertIn('Rota externa não encontrada', security_log_content)
+        self.assertIn('/rota-inexistente', security_log_content)
+        self.assertIn('origem', security_log_content)
         self.assertIn('X-Request-ID', response.headers)
 
     def test_master_panel_shows_recent_error_logs(self):
-        self.client.get('/rota-inexistente?origem=painel-master')
         self.login()
+        self.client.get('/rota-inexistente?origem=painel-master')
 
-        response = self.client.get('/master/adegas')
+        response = self.client.get('/master/logs')
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Logs recentes'.encode(), response.data)
@@ -1553,6 +1587,44 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('/rota-inexistente'.encode(), response.data)
         self.assertIn('Request ID'.encode(), response.data)
         self.assertIn('Limpar logs'.encode(), response.data)
+
+    def test_error_log_redacts_sensitive_query_and_form_values(self):
+        self.login()
+
+        response = self.client.post(
+            '/rota-inexistente?token=query-secret&safe=visible-query',
+            data={
+                'password': 'form-secret',
+                'apiKey': 'api-secret',
+                'name': 'visible-form',
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
+        log_content = (Path(self.app.config['LOG_DIR']) / 'errors.log').read_text(encoding='utf-8')
+        self.assertNotIn('query-secret', log_content)
+        self.assertNotIn('form-secret', log_content)
+        self.assertNotIn('api-secret', log_content)
+        self.assertIn('visible-query', log_content)
+        self.assertIn('visible-form', log_content)
+        self.assertIn('[protegido]', log_content)
+
+    def test_unhandled_exception_is_logged_once_with_request_id(self):
+        self.app.config['PROPAGATE_EXCEPTIONS'] = False
+
+        @self.app.get('/__test_unhandled_error')
+        def test_unhandled_error():
+            raise RuntimeError('falha controlada para teste')
+
+        response = self.client.get('/__test_unhandled_error')
+
+        self.assertEqual(response.status_code, 500)
+        self.assertIn('X-Request-ID', response.headers)
+        self.assertIn(response.headers['X-Request-ID'].encode(), response.data)
+        log_content = (Path(self.app.config['LOG_DIR']) / 'errors.log').read_text(encoding='utf-8')
+        self.assertEqual(log_content.count('Falha não tratada: falha controlada para teste'), 1)
+        self.assertNotIn('Exception on /__test_unhandled_error', log_content)
+        self.assertIn(response.headers['X-Request-ID'], log_content)
 
     def test_master_panel_does_not_fail_when_tenant_stats_are_temporarily_locked(self):
         self.login()
@@ -1562,19 +1634,49 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Painel master'.encode(), response.data)
-        self.assertIn('Assinaturas e keys'.encode(), response.data)
+        self.assertIn('Adegas'.encode(), response.data)
+
+    def test_tenant_reference_data_is_not_resynced_on_every_request(self):
+        cache_key = 'mysql:test-reference-cache'
+        company = type('CompanyStub', (), {'id': 999, 'database_path': 'test_reference_cache'})()
+        engine = object()
+        tenant_module._reference_sync_times.pop(cache_key, None)
+        tenant_module._reference_sync_locks.pop(cache_key, None)
+
+        try:
+            with patch('app.tenant.sync_tenant_reference_data') as sync_reference_data:
+                tenant_module.ensure_tenant_reference_data(company, engine, cache_key)
+                tenant_module.ensure_tenant_reference_data(company, engine, cache_key)
+
+            self.assertEqual(sync_reference_data.call_count, 1)
+        finally:
+            tenant_module._reference_sync_times.pop(cache_key, None)
+            tenant_module._reference_sync_locks.pop(cache_key, None)
+
+    def test_email_alert_checks_are_throttled_per_company(self):
+        company_id = 999
+        alert_service._email_alert_check_times.pop(company_id, None)
+
+        try:
+            self.assertTrue(alert_service.claim_email_alert_check(company_id, interval_seconds=60))
+            self.assertFalse(alert_service.claim_email_alert_check(company_id, interval_seconds=60))
+        finally:
+            alert_service._email_alert_check_times.pop(company_id, None)
 
     def test_master_can_clear_error_logs(self):
+        self.login()
         self.client.get('/rota-inexistente?origem=limpar')
         log_path = Path(self.app.config['LOG_DIR']) / 'errors.log'
+        security_log_path = Path(self.app.config['LOG_DIR']) / 'security.log'
         self.assertIn('Erro HTTP 404', log_path.read_text(encoding='utf-8'))
+        security_log_path.write_text('evento de segurança\n', encoding='utf-8')
 
-        self.login()
         response = self.client.post('/master/logs/limpar', follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Logs limpos com sucesso.'.encode(), response.data)
         self.assertEqual(log_path.read_text(encoding='utf-8'), '')
+        self.assertEqual(security_log_path.read_text(encoding='utf-8'), '')
 
     def test_non_master_cannot_clear_error_logs(self):
         with self.app.app_context():
@@ -1883,6 +1985,41 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('Importar planilha'.encode(), response.data)
         self.assertIn('Lucro R$ 4,00'.encode(), response.data)
         self.assertIn('40,00%'.encode(), response.data)
+
+    def test_product_list_is_paginated_and_reuses_kit_options(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            db.session.add_all([
+                Product(
+                    name=f'Produto {index:03d}',
+                    sale_price=float(index),
+                    stock_quantity=10,
+                    active=True,
+                    company_id=company_id,
+                )
+                for index in range(1, 46)
+            ])
+            db.session.commit()
+
+        first_page = self.client.get('/catalogo/produtos')
+        second_page = self.client.get('/catalogo/produtos?page=2')
+        third_page = self.client.get('/catalogo/produtos?page=3')
+
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual(second_page.status_code, 200)
+        self.assertEqual(third_page.status_code, 200)
+        self.assertEqual(first_page.data.count(b'class="product-summary-row"'), 20)
+        self.assertEqual(second_page.data.count(b'class="product-summary-row"'), 20)
+        self.assertEqual(third_page.data.count(b'class="product-summary-row"'), 5)
+        self.assertIn('Exibindo 1'.encode(), first_page.data)
+        self.assertIn('de 45 produtos'.encode(), first_page.data)
+        self.assertIn('Próxima'.encode(), first_page.data)
+        self.assertIn('Anterior'.encode(), second_page.data)
+        self.assertIn('Anterior'.encode(), third_page.data)
+        self.assertEqual(first_page.data.count(b'id="kit-product-autocomplete-options"'), 1)
+        self.assertNotIn(b'<select class="form-select" id="kit_component_', first_page.data)
 
     def test_import_products_from_csv_creates_categories_and_products(self):
         self.login()
@@ -2280,10 +2417,67 @@ class RouteTestCase(unittest.TestCase):
         new_response = self.client.get('/vendas/nova')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Realizar venda'.encode(), response.data)
+        self.assertIn('Realizar Venda - F3'.encode(), response.data)
         self.assertEqual(new_response.status_code, 200)
-        self.assertIn('Concluir venda'.encode(), new_response.data)
-        self.assertIn('Formas de pagamento'.encode(), new_response.data)
+        self.assertIn('Finalizar venda'.encode(), new_response.data)
+        self.assertIn('Escolha uma ou mais formas.'.encode(), new_response.data)
+        self.assertIn('data-sale-picker-search'.encode(), new_response.data)
+        self.assertIn('data-sale-quantity-modal'.encode(), new_response.data)
+        self.assertIn('data-discount-new-total'.encode(), new_response.data)
+
+    def test_global_f3_sale_shortcut_is_available_on_main_operational_pages(self):
+        self.login()
+        self.open_cash_register()
+
+        for route in ('/dashboard', '/vendas', '/caixa'):
+            response = self.client.get(route)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('data-global-new-sale'.encode(), response.data)
+            self.assertIn('Realizar Venda - F3'.encode(), response.data)
+
+        sale_response = self.client.get('/vendas/nova')
+        self.assertEqual(sale_response.status_code, 200)
+        self.assertNotIn('data-global-new-sale'.encode(), sale_response.data)
+        self.assertIn('Aplicar desconto'.encode(), sale_response.data)
+
+        script_response = self.client.get('/static/js/main.js')
+        self.assertEqual(script_response.status_code, 200)
+        self.assertIn("target.matches('input, textarea, select')".encode(), script_response.data)
+        script_response.close()
+
+    def test_sale_rejects_discount_greater_than_subtotal(self):
+        self.login()
+        self.open_cash_register()
+
+        with self.app.app_context():
+            product = Product(
+                name='Produto com desconto',
+                barcode='7891234567890',
+                sale_price=10,
+                stock_quantity=5,
+                active=True,
+                company_id=self.master_company_id(),
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        response = self.client.post(
+            '/vendas/nova',
+            data={
+                'product_id[]': [str(product_id)],
+                'quantity[]': ['1'],
+                'discount_amount': '11,00',
+                'payment_pix': '10,00',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('O desconto não pode ser maior que o subtotal de R$ 10,00.'.encode(), response.data)
+        self.assertIn('data-barcode="7891234567890"'.encode(), response.data)
+        with self.app.app_context():
+            self.assertEqual(Sale.query.count(), 0)
 
     def test_reports_show_sales_totals_for_selected_period(self):
         self.login()
@@ -2309,7 +2503,10 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(sale_response.status_code, 200)
 
         with self.app.app_context():
-            sale_date = Sale.query.one().created_at.date().isoformat()
+            saved_sale = Sale.query.one()
+            sale_date = saved_sale.created_at.date().isoformat()
+            self.assertEqual(saved_sale.discount_amount, 10.0)
+            self.assertEqual(saved_sale.final_amount, 90.0)
 
         response = self.client.get(
             '/relatorios',
@@ -2320,6 +2517,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Relatórios'.encode(), response.data)
         self.assertIn('Gráfico de vendas'.encode(), response.data)
         self.assertIn('Total vendido por período'.encode(), response.data)
+        self.assertIn('data-report-chart-tooltip'.encode(), response.data)
+        self.assertIn('data-chart-value="R$ 90,00"'.encode(), response.data)
         self.assertIn('Total vendido'.encode(), response.data)
         self.assertIn('R$ 90,00'.encode(), response.data)
         self.assertIn('Descontos'.encode(), response.data)
@@ -2328,6 +2527,11 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('R$ 30,00'.encode(), response.data)
         self.assertIn('Pix'.encode(), response.data)
         self.assertIn('Tequila'.encode(), response.data)
+
+        monthly_response = self.client.get('/relatorios', query_string={'period': 'monthly'})
+        self.assertEqual(monthly_response.status_code, 200)
+        self.assertIn('report-chart--very-dense'.encode(), monthly_response.data)
+        self.assertIn('--chart-columns: 31'.encode(), monthly_response.data)
 
     def test_reports_auto_periods_use_rolling_date_ranges(self):
         self.login()
@@ -2371,6 +2575,88 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Últimos 30 dias'.encode(), monthly_response.data)
         self.assertIn('Saquê'.encode(), annual_response.data)
         self.assertIn('Último ano'.encode(), annual_response.data)
+
+    def test_daily_report_shows_empty_24_hour_activity(self):
+        self.login()
+
+        response = self.client.get('/relatorios', query_string={
+            'period': 'daily',
+            'start_date': '2026-07-07',
+            'chart_metric': 'quantity',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Vendas por horário'.encode(), response.data)
+        self.assertIn('--chart-columns: 24'.encode(), response.data)
+        self.assertEqual(response.data.count(b'data-chart-count='), 24)
+        self.assertIn('Sem vendas'.encode(), response.data)
+        self.assertNotIn('report-chart-peak-badge'.encode(), response.data)
+
+    def test_daily_report_calculates_quantity_and_revenue_peak_hours(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            db.session.add_all([
+                Sale(company_id=company_id, created_at=datetime(2026, 7, 7, 18, 10), total_amount=80, final_amount=80, payment_status='paid'),
+                Sale(company_id=company_id, created_at=datetime(2026, 7, 7, 18, 10), total_amount=70, final_amount=70, payment_status='paid'),
+                Sale(company_id=company_id, created_at=datetime(2026, 7, 7, 20, 5), total_amount=300, final_amount=300, payment_status='paid'),
+            ])
+            db.session.commit()
+
+        quantity_response = self.client.get('/relatorios', query_string={
+            'period': 'daily',
+            'start_date': '2026-07-07',
+            'chart_metric': 'quantity',
+        })
+        revenue_response = self.client.get('/relatorios', query_string={
+            'period': 'daily',
+            'start_date': '2026-07-07',
+            'chart_metric': 'revenue',
+        })
+
+        self.assertEqual(quantity_response.status_code, 200)
+        self.assertIn('18:00 às 18:59'.encode(), quantity_response.data)
+        self.assertIn('2 vendas'.encode(), quantity_response.data)
+        self.assertIn('data-chart-count="2" data-chart-peak="true"'.encode(), quantity_response.data)
+        self.assertIn('20:00 às 20:59'.encode(), quantity_response.data)
+        self.assertIn('R$ 300,00'.encode(), quantity_response.data)
+        self.assertIn('Melhor hora em quantidade'.encode(), quantity_response.data)
+        self.assertIn('Melhor hora em faturamento'.encode(), quantity_response.data)
+
+        self.assertEqual(revenue_response.status_code, 200)
+        self.assertIn(
+            'data-chart-count="1" data-chart-peak="true"'.encode(),
+            revenue_response.data,
+        )
+
+    def test_daily_report_aggregates_many_sales_in_same_hour(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            db.session.add_all([
+                Sale(
+                    company_id=company_id,
+                    created_at=datetime(2026, 7, 6, 13, minute % 60),
+                    total_amount=5,
+                    final_amount=5,
+                    payment_status='paid',
+                )
+                for minute in range(120)
+            ])
+            db.session.commit()
+
+        response = self.client.get('/relatorios', query_string={
+            'period': 'daily',
+            'start_date': '2026-07-06',
+            'chart_metric': 'quantity',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-chart-count="120" data-chart-peak="true"'.encode(), response.data)
+        self.assertIn('120 vendas'.encode(), response.data)
+        self.assertIn('R$ 600,00'.encode(), response.data)
 
     def test_create_sale_with_multiple_products_and_payment_methods(self):
         self.login()
@@ -2611,6 +2897,77 @@ class RouteTestCase(unittest.TestCase):
         with self.app.app_context():
             self.assertEqual(Sale.query.count(), 0)
 
+    def test_company_can_allow_sale_with_negative_stock_and_cash_history_keeps_details(self):
+        self.login()
+        self.open_cash_register()
+
+        with self.app.app_context():
+            company = db.session.get(Company, self.master_company_id())
+            company.allow_negative_stock = True
+            product = Product(
+                name='Produto sem saldo',
+                sale_price=10,
+                stock_quantity=0,
+                active=True,
+                company_id=company.id,
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        sale_response = self.client.post(
+            '/vendas/nova',
+            data={
+                'product_id[]': [str(product_id)],
+                'quantity[]': ['2'],
+                'payment_money': '20,00',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(sale_response.status_code, 200)
+        self.assertIn('Venda finalizada com sucesso.'.encode(), sale_response.data)
+        self.assertIn('Estoque insuficiente permitido.'.encode(), sale_response.data)
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Product, product_id).stock_quantity, -2)
+            sale = Sale.query.one()
+            self.assertEqual(len(sale.items), 1)
+            self.assertEqual(len(sale.payments), 1)
+            cash_register_id = CashRegister.query.one().id
+
+        close_response = self.client.post(
+            '/caixa/fechar',
+            data={'closing_amount': '120,00'},
+            follow_redirects=True,
+        )
+        self.assertEqual(close_response.status_code, 200)
+        self.assertIn('Caixa fechado com sucesso.'.encode(), close_response.data)
+
+        cash_response = self.client.get('/caixa')
+        self.assertIn(f'>#{cash_register_id}<'.encode(), cash_response.data)
+        self.assertIn('data-cash-register-toggle'.encode(), cash_response.data)
+        self.assertIn('Formas de pagamento'.encode(), cash_response.data)
+        self.assertIn('Venda #1'.encode(), cash_response.data)
+        self.assertIn('Nenhuma sangria ou suprimento'.encode(), cash_response.data)
+
+    def test_admin_can_configure_negative_stock_rule(self):
+        self.login()
+
+        response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'inventory_settings',
+                'allow_negative_stock': 'on',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Regras de estoque atualizadas com sucesso.'.encode(), response.data)
+        with self.app.app_context():
+            company = db.session.get(Company, self.master_company_id())
+            self.assertTrue(company.allow_negative_stock)
+
     def test_cash_register_can_be_opened_and_closed(self):
         self.login()
 
@@ -2622,7 +2979,7 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(open_response.status_code, 200)
         self.assertIn('Caixa aberto com sucesso.'.encode(), open_response.data)
-        self.assertIn('Realizar venda'.encode(), open_response.data)
+        self.assertIn('Realizar Venda - F3'.encode(), open_response.data)
         with self.app.app_context():
             cash_register = CashRegister.query.one()
             self.assertEqual(cash_register.status, 'open')
@@ -2790,8 +3147,9 @@ class RouteTestCase(unittest.TestCase):
         dashboard_response = self.client.get('/dashboard')
 
         self.assertEqual(cash_response.status_code, 200)
-        self.assertIn('01/07/2026 08:30'.encode(), cash_response.data)
-        self.assertIn('01/07/2026 18:45'.encode(), cash_response.data)
+        self.assertIn('01/07/2026'.encode(), cash_response.data)
+        self.assertIn('08:30'.encode(), cash_response.data)
+        self.assertIn('18:45'.encode(), cash_response.data)
         self.assertNotIn('Total vendido'.encode(), cash_response.data)
         self.assertNotIn('Lucro'.encode(), cash_response.data)
         self.assertNotIn('Valor final'.encode(), cash_response.data)

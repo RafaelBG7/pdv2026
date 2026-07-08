@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Girofy</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-v2.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon-v2.png') }}">
     <script>
       (function () {
         var theme = localStorage.getItem('girofy-theme');
@@ -23,8 +23,10 @@
           <div class="sidebar-sticky">
             <div class="sidebar-header">
               <div class="brand-block">
-                <h4>Girofy</h4>
-                <p class="text-muted">PDV Local</p>
+                <img class="brand-logo" src="{{ url_for('static', filename='logo-girofy-v2.png') }}" alt="Logo Girofy">
+                <div class="brand-copy">
+                  <h4>Girofy</h4>
+                </div>
               </div>
               <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Minimizar menu" title="Minimizar menu">
                 <span data-sidebar-toggle-icon>‹</span>
@@ -32,7 +34,11 @@
             </div>
             <ul class="nav flex-column mt-4">
               {% if current_user.role == 'master' %}
-              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['auth.master_companies'] else '' }}" href="{{ url_for('auth.master_companies') }}" title="Painel master"><span class="nav-icon">M</span><span class="nav-label">Painel master</span></a></li>
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.master_dashboard' else '' }}" href="{{ url_for('auth.master_dashboard') }}" title="Visão geral master"><span class="nav-icon">M</span><span class="nav-label">Visão geral</span></a></li>
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.master_companies' else '' }}" href="{{ url_for('auth.master_companies') }}" title="Adegas"><span class="nav-icon">A</span><span class="nav-label">Adegas</span></a></li>
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.master_users' else '' }}" href="{{ url_for('auth.master_users') }}" title="Usuários"><span class="nav-icon">U</span><span class="nav-label">Usuários</span></a></li>
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.master_subscriptions' else '' }}" href="{{ url_for('auth.master_subscriptions') }}" title="Assinaturas"><span class="nav-icon">AS</span><span class="nav-label">Assinaturas</span></a></li>
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.master_logs' else '' }}" href="{{ url_for('auth.master_logs') }}" title="Logs"><span class="nav-icon">L</span><span class="nav-label">Logs</span></a></li>
               {% endif %}
               {% if subscription_locked and current_user.role != 'master' %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.subscription_activation' else '' }}" href="{{ url_for('auth.subscription_activation') }}" title="Ativação"><span class="nav-icon">KEY</span><span class="nav-label">Ativação</span></a></li>
@@ -145,9 +151,9 @@
 
           {% if current_user.is_authenticated and current_user.role == 'master' and master_company_active %}
             <div class="alert alert-info master-access-banner d-flex flex-wrap justify-content-between align-items-center gap-2" role="status">
-              <span>Você está acessando a adega <strong>{{ master_company.name }}</strong>. Seu <strong>painel master</strong> continua disponível no menu.</span>
+              <span>Você está acessando a adega <strong>{{ master_company.name }}</strong>. Seu <strong>Painel master</strong> continua disponível no menu.</span>
               <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-primary btn-sm" href="{{ url_for('auth.master_companies') }}">Abrir painel master</a>
+                <a class="btn btn-primary btn-sm" href="{{ url_for('auth.master_dashboard') }}">Abrir painel master</a>
                 <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('auth.leave_company_access') }}">Sair desta adega</a>
               </div>
             </div>

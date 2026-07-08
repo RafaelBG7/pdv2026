@@ -132,6 +132,17 @@ Funções principais:
 
 O backup gera um arquivo `.sql` com estrutura e dados do banco da adega.
 
+Em produção, `scripts/backup_mysql.sh` também gera uma cópia diária completa do MySQL por meio do serviço Docker `backup`, sem depender de requisições ao Flask.
+
+## Estoque na venda
+
+A empresa controla a regra por `Company.allow_negative_stock`:
+
+- Desativado: a venda é recusada quando não há saldo suficiente.
+- Ativado: a venda é concluída, o saldo pode ficar negativo e o sistema exibe aviso.
+
+A tela de pagamento é um modal separado da composição dos itens. O backend continua responsável por validar pagamentos, gravar venda e itens, baixar estoque e vincular o caixa.
+
 ## Logs de Erro
 
 Arquivo:

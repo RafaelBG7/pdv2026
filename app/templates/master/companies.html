@@ -3,15 +3,48 @@
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
-    <h2>Painel master</h2>
-    <p class="text-muted mb-0">Gerencie, acesse e acompanhe as adegas cadastradas.</p>
+    <span class="master-eyebrow">Painel master</span>
+    <h2>{{ master_title }}</h2>
+    <p class="text-muted mb-0">{{ master_description }}</p>
   </div>
+  {% if master_section == 'companies' %}
   <div class="master-toolbar">
     <a class="settings-theme-choice {{ 'is-active' if view_mode == 'table' else '' }}" href="{{ url_for('auth.master_companies', view='table') }}">Colunas</a>
     <a class="settings-theme-choice {{ 'is-active' if view_mode == 'cards' else '' }}" href="{{ url_for('auth.master_companies', view='cards') }}">Blocos</a>
   </div>
+  {% endif %}
 </div>
 
+{% if master_section == 'overview' %}
+<div class="master-overview-grid mb-4">
+  <a href="{{ url_for('auth.master_companies') }}"><span>Adegas</span><strong>{{ companies|length }}</strong><small>{{ active_companies }} ativas</small></a>
+  <a href="{{ url_for('auth.master_users') }}"><span>Usuários</span><strong>{{ total_users }}</strong><small>Contas cadastradas</small></a>
+  <a href="{{ url_for('auth.master_subscriptions') }}"><span>Assinaturas</span><strong>{{ active_subscriptions }}</strong><small>Ativas no momento</small></a>
+  <a href="{{ url_for('auth.master_subscriptions') }}"><span>Keys disponíveis</span><strong>{{ available_keys }}</strong><small>Prontas para uso</small></a>
+  <a href="{{ url_for('auth.master_logs') }}"><span>Logs recentes</span><strong>{{ recent_error_logs|length }}</strong><small>Registros para análise</small></a>
+</div>
+
+<section class="card card-dark sale-panel">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <h5 class="mb-1">Adegas recentes</h5>
+      <p class="text-muted mb-0">Últimos ambientes cadastrados na plataforma.</p>
+    </div>
+    <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.master_companies') }}">Ver todas</a>
+  </div>
+  <div class="master-compact-list">
+    {% for company in recent_companies %}
+    <a href="{{ url_for('auth.master_companies') }}">
+      <span><strong>{{ company.name }}</strong><small>{{ company.subscription_plan or 'Sem plano' }}</small></span>
+      <span class="badge {{ 'text-bg-success' if company.active else 'text-bg-secondary' }}">{{ 'Ativa' if company.active else 'Inativa' }}</span>
+    </a>
+    {% else %}
+    <p class="text-muted mb-0">Nenhuma adega cadastrada.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% elif master_section == 'subscriptions' %}
 <section class="card card-dark sale-panel master-subscription-panel mb-4">
   <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
     <div>
@@ -159,6 +192,7 @@
   </div>
 </section>
 
+{% elif master_section == 'logs' %}
 <section class="card card-dark sale-panel master-log-panel mb-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
@@ -205,6 +239,48 @@
   {% endif %}
 </section>
 
+{% elif master_section == 'users' %}
+<section class="card card-dark sale-panel master-user-panel">
+  <form class="master-user-search" method="get" action="{{ url_for('auth.master_users') }}">
+    <div>
+      <label class="form-label" for="master_user_search">Buscar usuário</label>
+      <input class="form-control" id="master_user_search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Nome, usuário, CPF, e-mail ou adega" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" type="submit">Buscar</button>
+    {% if request.args.get('q') %}<a class="btn btn-outline-light" href="{{ url_for('auth.master_users') }}">Limpar</a>{% endif %}
+  </form>
+
+  <div class="d-flex justify-content-between align-items-center gap-2 mt-4 mb-2">
+    <strong>Usuários cadastrados</strong>
+    <span class="text-muted">{{ users|length }} resultado{{ 's' if users|length != 1 else '' }}</span>
+  </div>
+  <div class="master-user-list">
+    {% for user in users %}
+    <details class="master-user-item">
+      <summary>
+        <span class="master-user-avatar">{{ (user.full_name or user.username)[0]|upper }}</span>
+        <span class="master-user-name"><strong>{{ user.full_name or user.username }}</strong><small>@{{ user.username }} · {{ user.company.name if user.company else 'Sem adega' }}</small></span>
+        <span class="badge {{ 'text-bg-success' if user.is_active else 'text-bg-secondary' }}">{{ 'Ativo' if user.is_active else 'Inativo' }}</span>
+      </summary>
+      <div class="master-user-details">
+        <div><span>Perfil</span><strong>{{ user.role_label }}</strong></div>
+        <div><span>Adega</span><strong>{{ user.company.name if user.company else '-' }}</strong></div>
+        <div><span>E-mail</span><strong>{{ user.masked_email }}</strong></div>
+        <div><span>CPF</span><strong>{{ user.cpf or 'Não informado' }}</strong></div>
+        <div><span>E-mail confirmado</span><strong>{{ 'Sim' if user.email_verified else 'Não' }}</strong></div>
+        <div><span>Cadastrado em</span><strong>{{ user.created_at.strftime('%d/%m/%Y') if user.created_at else '-' }}</strong></div>
+      </div>
+      {% if user.company %}
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.access_company', company_id=user.company.id) }}">Acessar adega</a>
+      {% endif %}
+    </details>
+    {% else %}
+    <p class="text-muted mb-0">Nenhum usuário encontrado.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% elif master_section == 'companies' %}
 {% macro company_actions(company) %}
 <div class="table-actions justify-content-end">
   <a class="btn btn-primary btn-sm" href="{{ url_for('auth.access_company', company_id=company.id) }}">Acessar</a>
@@ -286,7 +362,7 @@
           <label class="form-label" for="card_key_{{ company.id }}">Key de ativação</label>
           <input class="form-control activation-key-field" id="card_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Sem key cadastrada">
         </div>
-        <p class="text-muted mb-0 company-key-note">Para gerar uma key nova, use o painel de assinaturas acima.</p>
+        <p class="text-muted mb-0 company-key-note">Para gerar uma key nova, use a área Assinaturas do menu master.</p>
       </div>
       <button class="btn btn-outline-light btn-sm" type="submit">Salvar</button>
     </form>
@@ -413,7 +489,7 @@
                       <label class="form-label" for="activation_key_{{ company.id }}">Key de ativação</label>
                       <input class="form-control activation-key-field" id="activation_key_{{ company.id }}" name="activation_key" value="{{ company.activation_key or '' }}" placeholder="Sem key cadastrada">
                     </div>
-                    <p class="text-muted mb-0 company-key-note">Para gerar uma key nova, use o painel de assinaturas acima.</p>
+                    <p class="text-muted mb-0 company-key-note">Para gerar uma key nova, use a área Assinaturas do menu master.</p>
                   </div>
                   <button class="btn btn-outline-light" type="submit">Salvar</button>
                 </form>
@@ -432,5 +508,6 @@
     </table>
   </div>
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}

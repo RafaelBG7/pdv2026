@@ -34,7 +34,7 @@
             data-autocomplete-option
             data-value="{{ category.name }}"
             data-title="{{ category.name }}"
-            data-meta="{{ category.products|length }} produto{{ '' if category.products|length == 1 else 's' }}"
+            data-meta="{{ category_counts.get(category.id, 0) }} produto{{ '' if category_counts.get(category.id, 0) == 1 else 's' }}"
           ></span>
           {% endfor %}
         </div>

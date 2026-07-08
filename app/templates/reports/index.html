@@ -10,6 +10,7 @@
 </div>
 
 <form class="card card-dark filter-panel mb-4 report-filter-form" method="get" data-report-filter-form>
+  <input type="hidden" name="chart_metric" value="{{ chart_metric }}">
   <div>
     <label class="form-label" for="period">Período</label>
     <select class="form-select" id="period" name="period" data-report-period>
@@ -41,11 +42,11 @@
 
 <div class="report-summary-grid mb-4">
   <div class="card card-dark report-card">
-    <span>Vendas</span>
+    <span>{{ 'Total de vendas do dia' if period == 'daily' else 'Vendas' }}</span>
     <strong>{{ totals.sales_count }}</strong>
   </div>
   <div class="card card-dark report-card">
-    <span>Total vendido</span>
+    <span>{{ 'Faturamento total' if period == 'daily' else 'Total vendido' }}</span>
     <strong>R$ {{ '%.2f'|format(totals.final or 0)|replace('.', ',') }}</strong>
   </div>
   <div class="card card-dark report-card">
@@ -66,19 +67,80 @@
   </div>
 </div>
 
+{% if daily_activity %}
+<section class="daily-peak-grid mb-4" aria-label="Estatísticas de horários do dia">
+  <div class="card card-dark daily-peak-card daily-peak-card--primary">
+    <span>Horário de pico</span>
+    {% if daily_activity.peak %}
+    <strong>{{ daily_activity.peak.title }}</strong>
+    <small>{{ daily_activity.peak.sales_count }} venda{{ 's' if daily_activity.peak.sales_count != 1 }} · R$ {{ '%.2f'|format(daily_activity.peak.total or 0)|replace('.', ',') }}</small>
+    {% else %}
+    <strong>Sem vendas</strong>
+    <small>Nenhuma movimentação no dia</small>
+    {% endif %}
+  </div>
+  <div class="card card-dark daily-peak-card">
+    <span>Melhor hora em quantidade</span>
+    {% if daily_activity.peak_by_quantity %}
+    <strong>{{ daily_activity.peak_by_quantity.title }}</strong>
+    <small>{{ daily_activity.peak_by_quantity.sales_count }} venda{{ 's' if daily_activity.peak_by_quantity.sales_count != 1 }}</small>
+    {% else %}
+    <strong>-</strong>
+    <small>0 vendas</small>
+    {% endif %}
+  </div>
+  <div class="card card-dark daily-peak-card">
+    <span>Melhor hora em faturamento</span>
+    {% if daily_activity.peak_by_revenue %}
+    <strong>{{ daily_activity.peak_by_revenue.title }}</strong>
+    <small>R$ {{ '%.2f'|format(daily_activity.peak_by_revenue.total or 0)|replace('.', ',') }}</small>
+    {% else %}
+    <strong>-</strong>
+    <small>R$ 0,00</small>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
 <section class="card card-dark report-chart-panel mb-4">
   <div class="report-section-header">
-    <h5 class="mb-0">Gráfico de vendas</h5>
+    <div>
+      <h5 class="mb-0">{{ 'Vendas por horário' if daily_activity else 'Gráfico de vendas' }}</h5>
+      {% if daily_activity %}<small>Movimentação em intervalos de uma hora</small>{% endif %}
+    </div>
+    {% if daily_activity %}
+    <div class="report-chart-metric" aria-label="Métrica do gráfico">
+      <a
+        class="{{ 'is-active' if chart_metric == 'revenue' }}"
+        href="{{ url_for('main.reports', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='revenue') }}"
+      >Faturamento</a>
+      <a
+        class="{{ 'is-active' if chart_metric == 'quantity' }}"
+        href="{{ url_for('main.reports', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='quantity') }}"
+      >Quantidade</a>
+    </div>
+    {% endif %}
   </div>
-  <div class="report-chart" aria-label="Total vendido por período">
+  <div
+    class="report-chart{% if daily_activity %} report-chart--hourly{% endif %}{% if chart_data|length > 30 %} report-chart--very-dense{% elif chart_data|length > 18 %} report-chart--dense{% endif %}"
+    style="--chart-columns: {{ chart_data|length if chart_data else 1 }};"
+    aria-label="{{ 'Quantidade de vendas por horário' if daily_activity and chart_metric == 'quantity' else 'Faturamento por horário' if daily_activity else 'Total vendido por período' }}"
+  >
     {% for point in chart_data %}
-    <div class="report-chart-column">
+    <div
+      class="report-chart-column{% if point.is_peak %} is-peak{% endif %}"
+      title="{{ point.title }} · {% if daily_activity %}{{ point.sales_count }} venda{{ 's' if point.sales_count != 1 }} · {% endif %}R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
+      data-chart-label="{{ point.title }}"
+      data-chart-value="R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
+      {% if daily_activity %}data-chart-count="{{ point.sales_count }}" data-chart-peak="{{ 'true' if point.is_peak else 'false' }}"{% endif %}
+      aria-label="{{ point.title }}: {% if daily_activity %}{{ point.sales_count }} vendas, {% endif %}R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
+      tabindex="0"
+    >
       <div class="report-chart-track">
+        {% if point.is_peak %}<div class="report-chart-peak-badge">Pico</div>{% endif %}
         <div
           class="report-chart-bar"
           style="height: {{ point.percent }}%;"
-          title="{{ point.title }} · R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
-          aria-label="{{ point.title }}: R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
         ></div>
       </div>
       <span>{{ point.label }}</span>
@@ -86,6 +148,9 @@
     {% else %}
     <p class="text-muted mb-0">Nenhum dado para montar o gráfico.</p>
     {% endfor %}
+    {% if chart_data %}
+    <div class="report-chart-tooltip" data-report-chart-tooltip role="status" aria-live="polite"></div>
+    {% endif %}
   </div>
 </section>
 

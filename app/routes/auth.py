@@ -452,9 +452,10 @@ def read_recent_error_logs(limit=20):
 
 
 def clear_error_log_file():
-    log_path = Path(current_app.config.get('LOG_DIR') or '') / 'errors.log'
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    log_path.write_text('', encoding='utf-8')
+    log_dir = Path(current_app.config.get('LOG_DIR') or '')
+    log_dir.mkdir(parents=True, exist_ok=True)
+    for filename in ('errors.log', 'security.log'):
+        (log_dir / filename).write_text('', encoding='utf-8')
 
 
 def can_manage_company_users():
@@ -608,7 +609,7 @@ def render_auth_form(auth_tab='login', form_values=None, field_errors=None):
 def login():
     if current_user.is_authenticated:
         if current_user.role == 'master':
-            return redirect(url_for('auth.master_companies'))
+            return redirect(url_for('auth.master_dashboard'))
         return redirect(url_for('main.dashboard'))
 
     if request.method == 'POST':
@@ -707,7 +708,7 @@ def login():
             login_user(user)
             flash('Login realizado com sucesso.', 'success')
             if user.role == 'master':
-                return redirect(url_for('auth.master_companies'))
+                return redirect(url_for('auth.master_dashboard'))
             if company_requires_activation(user.company):
                 flash('A assinatura desta adega está bloqueada.', 'warning')
                 if company_uses_key_license(user.company):
@@ -774,7 +775,7 @@ def verify_email():
         current_app.logger.info('Email confirmado para user_id=%s', user.id)
         flash('E-mail confirmado com sucesso.', 'success')
         if user.role == 'master':
-            return redirect(url_for('auth.master_companies'))
+            return redirect(url_for('auth.master_dashboard'))
         if company_requires_activation(user.company):
             flash('Cadastro realizado. Escolha um plano para ativar sua assinatura.', 'warning')
             return redirect(url_for('auth.subscriptions'))
@@ -963,7 +964,7 @@ def permission_unlock():
 @login_required
 def subscription_activation():
     if current_user.role == 'master':
-        return redirect(url_for('auth.master_companies'))
+        return redirect(url_for('auth.master_dashboard'))
 
     company = current_user.company
     status = subscription_status(company) if company else {}
@@ -1005,7 +1006,7 @@ def subscription_activation():
 def subscriptions():
     company = current_tenant_company()
     if current_user.role == 'master' and not company:
-        return redirect(url_for('auth.master_companies'))
+        return redirect(url_for('auth.master_dashboard'))
 
     subscription = subscription_status(company) if company else {}
     active_subscription = bool(company and company.subscription_valid)
@@ -1081,28 +1082,121 @@ def master_companies():
         finally:
             if tenant_db:
                 tenant_db.close()
-    activation_keys = ActivationKey.query.filter(
-        ActivationKey.active.is_(True)
-    ).order_by(ActivationKey.created_at.desc(), ActivationKey.id.desc()).limit(80).all()
-    activation_key_statuses = {
-        activation_key.id: activation_key_status(activation_key)
-        for activation_key in activation_keys
-    }
-
     return render_template(
         'master/companies.html',
+        master_section='companies',
+        master_title='Adegas',
+        master_description='Gerencie, acesse e acompanhe as adegas cadastradas.',
         companies=companies,
-        activation_keys=activation_keys,
-        activation_key_statuses=activation_key_statuses,
         user_counts=user_counts,
         company_stats=company_stats,
         subscription_statuses=subscription_statuses,
         subscription_plans=SUBSCRIPTION_PLANS,
+        billing_cycles=BILLING_CYCLES,
+        view_mode=view_mode,
+        active_master_company_id=session.get('master_company_id'),
+    )
+
+
+@auth_bp.route('/master')
+@login_required
+def master_dashboard():
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    companies = Company.query.order_by(Company.id.desc()).all()
+    users = User.query.order_by(User.created_at.desc(), User.id.desc()).all()
+    recent_error_logs = read_recent_error_logs()
+    available_keys = ActivationKey.query.filter(
+        ActivationKey.active.is_(True),
+        ActivationKey.used_by_company_id.is_(None),
+    ).count()
+
+    return render_template(
+        'master/companies.html',
+        master_section='overview',
+        master_title='Visão geral',
+        master_description='Acompanhe a operação da plataforma em um só lugar.',
+        companies=companies,
+        recent_companies=companies[:5],
+        total_users=len(users),
+        active_companies=sum(1 for company in companies if company.active),
+        active_subscriptions=sum(1 for company in companies if company.subscription_valid),
+        available_keys=available_keys,
+        recent_error_logs=recent_error_logs,
+    )
+
+
+@auth_bp.route('/master/usuarios')
+@login_required
+def master_users():
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    search = request.args.get('q', '').strip().casefold()
+    users = User.query.order_by(User.company_id.asc(), User.first_name.asc(), User.username.asc()).all()
+    if search:
+        users = [
+            user for user in users
+            if search in ' '.join((
+                user.full_name,
+                user.username or '',
+                user.email or '',
+                user.cpf or '',
+                user.company.name if user.company else '',
+            )).casefold()
+        ]
+
+    return render_template(
+        'master/companies.html',
+        master_section='users',
+        master_title='Usuários',
+        master_description='Consulte os usuários e identifique a adega e o perfil de cada acesso.',
+        users=users,
+        search=search,
+    )
+
+
+@auth_bp.route('/master/assinaturas')
+@login_required
+def master_subscriptions():
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    companies = Company.query.order_by(Company.name.asc()).all()
+    activation_keys = ActivationKey.query.filter(
+        ActivationKey.active.is_(True)
+    ).order_by(ActivationKey.created_at.desc(), ActivationKey.id.desc()).limit(80).all()
+
+    return render_template(
+        'master/companies.html',
+        master_section='subscriptions',
+        master_title='Assinaturas',
+        master_description='Gere keys, renove planos e acompanhe os vencimentos.',
+        companies=companies,
+        activation_keys=activation_keys,
+        activation_key_statuses={
+            activation_key.id: activation_key_status(activation_key)
+            for activation_key in activation_keys
+        },
+        subscription_plans=SUBSCRIPTION_PLANS,
         master_key_plans=MASTER_KEY_PLANS,
         billing_cycles=BILLING_CYCLES,
         key_presets=KEY_PRESETS,
-        view_mode=view_mode,
-        active_master_company_id=session.get('master_company_id'),
+    )
+
+
+@auth_bp.route('/master/logs')
+@login_required
+def master_logs():
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    return render_template(
+        'master/companies.html',
+        master_section='logs',
+        master_title='Logs',
+        master_description='Investigue falhas e avisos registrados pela aplicação.',
         recent_error_logs=read_recent_error_logs(),
     )
 
@@ -1115,7 +1209,7 @@ def clear_master_logs():
 
     clear_error_log_file()
     flash('Logs limpos com sucesso.', 'success')
-    return redirect(url_for('auth.master_companies'))
+    return redirect(url_for('auth.master_logs'))
 
 
 @auth_bp.route('/master/assinaturas/keys/gerar', methods=['POST'])
@@ -1127,13 +1221,13 @@ def generate_master_activation_key():
     plan = request.form.get('plan', 'Basic').strip()
     if plan not in MASTER_KEY_PLANS:
         flash('Plano inválido para geração de key.', 'danger')
-        return redirect(url_for('auth.master_companies'))
+        return redirect(url_for('auth.master_subscriptions'))
 
     billing_cycle, renews_at = renewal_date_from_request()
 
     if renews_at < date.today():
         flash('A data de vencimento da key não pode estar no passado.', 'danger')
-        return redirect(url_for('auth.master_companies'))
+        return redirect(url_for('auth.master_subscriptions'))
 
     try:
         quantity = min(max(int(request.form.get('quantity', '1')), 1), 50)
@@ -1156,7 +1250,7 @@ def generate_master_activation_key():
         flash(f'Key avulsa gerada: {generated_keys[0].key}', 'success')
     else:
         flash(f'{len(generated_keys)} keys avulsas geradas: {", ".join(key.key for key in generated_keys)}', 'success')
-    return redirect(url_for('auth.master_companies'))
+    return redirect(url_for('auth.master_subscriptions'))
 
 
 @auth_bp.route('/master/assinaturas/renovar', methods=['POST'])
@@ -1174,22 +1268,22 @@ def renew_master_subscription():
     company = db.session.get(Company, linked_company_id)
     if not company:
         flash('Selecione uma adega para renovar a assinatura.', 'danger')
-        return redirect(url_for('auth.master_companies'))
+        return redirect(url_for('auth.master_subscriptions'))
 
     plan = request.form.get('plan', 'Basic').strip()
     if plan not in SUBSCRIPTION_PLANS:
         flash('Plano inválido para assinatura.', 'danger')
-        return redirect(url_for('auth.master_companies'))
+        return redirect(url_for('auth.master_subscriptions'))
 
     billing_cycle, renews_at = renewal_date_from_request(default_cycle=company.billing_cycle or 'monthly')
     if renews_at < date.today():
         flash('A data de renovação não pode estar no passado.', 'danger')
-        return redirect(url_for('auth.master_companies'))
+        return redirect(url_for('auth.master_subscriptions'))
 
     apply_subscription_to_company(company, plan, billing_cycle, renews_at)
     db.session.commit()
     flash(f'Assinatura da adega {company.name} renovada até {renews_at.strftime("%d/%m/%Y")}.', 'success')
-    return redirect(url_for('auth.master_companies'))
+    return redirect(url_for('auth.master_subscriptions'))
 
 
 @auth_bp.route('/master/assinaturas/keys/<int:key_id>/cancelar', methods=['POST'])
@@ -1201,12 +1295,12 @@ def cancel_master_activation_key(key_id):
     activation_key = db.get_or_404(ActivationKey, key_id)
     if activation_key.used_by_company_id:
         flash('Não é possível remover uma key já usada por uma adega.', 'danger')
-        return redirect(url_for('auth.master_companies'))
+        return redirect(url_for('auth.master_subscriptions'))
 
     db.session.delete(activation_key)
     db.session.commit()
     flash('Key removida da lista com sucesso.', 'success')
-    return redirect(url_for('auth.master_companies'))
+    return redirect(url_for('auth.master_subscriptions'))
 
 
 @auth_bp.route('/master/adegas/<int:company_id>/editar', methods=['POST'])
@@ -1523,6 +1617,16 @@ def settings():
                 company.credit_fee_percent = parse_percent(request.form.get('credit_fee_percent'))
                 db.session.commit()
                 flash('Taxas da maquininha atualizadas com sucesso.', 'success')
+            return redirect(url_for('auth.settings'))
+
+        if form_type == 'inventory_settings':
+            if current_user.role not in ('admin', 'master') and not authorize_role_override('admin', 'master'):
+                flash('Informe a senha de um admin para alterar as regras de estoque.', 'danger')
+                return redirect(url_for('auth.settings'))
+            if settings_company:
+                settings_company.allow_negative_stock = request.form.get('allow_negative_stock') == 'on'
+                db.session.commit()
+                flash('Regras de estoque atualizadas com sucesso.', 'success')
             return redirect(url_for('auth.settings'))
 
         if form_type == 'backup_settings':

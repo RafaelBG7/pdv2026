@@ -51,6 +51,7 @@ Campos principais:
 - `name`
 - `database_path`
 - `active`
+- `allow_negative_stock`
 - `subscription_plan`
 - `billing_cycle`
 - `subscription_started_at`
@@ -64,6 +65,8 @@ Campos principais:
 - `backup_last_path`
 - `backup_last_status`
 - `created_at`
+
+`allow_negative_stock` define por adega se a venda pode baixar o saldo abaixo de zero. Quando desativado, o comportamento permanece bloqueante.
 
 ### `users`
 

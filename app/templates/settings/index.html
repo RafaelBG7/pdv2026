@@ -16,6 +16,7 @@
     {% endif %}
     {% if can_view_admin_tabs %}
     <button class="settings-tab-button" type="button" data-settings-tab="team" role="tab" aria-selected="false">Equipe</button>
+    <button class="settings-tab-button" type="button" data-settings-tab="operation" role="tab" aria-selected="false">Operação</button>
     {% if can_view_finance_tab %}
     <button class="settings-tab-button" type="button" data-settings-tab="finance" role="tab" aria-selected="false">Financeiro</button>
     {% else %}
@@ -297,6 +298,24 @@
     </div>
   </section>
 
+  <section class="settings-tab-panel" data-settings-panel="operation" role="tabpanel">
+    <section class="card card-dark sale-panel">
+      <h5 class="mb-2">Regras de estoque</h5>
+      <p class="text-muted mb-4">Defina se a adega pode concluir vendas quando a quantidade disponível não for suficiente.</p>
+      <form method="post" {% if needs_permission_override('can_manage_settings') %}data-permission-override="true"{% endif %}>
+        <input type="hidden" name="form_type" value="inventory_settings">
+        <label class="form-check form-switch settings-switch-row">
+          <input class="form-check-input" name="allow_negative_stock" type="checkbox" {% if settings_company and settings_company.allow_negative_stock %}checked{% endif %}>
+          <span>
+            <strong>Permitir estoque negativo</strong>
+            <small>A venda será concluída e a quantidade ficará negativa, mantendo o alerta de estoque insuficiente.</small>
+          </span>
+        </label>
+        <button class="btn btn-primary mt-3" type="submit">Salvar regra</button>
+      </form>
+    </section>
+  </section>
+
   {% if can_view_finance_tab %}
   <section class="settings-tab-panel" data-settings-panel="finance" role="tabpanel">
     <div class="settings-layout">
@@ -547,7 +566,7 @@
         <h5 class="mb-3">Informações do sistema</h5>
         <div class="settings-summary">
           <div><span>Aplicação</span><strong>Girofy</strong></div>
-          <div><span>Ambiente</span><strong>PDV Local</strong></div>
+          <div><span>Ambiente</span><strong>Aplicação Girofy</strong></div>
           <div><span>Status</span><strong>Operacional</strong></div>
         </div>
       </section>

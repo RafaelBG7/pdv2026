@@ -84,7 +84,45 @@ Recomendação profissional:
 
 ## Backup
 
-O backup atual é gerado por adega em arquivo `.sql` dentro de:
+Existem duas camadas de backup:
+
+1. Backup por adega, manual ou configurável em `Configurações > Backup`.
+2. Backup completo automático do MySQL em produção, incluindo o banco central e todos os bancos das adegas.
+
+Na OCI, os arquivos completos são gravados fora dos containers em:
+
+```text
+/opt/girofy/backups/
+```
+
+O serviço `backup` executa imediatamente ao iniciar e depois a cada 24 horas. Por padrão, mantém no máximo 30 arquivos e remove arquivos com mais de 30 dias. As opções ficam no `.env`:
+
+```text
+AUTO_BACKUP_ENABLED=1
+AUTO_BACKUP_INTERVAL_SECONDS=86400
+AUTO_BACKUP_RETENTION_DAYS=30
+AUTO_BACKUP_RETENTION_COUNT=30
+GIROFY_BACKUP_HOST_DIR=/opt/girofy/backups
+GIROFY_BACKUP_UID=1001
+GIROFY_BACKUP_GID=1001
+```
+
+Os valores UID/GID devem corresponder ao usuário proprietário da pasta de backup no servidor (`id -u` e `id -g`).
+
+Para verificar a última execução:
+
+```bash
+docker compose -f docker-compose.oci.yml logs --tail=50 backup
+cat /opt/girofy/backups/automatic_backup.status
+```
+
+Para executar uma cópia adicional imediatamente:
+
+```bash
+docker compose -f docker-compose.oci.yml run --rm -e AUTO_BACKUP_ONCE=1 backup
+```
+
+O backup por adega continua sendo salvo em:
 
 ```text
 backups/
@@ -101,7 +139,7 @@ Configuração:
 
 - Configurações > Backup.
 
-Recomendação:
+Recomendações:
 
 - Copiar os arquivos para armazenamento externo.
 - Testar restauração periodicamente.
@@ -114,6 +152,9 @@ Logs de erro ficam em:
 ```text
 logs/errors.log
 ```
+
+Eventos externos de segurança ficam em `logs/security.log`. Ambos usam rotação por
+tamanho, persistem no volume `girofy_logs` em produção e são limpos pelo painel master.
 
 O master do sistema também vê logs recentes no painel master e pode limpar o arquivo.
 

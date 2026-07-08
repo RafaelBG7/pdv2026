@@ -89,6 +89,9 @@ Relatórios:
 - Lucro.
 - Produtos mais vendidos.
 - Gráfico por período.
+- Dia sem vendas e 24 horários vazios.
+- Pico diário por quantidade e faturamento.
+- Vendas simultâneas e alto volume concentrado na mesma hora.
 
 Financeiro e operação:
 
@@ -98,6 +101,14 @@ Financeiro e operação:
 - Taxas de Pix/débito/crédito.
 - Backup.
 - Exportação CSV.
+
+Logs:
+
+- Separação entre erro e evento externo de segurança.
+- `X-Request-ID` na resposta e no registro.
+- Mascaramento de senha, token e API key.
+- Exceção não tratada registrada uma única vez.
+- Limpeza restrita ao master para os dois arquivos.
 - Logs de erro.
 
 ## Última Validação Conhecida

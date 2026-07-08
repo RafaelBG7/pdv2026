@@ -2,9 +2,10 @@ from datetime import date, datetime, timedelta, timezone
 
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
 from flask_login import current_user
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, inspect, or_, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import joinedload
 
 from app.extensions import db, login_manager
 from app.error_logging import log_http_error, setup_error_logging
@@ -280,6 +281,26 @@ def ensure_company_card_fee_columns():
     db.session.commit()
 
 
+def ensure_company_operation_columns():
+    inspector = inspect(db.engine)
+    if 'companies' not in inspector.get_table_names():
+        return
+
+    columns = {column['name'] for column in inspector.get_columns('companies')}
+    if 'allow_negative_stock' not in columns:
+        try:
+            db.session.execute(text(
+                'ALTER TABLE companies ADD COLUMN allow_negative_stock BOOLEAN DEFAULT 0'
+            ))
+            db.session.execute(text(
+                'UPDATE companies SET allow_negative_stock = 1 '
+                'WHERE LOWER(REPLACE(name, " ", "")) = "adegajf"'
+            ))
+        except OperationalError:
+            db.session.rollback()
+    db.session.commit()
+
+
 def ensure_company_backup_columns():
     inspector = inspect(db.engine)
     if 'companies' not in inspector.get_table_names():
@@ -336,6 +357,7 @@ def create_app(config_class=Config):
         ensure_company_columns()
         ensure_company_subscription_columns()
         ensure_company_card_fee_columns()
+        ensure_company_operation_columns()
         ensure_company_backup_columns()
 
         if not User.query.filter_by(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master')).first():
@@ -377,6 +399,12 @@ def create_app(config_class=Config):
     def load_user(user_id):
         from app.models import User
         return db.session.get(User, int(user_id))
+
+    @app.get('/favicon.ico')
+    def favicon():
+        response = app.send_static_file('favicon-v2.png')
+        response.cache_control.no_cache = True
+        return response
 
     @app.before_request
     def mark_session_permanent():
@@ -445,7 +473,9 @@ def create_app(config_class=Config):
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
-        log_http_error(app, error)
+        # Unhandled exceptions were already recorded by app.log_exception.
+        if not getattr(error, 'original_exception', None):
+            log_http_error(app, error)
         return render_template('errors/500.html', request_id=getattr(g, 'request_id', None)), 500
 
     @app.after_request
@@ -463,7 +493,7 @@ def create_app(config_class=Config):
         permission_authorizer_users = []
         subscription_locked = False
         from app.permissions import has_permission_view_override, needs_permission_override
-        from app.services.alert_service import send_configured_email_alert
+        from app.services.alert_service import alert_settings_for_company, claim_email_alert_check, send_configured_email_alert
 
         def can_view_permission(permission):
             if not current_user.is_authenticated:
@@ -518,10 +548,22 @@ def create_app(config_class=Config):
             dismissed_notifications = set(session.get('dismissed_low_stock_notifications', []))
             master_company = current_tenant_company() if current_user.role == 'master' else None
             tenant_db = tenant_session()
-            products = tenant_db.query(Product).filter(
+            products = tenant_db.query(Product).options(joinedload(Product.kit_component)).filter(
                 Product.company_id == company.id,
                 Product.active.is_(True),
+                Product.min_stock_quantity > 0,
+                or_(
+                    Product.is_kit.is_(True),
+                    Product.stock_quantity <= Product.min_stock_quantity,
+                ),
             ).order_by(Product.name.asc()).all() if tenant_db and company else []
+            should_check_email_alerts = bool(
+                company and (
+                    app.config.get('TESTING')
+                    or claim_email_alert_check(company.id)
+                )
+            )
+            email_alert_settings = alert_settings_for_company(company) if should_check_email_alerts else None
             for product in products:
                 stock_quantity = product.effective_stock_quantity or 0
                 min_stock_quantity = product.min_stock_quantity or 0
@@ -541,14 +583,16 @@ def create_app(config_class=Config):
 
                 alert_type = 'product_out_of_stock' if stock_quantity <= 0 else 'product_low_stock'
                 product_url = url_for('catalog.products')
-                send_configured_email_alert(
-                    company,
-                    alert_type,
-                    notification_key,
-                    title,
-                    message,
-                    absolute_url(product_url),
-                )
+                if should_check_email_alerts:
+                    send_configured_email_alert(
+                        company,
+                        alert_type,
+                        notification_key,
+                        title,
+                        message,
+                        absolute_url(product_url),
+                        settings=email_alert_settings,
+                    )
                 notifications.append({
                     'title': title,
                     'message': message,
@@ -581,7 +625,7 @@ def create_app(config_class=Config):
                     alert_type = ''
                     message = f'{payable.description} vence em {days} dia{"s" if days != 1 else ""}. Valor: {amount}.'
 
-                if alert_type:
+                if alert_type and should_check_email_alerts:
                     alert_key = f'{alert_type}:{payable.id}:{payable.due_date}'
                     send_configured_email_alert(
                         company,
@@ -590,6 +634,7 @@ def create_app(config_class=Config):
                         title,
                         message,
                         absolute_url(url_for('main.payables')),
+                        settings=email_alert_settings,
                     )
 
                 if can_view_permission('can_manage_payables'):
@@ -605,14 +650,16 @@ def create_app(config_class=Config):
                 if 0 <= days_left <= 3:
                     title = 'Assinatura perto do vencimento'
                     message = f'A assinatura da adega {company.name} vence em {days_left} dia{"s" if days_left != 1 else ""}.'
-                    send_configured_email_alert(
-                        company,
-                        'subscription_expiring',
-                        f'subscription_expiring:{company.id}:{company.subscription_renews_at}:{days_left}',
-                        title,
-                        message,
-                        absolute_url(url_for('auth.subscriptions')),
-                    )
+                    if should_check_email_alerts:
+                        send_configured_email_alert(
+                            company,
+                            'subscription_expiring',
+                            f'subscription_expiring:{company.id}:{company.subscription_renews_at}:{days_left}',
+                            title,
+                            message,
+                            absolute_url(url_for('auth.subscriptions')),
+                            settings=email_alert_settings,
+                        )
                     if can_view_permission('can_view_finance'):
                         notifications.append({
                             'title': title,

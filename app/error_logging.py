@@ -6,7 +6,6 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from flask import g, has_request_context, request
-from flask.signals import got_request_exception
 from flask_login import current_user
 
 
@@ -27,6 +26,11 @@ SENSITIVE_FIELDS = {
 }
 
 
+class SecurityEventFilter(logging.Filter):
+    def filter(self, record):
+        return bool(getattr(record, 'security_event', False))
+
+
 def _safe_value(value):
     if value is None:
         return None
@@ -42,7 +46,11 @@ def _redact_mapping(mapping):
     for key in mapping:
         values = mapping.getlist(key) if hasattr(mapping, 'getlist') else [mapping.get(key)]
         normalized_key = key.lower()
-        if normalized_key in SENSITIVE_FIELDS or any(term in normalized_key for term in ('password', 'secret', 'token', 'activation_key')):
+        if (
+            normalized_key in SENSITIVE_FIELDS
+            or normalized_key.endswith('_key')
+            or any(term in normalized_key for term in ('password', 'secret', 'token', 'activation_key', 'api_key', 'apikey'))
+        ):
             redacted[key] = '[protegido]'
             continue
 
@@ -72,7 +80,8 @@ def error_context():
         'request_id': getattr(g, 'request_id', None),
         'method': request.method,
         'path': request.path,
-        'full_path': request.full_path,
+        # Query parameters are recorded only in the redacted `args` mapping below.
+        'full_path': request.path,
         'endpoint': request.endpoint,
         'remote_addr': request.headers.get('X-Forwarded-For', request.remote_addr),
         'user_agent': request.headers.get('User-Agent'),
@@ -90,22 +99,34 @@ def _json_context():
 
 def log_http_error(app, error):
     status_code = getattr(error, 'code', 500) or 500
+    context = error_context()
+    serialized_context = json.dumps(context, ensure_ascii=False, default=str)
+
+    if status_code == 404 and not context.get('user', {}).get('authenticated'):
+        app.logger.info(
+            'Rota externa não encontrada | contexto=%s',
+            serialized_context,
+            extra={'security_event': True},
+        )
+        return
+
     level = logging.ERROR if status_code >= 500 else logging.WARNING
     app.logger.log(
         level,
         'Erro HTTP %s: %s | contexto=%s',
         status_code,
         getattr(error, 'description', str(error)),
-        _json_context(),
+        serialized_context,
     )
 
 
-def _log_unhandled_exception(sender, exception, **extra):
-    sender.logger.error(
+def _log_unhandled_exception(app, exc_info):
+    exception = exc_info[1]
+    app.logger.error(
         'Falha não tratada: %s | contexto=%s',
         exception,
         _json_context(),
-        exc_info=(type(exception), exception, exception.__traceback__),
+        exc_info=exc_info,
     )
 
 
@@ -115,13 +136,14 @@ def setup_error_logging(app):
     app.config['LOG_DIR'] = str(log_dir)
 
     error_log_path = log_dir / 'errors.log'
+    security_log_path = log_dir / 'security.log'
 
     formatter = logging.Formatter(
         '%(asctime)s %(levelname)s [%(name)s] %(message)s'
     )
 
     for existing_handler in list(app.logger.handlers):
-        if getattr(existing_handler, '_adega_error_log', False):
+        if getattr(existing_handler, '_adega_error_log', False) or getattr(existing_handler, '_girofy_security_log', False):
             app.logger.removeHandler(existing_handler)
             existing_handler.close()
 
@@ -136,6 +158,18 @@ def setup_error_logging(app):
     handler._adega_error_log = True
     app.logger.addHandler(handler)
 
+    security_handler = RotatingFileHandler(
+        security_log_path,
+        maxBytes=5 * 1024 * 1024,
+        backupCount=3,
+        encoding='utf-8',
+    )
+    security_handler.setLevel(logging.INFO)
+    security_handler.setFormatter(formatter)
+    security_handler.addFilter(SecurityEventFilter())
+    security_handler._girofy_security_log = True
+    app.logger.addHandler(security_handler)
+
     app.logger.setLevel(logging.INFO)
 
     @app.before_request
@@ -148,4 +182,6 @@ def setup_error_logging(app):
         response.headers['X-Request-ID'] = getattr(g, 'request_id', '')
         return response
 
-    got_request_exception.connect(_log_unhandled_exception, app)
+    # Flask calls this hook once for an unhandled exception. Replacing the
+    # default implementation preserves the traceback while adding request context.
+    app.log_exception = lambda exc_info: _log_unhandled_exception(app, exc_info)

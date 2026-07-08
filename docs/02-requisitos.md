@@ -35,9 +35,12 @@
 | RF028 | Registrar venda com vários produtos | Implementado | `/vendas/nova`. |
 | RF029 | Finalizar venda por clique e F2 | Implementado | Tela de venda e JS. |
 | RF030 | Aplicar desconto com F3 | Implementado | `discount_amount`. |
+| RF030A | Abrir nova venda com F3 no Dashboard, Vendas e Caixa | Implementado | Atalho global contextual. |
 | RF031 | Aceitar dinheiro, Pix, débito e crédito | Implementado | Modelo `Payment`. |
 | RF032 | Permitir múltiplas formas de pagamento | Implementado | Lista de pagamentos. |
 | RF033 | Preservar pedido quando há erro | Implementado | Renderização mantém estado do formulário. |
+| RF045 | Configurar venda com estoque negativo por adega | Implementado | Configurações > Operação e `allow_negative_stock`. |
+| RF046 | Consultar caixas anteriores em linhas expansíveis | Implementado | `/caixa`, com vendas e pagamentos no detalhe. |
 | RF034 | Calcular lucro por produto/venda/caixa | Implementado | `profit_amount` e relatórios. |
 | RF035 | Gerar relatórios por período | Implementado | `/relatorios`. |
 | RF036 | Gerar gráfico de vendas | Implementado | `build_chart_buckets()`. |
@@ -60,7 +63,7 @@
 | Segurança | Bloqueio por assinatura/key | Implementado | `company_requires_activation()`. |
 | Segurança | CSRF | Não implementado | Recomendado Flask-WTF ou proteção equivalente. |
 | Disponibilidade | Execução local | Implementado | `python app.py` na porta 5003. |
-| Backup | Dump SQL por adega | Implementado | Pasta `backups/`. |
+| Backup | Dump por adega e cópia automática completa | Implementado | `app/backup.py` e serviço Docker `backup`. |
 | Logs | Logs detalhados de erro | Implementado | `logs/errors.log`. |
 | Escalabilidade | Multiempresa | Implementado inicial | Banco por tenant, sem fila ou balanceamento. |
 | Manutenibilidade | Organização modular | Implementado | Blueprints, modelos e serviços. |

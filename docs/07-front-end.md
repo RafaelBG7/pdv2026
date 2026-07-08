@@ -181,7 +181,9 @@ Formulário:
 Atalhos:
 
 - `F2`: abrir pagamento.
-- `F3`: abrir desconto.
+- `F3` em Dashboard, Vendas e Caixa: abrir a tela de registrar venda.
+- `F3` dentro da venda: abrir desconto.
+- Atalhos globais não são disparados durante digitação em inputs, selects ou áreas editáveis.
 - `Escape`: fechar modal de desconto.
 
 Detalhe:
@@ -200,6 +202,9 @@ Funcionalidades:
 - Datas inicial e final.
 - Cards de resumo.
 - Gráfico de barras em HTML/CSS.
+- Alternância entre faturamento e quantidade no gráfico diário.
+- Destaque visual e tooltip do horário de pico.
+- Resumo do pico por quantidade e por faturamento.
 - Tabela de vendas do período.
 - Total por forma de pagamento.
 - Produtos mais vendidos.
@@ -211,6 +216,9 @@ Períodos:
 - Mensal.
 - Anual.
 - Personalizado.
+
+O gráfico diário usa 24 colunas responsivas e reduz apenas a quantidade de rótulos visíveis
+em telas estreitas; todas as horas continuam acessíveis por foco ou ponteiro.
 
 ## Configurações
 

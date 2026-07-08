@@ -35,11 +35,39 @@ services:
       mysql:
         condition: service_healthy
     volumes:
-      - girofy_backups:/app/backups
+      - ${GIROFY_BACKUP_HOST_DIR:-/opt/girofy/backups}:/app/backups
       - girofy_logs:/app/logs
       - girofy_reports:/app/reports
     ports:
       - "127.0.0.1:5003:5003"
+
+  backup:
+    build: .
+    restart: unless-stopped
+    user: "${GIROFY_BACKUP_UID:-1001}:${GIROFY_BACKUP_GID:-1001}"
+    env_file:
+      - .env
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_BACKUP_USER: root
+      MYSQL_PWD: ${MYSQL_ROOT_PASSWORD}
+      AUTO_BACKUP_DIR: /backups
+      AUTO_BACKUP_ENABLED: ${AUTO_BACKUP_ENABLED:-1}
+      AUTO_BACKUP_INTERVAL_SECONDS: ${AUTO_BACKUP_INTERVAL_SECONDS:-86400}
+      AUTO_BACKUP_RETENTION_DAYS: ${AUTO_BACKUP_RETENTION_DAYS:-30}
+      AUTO_BACKUP_RETENTION_COUNT: ${AUTO_BACKUP_RETENTION_COUNT:-30}
+    command: ["sh", "/app/scripts/backup_mysql.sh"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ${GIROFY_BACKUP_HOST_DIR:-/opt/girofy/backups}:/backups
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
   caddy:
     image: caddy:2
@@ -57,7 +85,6 @@ services:
 
 volumes:
   girofy_mysql_data:
-  girofy_backups:
   girofy_logs:
   girofy_reports:
   caddy_data:

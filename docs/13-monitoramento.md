@@ -7,6 +7,7 @@ O sistema possui monitoramento básico por logs de erro e alertas operacionais n
 Implementado:
 
 - Logs detalhados de erro em `logs/errors.log`.
+- Eventos externos, como rotas inexistentes anônimas, em `logs/security.log`.
 - Visualização dos logs recentes no painel master.
 - Botão para limpar logs no painel master.
 - Notificações de estoque baixo, produto sem estoque e contas a pagar.
@@ -41,7 +42,11 @@ O log registra:
 - Duração da requisição.
 - `X-Request-ID`.
 
-O master do sistema consegue ver os registros recentes em `/master/adegas` e limpar o arquivo pelo botão `Limpar logs`.
+Parâmetros sensíveis são mascarados antes da gravação e a URL bruta com query string
+não é persistida. Exceções não tratadas são registradas uma única vez com traceback.
+
+O master do sistema consegue ver os erros recentes em `/master/logs`. O botão
+`Limpar logs` limpa `errors.log` e `security.log`.
 
 ## Alertas Operacionais
 

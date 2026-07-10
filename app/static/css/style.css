@@ -4500,6 +4500,71 @@ th {
   align-items: end;
 }
 
+.audit-filter-card {
+  padding: 1rem;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.audit-filter-row {
+  display: grid;
+  grid-template-columns:
+    minmax(210px, 1.2fr)
+    minmax(170px, 1fr)
+    minmax(170px, 1fr)
+    minmax(145px, 0.75fr)
+    minmax(125px, 0.65fr)
+    minmax(150px, 0.75fr)
+    minmax(150px, 0.75fr)
+    max-content;
+  gap: 12px;
+  align-items: end;
+  min-width: 1370px;
+}
+
+.audit-filter-row-master {
+  grid-template-columns:
+    minmax(210px, 1fr)
+    minmax(180px, 1fr)
+    minmax(190px, 1fr)
+    minmax(150px, 0.7fr)
+    minmax(150px, 0.7fr)
+    max-content;
+  min-width: 1010px;
+}
+
+.audit-filter-field {
+  min-width: 0;
+}
+
+.audit-filter-field .form-label,
+.audit-filter-actions .btn {
+  white-space: nowrap;
+}
+
+.audit-filter-field .form-control,
+.audit-filter-field .form-select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.audit-filter-actions {
+  display: grid;
+  grid-template-columns: 150px 112px;
+  gap: 12px;
+  align-items: end;
+}
+
+.audit-filter-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding-inline: 1rem;
+}
+
 .stock-operation-card {
   max-width: 1120px;
 }

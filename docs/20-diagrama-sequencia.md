@@ -51,6 +51,8 @@ sequenceDiagram
     participant U as Operador
     participant B as Browser
     participant R as Main Route
+    participant S as Stock Service
+    participant AU as Audit Service
     participant D as MySQL da Adega
     U->>B: Seleciona produtos
     B->>R: POST /vendas/nova
@@ -59,13 +61,16 @@ sequenceDiagram
     R->>R: Calcula itens, desconto e pagamentos
     alt Caixa fechado
         R-->>B: Redirect /caixa
-    else Estoque insuficiente
+    else Estoque insuficiente e bloqueio ativo
         R-->>B: Render formulario preservado
     else Pagamento insuficiente
         R-->>B: Render formulario preservado
     else Venda valida
         R->>D: Cria Sale, SaleItem e Payment
-        R->>D: Baixa estoque
+        R->>S: decrease_stock para cada item
+        S->>D: Atualiza Product e cria StockMovement
+        R->>AU: record_audit_event sale_completed
+        AU->>D: Cria AuditLog
         R->>D: Commit
         R-->>B: Redirect detalhe da venda
     end
@@ -78,6 +83,7 @@ sequenceDiagram
     participant R as Main Route
     participant K as Produto Kit
     participant P as Produto Base
+    participant S as Stock Service
     participant D as MySQL da Adega
     R->>K: Identifica produto base e quantidade
     K-->>R: Componente do kit
@@ -86,9 +92,31 @@ sequenceDiagram
     alt Sem estoque
         R-->>R: Bloqueia venda
     else Com estoque
-        R->>P: Decrementa estoque base
+        R->>S: decrease_stock no produto base
+        S->>P: Atualiza saldo
+        S->>D: Cria StockMovement sale
         R->>D: Commit venda
     end
+```
+
+## Entrada/Ajuste de Estoque
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant B as Browser
+    participant R as Main Route
+    participant S as Stock Service
+    participant AU as Audit Service
+    participant D as MySQL da Adega
+    U->>B: Informa produto, quantidade e motivo
+    B->>R: POST /estoque/entrada ou /estoque/ajuste
+    R->>S: increase_stock ou adjust_stock
+    S->>D: Atualiza Product e cria StockMovement
+    S->>AU: record_audit_event
+    AU->>D: Cria AuditLog
+    R->>D: Commit
+    R-->>B: Redirect /estoque/movimentacoes
 ```
 
 ## Fechamento de Caixa

@@ -21,7 +21,7 @@
 | RF014 | Aplicar perfis funcionário/gerente/admin | Implementado | `apply_employee_permissions()`. |
 | RF015 | Configurar taxas de Pix, débito e crédito | Implementado | Configurações > Financeiro. |
 | RF016 | Alternar tema claro/escuro | Implementado | Configurações > Aparência. |
-| RF017 | Listar, filtrar e ordenar produtos | Implementado | `/catalogo/produtos`. |
+| RF017 | Listar, filtrar e ordenar produtos | Implementado | `/catalogo/produtos`, menu lateral de categorias e busca `Buscar produto`. |
 | RF018 | Cadastrar, editar, inativar e excluir produto | Implementado | Rotas em `catalog.py`. |
 | RF019 | Controlar estoque mínimo | Implementado | Campo `min_stock_quantity` e notificações. |
 | RF020 | Configurar produto kit | Implementado | Campos `is_kit` e produto base. |
@@ -41,6 +41,8 @@
 | RF033 | Preservar pedido quando há erro | Implementado | Renderização mantém estado do formulário. |
 | RF045 | Configurar venda com estoque negativo por adega | Implementado | Configurações > Operação e `allow_negative_stock`. |
 | RF046 | Consultar caixas anteriores em linhas expansíveis | Implementado | `/caixa`, com vendas e pagamentos no detalhe. |
+| RF047 | Mostrar apenas vendas do dia na listagem principal | Implementado | `/vendas` filtra por data atual no backend. |
+| RF048 | Padronizar campos de busca como `Buscar X` | Implementado | Templates de vendas, produtos, categorias, equipe e painel master. |
 | RF034 | Calcular lucro por produto/venda/caixa | Implementado | `profit_amount` e relatórios. |
 | RF035 | Gerar relatórios por período | Implementado | `/relatorios`. |
 | RF036 | Gerar gráfico de vendas | Implementado | `build_chart_buckets()`. |
@@ -49,8 +51,11 @@
 | RF044 | Enviar alertas críticos por e-mail | Implementado | Configurações > Alertas e `EmailAlertSetting`. |
 | RF039 | Fazer backup manual/automático | Implementado | `app/backup.py`. |
 | RF040 | Exportar dados em CSV | Implementado | `/exportacoes/<tipo>`. |
+| RF049 | Registrar movimentações de estoque | Implementado | `StockMovement` e `app/services/stock_service.py`. |
+| RF050 | Entrada e ajuste manual de estoque | Implementado | `/estoque/entrada` e `/estoque/ajuste`. |
+| RF051 | Consultar histórico de estoque | Implementado | `/estoque/movimentacoes`. |
+| RF052 | Auditar ações críticas | Implementado | `AuditLog` e `app/services/audit_service.py`. |
 | RF041 | API pública JSON | Não implementado | Rotas atuais são HTML/formulário. |
-| RF042 | Auditoria de ações | Não implementado | Há log de erro, mas não trilha de ações. |
 
 ## Requisitos Não Funcionais
 
@@ -65,6 +70,7 @@
 | Disponibilidade | Execução local | Implementado | `python app.py` na porta 5003. |
 | Backup | Dump por adega e cópia automática completa | Implementado | `app/backup.py` e serviço Docker `backup`. |
 | Logs | Logs detalhados de erro | Implementado | `logs/errors.log`. |
+| Auditoria | Trilha de ações críticas | Implementado | `audit_logs`, `/auditoria` e `/master/auditoria`. |
 | Escalabilidade | Multiempresa | Implementado inicial | Banco por tenant, sem fila ou balanceamento. |
 | Manutenibilidade | Organização modular | Implementado | Blueprints, modelos e serviços. |
 | Testabilidade | Testes automatizados | Implementado | `unittest discover`. |
@@ -83,5 +89,5 @@
 - TEF real.
 - Cobrança online de assinatura.
 - API pública.
-- Auditoria completa de ações.
+- Auditoria de cancelamentos/estornos quando essas rotinas existirem.
 - Controle avançado de compras/fornecedores.

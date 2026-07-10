@@ -107,7 +107,47 @@ scripts/deploy_oci_app.sh
 
 O script sincroniza o código, preserva o `.env` remoto, reconstrói os containers e valida `/login`.
 
-## Pipeline GitHub Actions
+## Pipeline GitHub Actions Recomendada
+
+Workflow:
+
+```text
+.github/workflows/deploy-oci-self-hosted.yml
+```
+
+Ele executa:
+
+- testes automatizados;
+- validação dos scripts de infraestrutura;
+- deploy dentro da própria VM OCI usando self-hosted runner;
+- rebuild dos containers;
+- health check local em `/login`.
+
+Esse fluxo não depende de SSH externo, IP público do desenvolvedor nem sessão OCI CLI. A instalação do runner é feita uma vez na VM com:
+
+```text
+scripts/oci/install_github_runner.sh
+```
+
+Variáveis opcionais no ambiente `production`:
+
+```text
+OCI_DEPLOY_PATH=/opt/girofy/app
+OCI_DEPLOY_PORT=18080
+```
+
+Execução manual:
+
+```text
+GitHub > Actions > Deploy OCI Self Hosted > Run workflow
+```
+
+Execução automática:
+
+- push para `main`;
+- alterações somente em `docs/**` ou `*.md` não disparam deploy.
+
+## Pipeline SSH De Emergência
 
 Workflow:
 
@@ -115,39 +155,7 @@ Workflow:
 .github/workflows/deploy-oci.yml
 ```
 
-Ele executa:
-
-- testes automatizados;
-- validação dos scripts de infraestrutura;
-- deploy via SSH/rsync;
-- rebuild dos containers;
-- health check público.
-
-Secrets obrigatórios no GitHub:
-
-```text
-OCI_DEPLOY_HOST
-OCI_DEPLOY_USER
-OCI_DEPLOY_PATH
-OCI_SSH_PRIVATE_KEY
-```
-
-Variável opcional no ambiente `production`:
-
-```text
-OCI_DEPLOY_PORT=18080
-```
-
-Execução manual:
-
-```text
-GitHub > Actions > Deploy OCI > Run workflow
-```
-
-Execução automática:
-
-- push para `main`;
-- alterações somente em `docs/**` ou `*.md` não disparam deploy.
+Esse fluxo é manual e usa `scripts/deploy_oci_app.sh` com SSH/rsync. Ele permanece como fallback, mas depende de `OCI_SSH_PRIVATE_KEY` e regras de rede liberando SSH.
 
 ## Desktop
 

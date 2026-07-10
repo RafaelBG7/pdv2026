@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Auditoria do sistema</h2>
+    <p class="text-muted mb-0">Eventos administrativos do painel master.</p>
+  </div>
+</div>
+
+<form class="card card-dark p-3 mb-4" method="get">
+  <div class="stock-filter-grid">
+    <div>
+      <label class="form-label" for="adega">Adega</label>
+      <select class="form-select" id="adega" name="adega">
+        <option value="">Todas</option>
+        {% for company in companies %}
+        <option value="{{ company.id }}" {% if filters.adega == company.id|string %}selected{% endif %}>{{ company.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="usuario">Usuário</label>
+      <select class="form-select" id="usuario" name="usuario">
+        <option value="">Todos</option>
+        {% for user in users %}
+        <option value="{{ user.id }}" {% if filters.usuario == user.id|string %}selected{% endif %}>{{ user.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="acao">Ação</label>
+      <select class="form-select" id="acao" name="acao">
+        <option value="">Todas</option>
+        {% for action in available_actions %}
+        <option value="{{ action }}" {% if filters.acao == action %}selected{% endif %}>{{ audit_action_label(action) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="data_inicio">Data inicial</label>
+      <input class="form-control" id="data_inicio" name="data_inicio" type="date" value="{{ filters.data_inicio }}">
+    </div>
+    <div>
+      <label class="form-label" for="data_fim">Data final</label>
+      <input class="form-control" id="data_fim" name="data_fim" type="date" value="{{ filters.data_fim }}">
+    </div>
+    <div class="d-flex gap-2 align-items-end">
+      <button class="btn btn-primary w-100" type="submit">Filtrar</button>
+      <a class="btn btn-outline-light" href="{{ url_for('main.master_audit_logs') }}">Limpar</a>
+    </div>
+  </div>
+</form>
+
+{% include 'audit/_table.html' %}
+{% endblock %}

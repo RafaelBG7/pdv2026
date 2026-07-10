@@ -32,12 +32,35 @@
           <div><span>Status</span><strong>Aberto</strong></div>
           {% if show_cash_financials %}
           <div><span>Valor inicial</span><strong>R$ {{ '%.2f'|format(cash_register.opening_amount or 0)|replace('.', ',') }}</strong></div>
-          <div><span>Vendas</span><strong>{{ cash_register.sales|length }}</strong></div>
-          <div><span>Total vendido</span><strong>R$ {{ '%.2f'|format(cash_register.sales|sum(attribute='final_amount') or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Vendas</span><strong>{{ current_cash_snapshot.totals.sales_count if current_cash_snapshot else 0 }}</strong></div>
+          <div><span>Total vendido</span><strong>R$ {{ '%.2f'|format(current_cash_snapshot.totals.final if current_cash_snapshot else 0)|replace('.', ',') }}</strong></div>
+          <div><span>Ticket médio</span><strong>R$ {{ '%.2f'|format(current_cash_snapshot.totals.average_ticket if current_cash_snapshot else 0)|replace('.', ',') }}</strong></div>
           <div><span>Valor esperado</span><strong>R$ {{ '%.2f'|format(cash_register_expected_amount or 0)|replace('.', ',') }}</strong></div>
           <div><span>Lucro do caixa</span><strong>R$ {{ '%.2f'|format(cash_register_profit or 0)|replace('.', ',') }}</strong></div>
           {% endif %}
         </div>
+
+        {% if show_cash_financials %}
+        <div class="cash-payment-overview mb-4">
+          {% for method, label in payment_methods.items() %}
+          <div>
+            <span>{{ label }}</span>
+            <strong>R$ {{ '%.2f'|format(current_cash_snapshot.payment_totals.get(method, 0) if current_cash_snapshot else 0)|replace('.', ',') }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="cash-timeline-toggle mb-4">
+          <button class="btn btn-outline-light w-100" type="button" data-bs-toggle="collapse" data-bs-target="#current-cash-timeline" aria-expanded="false" aria-controls="current-cash-timeline">
+            Ver linha do tempo de vendas
+          </button>
+          <div class="collapse mt-3" id="current-cash-timeline">
+            {% set sale_timeline = current_cash_snapshot.timeline if current_cash_snapshot else [] %}
+            {% set timeline_id_prefix = 'current-cash-sale' %}
+            {% include 'partials/sale_timeline.html' %}
+          </div>
+        </div>
+        {% endif %}
 
         <form class="cash-action-form" method="post" action="{{ url_for('main.close_cash_register_route') }}" {% if needs_permission_override('can_manage_cash_register') %}data-permission-override="true"{% endif %}>
           <div>

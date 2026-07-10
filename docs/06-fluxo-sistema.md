@@ -21,7 +21,9 @@ flowchart TD
     N --> O["Informar pagamentos"]
     O --> P["Finalizar"]
     P --> Q["Baixar estoque"]
+    Q --> T["Registrar movimentações e auditoria"]
     P --> R["Detalhe da venda"]
+    R --> S["Nova venda por botão, Enter, Espaço ou F3"]
 ```
 
 ## Fluxo de Login
@@ -57,9 +59,11 @@ flowchart TD
     G --> I["Cria Company e User admin"]
     H --> I
     I --> J["Cria banco MySQL da adega"]
-    J --> K{"Adega ativa?"}
-    K -- "Não" --> L["Redirect /assinatura"]
-    K -- "Sim" --> M["Redirect /dashboard"]
+    J --> K["Envia código de verificação por e-mail"]
+    K --> L["Usuário confirma código"]
+    L --> M{"Adega ativa?"}
+    M -- "Não" --> N["Redirect /assinatura"]
+    M -- "Sim" --> O["Redirect /dashboard"]
 ```
 
 ## Fluxo de Caixa
@@ -71,6 +75,8 @@ flowchart TD
     C --> D["POST /caixa/abrir"]
     D --> E["Caixa aberto"]
     B -- "Sim" --> F["Exibe vendas, lucro e valor esperado"]
+    F --> T["Resumo por forma de pagamento"]
+    F --> U["Linha do tempo expansível"]
     F --> G["Informar valor final"]
     G --> H["POST /caixa/fechar"]
     H --> I{"Valor final == esperado?"}
@@ -91,14 +97,39 @@ flowchart TD
     F --> G["Informar formas de pagamento"]
     G --> H{"Itens válidos?"}
     H -- "Não" --> X["Erro e preserva pedido"]
-    H -- "Sim" --> I{"Estoque suficiente?"}
-    I -- "Não" --> X
-    I -- "Sim" --> J{"Pago >= total final?"}
+    H -- "Sim" --> I{"Estoque insuficiente bloqueado pela adega?"}
+    I -- "Sim" --> X
+    I -- "Não" --> J{"Pago >= total final?"}
     J -- "Não" --> X
     J -- "Sim" --> K["Cria venda, itens e pagamentos"]
-    K --> L["Baixa estoque"]
-    L --> M["Commit"]
+    K --> L["Baixa estoque via stock_service"]
+    L --> P["Cria stock_movements"]
+    P --> Q["Registra auditoria da venda"]
+    Q --> M["Commit"]
     M --> N["Detalhe da venda"]
+    N --> O["Nova venda por botão, Enter, Espaço ou F3"]
+```
+
+## Fluxo de Relatório por Produto
+
+```mermaid
+flowchart TD
+    A["Relatórios"] --> B{"Visualização"}
+    B -- "Resumo geral" --> C["Vendas, gráfico, pagamentos e produtos mais vendidos"]
+    B -- "Por produto" --> D["Selecionar período, categoria, produto e ordenação"]
+    D --> E["Consulta agregada por SaleItem no banco"]
+    E --> F["Exibe quantidade, faturamento, custo, lucro, ticket médio e estoque"]
+```
+
+## Fluxo de Linha do Tempo do Caixa
+
+```mermaid
+flowchart TD
+    A["Caixa atual ou detalhe do caixa"] --> B["Carrega vendas do caixa"]
+    B --> C["Ordena cronologicamente"]
+    C --> D["Mostra linha resumida por venda"]
+    D --> E["Usuário expande venda"]
+    E --> F["Exibe produtos, descontos e pagamentos"]
 ```
 
 ## Fluxo de Importação
@@ -111,7 +142,31 @@ flowchart TD
     D --> E["Ler linhas"]
     E --> F["Criar categorias ausentes"]
     F --> G["Criar ou atualizar produtos"]
-    G --> H["Mostrar resumo"]
+    G --> I["Registrar import/ajuste de estoque"]
+    I --> H["Mostrar resumo"]
+```
+
+## Fluxo de Entrada/Ajuste de Estoque
+
+```mermaid
+flowchart TD
+    A["Estoque"] --> B["Entrada ou ajuste"]
+    B --> C["Seleciona produto, quantidade e motivo"]
+    C --> D["stock_service valida saldo e configuração da adega"]
+    D --> E["Atualiza products.stock_quantity"]
+    E --> F["Cria stock_movements"]
+    F --> G["Cria audit_logs"]
+    G --> H["Commit"]
+```
+
+## Fluxo de Auditoria
+
+```mermaid
+flowchart TD
+    A["Ação crítica"] --> B["audit_service sanitiza dados"]
+    B --> C["Mascara senhas, tokens e keys"]
+    C --> D["Grava usuário, rota, IP e request id"]
+    D --> E["Exibe em /auditoria ou /master/auditoria"]
 ```
 
 ## Fluxo do Master

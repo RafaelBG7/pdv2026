@@ -13,3 +13,5 @@ from .sale import Sale
 from .sale_item import SaleItem
 from .payment import Payment
 from .payable import Payable
+from .stock_movement import StockMovement
+from .audit_log import AuditLog

@@ -9,7 +9,14 @@
   <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar venda</a>
 </div>
 
+<nav class="report-view-tabs mb-4" aria-label="Tipo de relatório">
+  <a class="{{ 'is-active' if report_view == 'summary' }}" href="{{ url_for('main.reports', view='summary', period=period, start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric=chart_metric) }}">Resumo geral</a>
+  <a class="{{ 'is-active' if report_view == 'products' }}" href="{{ url_for('main.reports', view='products', product_sort=product_sort) }}">Por produto</a>
+</nav>
+
+{% if report_view == 'summary' %}
 <form class="card card-dark filter-panel mb-4 report-filter-form" method="get" data-report-filter-form>
+  <input type="hidden" name="view" value="summary">
   <input type="hidden" name="chart_metric" value="{{ chart_metric }}">
   <div>
     <label class="form-label" for="period">Período</label>
@@ -112,11 +119,11 @@
     <div class="report-chart-metric" aria-label="Métrica do gráfico">
       <a
         class="{{ 'is-active' if chart_metric == 'revenue' }}"
-        href="{{ url_for('main.reports', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='revenue') }}"
+        href="{{ url_for('main.reports', view='summary', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='revenue') }}"
       >Faturamento</a>
       <a
         class="{{ 'is-active' if chart_metric == 'quantity' }}"
-        href="{{ url_for('main.reports', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='quantity') }}"
+        href="{{ url_for('main.reports', view='summary', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='quantity') }}"
       >Quantidade</a>
     </div>
     {% endif %}
@@ -229,4 +236,208 @@
     </section>
   </aside>
 </div>
+{% else %}
+<form class="card card-dark filter-panel mb-4 product-report-filter-form" method="get">
+  <input type="hidden" name="view" value="products">
+  <div>
+    <label class="form-label" for="product_start_date">Data inicial</label>
+    <input class="form-control" id="product_start_date" name="product_start_date" type="date" value="{{ product_start_date.isoformat() if product_start_date else '' }}">
+  </div>
+  <div>
+    <label class="form-label" for="product_end_date">Data final</label>
+    <input class="form-control" id="product_end_date" name="product_end_date" type="date" value="{{ product_end_date.isoformat() if product_end_date else '' }}">
+  </div>
+  <div>
+    <label class="form-label" for="product_category_id">Categoria</label>
+    <select class="form-select" id="product_category_id" name="product_category_id">
+      <option value="">Todas</option>
+      {% for category in categories %}
+      <option value="{{ category.id }}" {% if product_category_id == category.id|string %}selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="form-label" for="product_id">Produto</label>
+    <select class="form-select" id="product_id" name="product_id">
+      <option value="">Todos</option>
+      {% for product in products %}
+      <option value="{{ product.id }}" {% if product_id == product.id|string %}selected{% endif %}>{{ product.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="form-label" for="product_sort">Ordenar</label>
+    <select class="form-select" id="product_sort" name="product_sort">
+      <option value="quantity_desc" {% if product_sort == 'quantity_desc' %}selected{% endif %}>Mais vendidos</option>
+      <option value="revenue_desc" {% if product_sort == 'revenue_desc' %}selected{% endif %}>Maior faturamento</option>
+      <option value="profit_desc" {% if product_sort == 'profit_desc' %}selected{% endif %}>Maior lucro</option>
+      <option value="stock_asc" {% if product_sort == 'stock_asc' %}selected{% endif %}>Menor estoque</option>
+      <option value="no_sales" {% if product_sort == 'no_sales' %}selected{% endif %}>Produtos sem venda</option>
+    </select>
+  </div>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Filtrar</button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('main.reports', view='products') }}">Limpar</a>
+  </div>
+</form>
+
+<div class="report-period-label mb-3">
+  <span>Período dos produtos</span>
+  <strong>
+    {% if product_has_date_filter and product_start_date and product_end_date %}
+      {{ product_start_date.strftime('%d/%m/%Y') }} a {{ product_end_date.strftime('%d/%m/%Y') }}
+    {% else %}
+      Todo o histórico
+    {% endif %}
+  </strong>
+</div>
+
+<div class="report-summary-grid mb-4">
+  <div class="card card-dark report-card"><span>Produtos listados</span><strong>{{ product_report_totals.products }}</strong></div>
+  <div class="card card-dark report-card"><span>Quantidade vendida</span><strong>{{ product_report_totals.quantity }}</strong></div>
+  <div class="card card-dark report-card"><span>Faturamento</span><strong>R$ {{ '%.2f'|format(product_report_totals.revenue or 0)|replace('.', ',') }}</strong></div>
+  <div class="card card-dark report-card"><span>Custo total</span><strong>R$ {{ '%.2f'|format(product_report_totals.cost or 0)|replace('.', ',') }}</strong></div>
+  <div class="card card-dark report-card"><span>Lucro estimado</span><strong>R$ {{ '%.2f'|format(product_report_totals.profit or 0)|replace('.', ',') }}</strong></div>
+</div>
+
+{% set quantity_ranking = product_report|sort(attribute='quantity', reverse=true) %}
+{% set revenue_ranking = product_report|sort(attribute='revenue', reverse=true) %}
+{% set profit_ranking = product_report|sort(attribute='profit', reverse=true) %}
+{% set stock_ranking = product_report|sort(attribute='stock') %}
+{% set featured_product = quantity_ranking[0] if quantity_ranking else none %}
+
+<section class="product-report-dashboard" aria-label="Relatório por produto em dashboard">
+  {% if featured_product %}
+  <article class="card card-dark product-dashboard-hero">
+    <div>
+      <span class="dashboard-eyebrow">Produto em destaque</span>
+      <h5>{{ featured_product.product.name }}</h5>
+      <p>{{ featured_product.category }}</p>
+    </div>
+    <div class="product-dashboard-hero-metrics">
+      <div><span>Quantidade</span><strong>{{ featured_product.quantity }}</strong></div>
+      <div><span>Faturamento</span><strong>R$ {{ '%.2f'|format(featured_product.revenue or 0)|replace('.', ',') }}</strong></div>
+      <div><span>Lucro</span><strong>R$ {{ '%.2f'|format(featured_product.profit or 0)|replace('.', ',') }}</strong></div>
+      <div><span>Estoque</span><strong>{{ featured_product.stock }}</strong></div>
+    </div>
+  </article>
+  {% else %}
+  <article class="card card-dark product-dashboard-empty">
+    <h5 class="mb-1">Dashboard por produto</h5>
+    <p class="text-muted mb-0">Nenhum produto encontrado para estes filtros.</p>
+  </article>
+  {% endif %}
+
+  <div class="product-dashboard-insights">
+    {% set best_revenue = revenue_ranking[0] if revenue_ranking else none %}
+    {% set best_profit = profit_ranking[0] if profit_ranking else none %}
+    {% set low_stock = stock_ranking[0] if stock_ranking else none %}
+    <div class="card card-dark product-insight-card">
+      <span>Mais vendido</span>
+      <strong>{{ featured_product.product.name if featured_product else '-' }}</strong>
+      <small>{{ featured_product.quantity if featured_product else 0 }} un.</small>
+    </div>
+    <div class="card card-dark product-insight-card">
+      <span>Maior faturamento</span>
+      <strong>{{ best_revenue.product.name if best_revenue else '-' }}</strong>
+      <small>R$ {{ '%.2f'|format(best_revenue.revenue if best_revenue else 0)|replace('.', ',') }}</small>
+    </div>
+    <div class="card card-dark product-insight-card">
+      <span>Maior lucro</span>
+      <strong>{{ best_profit.product.name if best_profit else '-' }}</strong>
+      <small>R$ {{ '%.2f'|format(best_profit.profit if best_profit else 0)|replace('.', ',') }}</small>
+    </div>
+    <div class="card card-dark product-insight-card">
+      <span>Menor estoque</span>
+      <strong>{{ low_stock.product.name if low_stock else '-' }}</strong>
+      <small>{{ low_stock.stock if low_stock else 0 }} un.</small>
+    </div>
+  </div>
+
+  <div class="product-dashboard-rankings">
+    <section class="card card-dark product-ranking-card">
+      <div class="report-section-header">
+        <h5 class="mb-0">Ranking por quantidade</h5>
+      </div>
+      <div class="product-ranking-list">
+        {% for item in quantity_ranking[:6] %}
+        {% set percent = ((item.quantity / quantity_ranking[0].quantity) * 100) if quantity_ranking[0].quantity else 0 %}
+        <div class="product-ranking-item" style="--bar-percent: {{ percent }}%;">
+          <div>
+            <strong>{{ item.product.name }}</strong>
+            <span>{{ item.category }}</span>
+          </div>
+          <b>{{ item.quantity }} un.</b>
+          <i></i>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Sem dados de quantidade.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card card-dark product-ranking-card">
+      <div class="report-section-header">
+        <h5 class="mb-0">Ranking por faturamento</h5>
+      </div>
+      <div class="product-ranking-list">
+        {% for item in revenue_ranking[:6] %}
+        {% set percent = ((item.revenue / revenue_ranking[0].revenue) * 100) if revenue_ranking[0].revenue else 0 %}
+        <div class="product-ranking-item" style="--bar-percent: {{ percent }}%;">
+          <div>
+            <strong>{{ item.product.name }}</strong>
+            <span>{{ item.category }}</span>
+          </div>
+          <b>R$ {{ '%.2f'|format(item.revenue or 0)|replace('.', ',') }}</b>
+          <i></i>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Sem dados de faturamento.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card card-dark product-ranking-card">
+      <div class="report-section-header">
+        <h5 class="mb-0">Ranking por lucro</h5>
+      </div>
+      <div class="product-ranking-list">
+        {% for item in profit_ranking[:6] %}
+        {% set percent = ((item.profit / profit_ranking[0].profit) * 100) if profit_ranking[0].profit else 0 %}
+        <div class="product-ranking-item" style="--bar-percent: {{ percent }}%;">
+          <div>
+            <strong>{{ item.product.name }}</strong>
+            <span>{{ item.category }}</span>
+          </div>
+          <b>R$ {{ '%.2f'|format(item.profit or 0)|replace('.', ',') }}</b>
+          <i></i>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Sem dados de lucro.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card card-dark product-ranking-card">
+      <div class="report-section-header">
+        <h5 class="mb-0">Menor estoque</h5>
+      </div>
+      <div class="product-ranking-list">
+        {% for item in stock_ranking[:6] %}
+        <div class="product-ranking-item product-ranking-item--stock" style="--bar-percent: 100%;">
+          <div>
+            <strong>{{ item.product.name }}</strong>
+            <span>{{ item.category }} · Ticket R$ {{ '%.2f'|format(item.average_ticket or 0)|replace('.', ',') }}</span>
+          </div>
+          <b>{{ item.stock }} un.</b>
+          <i></i>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Sem dados de estoque.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

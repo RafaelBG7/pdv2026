@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% set is_entry = mode == 'entry' %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>{{ 'Entrada de estoque' if is_entry else 'Ajuste de estoque' }}</h2>
+    <p class="text-muted mb-0">{{ 'Registre compra, reposição ou entrada manual.' if is_entry else 'Corrija o saldo com motivo obrigatório.' }}</p>
+  </div>
+  <a class="btn btn-outline-light" href="{{ url_for('main.stock_movements') }}">Movimentações</a>
+</div>
+
+<form class="card card-dark p-4 stock-operation-card" method="post" {% if needs_permission_override('can_manage_stock') %}data-permission-override="true"{% endif %}>
+  <div class="settings-form-grid">
+    <div>
+      <label class="form-label" for="product_id">Produto</label>
+      <select class="form-select" id="product_id" name="product_id" required>
+        <option value="">Buscar produto</option>
+        {% for product in products %}
+        <option value="{{ product.id }}" data-stock="{{ product.stock_quantity or 0 }}" data-cost="{{ '%.2f'|format(product.cost_price or 0) }}">{{ product.name }} · estoque {{ product.stock_quantity or 0 }} un.</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if is_entry %}
+    <div>
+      <label class="form-label" for="quantity">Quantidade</label>
+      <input class="form-control" id="quantity" name="quantity" type="number" min="1" required>
+    </div>
+    <div>
+      <label class="form-label" for="unit_cost">Custo unitário</label>
+      <input class="form-control" id="unit_cost" name="unit_cost" inputmode="numeric" value="0,00" data-currency-input>
+    </div>
+    <div class="form-check form-switch align-self-end">
+      <input class="form-check-input" id="update_cost" name="update_cost" type="checkbox">
+      <label class="form-check-label" for="update_cost">Atualizar preço de custo do produto</label>
+    </div>
+    {% else %}
+    <div>
+      <label class="form-label" for="adjustment_mode">Modo</label>
+      <select class="form-select" id="adjustment_mode" name="adjustment_mode">
+        <option value="target">Informar novo saldo</option>
+        <option value="delta">Adicionar ou remover quantidade</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="target_stock">Novo saldo</label>
+      <input class="form-control" id="target_stock" name="target_stock" type="number" value="0">
+    </div>
+    <div>
+      <label class="form-label" for="direction">Tipo</label>
+      <select class="form-select" id="direction" name="direction">
+        <option value="in">Adicionar</option>
+        <option value="out">Remover</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="quantity">Quantidade</label>
+      <input class="form-control" id="quantity" name="quantity" type="number" min="1" value="1">
+    </div>
+    {% endif %}
+
+    <div>
+      <label class="form-label" for="reason">Motivo</label>
+      <input class="form-control" id="reason" name="reason" required value="{{ 'Entrada manual de estoque' if is_entry else '' }}" placeholder="Motivo do ajuste">
+    </div>
+    <div>
+      <label class="form-label" for="notes">Observações</label>
+      <input class="form-control" id="notes" name="notes" placeholder="Observações opcionais">
+    </div>
+  </div>
+
+  <div class="stock-preview mt-4">
+    <div><span>Saldo atual</span><strong data-stock-current>0 un.</strong></div>
+    <div><span>Saldo resultante</span><strong data-stock-result>0 un.</strong></div>
+  </div>
+
+  <div class="d-flex justify-content-end gap-2 mt-4">
+    <a class="btn btn-outline-light" href="{{ url_for('main.stock_movements') }}">Cancelar</a>
+    <button class="btn btn-primary" type="submit">{{ 'Registrar entrada' if is_entry else 'Registrar ajuste' }}</button>
+  </div>
+</form>
+{% endblock %}

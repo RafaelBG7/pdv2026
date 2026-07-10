@@ -59,6 +59,8 @@ Catálogo:
 - Produtos.
 - Categorias.
 - Filtros.
+- Menu lateral de categorias.
+- Padronização visual de filtros e campos de busca.
 - Edição expandida.
 - Estoque mínimo.
 - Kits.
@@ -67,6 +69,8 @@ Catálogo:
 Vendas:
 
 - Caixa obrigatório.
+- Listagem principal limitada ao dia atual.
+- Filtros por coluna, vendedor, pagamento, status, valor e busca de venda.
 - Venda com múltiplos itens.
 - Pagamento misto.
 - Desconto.
@@ -74,6 +78,10 @@ Vendas:
 - Erros sem resetar pedido.
 - Baixa de estoque.
 - Baixa de estoque por kit.
+- Movimentação `initial_stock` no cadastro de produto.
+- Entrada e ajuste manual via serviço de estoque.
+- Bloqueio de ajuste negativo quando a adega não permite estoque negativo.
+- Movimentações de venda e kit vinculadas à venda.
 
 Caixa:
 
@@ -111,12 +119,19 @@ Logs:
 - Limpeza restrita ao master para os dois arquivos.
 - Logs de erro.
 
+Auditoria:
+
+- Mascaramento de senha, token, secret e key.
+- Registro de valores antigos e novos.
+- Página de auditoria acessível por usuário autorizado.
+- Rotas de estoque protegidas por permissão.
+
 ## Última Validação Conhecida
 
-Validação feita em 05/07/2026:
+Validação feita em 10/07/2026:
 
 ```text
-Ran 81 tests in 10.452s
+Ran 118 tests in 15.597s
 OK
 ```
 
@@ -128,10 +143,10 @@ Também foram validados:
 - workflow YAML de deploy OCI;
 - deploy real na VM OCI via `scripts/deploy_oci_app.sh`;
 - health check remoto em `/login`;
-- login remoto com usuário master;
 - containers Docker do app, MySQL e Caddy em execução;
 - bloqueio das portas 80/443 no ambiente sem domínio;
 - acesso público apenas pela porta alta `18080`.
+- redirecionamento de rotas protegidas para login quando não autenticado.
 
 Comandos usados:
 
@@ -143,6 +158,8 @@ bash -n scripts/oci/oci_create_free_tier_vm.sh
 bash -n scripts/oci/oci_harden_network.sh
 bash -n scripts/deploy_oci_app.sh
 ```
+
+Observação: o executável `pytest` não está instalado no ambiente local atual. A suíte oficial do projeto usa `unittest`.
 
 ## Quando Adicionar Testes
 

@@ -11,6 +11,7 @@ app/
 ├── error_logging.py
 ├── extensions.py
 ├── permissions.py
+├── services/
 ├── tenant.py
 ├── models/
 ├── routes/
@@ -88,6 +89,50 @@ Cuida de:
 - Relatórios.
 - Contas a pagar.
 - Exportação CSV.
+- Movimentações de estoque.
+- Auditoria operacional e master.
+
+## Serviços
+
+### `app/services/stock_service.py`
+
+Centraliza toda alteração de saldo de produto.
+
+Funções principais:
+
+- `register_stock_movement(...)`
+- `increase_stock(...)`
+- `decrease_stock(...)`
+- `adjust_stock(...)`
+
+Responsabilidades:
+
+- validar quantidade;
+- respeitar `Company.allow_negative_stock`;
+- calcular saldo anterior e novo;
+- atualizar `products.stock_quantity`;
+- criar `stock_movements`;
+- usar a mesma sessão/transação da operação chamadora.
+
+Em MySQL, o produto é travado com `SELECT ... FOR UPDATE` quando aplicável para reduzir
+risco de concorrência em baixa/ajuste de estoque.
+
+### `app/services/audit_service.py`
+
+Centraliza registros de auditoria.
+
+Funções principais:
+
+- `record_audit_event(...)`
+- `changed_values(...)`
+- `sanitize_payload(...)`
+
+Responsabilidades:
+
+- mascarar campos sensíveis;
+- registrar usuário, IP, rota, método, user-agent e request id;
+- gravar valores antigos e novos em JSON;
+- funcionar dentro ou fora de uma requisição Flask.
 
 ## Tenant
 
@@ -141,7 +186,9 @@ A empresa controla a regra por `Company.allow_negative_stock`:
 - Desativado: a venda é recusada quando não há saldo suficiente.
 - Ativado: a venda é concluída, o saldo pode ficar negativo e o sistema exibe aviso.
 
-A tela de pagamento é um modal separado da composição dos itens. O backend continua responsável por validar pagamentos, gravar venda e itens, baixar estoque e vincular o caixa.
+A tela de pagamento é um modal separado da composição dos itens. O backend continua responsável por validar pagamentos, gravar venda e itens, baixar estoque, criar `stock_movements`, registrar auditoria e vincular o caixa.
+
+Se qualquer baixa falhar, a transação é revertida e não ficam venda, pagamentos ou movimentos parciais.
 
 ## Logs de Erro
 
@@ -191,6 +238,11 @@ Variáveis principais:
 | `/catalogo/categorias` | Categorias. |
 | `/vendas/nova` | Registrar venda. |
 | `/caixa` | Caixa atual e anteriores. |
+| `/estoque/movimentacoes` | Histórico de estoque. |
+| `/estoque/entrada` | Entrada manual de estoque. |
+| `/estoque/ajuste` | Ajuste manual de estoque. |
+| `/auditoria` | Auditoria da adega. |
+| `/master/auditoria` | Auditoria central do master. |
 | `/relatorios` | Relatórios. |
 | `/contas-a-pagar` | Contas a pagar. |
 | `/exportacoes/<tipo>` | Exportação CSV. |

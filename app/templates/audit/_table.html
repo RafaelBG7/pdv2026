@@ -1,0 +1,136 @@
+{% if not master_view|default(true) %}
+<div class="dashboard-grid mb-4">
+  <div class="metric-card"><span>Eventos</span><strong>{{ summary.count }}</strong></div>
+  <div class="metric-card"><span>Usuários envolvidos</span><strong>{{ summary.users }}</strong></div>
+  <div class="metric-card"><span>Ações diferentes</span><strong>{{ summary.actions }}</strong></div>
+</div>
+
+<form class="card card-dark p-3 mb-4" method="get">
+  <div class="stock-filter-grid">
+    <div>
+      <label class="form-label" for="q">Busca</label>
+      <input class="form-control" id="q" name="q" value="{{ filters.q }}" placeholder="Buscar auditoria">
+    </div>
+    <div>
+      <label class="form-label" for="usuario">Usuário</label>
+      <select class="form-select" id="usuario" name="usuario">
+        <option value="">Todos</option>
+        {% for user in users %}
+        <option value="{{ user.id }}" {% if filters.usuario == user.id|string %}selected{% endif %}>{{ user.full_name or user.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="acao">Ação</label>
+      <select class="form-select" id="acao" name="acao">
+        <option value="">Todas</option>
+        {% for action in available_actions %}
+        <option value="{{ action }}" {% if filters.acao == action %}selected{% endif %}>{{ audit_action_label(action) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="entidade">Módulo</label>
+      <select class="form-select" id="entidade" name="entidade">
+        <option value="">Todos</option>
+        {% for entity in available_entities %}
+        <option value="{{ entity }}" {% if filters.entidade == entity %}selected{% endif %}>{{ entity_label(entity) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="metodo">Método</label>
+      <select class="form-select" id="metodo" name="metodo">
+        <option value="">Todos</option>
+        {% for method in ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] %}
+        <option value="{{ method }}" {% if filters.metodo == method %}selected{% endif %}>{{ method }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="data_inicio">Data inicial</label>
+      <input class="form-control" id="data_inicio" name="data_inicio" type="date" value="{{ filters.data_inicio }}">
+    </div>
+    <div>
+      <label class="form-label" for="data_fim">Data final</label>
+      <input class="form-control" id="data_fim" name="data_fim" type="date" value="{{ filters.data_fim }}">
+    </div>
+    <div class="d-flex gap-2 align-items-end">
+      <button class="btn btn-primary w-100" type="submit">Filtrar</button>
+      <a class="btn btn-outline-light" href="{{ url_for('main.audit_logs') }}">Limpar</a>
+    </div>
+  </div>
+</form>
+{% endif %}
+
+<div class="card card-dark table-card">
+  <div class="table-responsive">
+    <table class="table table-dark align-middle mb-0 data-table">
+      <thead>
+        <tr>
+          <th>Data e hora</th>
+          <th>Usuário</th>
+          <th>Ação</th>
+          <th>Módulo</th>
+          <th>Descrição</th>
+          <th>Entidade</th>
+          <th>ID</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr class="expandable-row" data-expand-row>
+          <td>{{ log.created_at.strftime('%d/%m/%Y %H:%M') if log.created_at else '-' }}</td>
+          <td>{{ log.user_name or 'Sistema' }}</td>
+          <td><span class="status-badge status-paid">{{ audit_action_label(log.action) }}</span></td>
+          <td>{{ entity_label(log.entity_type) }}</td>
+          <td>{{ log.description }}</td>
+          <td>{{ log.entity_type }}</td>
+          <td>{{ log.entity_id or '-' }}</td>
+          <td>{{ log.ip_address or '-' }}</td>
+        </tr>
+        <tr class="expandable-detail-row">
+          <td colspan="8">
+            <div class="expanded-product-panel audit-detail-grid">
+              <div>
+                <h6>Dados anteriores</h6>
+                {% for line in audit_json_lines(log.old_values) %}
+                <code>{{ line }}</code>
+                {% else %}
+                <span class="text-muted">Sem dados anteriores.</span>
+                {% endfor %}
+              </div>
+              <div>
+                <h6>Dados posteriores</h6>
+                {% for line in audit_json_lines(log.new_values) %}
+                <code>{{ line }}</code>
+                {% else %}
+                <span class="text-muted">Sem dados posteriores.</span>
+                {% endfor %}
+              </div>
+              <div class="settings-summary">
+                <div><span>Rota</span><strong>{{ log.route or '-' }}</strong></div>
+                <div><span>Método</span><strong>{{ log.http_method or '-' }}</strong></div>
+                <div><span>Request ID</span><strong>{{ log.request_id or '-' }}</strong></div>
+                <div><span>Empresa</span><strong>{{ log.company_id or '-' }}</strong></div>
+              </div>
+              <p class="text-muted mb-0">{{ log.user_agent or 'User-agent não registrado.' }}</p>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-5">Nenhum evento de auditoria encontrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total_pages > 1 %}
+<nav class="pagination-bar mt-3" aria-label="Paginação de auditoria">
+  {% for item_page in range(1, total_pages + 1) %}
+    <a class="btn btn-sm {{ 'btn-primary' if item_page == page else 'btn-outline-light' }}" href="{{ request.path }}?page={{ item_page }}{% for key, value in pagination_query.items() %}&{{ key }}={{ value }}{% endfor %}">{{ item_page }}</a>
+  {% endfor %}
+</nav>
+{% endif %}

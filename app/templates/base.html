@@ -39,6 +39,7 @@
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.master_users' else '' }}" href="{{ url_for('auth.master_users') }}" title="Usuários"><span class="nav-icon">U</span><span class="nav-label">Usuários</span></a></li>
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.master_subscriptions' else '' }}" href="{{ url_for('auth.master_subscriptions') }}" title="Assinaturas"><span class="nav-icon">AS</span><span class="nav-label">Assinaturas</span></a></li>
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.master_logs' else '' }}" href="{{ url_for('auth.master_logs') }}" title="Logs"><span class="nav-icon">L</span><span class="nav-label">Logs</span></a></li>
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.master_audit_logs' else '' }}" href="{{ url_for('main.master_audit_logs') }}" title="Auditoria"><span class="nav-icon">AU</span><span class="nav-label">Auditoria</span></a></li>
               {% endif %}
               {% if subscription_locked and current_user.role != 'master' %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.subscription_activation' else '' }}" href="{{ url_for('auth.subscription_activation') }}" title="Ativação"><span class="nav-icon">KEY</span><span class="nav-label">Ativação</span></a></li>
@@ -49,12 +50,18 @@
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'catalog.categories' else '' }}" href="{{ url_for('catalog.categories') }}" title="Categorias"><span class="nav-icon">C</span><span class="nav-label">Categorias</span></a></li>
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['main.sales', 'main.new_sale', 'main.sale_detail'] else '' }}" href="{{ url_for('main.sales') }}" title="Vendas"><span class="nav-icon">V</span><span class="nav-label">Vendas</span></a></li>
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.cash_register' else '' }}" href="{{ url_for('main.cash_register') }}" title="Caixa"><span class="nav-icon">R$</span><span class="nav-label">Caixa</span></a></li>
+              {% if can_view_permission('can_view_stock_movements') %}
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['main.stock_movements', 'main.stock_entry', 'main.stock_adjustment'] else '' }}" href="{{ url_for('main.stock_movements') }}" title="Estoque"><span class="nav-icon">E</span><span class="nav-label">Estoque</span></a></li>
+              {% endif %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['main.payables', 'main.pay_payable', 'main.reopen_payable'] else '' }}" href="{{ url_for('main.payables') }}" title="Contas a pagar"><span class="nav-icon">CP</span><span class="nav-label">Contas a pagar</span></a></li>
               {% if can_view_permission('can_view_reports') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.reports' else '' }}" href="{{ url_for('main.reports') }}" title="Relatórios"><span class="nav-icon">R</span><span class="nav-label">Relatórios</span></a></li>
               {% endif %}
               {% if can_view_permission('can_view_finance') %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint in ['auth.subscriptions', 'auth.subscription_activation'] else '' }}" href="{{ url_for('auth.subscriptions') }}" title="Assinaturas"><span class="nav-icon">AS</span><span class="nav-label">Assinaturas</span></a></li>
+              {% endif %}
+              {% if can_view_permission('can_view_audit_logs') %}
+              <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'main.audit_logs' else '' }}" href="{{ url_for('main.audit_logs') }}" title="Auditoria"><span class="nav-icon">AU</span><span class="nav-label">Auditoria</span></a></li>
               {% endif %}
               <li class="nav-item"><a class="nav-link {{ 'active' if request.endpoint == 'auth.settings' else '' }}" href="{{ url_for('auth.settings') }}" title="Configurações"><span class="nav-icon">CFG</span><span class="nav-label">Configurações</span></a></li>
               {% endif %}
@@ -178,7 +185,7 @@
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label" for="permissionOverrideUsername">Usuário autorizado</label>
-              <input class="form-control" id="permissionOverrideUsername" list="permissionOverrideUsers" autocomplete="username" value="{{ permission_authorizer_users[0].username if permission_authorizer_users else '' }}">
+              <input class="form-control" id="permissionOverrideUsername" list="permissionOverrideUsers" autocomplete="username" value="{{ permission_authorizer_users[0].username if permission_authorizer_users else '' }}" placeholder="Buscar usuário autorizado">
               <datalist id="permissionOverrideUsers">
                 {% for user in permission_authorizer_users %}
                 <option value="{{ user.username }}">{{ user.full_name or user.username }} · {{ user.role_label }}</option>

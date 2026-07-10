@@ -28,11 +28,14 @@ erDiagram
     COMPANIES ||--o{ EMAIL_ALERT_DELIVERIES : sends
     COMPANIES ||--o{ CATEGORIES : owns
     COMPANIES ||--o{ PRODUCTS : owns
+    COMPANIES ||--o{ STOCK_MOVEMENTS : owns
+    COMPANIES ||--o{ AUDIT_LOGS : audits
     COMPANIES ||--o{ CASH_REGISTERS : owns
     COMPANIES ||--o{ SALES : owns
     COMPANIES ||--o{ PAYABLES : owns
     CATEGORIES ||--o{ PRODUCTS : groups
     PRODUCTS ||--o{ SALE_ITEMS : sold_as
+    PRODUCTS ||--o{ STOCK_MOVEMENTS : moves
     PRODUCTS ||--o{ PRODUCTS : kit_base
     CASH_REGISTERS ||--o{ SALES : contains
     SALES ||--o{ SALE_ITEMS : has
@@ -95,6 +98,9 @@ Campos principais:
 - `can_view_reports`
 - `can_manage_payables`
 - `can_manage_settings`
+- `can_view_stock_movements`
+- `can_manage_stock`
+- `can_view_audit_logs`
 - `created_at`
 
 Perfis atuais:
@@ -286,10 +292,80 @@ Métodos:
 - `notes`
 - `created_at`
 
+### `stock_movements`
+
+Registra cada alteração no saldo de estoque. O saldo atual permanece em
+`products.stock_quantity`, mas alterações feitas por cadastro, edição, importação,
+venda, entrada ou ajuste geram uma linha nesta tabela.
+
+Campos principais:
+
+- `id`
+- `company_id`
+- `product_id`
+- `user_id`
+- `movement_type`
+- `source_type`
+- `source_id`
+- `quantity`
+- `previous_stock`
+- `new_stock`
+- `unit_cost`
+- `total_cost`
+- `reason`
+- `notes`
+- `created_at`
+
+Tipos atuais:
+
+- `entry`
+- `sale`
+- `adjustment_in`
+- `adjustment_out`
+- `return`
+- `cancellation`
+- `initial_stock`
+- `import`
+
+Origens atuais:
+
+- `manual`
+- `sale`
+- `product_creation`
+- `product_edit`
+- `spreadsheet_import`
+- `sale_cancellation`
+- `system`
+
+### `audit_logs`
+
+Registra ações críticas do sistema com contexto da requisição e valores sanitizados.
+
+Campos principais:
+
+- `id`
+- `company_id`
+- `user_id`
+- `user_name`
+- `user_role`
+- `action`
+- `entity_type`
+- `entity_id`
+- `description`
+- `old_values`
+- `new_values`
+- `ip_address`
+- `user_agent`
+- `request_id`
+- `route`
+- `http_method`
+- `created_at`
+
+Valores sensíveis como senha, token, secret, API key e key de ativação são mascarados
+antes de gravar.
+
 ## Tabelas Ainda Não Existentes
 
-- `stock_movements`: histórico de movimentação de estoque.
-- `audit_logs`: auditoria de ações de negócio.
 - `customers`: clientes.
 - `suppliers`: fornecedores.
 - `purchases`: compras/entrada de mercadoria.

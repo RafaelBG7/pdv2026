@@ -139,6 +139,9 @@ def sync_tenant_reference_data(company, engine):
         columns = {column['name'] for column in inspector.get_columns('users')}
         migrations = {
             'cpf': 'ALTER TABLE users ADD COLUMN cpf VARCHAR(20) DEFAULT ""',
+            'can_view_stock_movements': 'ALTER TABLE users ADD COLUMN can_view_stock_movements BOOLEAN DEFAULT 1',
+            'can_manage_stock': 'ALTER TABLE users ADD COLUMN can_manage_stock BOOLEAN DEFAULT 1',
+            'can_view_audit_logs': 'ALTER TABLE users ADD COLUMN can_view_audit_logs BOOLEAN DEFAULT 1',
         }
         with engine.begin() as connection:
             for column, statement in migrations.items():
@@ -225,14 +228,18 @@ def sync_tenant_reference_data(company, engine):
                         password_hash, role, company_id, is_active,
                         can_view_products, can_manage_products, can_manage_categories,
                         can_manage_sales, can_manage_cash_register, can_view_reports,
-                        can_manage_payables, can_manage_settings, created_at
+                        can_manage_payables, can_manage_settings,
+                        can_view_stock_movements, can_manage_stock, can_view_audit_logs,
+                        created_at
                     )
                     VALUES (
                         :id, :username, :first_name, :last_name, :cpf, :email, :phone,
                         :password_hash, :role, :company_id, :is_active,
                         :can_view_products, :can_manage_products, :can_manage_categories,
                         :can_manage_sales, :can_manage_cash_register, :can_view_reports,
-                        :can_manage_payables, :can_manage_settings, :created_at
+                        :can_manage_payables, :can_manage_settings,
+                        :can_view_stock_movements, :can_manage_stock, :can_view_audit_logs,
+                        :created_at
                     )
                     ON DUPLICATE KEY UPDATE
                         username = VALUES(username),
@@ -252,7 +259,10 @@ def sync_tenant_reference_data(company, engine):
                         can_manage_cash_register = VALUES(can_manage_cash_register),
                         can_view_reports = VALUES(can_view_reports),
                         can_manage_payables = VALUES(can_manage_payables),
-                        can_manage_settings = VALUES(can_manage_settings)
+                        can_manage_settings = VALUES(can_manage_settings),
+                        can_view_stock_movements = VALUES(can_view_stock_movements),
+                        can_manage_stock = VALUES(can_manage_stock),
+                        can_view_audit_logs = VALUES(can_view_audit_logs)
                     '''
                 ),
                 {
@@ -275,6 +285,9 @@ def sync_tenant_reference_data(company, engine):
                     'can_view_reports': user.can_view_reports,
                     'can_manage_payables': user.can_manage_payables,
                     'can_manage_settings': user.can_manage_settings,
+                    'can_view_stock_movements': user.can_view_stock_movements,
+                    'can_manage_stock': user.can_manage_stock,
+                    'can_view_audit_logs': user.can_view_audit_logs,
                     'created_at': user.created_at,
                 },
             )

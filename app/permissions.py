@@ -15,6 +15,9 @@ PERMISSION_LABELS = {
     'can_manage_settings': 'Configurações',
     'can_view_finance': 'Financeiro',
     'can_export_data': 'Exportação',
+    'can_view_stock_movements': 'Ver movimentações de estoque',
+    'can_manage_stock': 'Gerenciar estoque',
+    'can_view_audit_logs': 'Auditoria',
 }
 
 def user_can_override_permission(user, permission):

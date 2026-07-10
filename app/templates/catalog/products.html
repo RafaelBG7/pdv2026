@@ -14,11 +14,11 @@
 {% set has_advanced_filters = filters.category_id or filters.stock != 'all' or filters.min_price or filters.max_price %}
 
 <form class="card card-dark filter-panel mb-4" method="get">
-  <div class="quick-filter-grid">
+  <div class="quick-filter-grid product-filter-grid">
     <div class="search-field">
       <label class="form-label" for="q">Buscar</label>
       <div class="catalog-autocomplete" data-catalog-autocomplete>
-        <input class="form-control" id="q" name="q" value="{{ filters.search }}" placeholder="Nome ou código de barras" autocomplete="off" data-autocomplete-input>
+        <input class="form-control" id="q" name="q" value="{{ filters.search }}" placeholder="Buscar produto" autocomplete="off" data-autocomplete-input>
         <div class="product-suggestion-list" data-autocomplete-list></div>
         <div class="d-none" data-autocomplete-options>
           {% for item in product_suggestions %}
@@ -76,7 +76,7 @@
     <div>
       <label class="form-label" for="category_id">Categoria</label>
       <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode>
-        <input class="form-control" id="category_search" value="{% for category in categories %}{% if filters.category_id == category.id|string %}{{ category.name }}{% endif %}{% endfor %}" placeholder="Todas" autocomplete="off" data-autocomplete-input>
+        <input class="form-control" id="category_search" value="{% for category in categories %}{% if filters.category_id == category.id|string %}{{ category.name }}{% endif %}{% endfor %}" placeholder="Buscar categoria" autocomplete="off" data-autocomplete-input>
         <input id="category_id" name="category_id" type="hidden" value="{{ filters.category_id }}" data-autocomplete-hidden>
         <div class="product-suggestion-list" data-autocomplete-list></div>
         <div class="d-none" data-autocomplete-options>
@@ -124,7 +124,30 @@
   {% endfor %}
 </div>
 
-<div class="card card-dark table-card p-0">
+<div class="product-list-layout">
+  <aside class="card card-dark product-category-sidebar">
+    <div class="product-category-sidebar-title">Categorias</div>
+    <nav class="category-chip-nav category-chip-nav-vertical" aria-label="Filtrar produtos por categoria">
+      <a
+        class="category-chip {{ 'is-active' if not filters.category_id else '' }}"
+        href="{{ url_for('catalog.products', q=filters.search, status=filters.status, sort=filters.sort, stock=filters.stock, min_price=filters.min_price, max_price=filters.max_price) }}"
+      >
+        <span class="category-chip-name">Todas</span>
+        <span class="category-chip-count">{{ total_products }}</span>
+      </a>
+      {% for category in categories %}
+      <a
+        class="category-chip {{ 'is-active' if filters.category_id == category.id|string else '' }}"
+        href="{{ url_for('catalog.products', q=filters.search, status=filters.status, sort=filters.sort, stock=filters.stock, min_price=filters.min_price, max_price=filters.max_price, category_id=category.id) }}"
+      >
+        <span class="category-chip-name">{{ category.name }}</span>
+        <span class="category-chip-count">{{ category_counts.get(category.id, 0) }}</span>
+      </a>
+      {% endfor %}
+    </nav>
+  </aside>
+
+<div class="card card-dark table-card product-list-card p-0">
   <div class="table-responsive">
     <table class="table table-dark table-hover align-middle mb-0 app-table product-table">
       <thead>
@@ -213,7 +236,7 @@
                   <div>
                     <label class="form-label" for="category_{{ product.id }}">Categoria</label>
                     <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode>
-                      <input class="form-control" id="category_{{ product.id }}" value="{{ product.category.name if product.category else '' }}" placeholder="Sem categoria" autocomplete="off" data-autocomplete-input>
+                      <input class="form-control" id="category_{{ product.id }}" value="{{ product.category.name if product.category else '' }}" placeholder="Buscar categoria" autocomplete="off" data-autocomplete-input>
                       <input name="category_id" type="hidden" value="{{ product.category_id or '' }}" data-autocomplete-hidden>
                       <div class="product-suggestion-list" data-autocomplete-list></div>
                       <div class="d-none" data-autocomplete-options>
@@ -242,6 +265,10 @@
                     <input class="form-control" id="stock_{{ product.id }}" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}">
                   </div>
                   <div>
+                    <label class="form-label" for="stock_reason_{{ product.id }}">Motivo do ajuste</label>
+                    <input class="form-control" id="stock_reason_{{ product.id }}" name="stock_reason" placeholder="Motivo do ajuste, se alterar o estoque">
+                  </div>
+                  <div>
                     <label class="form-label" for="min_stock_{{ product.id }}">Estoque mínimo</label>
                     <input class="form-control" id="min_stock_{{ product.id }}" name="min_stock_quantity" type="number" min="0" value="{{ product.min_stock_quantity or 0 }}">
                   </div>
@@ -256,7 +283,7 @@
                     <div class="kit-fields" id="kit-fields-{{ product.id }}">
                       <label class="form-label" for="kit_component_{{ product.id }}">Produto base</label>
                       <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode data-autocomplete-options-source="#kit-product-autocomplete-options">
-                        <input class="form-control" id="kit_component_{{ product.id }}" value="{{ product.kit_component.name if product.kit_component else '' }}" placeholder="Selecione" autocomplete="off" data-autocomplete-input>
+                        <input class="form-control" id="kit_component_{{ product.id }}" value="{{ product.kit_component.name if product.kit_component else '' }}" placeholder="Buscar produto base" autocomplete="off" data-autocomplete-input>
                         <input name="kit_component_product_id" type="hidden" value="{{ product.kit_component_product_id or '' }}" data-autocomplete-hidden>
                         <div class="product-suggestion-list" data-autocomplete-list></div>
                       </div>
@@ -289,6 +316,7 @@
       </tbody>
     </table>
   </div>
+</div>
 </div>
 
 {% if total_products %}

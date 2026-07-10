@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center align-items-center min-vh-100">
+<div class="row justify-content-center align-items-center min-vh-100 login-screen">
   <div class="col-md-5">
     <div class="card card-dark p-4 shadow">
       <div class="login-brand">
@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <ul class="nav nav-pills settings-tab-nav mb-3" role="tablist">
+      <ul class="nav nav-pills settings-tab-nav login-tab-nav mb-3" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="settings-tab-button {{ 'is-active active' if auth_tab != 'register' else '' }}" id="login-tab" data-bs-toggle="pill" data-bs-target="#login-panel" type="button" role="tab" aria-controls="login-panel" aria-selected="{{ 'true' if auth_tab != 'register' else 'false' }}">Entrar</button>
         </li>
@@ -20,7 +20,7 @@
         </li>
       </ul>
 
-      <div class="tab-content">
+      <div class="tab-content login-tab-content">
         <form class="tab-pane fade {{ 'show active' if auth_tab != 'register' else '' }}" id="login-panel" method="post" role="tabpanel" aria-labelledby="login-tab">
           <input type="hidden" name="form_type" value="login">
           <div class="mb-3">

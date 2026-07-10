@@ -100,7 +100,7 @@ Pré-condições:
 - Usuário autenticado.
 - Caixa aberto.
 - Produtos ativos cadastrados.
-- Estoque suficiente.
+- Produtos com estoque suficiente ou adega configurada para permitir estoque negativo.
 
 Fluxo principal:
 
@@ -109,7 +109,7 @@ Fluxo principal:
 3. Informa quantidades.
 4. Aplica desconto opcional.
 5. Informa uma ou mais formas de pagamento.
-6. Sistema valida estoque.
+6. Sistema valida estoque conforme configuração da adega.
 7. Sistema valida pagamento.
 8. Sistema cria venda, itens e pagamentos.
 9. Sistema baixa estoque.
@@ -123,7 +123,7 @@ Exceções:
 
 - Sem caixa aberto.
 - Sem produto válido.
-- Estoque insuficiente.
+- Estoque insuficiente, quando a adega estiver configurada para bloquear venda sem saldo.
 - Pagamento insuficiente.
 - Kit sem configuração.
 

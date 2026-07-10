@@ -41,6 +41,9 @@
 - Produto possui estoque mínimo para alerta.
 - Lucro unitário base é `sale_price - cost_price`.
 - Taxas de Pix/débito/crédito podem reduzir o lucro final conforme configuração.
+- Produto criado com estoque inicial maior que zero gera movimentação `initial_stock`.
+- Edição de estoque em formulário ou linha rápida gera `adjustment_in` ou `adjustment_out`.
+- Ajuste de estoque exige motivo.
 
 ## Kits
 
@@ -68,13 +71,17 @@
 - Se valor final for menor, o sistema informa quanto falta.
 - Se valor final for maior, o sistema informa quanto excedeu.
 - Fechamento só conclui quando o valor bate exatamente.
+- Caixa atual exibe totais por forma de pagamento, total geral, quantidade de vendas e ticket médio para usuários autorizados a ver relatórios.
+- A análise do caixa usa linha do tempo cronológica das vendas, com itens e pagamentos expansíveis.
 
 ## Venda
 
 - Venda exige pelo menos um produto válido.
 - Quantidade deve ser maior que zero.
 - Produto deve existir, estar ativo e pertencer à adega.
-- Estoque precisa ser suficiente.
+- Estoque pode ser bloqueante ou não conforme configuração da adega.
+- Quando `allow_negative_stock` está ativo, a venda pode finalizar com estoque zerado/negativo e o sistema baixa normalmente para valor negativo.
+- Kits continuam exigindo componente base válido e quantidade configurada.
 - Pedido não deve ser resetado quando houver erro.
 - Desconto em reais não pode ultrapassar o subtotal.
 - Total final é `subtotal - desconto`.
@@ -82,10 +89,16 @@
 - Pagamento maior gera troco.
 - Venda pode ter dinheiro, Pix, débito e crédito juntos.
 - Itens gravam preço e custo do momento da venda.
-- Venda finalizada baixa estoque.
+- Venda finalizada baixa estoque por meio do serviço de estoque.
+- Cada item da venda gera movimentação `sale`; kits movimentam o produto base.
+- Venda, itens, pagamentos, estoque e movimentações são gravados na mesma transação.
+- Se a baixa de qualquer item falhar, a venda inteira é revertida.
+- A listagem principal em `/vendas` mostra o histórico do dia atual; relatórios continuam disponíveis para períodos maiores.
+- Filtros de venda por vendedor, pagamento e status aparecem como listas visuais clicáveis.
 - Atalho `F2` abre/conclui finalização.
 - Em Dashboard, Vendas e Caixa, `F3` inicia uma nova venda quando o foco não está em um campo.
 - Na tela de registrar venda, `F3` abre o desconto e não recarrega a página.
+- Na tela pós-venda, `Enter`, `Espaço` e `F3` iniciam uma nova venda quando o foco não está em um campo.
 
 ## Importação e Exportação
 
@@ -94,8 +107,32 @@
 - Planilha aceita CSV/XLSX.
 - Categoria é criada se não existir na adega.
 - Produto existente é atualizado quando identificado pelo nome.
+- Estoque importado gera movimentação `import` para produto novo ou ajuste do existente.
 - Exportação fica em Configurações > Exportação.
 - Apenas admin/master deve exportar dados.
+
+## Movimentação de Estoque
+
+- `products.stock_quantity` é o saldo atual.
+- `stock_movements` é o histórico rastreável.
+- Nenhuma operação deve alterar saldo sem registrar movimentação.
+- Entradas manuais usam `entry`.
+- Ajustes positivos usam `adjustment_in`.
+- Ajustes negativos usam `adjustment_out`.
+- Cadastro inicial usa `initial_stock`.
+- Importação usa `import`.
+- Venda usa `sale`.
+- Quantidade da movimentação é sempre positiva; o tipo define entrada ou saída.
+- A tela `/estoque/movimentacoes` permite filtrar por produto, categoria, tipo, usuário e período.
+
+## Auditoria
+
+- Ações críticas gravam registro em `audit_logs`.
+- O registro inclui usuário, perfil, rota, método, IP, user-agent, request id, entidade e valores sanitizados.
+- Campos sensíveis são mascarados antes de persistir.
+- Auditoria operacional fica isolada por adega.
+- O master do sistema acessa auditoria central em `/master/auditoria`.
+- Eventos cobertos incluem login, logout, key, assinatura, produtos, categorias, importação, exportação, caixa, venda, contas a pagar e estoque.
 
 ## Relatórios
 
@@ -108,6 +145,10 @@
 - No período diário, vendas são agrupadas no banco em intervalos de uma hora, das 00h às 23h.
 - O pico por quantidade e o pico por faturamento são calculados separadamente.
 - Horas sem venda permanecem no gráfico com valor zero.
+- Relatório por produto usa agregação no banco por itens vendidos no período.
+- Relatório por produto mostra quantidade vendida, faturamento, custo total, lucro estimado, ticket médio e estoque atual.
+- Relatório por produto pode ser filtrado por período, categoria e produto específico.
+- Relatório por produto pode ordenar por mais vendidos, maior faturamento, maior lucro, menor estoque e produtos sem venda.
 
 ## Notificações
 
@@ -122,7 +163,5 @@
 
 - Cancelamento/estorno de venda.
 - Sangria e reforço de caixa.
-- Histórico de movimentação de estoque.
-- Auditoria de alterações.
 - Fornecedores e compras.
 - Cobrança real de assinatura.

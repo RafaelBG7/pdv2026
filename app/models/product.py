@@ -21,6 +21,7 @@ class Product(db.Model):
     kit_component_quantity = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     category = db.relationship('Category', back_populates='products')
+    stock_movements = db.relationship('StockMovement', back_populates='product', passive_deletes=True)
     kit_component = db.relationship(
         'Product',
         remote_side=[id],

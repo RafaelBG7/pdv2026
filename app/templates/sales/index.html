@@ -4,7 +4,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
     <h2>Vendas</h2>
-    <p class="text-muted mb-0">Consulte vendas realizadas e inicie novos pedidos.</p>
+    <p class="text-muted mb-0">Consulte o histórico de vendas de hoje e inicie novos pedidos.</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
     <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}" data-global-new-sale>Realizar Venda - F3</a>
@@ -16,21 +16,114 @@
 
 <div class="card card-dark table-card p-0">
   <div class="table-responsive">
-    <table class="table table-dark table-hover align-middle mb-0 app-table compact-table sales-table">
+    <table class="table table-dark table-hover align-middle mb-0 app-table compact-table sales-table" data-sales-table data-sales-filters>
       <thead>
         <tr>
-          <th>Venda</th>
-          <th>Data</th>
-          <th class="text-end">Total</th>
-          <th>Pagamento</th>
-          <th class="text-end actions-column">Ações</th>
+          <th>
+            <div class="sales-column-search">
+              <span>Venda</span>
+              <input class="form-control form-control-sm" id="sale_filter_id" placeholder="Buscar venda" aria-label="Buscar venda" data-sales-filter="id">
+            </div>
+          </th>
+          <th>
+            <details class="sales-column-filter">
+              <summary>Data</summary>
+              <div class="sales-filter-popover">
+                <span>Escolha uma data</span>
+                <input class="form-control form-control-sm" id="sale_filter_date" type="date" aria-label="Filtrar por data" data-sales-filter="dateIso">
+              </div>
+            </details>
+          </th>
+          <th>
+            <details class="sales-column-filter">
+              <summary>Vendedor</summary>
+              <div class="sales-filter-popover sales-filter-popover--options">
+                <span>Vendedores disponíveis</span>
+                <input type="hidden" id="sale_filter_user" data-sales-filter="user" value="">
+                <div class="sales-filter-option-list" role="listbox" aria-label="Filtrar por vendedor">
+                  <button class="sales-filter-option is-active" type="button" data-sales-filter-option data-filter-target="sale_filter_user" data-filter-value="">Todos</button>
+                  {% for option in sales_filter_options.users %}
+                  <button class="sales-filter-option" type="button" data-sales-filter-option data-filter-target="sale_filter_user" data-filter-value="{{ option.value }}">{{ option.label }}</button>
+                  {% endfor %}
+                </div>
+              </div>
+            </details>
+          </th>
+          <th class="text-end">
+            <details class="sales-column-filter sales-column-filter--right">
+              <summary>Total</summary>
+              <div class="sales-filter-popover">
+                <span>Buscar valor</span>
+                <input class="form-control form-control-sm text-end" id="sale_filter_total" placeholder="Buscar valor" aria-label="Buscar por valor" data-sales-filter="total">
+                <span>Organizar</span>
+                <select class="form-select form-select-sm" id="sale_sort_total" aria-label="Ordenar por valor" data-sales-sort="total">
+                  <option value="">Sem ordenação</option>
+                  <option value="desc">Maior para menor</option>
+                  <option value="asc">Menor para maior</option>
+                </select>
+              </div>
+            </details>
+          </th>
+          <th>
+            <details class="sales-column-filter">
+              <summary>Pagamento</summary>
+              <div class="sales-filter-popover sales-filter-popover--options">
+                <span>Formas disponíveis</span>
+                <input type="hidden" id="sale_filter_payment" data-sales-filter="payment" value="">
+                <div class="sales-filter-option-list" role="listbox" aria-label="Filtrar por pagamento">
+                  <button class="sales-filter-option is-active" type="button" data-sales-filter-option data-filter-target="sale_filter_payment" data-filter-value="">Todos</button>
+                  {% for method, label in payment_methods.items() %}
+                  <button class="sales-filter-option" type="button" data-sales-filter-option data-filter-target="sale_filter_payment" data-filter-value="{{ label }}">{{ label }}</button>
+                  {% endfor %}
+                </div>
+              </div>
+            </details>
+          </th>
+          <th>
+            <details class="sales-column-filter">
+              <summary>Status</summary>
+              <div class="sales-filter-popover">
+                <span>Status disponíveis</span>
+                <select class="form-select form-select-sm" id="sale_filter_status" aria-label="Filtrar por status" data-sales-filter="status">
+                  <option value="">Todos</option>
+                  {% for option in sales_filter_options.statuses %}
+                  <option value="{{ option.value }}">{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </details>
+          </th>
+          <th class="sales-cash-column">
+            Caixa
+          </th>
+          <th class="text-end actions-column">
+            <button class="btn btn-outline-secondary btn-sm sales-filter-clear-button" type="button" data-sales-filter-clear>Limpar filtros</button>
+          </th>
         </tr>
       </thead>
       <tbody>
         {% for sale in sales %}
-        <tr>
+        {% set seller = sale_users.get(sale.user_id, 'Usuário não identificado') %}
+        {% set payment_text = namespace(value='') %}
+        {% for payment in sale.payments %}
+          {% set payment_text.value = payment_text.value ~ ' ' ~ payment_methods.get(payment.method, payment.method) %}
+        {% endfor %}
+        <tr
+          data-sales-row
+          data-sale-id="{{ sale.id }}"
+          data-sale-date="{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '' }}"
+          data-sale-user="{{ seller }}"
+          data-sale-payment="{{ payment_text.value }}"
+          data-sale-status="{{ sale.payment_status or '' }}"
+          data-sale-total="{{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}"
+          data-sale-total-number="{{ '%.2f'|format(sale.final_amount or 0) }}"
+          data-sale-cash="{{ sale.cash_register_id or '' }}"
+          data-sale-date-iso="{{ sale.created_at.strftime('%Y-%m-%d') if sale.created_at else '' }}"
+          data-sale-client=""
+        >
           <td class="fw-semibold">#{{ sale.id }}</td>
           <td>{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
+          <td>{{ seller }}</td>
           <td class="text-end">R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</td>
           <td>
             {% for payment in sale.payments %}
@@ -39,15 +132,20 @@
             <span class="text-muted">-</span>
             {% endfor %}
           </td>
+          <td><span class="badge text-bg-success">{{ 'Pago' if sale.payment_status == 'paid' else sale.payment_status|default('Pendente', true) }}</span></td>
+          <td class="sales-cash-column">{{ '#' ~ sale.cash_register_id if sale.cash_register_id else '-' }}</td>
           <td class="text-end actions-column">
             <a class="btn btn-sm btn-outline-light action-button" href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">Ver</a>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center text-muted py-4">Nenhuma venda realizada.</td>
+          <td colspan="8" class="text-center text-muted py-4">Nenhuma venda realizada hoje.</td>
         </tr>
         {% endfor %}
+        <tr class="is-hidden" data-sales-empty-row>
+          <td colspan="8" class="text-center text-muted py-4">Nenhuma venda encontrada com estes filtros.</td>
+        </tr>
       </tbody>
     </table>
   </div>

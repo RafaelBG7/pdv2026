@@ -1,0 +1,74 @@
+name: Deploy OCI Self Hosted
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: girofy-oci-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Testes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Testes automatizados
+        env:
+          TESTING: '1'
+          MAIL_SUPPRESS_SEND: '1'
+        run: python -m unittest discover
+
+      - name: Sintaxe dos scripts de deploy
+        run: |
+          bash -n scripts/deploy_self_hosted_app.sh
+          bash -n scripts/deploy_oci_app.sh
+          bash -n scripts/oci/load_oci_env.sh
+          bash -n scripts/oci/oci_check.sh
+          bash -n scripts/oci/oci_harden_network.sh
+
+  deploy:
+    name: Publicar na OCI
+    runs-on:
+      - self-hosted
+      - linux
+      - girofy-oci
+    needs: test
+    environment: production
+
+    env:
+      OCI_DEPLOY_PATH: ${{ vars.OCI_DEPLOY_PATH || '/opt/girofy/app' }}
+      OCI_DEPLOY_PORT: ${{ vars.OCI_DEPLOY_PORT || '18080' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publicar containers na própria VM
+        run: bash scripts/deploy_self_hosted_app.sh
+
+      - name: Health check local
+        run: curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/login" >/dev/null

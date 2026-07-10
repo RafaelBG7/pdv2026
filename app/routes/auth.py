@@ -15,7 +15,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.backup import BACKUP_FREQUENCIES, backup_frequency_label, create_company_backup
 from app.extensions import db
-from app.models import ActivationKey, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, User
+from app.models import ActivationKey, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.permissions import (
     PERMISSION_LABELS,
     authorize_permission_override,
@@ -25,6 +25,7 @@ from app.permissions import (
     user_can_override_permission,
 )
 from app.services.alert_service import EMAIL_ALERT_TYPES, alert_settings_for_company, parse_recipients
+from app.services.audit_service import record_audit_event
 from app.services.email_service import EmailAuthenticationError, send_email_change_confirmation, send_password_reset_email, send_verification_code_email
 from app.tenant import current_tenant_company, drop_mysql_database, tenant_database_identifier, tenant_engine
 
@@ -96,6 +97,9 @@ EMPLOYEE_PERMISSIONS = (
     'can_view_reports',
     'can_manage_payables',
     'can_manage_settings',
+    'can_view_stock_movements',
+    'can_manage_stock',
+    'can_view_audit_logs',
 )
 EMPLOYEE_ROLES = {
     'operator': {
@@ -121,6 +125,9 @@ ROLE_PERMISSION_DEFAULTS = {
         'can_view_reports': False,
         'can_manage_payables': False,
         'can_manage_settings': False,
+        'can_view_stock_movements': False,
+        'can_manage_stock': False,
+        'can_view_audit_logs': False,
     },
     'manager': {
         'can_view_products': True,
@@ -131,6 +138,9 @@ ROLE_PERMISSION_DEFAULTS = {
         'can_view_reports': True,
         'can_manage_payables': True,
         'can_manage_settings': True,
+        'can_view_stock_movements': True,
+        'can_manage_stock': True,
+        'can_view_audit_logs': True,
     },
     'admin': {
         permission: True
@@ -666,6 +676,26 @@ def login():
             user.set_password(password)
             db.session.add(user)
             try:
+                db.session.flush()
+                record_audit_event(
+                    'company_created',
+                    'company',
+                    company.id,
+                    f'Adega {company.name} criada no cadastro.',
+                    new_values={'company_id': company.id, 'name': company.name},
+                    company_id=company.id,
+                    db_session=db.session,
+                )
+                record_audit_event(
+                    'user_created',
+                    'user',
+                    user.id,
+                    f'Usuário {user.username} criado no cadastro.',
+                    new_values={'username': user.username, 'email': user.email, 'role': user.role},
+                    company_id=company.id,
+                    user=user,
+                    db_session=db.session,
+                )
                 db.session.commit()
             except IntegrityError:
                 db.session.rollback()
@@ -706,6 +736,16 @@ def login():
                 flash('Esta adega está inativa. Fale com o usuário master.', 'danger')
                 return render_auth_form('login', login_form_values(), {'username': 'A adega deste usuário está inativa.'})
             login_user(user)
+            record_audit_event(
+                'login_success',
+                'auth',
+                user.id,
+                f'Login realizado por {user.username}.',
+                company_id=user.company_id,
+                user=user,
+                db_session=db.session,
+            )
+            db.session.commit()
             flash('Login realizado com sucesso.', 'success')
             if user.role == 'master':
                 return redirect(url_for('auth.master_dashboard'))
@@ -717,6 +757,17 @@ def login():
             return redirect(url_for('main.dashboard'))
 
         register_login_failure(username)
+        record_audit_event(
+            'login_failed',
+            'auth',
+            None,
+            f'Tentativa de login falhou para {username}.',
+            new_values={'identifier': username, 'user_exists': bool(user)},
+            company_id=user.company_id if user else None,
+            user=user,
+            db_session=db.session,
+        )
+        db.session.commit()
         if user:
             flash('Senha incorreta.', 'danger')
             return render_auth_form('login', login_form_values(), {'password': 'Senha incorreta.'})
@@ -769,6 +820,16 @@ def verify_email():
         code_record.used = True
         user.email_verified = True
         user.email_verified_at = now
+        record_audit_event(
+            'email_changed',
+            'user',
+            user.id,
+            f'E-mail confirmado para {user.username}.',
+            new_values={'email_verified': True, 'email_verified_at': user.email_verified_at},
+            company_id=user.company_id,
+            user=user,
+            db_session=db.session,
+        )
         db.session.commit()
         clear_verification_user()
         login_user(user)
@@ -919,6 +980,15 @@ def confirm_email_change(token):
 @auth_bp.route('/logout')
 @login_required
 def logout():
+    record_audit_event(
+        'logout',
+        'auth',
+        current_user.id,
+        f'Logout realizado por {current_user.username}.',
+        company_id=current_user.company_id,
+        db_session=db.session,
+    )
+    db.session.commit()
     session.pop('permission_view_overrides', None)
     logout_user()
     flash('Você saiu do sistema.', 'info')
@@ -979,6 +1049,15 @@ def subscription_activation():
                 flash('Key de ativação inválida ou já utilizada.', 'danger')
                 return redirect(url_for('auth.subscription_activation'))
             apply_activation_key_to_company(generated_key, company)
+            record_audit_event(
+                'activation_key_applied',
+                'activation_key',
+                generated_key.id,
+                f'Key aplicada na adega {company.name}.',
+                new_values={'plan': generated_key.plan, 'renews_at': generated_key.renews_at, 'activation_key': generated_key.key},
+                company_id=company.id,
+                db_session=db.session,
+            )
             db.session.commit()
             flash('Assinatura ativada com sucesso.', 'success')
             return redirect(url_for('main.dashboard'))
@@ -988,6 +1067,15 @@ def subscription_activation():
                 flash('Key de ativação inválida.', 'danger')
                 return redirect(url_for('auth.subscription_activation'))
             apply_activation_key_to_company(generated_key, company)
+            record_audit_event(
+                'activation_key_applied',
+                'activation_key',
+                generated_key.id,
+                f'Key aplicada na adega {company.name}.',
+                new_values={'plan': generated_key.plan, 'renews_at': generated_key.renews_at, 'activation_key': generated_key.key},
+                company_id=company.id,
+                db_session=db.session,
+            )
             db.session.commit()
             flash('Assinatura ativada com sucesso.', 'success')
             return redirect(url_for('main.dashboard'))
@@ -1208,6 +1296,15 @@ def clear_master_logs():
         return redirect(url_for('main.dashboard'))
 
     clear_error_log_file()
+    record_audit_event(
+        'logs_cleared',
+        'logs',
+        None,
+        'Logs de erro e segurança foram limpos pelo painel master.',
+        company_id=current_user.company_id,
+        db_session=db.session,
+    )
+    db.session.commit()
     flash('Logs limpos com sucesso.', 'success')
     return redirect(url_for('auth.master_logs'))
 
@@ -1245,6 +1342,16 @@ def generate_master_activation_key():
         db.session.add(activation_key)
         generated_keys.append(activation_key)
 
+    for activation_key in generated_keys:
+        record_audit_event(
+            'activation_key_generated',
+            'activation_key',
+            None,
+            f'Key {activation_key.plan} gerada pelo painel master.',
+            new_values={'plan': activation_key.plan, 'renews_at': activation_key.renews_at, 'activation_key': activation_key.key},
+            company_id=current_user.company_id,
+            db_session=db.session,
+        )
     db.session.commit()
     if len(generated_keys) == 1:
         flash(f'Key avulsa gerada: {generated_keys[0].key}', 'success')
@@ -1281,6 +1388,15 @@ def renew_master_subscription():
         return redirect(url_for('auth.master_subscriptions'))
 
     apply_subscription_to_company(company, plan, billing_cycle, renews_at)
+    record_audit_event(
+        'subscription_updated',
+        'company',
+        company.id,
+        f'Assinatura da adega {company.name} renovada.',
+        new_values={'plan': plan, 'billing_cycle': billing_cycle, 'renews_at': renews_at},
+        company_id=company.id,
+        db_session=db.session,
+    )
     db.session.commit()
     flash(f'Assinatura da adega {company.name} renovada até {renews_at.strftime("%d/%m/%Y")}.', 'success')
     return redirect(url_for('auth.master_subscriptions'))
@@ -1297,6 +1413,15 @@ def cancel_master_activation_key(key_id):
         flash('Não é possível remover uma key já usada por uma adega.', 'danger')
         return redirect(url_for('auth.master_subscriptions'))
 
+    record_audit_event(
+        'activation_key_generated',
+        'activation_key',
+        activation_key.id,
+        'Key avulsa removida pelo painel master.',
+        old_values={'activation_key': activation_key.key, 'plan': activation_key.plan, 'renews_at': activation_key.renews_at},
+        company_id=current_user.company_id,
+        db_session=db.session,
+    )
     db.session.delete(activation_key)
     db.session.commit()
     flash('Key removida da lista com sucesso.', 'success')
@@ -1310,6 +1435,15 @@ def edit_company(company_id):
         return redirect(url_for('main.dashboard'))
 
     company = db.get_or_404(Company, company_id)
+    old_values = {
+        'name': company.name,
+        'active': company.active,
+        'subscription_plan': company.subscription_plan,
+        'billing_cycle': company.billing_cycle,
+        'subscription_started_at': company.subscription_started_at,
+        'subscription_renews_at': company.subscription_renews_at,
+        'activation_key': company.activation_key,
+    }
     name = request.form.get('name', '').strip()
     if not name:
         flash('Informe o nome da adega.', 'danger')
@@ -1374,6 +1508,24 @@ def edit_company(company_id):
     if activation_key != (company.activation_key or ''):
         company.activation_key_updated_at = company.activation_key_updated_at or datetime.now(timezone.utc)
 
+    record_audit_event(
+        'company_updated',
+        'company',
+        company.id,
+        f'Adega {company.name} atualizada pelo painel master.',
+        old_values=old_values,
+        new_values={
+            'name': company.name,
+            'active': company.active,
+            'subscription_plan': company.subscription_plan,
+            'billing_cycle': company.billing_cycle,
+            'subscription_started_at': company.subscription_started_at,
+            'subscription_renews_at': company.subscription_renews_at,
+            'activation_key': company.activation_key,
+        },
+        company_id=company.id,
+        db_session=db.session,
+    )
     db.session.commit()
     flash('Adega atualizada com sucesso.', 'success')
     return redirect(url_for('auth.master_companies', view=request.form.get('view_mode', 'table')))
@@ -1388,6 +1540,15 @@ def access_company(company_id):
     company = db.get_or_404(Company, company_id)
     tenant_engine(company)
     session['master_company_id'] = company.id
+    record_audit_event(
+        'company_accessed_by_master',
+        'company',
+        company.id,
+        f'Master acessou a adega {company.name}.',
+        company_id=company.id,
+        db_session=db.session,
+    )
+    db.session.commit()
     flash(f'Master conectado em {company.name}.', 'success')
     return redirect(url_for('main.dashboard'))
 
@@ -1398,7 +1559,16 @@ def leave_company_access():
     if not master_required():
         return redirect(url_for('main.dashboard'))
 
-    session.pop('master_company_id', None)
+    company_id = session.pop('master_company_id', None)
+    record_audit_event(
+        'company_access_ended',
+        'company',
+        company_id,
+        'Master encerrou o acesso a uma adega.',
+        company_id=company_id,
+        db_session=db.session,
+    )
+    db.session.commit()
     flash('Você voltou para o painel master.', 'info')
     return redirect(url_for('auth.master_companies'))
 
@@ -1414,7 +1584,18 @@ def toggle_company_status(company_id):
         flash('Não é possível inativar a adega do usuário master.', 'danger')
         return redirect(url_for('auth.master_companies'))
 
+    old_active = company.active
     company.active = not company.active
+    record_audit_event(
+        'company_activated' if company.active else 'company_deactivated',
+        'company',
+        company.id,
+        f'Adega {company.name} {"ativada" if company.active else "inativada"}.',
+        old_values={'active': old_active},
+        new_values={'active': company.active},
+        company_id=company.id,
+        db_session=db.session,
+    )
     db.session.commit()
     flash('Status da adega atualizado com sucesso.', 'success')
     return redirect(url_for('auth.master_companies'))
@@ -1460,6 +1641,8 @@ def delete_company(company_id):
             db.session.execute(db.delete(Payment).where(Payment.sale_id.in_(sale_ids)))
             db.session.execute(db.delete(SaleItem).where(SaleItem.sale_id.in_(sale_ids)))
             db.session.execute(db.delete(Sale).where(Sale.id.in_(sale_ids)))
+        db.session.execute(db.update(AuditLog).where(AuditLog.company_id == company.id).values(company_id=None))
+        db.session.execute(db.delete(StockMovement).where(StockMovement.company_id == company.id))
         if cash_register_ids or user_ids:
             cash_filter = CashRegister.company_id == company.id
             if user_ids:
@@ -1477,6 +1660,15 @@ def delete_company(company_id):
         db.session.execute(db.delete(Category).where(Category.company_id == company.id))
         if user_ids:
             User.query.filter(User.id.in_(user_ids)).delete(synchronize_session=False)
+        record_audit_event(
+            'company_deleted',
+            'company',
+            company.id,
+            f'Adega {company.name} excluída pelo painel master.',
+            old_values={'name': company.name, 'database_path': database_name},
+            company_id=None,
+            db_session=db.session,
+        )
         db.session.delete(company)
         db.session.commit()
     except SQLAlchemyError as error:

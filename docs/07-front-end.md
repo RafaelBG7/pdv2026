@@ -44,6 +44,8 @@ Menu autenticado:
 - Vendas.
 - Caixa.
 - Relatórios.
+- Estoque.
+- Auditoria.
 - Configurações.
 - Sair.
 
@@ -60,7 +62,7 @@ Objetivo:
 
 Componentes:
 
-- Card central.
+- Card central com wrapper responsivo próprio.
 - Abas Bootstrap: Entrar e Cadastrar.
 - Formulário de login.
 - Formulário de cadastro.
@@ -81,7 +83,8 @@ Arquivo: `app/templates/dashboard.html`.
 Objetivo:
 
 - Tela inicial pós-login.
-- Direcionar para venda se houver caixa aberto ou abertura de caixa se não houver.
+- Exibir visão operacional do dia.
+- Direcionar rapidamente para venda, produtos, caixa e relatórios.
 
 Estado:
 
@@ -89,7 +92,7 @@ Estado:
 
 Status:
 
-- Parcial. Cards ainda têm textos de estrutura inicial e não trazem métricas reais.
+- Implementado com resumo operacional, produtos de maior movimento, estoque baixo, contas a pagar e botão `Realizar Venda - F3`.
 
 ## Produtos
 
@@ -101,16 +104,20 @@ Arquivos:
 Funcionalidades:
 
 - Busca por nome ou código de barras.
+- Menu lateral de categorias: Todas + categorias da adega.
 - Filtro por status.
 - Filtros avançados por categoria, estoque e preço.
 - Ordenação.
 - Autocomplete de produtos e categorias.
+- Barra principal de busca/filtros em linha única com rolagem horizontal controlada em telas estreitas.
+- Placeholders de busca no padrão `Buscar X`, como `Buscar produto` e `Buscar categoria`.
 - Lista em tabela com linha expansível.
 - Edição rápida.
 - Ativar/inativar.
 - Excluir.
 - Exibição de custo, venda, lucro e margem.
 - Configuração de produto kit.
+- Campo de motivo quando a alteração muda o saldo de estoque.
 
 Eventos JavaScript:
 
@@ -146,8 +153,11 @@ Funcionalidades:
 - Aba "Caixas anteriores".
 - Abertura de caixa com valor inicial.
 - Exibição de status, abertura, valor inicial, vendas registradas, total vendido, valor esperado e lucro.
+- Caixa atual com total por forma de pagamento, total geral, quantidade de vendas e ticket médio.
+- Linha do tempo expansível das vendas do caixa atual.
 - Fechamento com valor final.
-- Lista dos 10 últimos caixas fechados.
+- Lista dos 10 últimos caixas fechados em linhas resumidas e expansíveis.
+- Análise completa do caixa com linha do tempo cronológica de vendas.
 
 Validação real:
 
@@ -163,7 +173,12 @@ Arquivos:
 
 Lista:
 
-- Exibe número da venda, data, total, formas de pagamento e ação de detalhe.
+- Exibe número da venda, data, vendedor, total, formas de pagamento, status, caixa e ação de detalhe.
+- Exibe por padrão apenas vendas do dia atual.
+- Filtros por coluna no frontend sem recarregar a página.
+- Campo de venda usa `Buscar venda`.
+- Filtros de vendedor, pagamento e status usam listas visuais clicáveis com opção `Todos`.
+- Filtro de total usa `Buscar valor` e ordenação maior/menor.
 
 Formulário:
 
@@ -183,6 +198,7 @@ Atalhos:
 - `F2`: abrir pagamento.
 - `F3` em Dashboard, Vendas e Caixa: abrir a tela de registrar venda.
 - `F3` dentro da venda: abrir desconto.
+- Na tela pós-venda, `Enter`, `Espaço` e `F3` abrem uma nova venda.
 - Atalhos globais não são disparados durante digitação em inputs, selects ou áreas editáveis.
 - `Escape`: fechar modal de desconto.
 
@@ -192,12 +208,45 @@ Detalhe:
 - Subtotal, desconto, total, lucro, pago e troco.
 - Pagamentos utilizados.
 
+## Estoque
+
+Arquivos:
+
+- `app/templates/stock/movements.html`.
+- `app/templates/stock/form.html`.
+
+Funcionalidades:
+
+- Lista de movimentações com filtros por produto, categoria, tipo, usuário e período.
+- Cards de resumo com entradas, saídas e produtos movimentados.
+- Entrada manual de estoque.
+- Ajuste manual por saldo final ou diferença.
+- Prévia de saldo atual e saldo resultante no formulário.
+- Linhas expansíveis para ver origem, motivo, observações e custo.
+
+## Auditoria
+
+Arquivos:
+
+- `app/templates/audit/index.html`.
+- `app/templates/audit/master.html`.
+- `app/templates/audit/_table.html`.
+
+Funcionalidades:
+
+- Lista de eventos por data, ação, entidade, usuário e método.
+- Busca por texto.
+- Filtro por usuário, ação, entidade e período.
+- Linhas expansíveis com valores antigos e novos.
+- Versão operacional por adega e versão central para master.
+
 ## Relatórios
 
 Arquivo: `app/templates/reports/index.html`.
 
 Funcionalidades:
 
+- Alternância entre "Resumo geral" e "Por produto".
 - Filtro por período.
 - Datas inicial e final.
 - Cards de resumo.
@@ -208,6 +257,8 @@ Funcionalidades:
 - Tabela de vendas do período.
 - Total por forma de pagamento.
 - Produtos mais vendidos.
+- Relatório por produto com categoria, quantidade vendida, faturamento, custo, lucro, ticket médio e estoque atual.
+- Filtros por produto: data inicial, data final, categoria, produto e ordenação.
 
 Períodos:
 
@@ -227,6 +278,10 @@ Arquivo: `app/templates/settings/index.html`.
 Abas:
 
 - Usuário.
+- Equipe.
+- Financeiro.
+- Backup.
+- Importação.
 - Suporte.
 - Aparência.
 
@@ -236,6 +291,11 @@ Funcionalidades:
 - Alterar email.
 - Alterar senha.
 - Exibir email mascarado.
+- Buscar funcionário com placeholder `Buscar funcionário`.
+- Contratar funcionário e ajustar perfil funcionário/gerente/admin.
+- Configurar taxas de maquininha/Pix.
+- Rodar backup manual e configurar frequência.
+- Importar produtos por planilha e baixar modelo.
 - Alternar tema light/dark.
 
 ## Responsividade
@@ -251,7 +311,9 @@ Comportamentos:
 - Menu lateral vira navegação superior em telas menores.
 - Grids passam para 1 ou 2 colunas.
 - Tabelas mantêm rolagem horizontal.
+- Barras críticas de filtros evitam quebra de texto e usam rolagem horizontal quando necessário.
 - Linha de venda se adapta para uma coluna.
+- Linhas expansíveis usam o mesmo comportamento em produtos, caixas, estoque e auditoria.
 
 ## Integrações Externas
 

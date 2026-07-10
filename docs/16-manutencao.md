@@ -176,4 +176,4 @@ O master do sistema também vê logs recentes no painel master e pode limpar o a
 - Configurar HTTPS.
 - Configurar backup externo.
 - Adicionar migrações versionadas.
-- Criar auditoria de ações críticas.
+- Ampliar auditoria para novas rotinas críticas conforme forem criadas.

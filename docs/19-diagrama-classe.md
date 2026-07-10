@@ -61,6 +61,9 @@ classDiagram
         +Boolean can_view_reports
         +Boolean can_manage_payables
         +Boolean can_manage_settings
+        +Boolean can_view_stock_movements
+        +Boolean can_manage_stock
+        +Boolean can_view_audit_logs
         +set_password(password)
         +check_password(password)
         +has_permission(permission)
@@ -194,6 +197,44 @@ classDiagram
         +String notes
     }
 
+    class StockMovement {
+        +Integer id
+        +Integer company_id
+        +Integer product_id
+        +Integer user_id
+        +String movement_type
+        +String source_type
+        +Integer source_id
+        +Integer quantity
+        +Integer previous_stock
+        +Integer new_stock
+        +Float unit_cost
+        +Float total_cost
+        +String reason
+        +Text notes
+        +DateTime created_at
+    }
+
+    class AuditLog {
+        +Integer id
+        +Integer company_id
+        +Integer user_id
+        +String user_name
+        +String user_role
+        +String action
+        +String entity_type
+        +Integer entity_id
+        +Text description
+        +Text old_values
+        +Text new_values
+        +String ip_address
+        +String user_agent
+        +String request_id
+        +String route
+        +String http_method
+        +DateTime created_at
+    }
+
     Company "1" --> "0..*" User : users
     Company "1" --> "0..*" ActivationKey : used_keys
     User "1" --> "0..*" EmailVerificationCode : verification_codes
@@ -203,13 +244,18 @@ classDiagram
     Company "1" --> "0..*" EmailAlertDelivery : email_alert_deliveries
     Company "1" --> "0..*" Category : tenant_data
     Company "1" --> "0..*" Product : tenant_data
+    Company "1" --> "0..*" StockMovement : tenant_data
+    Company "1" --> "0..*" AuditLog : audit
     Company "1" --> "0..*" CashRegister : tenant_data
     Company "1" --> "0..*" Sale : tenant_data
     Company "1" --> "0..*" Payable : tenant_data
     Category "1" --> "0..*" Product : products
     Product "1" --> "0..*" Product : kit_component
+    Product "1" --> "0..*" StockMovement : movements
     User "1" --> "0..*" CashRegister : opens
     User "1" --> "0..*" Sale : creates
+    User "1" --> "0..*" StockMovement : registers
+    User "1" --> "0..*" AuditLog : performs
     CashRegister "1" --> "0..*" Sale : contains
     Sale "1" --> "1..*" SaleItem : items
     Sale "1" --> "1..*" Payment : payments

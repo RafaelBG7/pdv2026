@@ -152,7 +152,8 @@ Payload:
   "active": "on",
   "is_kit": "on",
   "kit_component_product_id": "2",
-  "kit_component_quantity": "8"
+  "kit_component_quantity": "8",
+  "stock_reason": "Estoque inicial"
 }
 ```
 
@@ -176,6 +177,8 @@ Descrição: atualiza produto.
 Permissão: autenticado.
 
 Payload: mesmos campos de criação.
+
+Observação: se `stock_quantity` mudar, o backend gera uma movimentação de estoque.
 
 ### `POST /catalogo/produtos/<product_id>/atualizar`
 
@@ -258,7 +261,7 @@ Permissão: autenticado.
 
 ### `GET /vendas`
 
-Descrição: lista vendas.
+Descrição: lista o histórico de vendas do dia atual da adega logada.
 
 Permissão: autenticado.
 
@@ -294,14 +297,131 @@ Erros:
 - Nenhum produto válido.
 - Produto inativo/inexistente.
 - Kit sem configuração.
-- Estoque insuficiente.
+- Estoque insuficiente, somente quando a adega estiver configurada para bloquear venda sem saldo.
 - Pagamento insuficiente.
+
+Observação: cada item finalizado gera movimentação de estoque `sale` na mesma transação
+da venda. Produto kit movimenta o componente base.
 
 ### `GET /vendas/<sale_id>`
 
 Descrição: detalhe da venda.
 
 Permissão: autenticado.
+
+## Estoque
+
+### `GET /estoque/movimentacoes`
+
+Descrição: lista histórico de movimentações de estoque da adega atual.
+
+Permissão: `can_view_stock_movements`.
+
+Query params:
+
+- `q`: busca por produto.
+- `category_id`: categoria.
+- `movement_type`: tipo técnico da movimentação.
+- `user_id`: usuário responsável.
+- `start_date`: data inicial.
+- `end_date`: data final.
+- `page`: página.
+
+Resposta: HTML `stock/movements.html`.
+
+### `GET /estoque/entrada`
+
+Descrição: exibe formulário de entrada manual.
+
+Permissão: `can_manage_stock`.
+
+### `POST /estoque/entrada`
+
+Descrição: registra entrada manual e cria `stock_movements`.
+
+Permissão: `can_manage_stock`.
+
+Payload:
+
+```json
+{
+  "product_id": "1",
+  "quantity": "12",
+  "unit_cost": "8,50",
+  "reason": "Compra de mercadoria",
+  "notes": "Nota 123",
+  "update_cost": "on"
+}
+```
+
+### `GET /estoque/ajuste`
+
+Descrição: exibe formulário de ajuste.
+
+Permissão: `can_manage_stock`.
+
+### `POST /estoque/ajuste`
+
+Descrição: ajusta saldo por diferença ou saldo final e cria movimentação.
+
+Permissão: `can_manage_stock`.
+
+Payload por diferença:
+
+```json
+{
+  "product_id": "1",
+  "adjust_mode": "delta",
+  "direction": "out",
+  "quantity": "2",
+  "reason": "Quebra"
+}
+```
+
+Payload por saldo final:
+
+```json
+{
+  "product_id": "1",
+  "adjust_mode": "target",
+  "new_stock": "20",
+  "reason": "Inventário"
+}
+```
+
+Erros:
+
+- Produto inválido.
+- Quantidade inválida.
+- Motivo ausente.
+- Saldo negativo quando a adega bloqueia estoque negativo.
+
+## Auditoria
+
+### `GET /auditoria`
+
+Descrição: lista eventos de auditoria da adega atual.
+
+Permissão: `can_view_audit_logs`.
+
+Query params:
+
+- `q`: busca textual.
+- `user_id`: usuário.
+- `action`: ação.
+- `entity_type`: entidade.
+- `method`: método HTTP.
+- `start_date`: data inicial.
+- `end_date`: data final.
+- `page`: página.
+
+Resposta: HTML `audit/index.html`.
+
+### `GET /master/auditoria`
+
+Descrição: lista auditoria central para o master do sistema.
+
+Permissão: usuário `master`.
 
 ## Caixa
 

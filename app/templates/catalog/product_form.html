@@ -22,7 +22,7 @@
     <div class="col-md-6">
       <label class="form-label" for="category_id">Categoria</label>
       <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode>
-        <input class="form-control" id="category_id" value="{{ product.category.name if product.category else '' }}" placeholder="Sem categoria" autocomplete="off" data-autocomplete-input>
+        <input class="form-control" id="category_id" value="{{ product.category.name if product.category else '' }}" placeholder="Buscar categoria" autocomplete="off" data-autocomplete-input>
         <input name="category_id" type="hidden" value="{{ product.category_id or '' }}" data-autocomplete-hidden>
         <div class="product-suggestion-list" data-autocomplete-list></div>
         <div class="d-none" data-autocomplete-options>
@@ -49,6 +49,10 @@
     <div class="col-md-3">
       <label class="form-label" for="stock_quantity">Estoque</label>
       <input class="form-control" id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="stock_reason">Motivo do ajuste de estoque</label>
+      <input class="form-control" id="stock_reason" name="stock_reason" placeholder="{{ 'Estoque inicial informado no cadastro' if not product.id else 'Motivo do ajuste, se alterar o estoque' }}">
     </div>
     <div class="col-md-3">
       <label class="form-label" for="min_stock_quantity">Estoque mínimo</label>

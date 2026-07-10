@@ -83,6 +83,19 @@ Alertas críticos são configuráveis por adega e por destinatário. Cada envio 
 
 Erros são registrados em `logs/errors.log` com dados sensíveis mascarados.
 
+### Auditoria de Ações
+
+Ações críticas são registradas em `audit_logs` com:
+
+- usuário, perfil e empresa;
+- rota, método HTTP, IP, user-agent e request id;
+- entidade afetada;
+- valores antigos e novos sanitizados;
+- mascaramento de senhas, tokens, secrets, API keys e keys de ativação.
+
+Admin/gerente autorizado acessa `/auditoria`; o master do sistema acessa
+`/master/auditoria`.
+
 ### ORM
 
 SQLAlchemy reduz risco de SQL Injection nas consultas normais.
@@ -103,9 +116,10 @@ adega-jf-secret-key
 
 Em produção, sempre definir uma chave longa e secreta.
 
-### Logs
+### Logs e Auditoria
 
-Há logs de erro, mas ainda falta auditoria de ações de negócio.
+Logs de erro e auditoria de negócio existem. Em produção, ainda é recomendável enviar
+esses dados para armazenamento externo e monitorado.
 
 ### Backup
 
@@ -126,10 +140,6 @@ Recomendação:
 - Adicionar Flask-WTF ou proteção CSRF equivalente.
 - Incluir token em todos os formulários.
 
-### Auditoria
-
-Não existe tabela de auditoria para ações críticas.
-
 ## Recomendações de Produção
 
 - Trocar senha padrão do `master`.
@@ -141,6 +151,6 @@ Não existe tabela de auditoria para ações críticas.
 - Ativar CSRF.
 - Usar rate limit persistente para `/login` e endpoints sensíveis.
 - Guardar backups fora do servidor.
-- Criar auditoria de alterações.
+- Ampliar auditoria para cancelamentos, estornos e aprovações futuras.
 - Monitorar erros 500 e tentativas negadas.
 - Configurar certificados de assinatura para os instaladores desktop.

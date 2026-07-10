@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 from app import create_app
 from app.extensions import db
-from app.models import ActivationKey, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, User
+from app.models import ActivationKey, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.services.audit_service import changed_values, record_audit_event
 from sqlalchemy.exc import SQLAlchemyError
 from app import tenant as tenant_module
 from app.services import alert_service
@@ -2425,6 +2426,50 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('data-sale-quantity-modal'.encode(), new_response.data)
         self.assertIn('data-discount-new-total'.encode(), new_response.data)
 
+    def test_sales_page_shows_only_today_sales(self):
+        self.login()
+        self.open_cash_register()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            user = User.query.filter_by(username='master').one()
+            cash_register = CashRegister.query.filter_by(company_id=company_id, status='open').one()
+            today_sale = Sale(
+                created_at=datetime.now().replace(hour=10, minute=0, second=0, microsecond=0),
+                total_amount=11,
+                final_amount=11,
+                payment_status='paid',
+                user_id=user.id,
+                company_id=company_id,
+                cash_register_id=cash_register.id,
+            )
+            old_sale = Sale(
+                created_at=datetime.now() - timedelta(days=1),
+                total_amount=99,
+                final_amount=99,
+                payment_status='paid',
+                user_id=user.id,
+                company_id=company_id,
+                cash_register_id=cash_register.id,
+            )
+            db.session.add_all([today_sale, old_sale])
+            db.session.flush()
+            today_id = today_sale.id
+            old_id = old_sale.id
+            db.session.add_all([
+                Payment(sale_id=today_id, method='money', amount=11),
+                Payment(sale_id=old_id, method='pix', amount=99),
+            ])
+            db.session.commit()
+
+        response = self.client.get('/vendas')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('histórico de vendas de hoje'.encode(), response.data)
+        self.assertIn(f'#{today_id}'.encode(), response.data)
+        self.assertNotIn(f'#{old_id}'.encode(), response.data)
+        self.assertNotIn('R$ 99,00'.encode(), response.data)
+
     def test_global_f3_sale_shortcut_is_available_on_main_operational_pages(self):
         self.login()
         self.open_cash_register()
@@ -3239,6 +3284,372 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('Abra o caixa antes de registrar uma venda.'.encode(), response.data)
         self.assertIn('Abrir caixa'.encode(), response.data)
+
+    def test_sales_list_renders_column_filters_and_sale_metadata(self):
+        self.login()
+        self.open_cash_register(amount='0,00')
+
+        with self.app.app_context():
+            product = Product(name='Filtro Venda', sale_price=12, stock_quantity=5, active=True, company_id=self.master_company_id())
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        self.client.post(
+            '/vendas/nova',
+            data={
+                'product_id[]': [str(product_id)],
+                'quantity[]': ['1'],
+                'payment_money': '12,00',
+            },
+            follow_redirects=True,
+        )
+
+        response = self.client.get('/vendas')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-sales-filters'.encode(), response.data)
+        self.assertIn('data-sales-filter="id"'.encode(), response.data)
+        self.assertIn('data-sales-filter="payment"'.encode(), response.data)
+        self.assertIn('data-sale-payment'.encode(), response.data)
+        self.assertIn('Vendedor'.encode(), response.data)
+        self.assertIn('Caixa'.encode(), response.data)
+
+    def test_product_list_renders_category_menu_and_combines_category_filter(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            category = Category(name='Destilados', company_id=company_id)
+            db.session.add(category)
+            db.session.flush()
+            db.session.add_all([
+                Product(name='Whisky Categoria', sale_price=80, stock_quantity=3, active=True, category_id=category.id, company_id=company_id),
+                Product(name='Produto Fora Categoria', sale_price=10, stock_quantity=3, active=True, company_id=company_id),
+            ])
+            db.session.commit()
+            category_id = category.id
+
+        response = self.client.get('/catalogo/produtos', query_string={'category_id': category_id, 'q': 'Whisky'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('category-chip'.encode(), response.data)
+        self.assertIn('Destilados'.encode(), response.data)
+        self.assertIn('Whisky Categoria'.encode(), response.data)
+        self.assertIn(f'category_id={category_id}'.encode(), response.data)
+
+    def test_product_report_calculates_sales_cost_profit_and_stock(self):
+        self.login()
+        self.open_cash_register(amount='0,00')
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            category = Category(name='Relatorio Categoria', company_id=company_id)
+            db.session.add(category)
+            db.session.flush()
+            product = Product(
+                name='Produto Relatorio',
+                category_id=category.id,
+                cost_price=4,
+                sale_price=10,
+                stock_quantity=9,
+                active=True,
+                company_id=company_id,
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        self.client.post(
+            '/vendas/nova',
+            data={
+                'product_id[]': [str(product_id)],
+                'quantity[]': ['2'],
+                'payment_pix': '20,00',
+            },
+            follow_redirects=True,
+        )
+
+        response = self.client.get('/relatorios', query_string={
+            'view': 'products',
+            'product_sort': 'quantity_desc',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Relatório por produto'.encode(), response.data)
+        self.assertIn('Produto Relatorio'.encode(), response.data)
+        self.assertIn('Relatorio Categoria'.encode(), response.data)
+        self.assertIn('R$ 20,00'.encode(), response.data)
+        self.assertIn('R$ 8,00'.encode(), response.data)
+        self.assertIn('R$ 12,00'.encode(), response.data)
+        self.assertIn('7'.encode(), response.data)
+
+    def test_product_report_can_show_products_without_sales(self):
+        self.login()
+
+        with self.app.app_context():
+            db.session.add(Product(
+                name='Produto Sem Venda Relatorio',
+                sale_price=15,
+                stock_quantity=4,
+                active=True,
+                company_id=self.master_company_id(),
+            ))
+            db.session.commit()
+
+        response = self.client.get('/relatorios', query_string={
+            'view': 'products',
+            'product_sort': 'no_sales',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Produtos sem venda'.encode(), response.data)
+        self.assertIn('Produto Sem Venda Relatorio'.encode(), response.data)
+        self.assertIn('R$ 0,00'.encode(), response.data)
+
+    def test_current_cash_register_shows_payment_totals_and_timeline(self):
+        self.login()
+        self.open_cash_register(amount='0,00')
+
+        with self.app.app_context():
+            product = Product(name='Timeline Atual', sale_price=25, stock_quantity=5, active=True, company_id=self.master_company_id())
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        self.client.post(
+            '/vendas/nova',
+            data={
+                'product_id[]': [str(product_id)],
+                'quantity[]': ['1'],
+                'payment_debit': '25,00',
+            },
+            follow_redirects=True,
+        )
+
+        response = self.client.get('/caixa')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Ticket médio'.encode(), response.data)
+        self.assertIn('Débito'.encode(), response.data)
+        self.assertIn('R$ 25,00'.encode(), response.data)
+        self.assertIn('Ver linha do tempo de vendas'.encode(), response.data)
+        self.assertIn('Timeline Atual'.encode(), response.data)
+
+    def test_cash_register_detail_renders_expandable_sale_timeline(self):
+        self.login()
+        self.open_cash_register(amount='0,00')
+
+        with self.app.app_context():
+            product = Product(name='Timeline Fechada', sale_price=30, stock_quantity=5, active=True, company_id=self.master_company_id())
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        self.client.post(
+            '/vendas/nova',
+            data={
+                'product_id[]': [str(product_id)],
+                'quantity[]': ['1'],
+                'payment_credit': '30,00',
+            },
+            follow_redirects=True,
+        )
+        with self.app.app_context():
+            cash_register_id = CashRegister.query.one().id
+
+        self.client.post('/caixa/fechar', data={'closing_amount': '30,00'}, follow_redirects=True)
+        response = self.client.get(f'/caixa/{cash_register_id}')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Linha do tempo de vendas'.encode(), response.data)
+        self.assertIn('Venda #'.encode(), response.data)
+        self.assertIn('Crédito'.encode(), response.data)
+        self.assertIn('Timeline Fechada'.encode(), response.data)
+
+    def test_product_creation_generates_initial_stock_movement_and_audit(self):
+        self.login()
+
+        response = self.client.post(
+            '/catalogo/produtos/novo',
+            data={
+                'name': 'Produto Auditavel',
+                'cost_price': '4,00',
+                'sale_price': '10,00',
+                'stock_quantity': '8',
+                'min_stock_quantity': '1',
+                'active': 'on',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            product = Product.query.filter_by(name='Produto Auditavel').one()
+            movement = StockMovement.query.filter_by(product_id=product.id).one()
+            self.assertEqual(movement.movement_type, 'initial_stock')
+            self.assertEqual(movement.source_type, 'product_creation')
+            self.assertEqual(movement.previous_stock, 0)
+            self.assertEqual(movement.new_stock, 8)
+            self.assertEqual(AuditLog.query.filter_by(action='product_created', entity_id=product.id).count(), 1)
+
+    def test_manual_stock_entry_and_adjustment_use_stock_service(self):
+        self.login()
+        with self.app.app_context():
+            product = Product(name='Produto Estoque Manual', cost_price=3, sale_price=9, stock_quantity=2, active=True, company_id=self.master_company_id())
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        entry_response = self.client.post(
+            '/estoque/entrada',
+            data={
+                'product_id': str(product_id),
+                'quantity': '5',
+                'unit_cost': '3,50',
+                'reason': 'Compra de reposição',
+                'notes': 'Fornecedor teste',
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(entry_response.status_code, 200)
+        self.assertIn('Entrada registrada'.encode(), entry_response.data)
+
+        adjustment_response = self.client.post(
+            '/estoque/ajuste',
+            data={
+                'product_id': str(product_id),
+                'adjustment_mode': 'target',
+                'target_stock': '4',
+                'reason': 'Contagem física',
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(adjustment_response.status_code, 200)
+        self.assertIn('Ajuste registrado'.encode(), adjustment_response.data)
+
+        with self.app.app_context():
+            product = db.session.get(Product, product_id)
+            self.assertEqual(product.stock_quantity, 4)
+            self.assertEqual(StockMovement.query.filter_by(product_id=product_id).count(), 2)
+            self.assertEqual(StockMovement.query.filter_by(product_id=product_id, movement_type='entry').count(), 1)
+            self.assertEqual(StockMovement.query.filter_by(product_id=product_id, movement_type='adjustment_out').count(), 1)
+            self.assertGreaterEqual(AuditLog.query.filter_by(entity_type='stock_movement').count(), 2)
+
+    def test_stock_adjustment_blocks_negative_stock_unless_company_allows_it(self):
+        self.login()
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            company = db.session.get(Company, company_id)
+            company.allow_negative_stock = False
+            product = Product(name='Produto Sem Negativo', cost_price=1, sale_price=5, stock_quantity=1, active=True, company_id=company_id)
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        blocked = self.client.post(
+            '/estoque/ajuste',
+            data={'product_id': str(product_id), 'adjustment_mode': 'target', 'target_stock': '-2', 'reason': 'Teste negativo'},
+            follow_redirects=True,
+        )
+        self.assertIn('não pode ficar negativo'.encode(), blocked.data)
+
+        with self.app.app_context():
+            company = db.session.get(Company, self.master_company_id())
+            company.allow_negative_stock = True
+            db.session.commit()
+
+        allowed = self.client.post(
+            '/estoque/ajuste',
+            data={'product_id': str(product_id), 'adjustment_mode': 'target', 'target_stock': '-2', 'reason': 'Teste negativo permitido'},
+            follow_redirects=True,
+        )
+        self.assertIn('Ajuste registrado'.encode(), allowed.data)
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Product, product_id).stock_quantity, -2)
+
+    def test_sale_and_kit_create_stock_sale_movements(self):
+        self.login()
+        self.open_cash_register(amount='0,00')
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            base = Product(name='Base Kit Movimento', cost_price=2, sale_price=5, stock_quantity=10, active=True, company_id=company_id)
+            kit = Product(name='Kit Movimento', cost_price=4, sale_price=12, stock_quantity=0, active=True, company_id=company_id, is_kit=True, kit_component=base, kit_component_quantity=2)
+            db.session.add_all([base, kit])
+            db.session.commit()
+            base_id = base.id
+            kit_id = kit.id
+
+        response = self.client.post(
+            '/vendas/nova',
+            data={'product_id[]': [str(kit_id)], 'quantity[]': ['2'], 'payment_money': '24,00'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            base = db.session.get(Product, base_id)
+            self.assertEqual(base.stock_quantity, 6)
+            movement = StockMovement.query.filter_by(product_id=base_id, movement_type='sale').one()
+            self.assertEqual(movement.quantity, 4)
+            self.assertEqual(movement.source_type, 'sale')
+            self.assertIsNotNone(movement.source_id)
+            self.assertEqual(AuditLog.query.filter_by(action='sale_completed').count(), 1)
+
+    def test_stock_routes_require_stock_permission(self):
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            employee = User(username='semestoque', role='operator', company_id=company_id, is_active=True, can_view_stock_movements=False, can_manage_stock=False)
+            employee.set_password('123')
+            db.session.add(employee)
+            db.session.commit()
+
+        self.login(username='semestoque', password='123')
+        response = self.client.get('/estoque/movimentacoes', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Autorização necessária'.encode(), response.data)
+
+    def test_audit_masks_sensitive_fields_and_diff_values(self):
+        self.login()
+        with self.app.app_context():
+            old_values, new_values = changed_values({'sale_price': '10.00'}, {'sale_price': '12.00'})
+            record_audit_event(
+                'activation_key_generated',
+                'activation_key',
+                None,
+                'Teste de mascaramento',
+                old_values={'activation_key': 'ABCD-1234-EFGH-5678', 'password': 'segredo'},
+                new_values={**new_values, 'activation_key': 'ZZZZ-9999-YYYY-8888'},
+                company_id=self.master_company_id(),
+                db_session=db.session,
+            )
+            db.session.commit()
+            log = AuditLog.query.filter_by(description='Teste de mascaramento').one()
+            self.assertIn('****5678', log.old_values)
+            self.assertIn('[protegido]', log.old_values)
+            self.assertIn('sale_price', log.new_values)
+            self.assertNotIn('ABCD-1234-EFGH-5678', log.old_values)
+            self.assertNotIn('ZZZZ-9999-YYYY-8888', log.new_values)
+
+    def test_audit_page_is_available_to_authorized_user(self):
+        self.login()
+        with self.app.app_context():
+            record_audit_event(
+                'settings_updated',
+                'settings',
+                None,
+                'Evento de auditoria visível',
+                company_id=self.master_company_id(),
+                db_session=db.session,
+            )
+            db.session.commit()
+
+        response = self.client.get('/auditoria')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Auditoria'.encode(), response.data)
+        self.assertIn('Evento de auditoria visível'.encode(), response.data)
 
 
 if __name__ == '__main__':

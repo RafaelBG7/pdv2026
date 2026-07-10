@@ -244,7 +244,7 @@
   <form class="master-user-search" method="get" action="{{ url_for('auth.master_users') }}">
     <div>
       <label class="form-label" for="master_user_search">Buscar usuário</label>
-      <input class="form-control" id="master_user_search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Nome, usuário, CPF, e-mail ou adega" autocomplete="off">
+      <input class="form-control" id="master_user_search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Buscar usuário" autocomplete="off">
     </div>
     <button class="btn btn-primary" type="submit">Buscar</button>
     {% if request.args.get('q') %}<a class="btn btn-outline-light" href="{{ url_for('auth.master_users') }}">Limpar</a>{% endif %}

@@ -14,6 +14,8 @@ O sistema cobre:
 - controle de estoque;
 - abertura e fechamento de caixa;
 - relatórios por período;
+- relatório por produto;
+- linha do tempo de vendas por caixa;
 - controle de usuários e permissões;
 - contas a pagar;
 - notificações operacionais;
@@ -24,6 +26,8 @@ O sistema cobre:
 - importação e exportação de dados;
 - backup por período ou manual;
 - logs de erro visíveis no painel master;
+- movimentações de estoque rastreáveis;
+- auditoria de ações do sistema;
 - base multiadega para operação SaaS.
 
 ## Objetivo do Projeto
@@ -52,6 +56,8 @@ Pontos mais maduros:
 - fluxo de assinatura/key inicial;
 - permissões para funcionário, gerente e admin;
 - importação, exportação, backup e logs;
+- movimentações de estoque com origem, usuário e saldo antes/depois;
+- auditoria de ações críticas com mascaramento de dados sensíveis;
 - dashboard operacional com indicadores úteis;
 - ambiente OCI Free Tier publicado em porta alta;
 - deploy automatizado por GitHub Actions.
@@ -60,7 +66,6 @@ Pontos que ainda merecem prioridade antes de produção pública:
 
 - CSRF nos formulários;
 - migrações versionadas com Alembic/Flask-Migrate;
-- auditoria de ações de negócio;
 - restauração guiada de backup;
 - cobrança real e regras concretas para Basic/Pro;
 - domínio definitivo com HTTPS;
@@ -137,7 +142,8 @@ pdv-adega-jf/
 | `app/permissions.py` | Decorator `permission_required` e nomes das permissões do sistema. |
 | `app/tenant.py` | Gerencia banco separado por adega, criação automática de databases MySQL, sessão por tenant e sincronização de empresa/usuários no banco da adega. |
 | `app/models/` | Modelos SQLAlchemy: empresas, usuários, produtos, categorias, caixa, vendas, itens, pagamentos e contas a pagar. |
-| `app/routes/` | Rotas Flask separadas por domínio: autenticação/configurações, catálogo e operação principal. |
+| `app/routes/` | Rotas Flask separadas por domínio: autenticação/configurações, catálogo, estoque, auditoria e operação principal. |
+| `app/services/` | Serviços reutilizáveis, incluindo movimentação de estoque e auditoria. |
 | `app/templates/` | Templates HTML/Jinja das telas. |
 | `app/static/css/style.css` | Estilos da interface, tema claro/escuro, layout, tabelas, cards, vendas, caixa e responsividade. |
 | `app/static/js/main.js` | Comportamentos de frontend: navbar colapsável, tema, filtros, autocomplete, venda, pagamento, desconto e atalhos. |
@@ -298,6 +304,7 @@ O sistema permite:
 - cadastrar produto;
 - listar produto;
 - filtrar por nome/código, status, categoria, estoque, preço mínimo/máximo e ordenação;
+- navegar por menu de categorias com opção "Todas";
 - editar produto;
 - atualizar produto na linha expandida;
 - ativar/inativar produto;
@@ -330,6 +337,9 @@ Regras importantes:
 - kit precisa ter produto base e quantidade maior que zero;
 - produto base do kit não pode ser o próprio kit;
 - lucro exibido considera venda menos custo;
+- criação, edição, atualização rápida e importação usam o serviço de estoque quando alteram saldo;
+- estoque inicial maior que zero gera movimentação `initial_stock`;
+- alteração manual do estoque pelo produto gera `adjustment_in` ou `adjustment_out` com motivo;
 - alerta de estoque baixo depende de estoque mínimo configurado.
 
 ### Importação de produtos por planilha
@@ -363,7 +373,71 @@ Regras importantes:
 - categoria é criada se não existir na adega;
 - produto existente com mesmo nome é atualizado;
 - produto novo é criado ativo;
+- estoque importado gera movimentação `import` para produto novo ou ajuste quando o produto já existe;
 - linhas sem nome de produto são ignoradas.
+
+### Movimentação de estoque
+
+Onde fica:
+
+- Lista: `/estoque/movimentacoes`
+- Entrada manual: `/estoque/entrada`
+- Ajuste manual: `/estoque/ajuste`
+- Código: `app/routes/main.py`
+- Service: `app/services/stock_service.py`
+- Template: `app/templates/stock/movements.html` e `app/templates/stock/form.html`
+- Tabela: `stock_movements`
+
+O sistema permite:
+
+- consultar histórico de movimentações por produto, categoria, tipo, usuário e período;
+- registrar entrada manual de mercadoria;
+- ajustar estoque para cima ou para baixo com motivo;
+- visualizar saldo anterior, saldo novo, quantidade, custo unitário e custo total;
+- rastrear origem da movimentação: cadastro, edição, importação, venda ou ajuste manual.
+
+Regras importantes:
+
+- `products.stock_quantity` continua sendo o saldo atual;
+- toda alteração de saldo passa pelo `stock_service`;
+- venda comum gera movimentação `sale` no produto vendido;
+- venda de kit gera movimentação `sale` no produto base do kit;
+- importação gera `import`;
+- cadastro com estoque inicial gera `initial_stock`;
+- ajuste manual respeita a configuração `allow_negative_stock` da adega;
+- falha em baixa de estoque durante venda cancela a transação completa.
+
+### Auditoria
+
+Onde fica:
+
+- Auditoria da adega: `/auditoria`
+- Auditoria master: `/master/auditoria`
+- Código: `app/routes/main.py`
+- Service: `app/services/audit_service.py`
+- Template: `app/templates/audit/*.html`
+- Tabela: `audit_logs`
+
+O sistema registra:
+
+- login, falha de login e logout;
+- cadastro de empresa e usuário;
+- geração, uso e alteração de key/assinatura;
+- criação, edição, ativação/inativação e exclusão de produtos;
+- criação, edição e exclusão de categorias;
+- importação e exportação de dados;
+- abertura e fechamento de caixa;
+- venda concluída;
+- contas a pagar criadas, pagas ou reabertas;
+- entrada e ajuste de estoque.
+
+Regras importantes:
+
+- dados sensíveis como senha, token, secret e key são mascarados antes de gravar;
+- valores antigos e novos são salvos em JSON sanitizado;
+- o evento guarda usuário, perfil, IP, user-agent, rota, método e request id;
+- auditoria operacional fica isolada por adega;
+- o master do sistema acessa a auditoria central.
 
 ### Categorias
 
@@ -411,11 +485,14 @@ O sistema permite:
 - abrir caixa com valor inicial;
 - bloquear abertura de segundo caixa se já existe caixa aberto;
 - exibir caixa atual;
+- ver total por forma de pagamento no caixa atual;
+- ver total geral, quantidade de vendas e ticket médio;
+- expandir a linha do tempo das vendas do caixa atual;
 - consultar caixas anteriores;
 - fechar caixa;
 - validar valor de fechamento;
 - ver detalhes de caixa fechado;
-- consultar formas vendidas, horário de pico e produtos mais vendidos.
+- consultar formas vendidas, horário de pico, produtos mais vendidos e linha do tempo de vendas.
 
 Regras importantes:
 
@@ -439,6 +516,9 @@ Onde fica:
 O sistema permite:
 
 - listar vendas;
+- listar na tela principal apenas o histórico de vendas do dia atual;
+- filtrar a listagem por venda, data, vendedor, forma de pagamento, status e valor sem recarregar a página;
+- abrir filtros visuais de vendedor, pagamento e status direto no título da coluna;
 - abrir tela de nova venda;
 - buscar produto por autocomplete;
 - adicionar múltiplos produtos;
@@ -455,17 +535,24 @@ Regras importantes:
 - caixa precisa estar aberto;
 - venda precisa ter pelo menos um item;
 - produto precisa existir, estar ativo e pertencer à adega;
-- estoque precisa ser suficiente;
+- venda sem estoque pode ser permitida ou bloqueada pela configuração da adega;
+- quando a venda sem estoque está permitida, o estoque pode ficar negativo;
 - kit desconta estoque do produto base;
 - pagamento não pode ser menor que o total final;
 - desconto não passa do total;
-- venda reduz estoque;
+- venda reduz estoque e cria movimentações rastreáveis para cada item;
 - lucro por item considera custo, desconto do produto e taxas configuradas de Pix/débito/crédito;
 - erro de pagamento ou estoque não reseta o pedido;
 - atalho F2 abre/conclui a etapa de finalização;
 - em Dashboard, Vendas e Caixa, `F3` abre a tela de registrar venda;
 - dentro da tela de registrar venda, `F3` continua abrindo o desconto;
+- na tela pós-venda, `Enter`, `Espaço` e `F3` iniciam uma nova venda;
 - o atalho global é ignorado enquanto o usuário digita em campos de formulário.
+
+Padrão de busca:
+
+- todos os campos de busca/autocomplete exibem placeholder no formato `Buscar X`;
+- exemplos: `Buscar produto`, `Buscar categoria`, `Buscar venda`, `Buscar valor`, `Buscar funcionário` e `Buscar usuário`.
 
 ### Relatórios
 
@@ -478,6 +565,7 @@ Onde fica:
 
 O sistema permite:
 
+- alternar entre resumo geral e relatório por produto;
 - consultar vendas por período diário, semanal, mensal, anual ou personalizado;
 - preencher automaticamente períodos padrão;
 - ver total vendido;
@@ -490,6 +578,9 @@ O sistema permite:
 - no relatório diário, alternar o gráfico entre faturamento e quantidade de vendas por hora;
 - identificar automaticamente o pico por quantidade e o pico por faturamento;
 - consultar no tooltip de cada hora a quantidade de vendas e o valor faturado.
+- consultar relatório por produto com quantidade vendida, faturamento, custo, lucro estimado, ticket médio e estoque atual;
+- filtrar relatório por produto por data inicial/final, categoria e produto específico;
+- ordenar relatório por produto por mais vendidos, maior faturamento, maior lucro, menor estoque ou produtos sem venda.
 
 O relatório diário agrega as vendas no banco em 24 faixas de uma hora. A função
 `build_daily_sales_activity` devolve uma estrutura estável de buckets e picos, preparada
@@ -682,6 +773,9 @@ Representa usuários do sistema.
 | `can_view_reports` | Permissão para relatórios. |
 | `can_manage_payables` | Permissão para contas a pagar. |
 | `can_manage_settings` | Permissão para configurações. |
+| `can_view_stock_movements` | Permissão para consultar movimentações de estoque. |
+| `can_manage_stock` | Permissão para entrada e ajuste manual de estoque. |
+| `can_view_audit_logs` | Permissão para consultar auditoria da adega. |
 | `created_at` | Data de criação. |
 
 #### `categories`
@@ -790,11 +884,51 @@ Contas a pagar.
 | `notes` | Observações. |
 | `created_at` | Data de criação. |
 
+#### `stock_movements`
+
+Histórico rastreável de toda alteração no saldo do produto.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `company_id` | Adega da movimentação. |
+| `product_id` | Produto movimentado. Pode ficar nulo se o produto for removido depois. |
+| `user_id` | Usuário responsável. |
+| `movement_type` | Tipo: `entry`, `sale`, `adjustment_in`, `adjustment_out`, `return`, `cancellation`, `initial_stock` ou `import`. |
+| `source_type` | Origem: `manual`, `sale`, `product_creation`, `product_edit`, `spreadsheet_import`, `sale_cancellation` ou `system`. |
+| `source_id` | ID do registro de origem, quando houver. |
+| `quantity` | Quantidade movimentada, sempre positiva. |
+| `previous_stock` | Estoque antes da operação. |
+| `new_stock` | Estoque depois da operação. |
+| `unit_cost` | Custo unitário no momento da movimentação. |
+| `total_cost` | Quantidade multiplicada pelo custo unitário. |
+| `reason` | Motivo curto. |
+| `notes` | Observação opcional. |
+| `created_at` | Data/hora da movimentação. |
+
+#### `audit_logs`
+
+Auditoria de ações de negócio e segurança operacional.
+
+| Campo | Função |
+|---|---|
+| `id` | Chave primária. |
+| `company_id` | Adega relacionada, quando houver. |
+| `user_id` | Usuário responsável, quando autenticado. |
+| `user_name`, `user_role` | Snapshot do usuário no momento do evento. |
+| `action` | Ação técnica padronizada. |
+| `entity_type`, `entity_id` | Entidade afetada. |
+| `description` | Descrição amigável do evento. |
+| `old_values`, `new_values` | Valores anteriores e novos em JSON sanitizado. |
+| `ip_address`, `user_agent` | Contexto da requisição. |
+| `request_id` | Identificador de correlação da requisição. |
+| `route`, `http_method` | Rota e método HTTP. |
+| `created_at` | Data/hora do evento. |
+
 ### Tabelas citadas mas não existentes no código atual
 
 | Nome | Status |
 |---|---|
-| `stock_movements` | Não existe no código atual. A baixa de estoque é feita diretamente em `products.stock_quantity`. |
 | `clientes` | Não existe no código atual. O sistema ainda não possui cadastro de clientes. |
 | `sale_payments` | Não existe com esse nome. A tabela real é `payments`. |
 
@@ -808,6 +942,8 @@ Contas a pagar.
 - `Sale` possui vários `SaleItem`.
 - `Sale` possui vários `Payment`.
 - `SaleItem` aponta para `Product`.
+- `Product` possui várias `StockMovement`.
+- `AuditLog` registra ações de usuários, empresas e entidades operacionais.
 - `Payable` pertence a uma `Company`.
 
 ## Configuração do Ambiente
@@ -1074,35 +1210,38 @@ Sem esses certificados, os sistemas operacionais podem continuar exibindo alerta
 
 ### 12. Deploy automatizado na OCI
 
-O repositório possui o workflow `.github/workflows/deploy-oci.yml` para publicar o Girofy na VM da Oracle Cloud. A pipeline faz:
+O repositório possui o workflow `.github/workflows/deploy-oci-self-hosted.yml` para publicar o Girofy na VM da Oracle Cloud. Esse é o fluxo recomendado: o deploy roda dentro da própria VM por um GitHub Actions self-hosted runner, sem depender do IP público do desenvolvedor nem de sessão OCI CLI.
+
+A pipeline faz:
 
 - checkout do código;
 - instalação das dependências Python;
 - execução da suíte `unittest`;
 - validação de sintaxe dos scripts de infraestrutura;
-- sincronização do projeto para a VM com `rsync`;
+- sincronização do projeto para `/opt/girofy/app`;
 - rebuild dos containers Docker;
-- health check interno e público em `/login`.
+- health check interno em `/login`.
 
-Configure estes secrets no GitHub antes de rodar:
+Instale o runner uma vez na VM:
 
-```text
-OCI_DEPLOY_HOST
-OCI_DEPLOY_USER
-OCI_DEPLOY_PATH
-OCI_SSH_PRIVATE_KEY
+```bash
+cd /opt/girofy/app
+GITHUB_REPOSITORY_URL=https://github.com/SEU_USUARIO/SEU_REPOSITORIO \
+GITHUB_RUNNER_TOKEN=TOKEN_GERADO_PELO_GITHUB \
+scripts/oci/install_github_runner.sh
 ```
 
-Opcionalmente configure a variável do ambiente `production`:
+Opcionalmente configure as variáveis do ambiente `production`:
 
 ```text
+OCI_DEPLOY_PATH=/opt/girofy/app
 OCI_DEPLOY_PORT=18080
 ```
 
 O deploy pode ser executado manualmente em:
 
 ```text
-GitHub > Actions > Deploy OCI > Run workflow
+GitHub > Actions > Deploy OCI Self Hosted > Run workflow
 ```
 
 Também roda automaticamente em pushes para `main`, ignorando alterações somente em documentação.
@@ -1110,10 +1249,12 @@ Também roda automaticamente em pushes para `main`, ignorando alterações somen
 O script usado pela pipeline é:
 
 ```text
-scripts/deploy_oci_app.sh
+scripts/deploy_self_hosted_app.sh
 ```
 
 Ele não envia `.env`, bancos, backups, logs, builds locais ou ambientes virtuais. O `.env` real fica preservado na VM.
+
+O workflow `.github/workflows/deploy-oci.yml` continua disponível como fallback manual via SSH/rsync, mas não é mais o fluxo padrão.
 
 ### 13. Ambiente OCI atual
 
@@ -1296,7 +1437,7 @@ ip addr
 - Venda precisa ter pelo menos um item.
 - Produto vendido precisa estar ativo.
 - Produto vendido precisa pertencer à adega atual.
-- Estoque precisa ser suficiente.
+- Estoque pode ser bloqueante ou permitir saldo negativo conforme configuração da adega.
 - Produto kit desconta estoque do produto base.
 - Kit precisa ter produto base e quantidade configurados.
 - Pagamento total não pode ser menor que o valor final da venda.
@@ -1304,7 +1445,9 @@ ip addr
 - O sistema calcula troco quando pagamento é maior que o total final.
 - Desconto é em reais e não pode passar do total da venda.
 - Venda reduz estoque imediatamente.
+- Toda alteração de estoque registra uma movimentação com saldo anterior e novo.
 - Lucro considera preço de venda, custo, desconto e taxas configuradas.
+- Ações críticas geram auditoria com dados sensíveis mascarados.
 - Caixa só fecha quando valor informado é igual ao valor esperado.
 - Categoria com produtos vinculados não pode ser excluída.
 - Categoria duplicada é validada por adega, não globalmente.
@@ -1359,6 +1502,11 @@ ip addr
 | GET | `/caixa/<cash_register_id>` | `cash_register_detail` | `cash_register_detail.html` | `can_manage_cash_register` | Detalhes do caixa. |
 | POST | `/caixa/abrir` | `open_cash_register_route` | - | `can_manage_cash_register` | Abre caixa. |
 | POST | `/caixa/fechar` | `close_cash_register_route` | - | `can_manage_cash_register` | Fecha caixa com validação. |
+| GET | `/estoque/movimentacoes` | `stock_movements` | `stock/movements.html` | `can_view_stock_movements` | Lista histórico de estoque. |
+| GET/POST | `/estoque/entrada` | `stock_entry` | `stock/form.html` | `can_manage_stock` | Registra entrada manual. |
+| GET/POST | `/estoque/ajuste` | `stock_adjustment` | `stock/form.html` | `can_manage_stock` | Ajusta saldo com motivo. |
+| GET | `/auditoria` | `audit_logs` | `audit/index.html` | `can_view_audit_logs` | Lista auditoria da adega. |
+| GET | `/master/auditoria` | `master_audit_logs` | `audit/master.html` | Sim, master | Lista auditoria central. |
 | GET | `/relatorios` | `reports` | `reports/index.html` | `can_view_reports` | Relatórios e gráfico por período. |
 | GET/POST | `/contas-a-pagar` | `payables` | `payables/index.html` | `can_manage_payables` | Lista e cadastra contas. |
 | POST | `/contas-a-pagar/<payable_id>/pagar` | `pay_payable` | - | `can_manage_payables` | Marca conta como paga. |
@@ -1378,6 +1526,10 @@ ip addr
 | `catalog/products.html` | Lista de produtos, filtros e edição expandida. |
 | `catalog/product_form.html` | Formulário de produto. |
 | `catalog/categories.html` | Lista, filtro, cadastro e edição de categorias. |
+| `stock/movements.html` | Histórico de movimentações de estoque. |
+| `stock/form.html` | Entrada e ajuste manual de estoque. |
+| `audit/index.html` | Auditoria operacional da adega. |
+| `audit/master.html` | Auditoria central do master. |
 | `sales/index.html` | Histórico de vendas. |
 | `sales/form.html` | Realização de venda. |
 | `sales/detail.html` | Detalhe da venda finalizada. |
@@ -1396,7 +1548,7 @@ ip addr
 | `app/static/css/style.css` | Tema visual, layout responsivo, sidebar, cards, tabelas, formulários, vendas, caixa, relatórios, notificações e dark/light mode. |
 | `app/static/js/main.js` | Tema light/dark, sidebar colapsável, abas, filtros avançados, autocomplete, moeda, kits, venda, pagamento, desconto e atalhos F2/F3. |
 
-Não há imagens, logos ou ícones próprios no repositório. A interface usa texto, CSS e componentes Bootstrap.
+O repositório possui assets de marca do Girofy em `app/static/img/` e usa CSS/Bootstrap para compor a interface.
 
 ## Segurança
 
@@ -1419,6 +1571,8 @@ O projeto já possui:
 - usuário inativo bloqueado;
 - adega inativa bloqueada;
 - login com limite de tentativas temporário;
+- auditoria de ações críticas com mascaramento de dados sensíveis;
+- movimentações de estoque para rastrear alterações de saldo.
 
 ### Pontos de atenção de segurança
 
@@ -1426,7 +1580,6 @@ O projeto já possui:
 - O app roda com `debug=True` em `app.py`; isso não deve ser usado em produção.
 - Não há CSRF explícito nos formulários.
 - Não há política de força de senha além de tamanho mínimo 3.
-- Não há auditoria detalhada de alterações de dados.
 - O `.env` não deve ser versionado com senhas reais.
 - O usuário MySQL `root` não é recomendado em produção.
 
@@ -1488,7 +1641,7 @@ Os testes usam configuração própria com SQLite em memória (`TESTING = True`)
 Última validação completa:
 
 ```text
-Ran 79 tests in 9.863s
+Ran 118 tests in 15.597s
 OK
 ```
 
@@ -1538,7 +1691,6 @@ Próximos passos para SaaS completo:
 - cobrança real integrada;
 - emissão automática de key/licença;
 - domínio ou subdomínio por cliente;
-- auditoria de ações;
 - backup por cliente;
 - painel financeiro do provedor;
 - limites por plano;
@@ -1555,8 +1707,8 @@ Próximos passos para SaaS completo:
 - Criar Dockerfile e `docker-compose.yml`.
 - Desativar debug em produção.
 - Adicionar CSRF nos formulários.
-- Criar camada de services para regras de venda/estoque.
-- Criar auditoria de alterações críticas.
+- Ampliar camada de services para outras regras além de estoque/auditoria.
+- Ampliar auditoria para cancelamentos, estornos e aprovações futuras.
 - Melhorar testes de banco MySQL real.
 - Criar comandos CLI para manutenção.
 - Adicionar type hints em funções críticas.
@@ -1567,7 +1719,6 @@ Próximos passos para SaaS completo:
 - Integração com maquininha.
 - Integração WhatsApp.
 - Cadastro de clientes.
-- Histórico de movimentações de estoque.
 - Sangria e suprimento de caixa.
 - Cancelamento/estorno de venda.
 - Dashboard financeiro.
@@ -1607,6 +1758,8 @@ Próximos passos para SaaS completo:
 - [x] Tema claro/escuro
 - [x] Navbar colapsável
 - [x] Logs de erro
+- [x] Auditoria de ações críticas
+- [x] Movimentações de estoque separadas
 - [x] Backup manual pela interface
 - [x] Backup por período
 - [x] Testes automatizados de rotas
@@ -1615,10 +1768,8 @@ Próximos passos para SaaS completo:
 - [ ] CSRF
 - [ ] Impressão de comprovante
 - [ ] Integração real com pagamento
-- [ ] Deploy de produção
-- [ ] Auditoria completa
+- [x] Deploy de produção
 - [ ] Cadastro de clientes
-- [ ] Movimentações de estoque separadas
 
 ## Como Contribuir/Desenvolver
 

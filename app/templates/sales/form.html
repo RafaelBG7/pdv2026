@@ -32,12 +32,21 @@
       <div class="sale-product-picker mb-3" data-sale-product-picker>
         <label class="form-label" for="sale_product_search">Pesquisar produto</label>
         <div class="product-autocomplete">
-          <input class="form-control" id="sale_product_search" placeholder="Digite o nome do produto" data-sale-picker-search autocomplete="off">
+          <input class="form-control" id="sale_product_search" placeholder="Buscar produto" data-sale-picker-search autocomplete="off">
           <div class="product-suggestion-list" data-sale-picker-suggestion-list></div>
         </div>
       </div>
 
-      <div class="sale-items" data-sale-items>
+      <div class="sale-items-header" aria-hidden="true">
+        <span>Produto</span>
+        <span>Valor un.</span>
+        <span>Estoque</span>
+        <span>Qtd.</span>
+        <span>Subtotal</span>
+        <span>Ação</span>
+      </div>
+
+      <div class="sale-items sale-items-lines" data-sale-items>
         {% for item in form_state['items'] %}
         {% if item.product_id %}
         {% set selected = namespace(name='') %}
@@ -59,7 +68,6 @@
           <div>
             <label class="form-label">Estoque</label>
             <input class="form-control" value="0 un." data-stock-available readonly>
-            <small class="sale-stock-warning" data-stock-warning>Estoque insuficiente</small>
           </div>
           <div>
             <label class="form-label">Qtd.</label>
@@ -92,7 +100,6 @@
           <div>
             <label class="form-label">Estoque</label>
             <input class="form-control" value="0 un." data-stock-available readonly>
-            <small class="sale-stock-warning" data-stock-warning>Estoque insuficiente</small>
           </div>
           <div>
             <label class="form-label">Qtd.</label>

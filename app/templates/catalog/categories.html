@@ -26,7 +26,7 @@
     <div class="search-field">
       <label class="form-label" for="q">Buscar</label>
       <div class="catalog-autocomplete" data-catalog-autocomplete>
-        <input class="form-control" id="q" name="q" value="{{ filters.search }}" placeholder="Nome da categoria" autocomplete="off" data-autocomplete-input>
+        <input class="form-control" id="q" name="q" value="{{ filters.search }}" placeholder="Buscar categoria" autocomplete="off" data-autocomplete-input>
         <div class="product-suggestion-list" data-autocomplete-list></div>
         <div class="d-none" data-autocomplete-options>
           {% for category in category_suggestions %}

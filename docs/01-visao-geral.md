@@ -14,6 +14,8 @@ O sistema centraliza:
 - Notificações operacionais no topo da interface.
 - Usuários, funcionários e permissões por perfil.
 - Assinatura/key de ativação por adega.
+- Movimentações de estoque rastreáveis.
+- Auditoria de ações críticas.
 - Banco de dados MySQL central e banco separado para cada adega.
 - Painel master para gerenciar adegas, keys, logs e acesso administrativo.
 
@@ -64,7 +66,10 @@ O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MyS
 | Backup | Implementado | Manual e automático por período. |
 | Importação/exportação | Implementado | Importação de produtos por planilha e exportação CSV para admin. |
 | Logs de erro | Implementado | Arquivo `logs/errors.log` e visualização no painel master. |
-| Auditoria de ações | Não implementado | Ainda falta log de alterações de negócio. |
+| Movimentação de estoque | Implementado | Histórico por produto, usuário, origem e saldo antes/depois. |
+| Auditoria de ações | Implementado | Eventos críticos com valores sanitizados e consulta por adega/master. |
+| Deploy OCI | Implementado | Docker Compose em VM OCI Free Tier na porta pública alta `18080`. |
+| Pipeline de deploy | Implementado | Workflow self-hosted recomendado para publicar sem depender do IP do desenvolvedor. |
 | API pública | Não implementado | Rotas atuais são HTML/formulário. |
 
 ## Pontos Fortes Atuais
@@ -79,10 +84,8 @@ O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MyS
 
 - Migrações versionadas com Alembic/Flask-Migrate.
 - CSRF nos formulários.
-- Recuperação de senha por email.
-- Auditoria de ações críticas, como alteração de preço, exclusão e fechamento de caixa.
-- Histórico de movimentação de estoque.
+- Ampliar auditoria para cancelamento, estorno, sangria e aprovações futuras.
 - Sangria e suprimento de caixa.
 - Cadastro de fornecedores e compras.
 - Regras comerciais reais para Basic/Pro.
-- Deploy de produção com WSGI, HTTPS, backup externo e variáveis seguras.
+- Domínio, HTTPS definitivo, backup externo e variáveis/segredos totalmente gerenciados fora do servidor.

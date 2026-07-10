@@ -26,13 +26,14 @@ Implementado:
 - Taxas de Pix, débito e crédito para cálculo de lucro.
 - Backup manual e automático.
 - Logs de erro visíveis para o master.
+- Movimentação de estoque com histórico rastreável.
+- Auditoria de ações críticas.
 - Testes automatizados de rotas e regras principais.
 
 ## Prioridade Alta
 
 - Implementar CSRF nos formulários.
 - Adicionar migrações versionadas com Alembic/Flask-Migrate.
-- Criar auditoria de ações de negócio.
 - Criar fluxo de restauração de backup.
 - Remover `debug=True` em ambiente de produção.
 - Forçar `SECRET_KEY` segura fora do desenvolvimento.
@@ -44,8 +45,6 @@ Melhorias recomendadas:
 - Cancelamento de venda.
 - Estorno.
 - Sangria e suprimento de caixa.
-- Histórico de movimentação de estoque.
-- Ajuste manual de estoque com motivo.
 - Cadastro de fornecedores.
 - Registro de compras.
 - Impressão de comprovante.

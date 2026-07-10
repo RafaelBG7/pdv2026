@@ -114,5 +114,17 @@
     </div>
   </section>
 </div>
+
+<section class="card card-dark cash-panel mt-4">
+  <div class="cash-panel-header">
+    <div>
+      <h5 class="mb-1">Linha do tempo de vendas</h5>
+      <p class="text-muted mb-0">Vendas do caixa em ordem cronológica.</p>
+    </div>
+  </div>
+  {% set sale_timeline = sale_timeline %}
+  {% set timeline_id_prefix = 'cash-detail-sale' %}
+  {% include 'partials/sale_timeline.html' %}
+</section>
 {% endif %}
 {% endblock %}

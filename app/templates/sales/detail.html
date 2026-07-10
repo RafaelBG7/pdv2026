@@ -7,7 +7,7 @@
     <p class="text-muted mb-0">Resumo do pedido finalizado.</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}">Realizar nova venda</a>
+    <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}" data-post-sale-new-sale>Nova Venda</a>
     <a class="btn btn-outline-light" href="{{ url_for('main.sales') }}">Ver vendas</a>
   </div>
 </div>
@@ -60,7 +60,8 @@
     {% endfor %}
 
     <div class="sale-next-actions mt-4">
-      <a class="btn btn-primary w-100" href="{{ url_for('main.new_sale') }}">Realizar nova venda</a>
+      <a class="btn btn-primary w-100" href="{{ url_for('main.new_sale') }}" data-post-sale-new-sale>Nova Venda</a>
+      <p class="text-muted text-center mt-2 mb-0">Enter, Espaço ou F3 iniciam outra venda.</p>
     </div>
   </aside>
 </div>

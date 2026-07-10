@@ -8,8 +8,19 @@ from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
-from app.models import CashRegister, Payable, Payment, Product, Sale, SaleItem, User
+from app.models import AuditLog, CashRegister, Category, Company, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.permissions import authorize_role_override, has_permission_view_override, permission_required
+from app.services.audit_service import audit_action_label, entity_label, record_audit_event
+from app.services.stock_service import (
+    MOVEMENT_TYPE_LABELS,
+    SOURCE_TYPE_LABELS,
+    StockMovementError,
+    adjust_stock,
+    increase_stock,
+    stock_movement_label,
+    stock_source_label,
+    decrease_stock,
+)
 from app.tenant import current_tenant_company, tenant_session
 
 main_bp = Blueprint('main', __name__)
@@ -188,6 +199,13 @@ def parse_quantity(value):
         return 0
 
 
+def parse_signed_quantity(value):
+    try:
+        return int(value or 0)
+    except ValueError:
+        return 0
+
+
 def parse_date(value):
     try:
         return datetime.strptime(value or '', '%Y-%m-%d').date()
@@ -231,6 +249,52 @@ def tenant_get_or_404(model, record_id):
     if not record:
         abort(404)
     return record
+
+
+def product_name_map(product_ids):
+    if not product_ids:
+        return {}
+    return {
+        product.id: product.name
+        for product in tenant_session().query(Product).filter(Product.id.in_(product_ids)).all()
+    }
+
+
+def user_name_map(user_ids, session=None):
+    user_ids = {user_id for user_id in user_ids if user_id}
+    if not user_ids:
+        return {}
+    session = session or tenant_session()
+    return {
+        user.id: user.full_name or user.username
+        for user in session.query(User).filter(User.id.in_(user_ids)).all()
+    }
+
+
+def audit_json_lines(value):
+    if not value:
+        return []
+    import json
+
+    try:
+        data = json.loads(value)
+    except (TypeError, ValueError):
+        return [str(value)]
+    if isinstance(data, dict):
+        return [f'{key}: {data[key]}' for key in sorted(data)]
+    if isinstance(data, list):
+        return [str(item) for item in data]
+    return [str(data)]
+
+
+def apply_date_filters(query, model, start_value, end_value):
+    start_date = parse_date(start_value)
+    end_date = parse_date(end_value)
+    if start_date:
+        query = query.filter(model.created_at >= datetime.combine(start_date, time.min))
+    if end_date:
+        query = query.filter(model.created_at < datetime.combine(end_date + timedelta(days=1), time.min))
+    return query
 
 
 def tenant_actor_user_id():
@@ -282,6 +346,45 @@ def cash_register_expected_amount(cash_register):
     if not cash_register:
         return 0.0
     return round((cash_register.opening_amount or 0.0) + cash_register_total_sold(cash_register), 2)
+
+
+def payment_summary_text(sale):
+    summary = [
+        f'{PAYMENT_METHODS.get(payment.method, payment.method)} {format_brl(payment.amount or 0.0)}'
+        for payment in sale.payments
+        if payment.amount and payment.amount > 0
+    ]
+    return ' · '.join(summary) if summary else '-'
+
+
+def build_sale_timeline(sales):
+    ordered_sales = sorted(sales, key=lambda sale: sale.created_at or datetime.min)
+    user_ids = {sale.user_id for sale in ordered_sales if sale.user_id}
+    users = {
+        user.id: user.full_name or user.username
+        for user in tenant_session().query(User).filter(User.id.in_(user_ids)).all()
+    } if user_ids else {}
+
+    timeline = []
+    for sale in ordered_sales:
+        timeline.append({
+            'sale': sale,
+            'time': sale.created_at.strftime('%H:%M') if sale.created_at else '-',
+            'date': sale.created_at.strftime('%d/%m/%Y') if sale.created_at else '-',
+            'user': users.get(sale.user_id, 'Usuário não identificado'),
+            'payments_text': payment_summary_text(sale),
+        })
+    return timeline
+
+
+def build_cash_register_snapshot(cash_register):
+    sales = list(cash_register.sales) if cash_register else []
+    totals, payment_totals, _ = build_sales_report(sales)
+    return {
+        'totals': totals,
+        'payment_totals': payment_totals,
+        'timeline': build_sale_timeline(sales),
+    }
 
 
 def report_period_range(period, start_date=None, end_date=None):
@@ -513,6 +616,85 @@ def cash_register_peak_hours(cash_register):
     return peak_hours
 
 
+def build_product_report(start_datetime, end_datetime, category_id='', product_id='', sort='quantity_desc'):
+    company = current_tenant_company()
+    tenant_db = tenant_session()
+    sale_item_query = (
+        tenant_db.query(
+            SaleItem.product_id.label('product_id'),
+            func.coalesce(func.sum(SaleItem.quantity), 0).label('quantity'),
+            func.coalesce(func.sum(SaleItem.total_price), 0).label('revenue'),
+            func.coalesce(func.sum(SaleItem.unit_cost_price * SaleItem.quantity), 0).label('cost'),
+            func.coalesce(func.sum(SaleItem.profit_amount), 0).label('profit'),
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .filter(Sale.company_id == company.id)
+    )
+    if start_datetime and end_datetime:
+        sale_item_query = sale_item_query.filter(
+            Sale.created_at >= start_datetime,
+            Sale.created_at < end_datetime,
+        )
+    sale_item_totals = sale_item_query.group_by(SaleItem.product_id).subquery()
+
+    query = (
+        tenant_db.query(
+            Product,
+            sale_item_totals.c.quantity,
+            sale_item_totals.c.revenue,
+            sale_item_totals.c.cost,
+            sale_item_totals.c.profit,
+        )
+        .outerjoin(sale_item_totals, sale_item_totals.c.product_id == Product.id)
+        .options(selectinload(Product.category))
+        .filter(Product.company_id == company.id)
+    )
+
+    if category_id and str(category_id).isdigit():
+        query = query.filter(Product.category_id == int(category_id))
+    if product_id and str(product_id).isdigit():
+        query = query.filter(Product.id == int(product_id))
+
+    rows = []
+    for product, quantity, revenue, cost, profit in query.all():
+        quantity = int(quantity or 0)
+        revenue = round(float(revenue or 0), 2)
+        cost = round(float(cost or 0), 2)
+        profit = round(float(profit or 0), 2)
+        rows.append({
+            'product': product,
+            'category': product.category.name if product.category else '-',
+            'quantity': quantity,
+            'revenue': revenue,
+            'cost': cost,
+            'profit': profit,
+            'average_ticket': round(revenue / quantity, 2) if quantity else 0.0,
+            'stock': product.effective_stock_quantity or 0,
+        })
+
+    if sort == 'revenue_desc':
+        rows.sort(key=lambda item: (item['revenue'], item['quantity'], item['product'].name.lower()), reverse=True)
+    elif sort == 'profit_desc':
+        rows.sort(key=lambda item: (item['profit'], item['revenue'], item['product'].name.lower()), reverse=True)
+    elif sort == 'stock_asc':
+        rows.sort(key=lambda item: (item['stock'], item['product'].name.lower()))
+    elif sort == 'no_sales':
+        rows = [item for item in rows if item['quantity'] == 0]
+        rows.sort(key=lambda item: item['product'].name.lower())
+    else:
+        sort = 'quantity_desc'
+        rows.sort(key=lambda item: (item['quantity'], item['revenue'], item['product'].name.lower()), reverse=True)
+
+    totals = {
+        'quantity': sum(item['quantity'] for item in rows),
+        'revenue': round(sum(item['revenue'] for item in rows), 2),
+        'cost': round(sum(item['cost'] for item in rows), 2),
+        'profit': round(sum(item['profit'] for item in rows), 2),
+        'products': len(rows),
+    }
+    return rows, totals, sort
+
+
 @main_bp.route('/')
 @main_bp.route('/dashboard')
 @login_required
@@ -575,12 +757,345 @@ def dashboard():
 @login_required
 @permission_required('can_manage_sales')
 def sales():
-    sales = tenant_query(Sale).order_by(Sale.created_at.desc()).all()
+    today = date.today()
+    start_of_day = datetime.combine(today, time.min)
+    end_of_day = datetime.combine(today, time.max)
+    sales = tenant_query(Sale).options(
+        selectinload(Sale.payments),
+    ).filter(
+        Sale.created_at >= start_of_day,
+        Sale.created_at <= end_of_day,
+    ).order_by(Sale.created_at.desc()).all()
+    user_ids = {sale.user_id for sale in sales if sale.user_id}
+    sale_users = {
+        user.id: user.full_name or user.username
+        for user in tenant_session().query(User).filter(User.id.in_(user_ids)).all()
+    } if user_ids else {}
+
+    def unique_options(values):
+        seen = set()
+        options = []
+        for value, label in values:
+            key = str(value or '').strip()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            options.append({'value': key, 'label': label})
+        return options
+
+    sales_filter_options = {
+        'users': unique_options((sale_users.get(sale.user_id, 'Usuário não identificado'), sale_users.get(sale.user_id, 'Usuário não identificado')) for sale in sales),
+        'statuses': unique_options(
+            (
+                sale.payment_status or '',
+                'Pago' if sale.payment_status == 'paid' else sale.payment_status or 'Pendente',
+            )
+            for sale in sales
+        ),
+    }
+
     return render_template(
         'sales/index.html',
         sales=sales,
+        sale_users=sale_users,
+        sales_filter_options=sales_filter_options,
         payment_methods=PAYMENT_METHODS,
         open_cash_register=open_cash_register(),
+    )
+
+
+@main_bp.route('/estoque/movimentacoes')
+@login_required
+@permission_required('can_view_stock_movements')
+def stock_movements():
+    page = max(request.args.get('page', 1, type=int) or 1, 1)
+    per_page = 20
+    product_search = request.args.get('produto', '').strip()
+    category_id = request.args.get('categoria', '').strip()
+    movement_type = request.args.get('tipo', '').strip()
+    source_type = request.args.get('origem', '').strip()
+    user_id = request.args.get('usuario', '').strip()
+
+    query = tenant_query(StockMovement).order_by(StockMovement.created_at.desc())
+    if product_search:
+        matching_products = tenant_query(Product).filter(Product.name.ilike(f'%{product_search}%')).with_entities(Product.id)
+        query = query.filter(StockMovement.product_id.in_(matching_products))
+    if category_id.isdigit():
+        product_ids = tenant_query(Product).filter(Product.category_id == int(category_id)).with_entities(Product.id)
+        query = query.filter(StockMovement.product_id.in_(product_ids))
+    if movement_type:
+        query = query.filter(StockMovement.movement_type == movement_type)
+    if source_type:
+        query = query.filter(StockMovement.source_type == source_type)
+    if user_id.isdigit():
+        query = query.filter(StockMovement.user_id == int(user_id))
+    query = apply_date_filters(query, StockMovement, request.args.get('data_inicio'), request.args.get('data_fim'))
+
+    total_movements = query.order_by(None).count()
+    total_pages = max((total_movements + per_page - 1) // per_page, 1)
+    page = min(page, total_pages)
+    movements = query.offset((page - 1) * per_page).limit(per_page).all()
+    product_ids = {movement.product_id for movement in movements}
+    user_ids = {movement.user_id for movement in movements if movement.user_id}
+    products_by_id = product_name_map(product_ids)
+    users_by_id = user_name_map(user_ids)
+    all_categories = tenant_session().query(Category).filter_by(company_id=current_tenant_company().id).order_by(Category.name.asc()).all()
+    all_users = tenant_session().query(User).filter_by(company_id=current_tenant_company().id).order_by(User.username.asc()).all()
+
+    filtered_movements = query.all()
+    summary = {
+        'entries': sum(item.quantity or 0 for item in filtered_movements if item.new_stock >= item.previous_stock),
+        'exits': sum(item.quantity or 0 for item in filtered_movements if item.new_stock < item.previous_stock),
+        'count': total_movements,
+        'products': len({item.product_id for item in filtered_movements}),
+    }
+    filters = {
+        'produto': product_search,
+        'categoria': category_id,
+        'tipo': movement_type,
+        'origem': source_type,
+        'usuario': user_id,
+        'data_inicio': request.args.get('data_inicio', '').strip(),
+        'data_fim': request.args.get('data_fim', '').strip(),
+    }
+    pagination_query = {key: value for key, value in request.args.items() if key != 'page'}
+    return render_template(
+        'stock/movements.html',
+        movements=movements,
+        products_by_id=products_by_id,
+        users_by_id=users_by_id,
+        categories=all_categories,
+        users=all_users,
+        movement_type_labels=MOVEMENT_TYPE_LABELS,
+        source_type_labels=SOURCE_TYPE_LABELS,
+        stock_movement_label=stock_movement_label,
+        stock_source_label=stock_source_label,
+        summary=summary,
+        filters=filters,
+        page=page,
+        total_pages=total_pages,
+        pagination_query=pagination_query,
+    )
+
+
+@main_bp.route('/estoque/entrada', methods=['GET', 'POST'])
+@login_required
+@permission_required('can_manage_stock')
+def stock_entry():
+    products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
+    if request.method == 'POST':
+        product_id = request.form.get('product_id', '').strip()
+        quantity = parse_quantity(request.form.get('quantity'))
+        unit_cost = parse_money(request.form.get('unit_cost'))
+        reason = request.form.get('reason', '').strip() or 'Entrada manual de estoque'
+        notes = request.form.get('notes', '').strip()
+        update_cost = request.form.get('update_cost') == 'on'
+        product = tenant_query(Product).filter_by(id=int(product_id)).first() if product_id.isdigit() else None
+
+        if not product:
+            flash('Selecione um produto válido.', 'danger')
+        elif quantity <= 0:
+            flash('Informe uma quantidade maior que zero.', 'danger')
+        else:
+            tenant_db = tenant_session()
+            try:
+                if update_cost:
+                    old_cost = product.cost_price
+                    product.cost_price = unit_cost
+                    record_audit_event(
+                        'product_updated',
+                        'product',
+                        product.id,
+                        f'Custo do produto {product.name} atualizado na entrada de estoque.',
+                        old_values={'cost_price': old_cost},
+                        new_values={'cost_price': product.cost_price},
+                        company_id=current_tenant_company().id,
+                        db_session=tenant_db,
+                    )
+                movement = increase_stock(
+                    tenant_db,
+                    product,
+                    quantity,
+                    movement_type='entry',
+                    source_type='manual',
+                    user_id=tenant_actor_user_id(),
+                    unit_cost=unit_cost,
+                    reason=reason,
+                    notes=notes,
+                )
+                tenant_db.commit()
+                flash(f'Entrada registrada. Novo estoque: {movement.new_stock} un.', 'success')
+                return redirect(url_for('main.stock_movements'))
+            except StockMovementError as error:
+                tenant_db.rollback()
+                flash(str(error), 'danger')
+
+    return render_template('stock/form.html', mode='entry', products=products)
+
+
+@main_bp.route('/estoque/ajuste', methods=['GET', 'POST'])
+@login_required
+@permission_required('can_manage_stock')
+def stock_adjustment():
+    products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
+    if request.method == 'POST':
+        product_id = request.form.get('product_id', '').strip()
+        adjustment_mode = request.form.get('adjustment_mode', 'target')
+        direction = request.form.get('direction', 'in')
+        quantity = parse_quantity(request.form.get('quantity'))
+        target_stock = parse_signed_quantity(request.form.get('target_stock'))
+        reason = request.form.get('reason', '').strip()
+        notes = request.form.get('notes', '').strip()
+        product = tenant_query(Product).filter_by(id=int(product_id)).first() if product_id.isdigit() else None
+
+        if not product:
+            flash('Selecione um produto válido.', 'danger')
+        elif not reason:
+            flash('Informe o motivo do ajuste.', 'danger')
+        elif adjustment_mode == 'delta' and quantity <= 0:
+            flash('Informe uma quantidade maior que zero.', 'danger')
+        else:
+            current_stock = int(product.stock_quantity or 0)
+            new_stock = target_stock if adjustment_mode == 'target' else (
+                current_stock + quantity if direction == 'in' else current_stock - quantity
+            )
+            tenant_db = tenant_session()
+            try:
+                movement = adjust_stock(
+                    tenant_db,
+                    product,
+                    new_stock,
+                    source_type='manual',
+                    user_id=tenant_actor_user_id(),
+                    unit_cost=product.cost_price,
+                    reason=reason,
+                    notes=notes,
+                    allow_negative_stock=current_tenant_company().allow_negative_stock,
+                )
+                if not movement:
+                    flash('O estoque informado é igual ao saldo atual. Nenhuma movimentação foi criada.', 'info')
+                    return redirect(url_for('main.stock_adjustment'))
+                tenant_db.commit()
+                flash(f'Ajuste registrado. Novo estoque: {movement.new_stock} un.', 'success')
+                return redirect(url_for('main.stock_movements'))
+            except StockMovementError as error:
+                tenant_db.rollback()
+                flash(str(error), 'danger')
+
+    return render_template('stock/form.html', mode='adjustment', products=products)
+
+
+@main_bp.route('/auditoria')
+@login_required
+@permission_required('can_view_audit_logs')
+def audit_logs():
+    company = current_tenant_company()
+    page = max(request.args.get('page', 1, type=int) or 1, 1)
+    per_page = 20
+    query = tenant_session().query(AuditLog).filter(AuditLog.company_id == company.id)
+    search = request.args.get('q', '').strip()
+    if search:
+        term = f'%{search}%'
+        query = query.filter((AuditLog.description.ilike(term)) | (AuditLog.user_name.ilike(term)) | (AuditLog.action.ilike(term)))
+    if request.args.get('usuario', '').strip().isdigit():
+        query = query.filter(AuditLog.user_id == int(request.args.get('usuario')))
+    if request.args.get('acao', '').strip():
+        query = query.filter(AuditLog.action == request.args.get('acao').strip())
+    if request.args.get('entidade', '').strip():
+        query = query.filter(AuditLog.entity_type == request.args.get('entidade').strip())
+    if request.args.get('metodo', '').strip():
+        query = query.filter(AuditLog.http_method == request.args.get('metodo').strip())
+    query = apply_date_filters(query, AuditLog, request.args.get('data_inicio'), request.args.get('data_fim'))
+    query = query.order_by(AuditLog.created_at.desc())
+
+    total_logs = query.order_by(None).count()
+    total_pages = max((total_logs + per_page - 1) // per_page, 1)
+    page = min(page, total_pages)
+    logs = query.offset((page - 1) * per_page).limit(per_page).all()
+    users = tenant_session().query(User).filter_by(company_id=company.id).order_by(User.username.asc()).all()
+    available_actions = [
+        action for (action,) in tenant_session().query(AuditLog.action).filter_by(company_id=company.id).distinct().order_by(AuditLog.action.asc()).all()
+    ]
+    available_entities = [
+        entity for (entity,) in tenant_session().query(AuditLog.entity_type).filter_by(company_id=company.id).distinct().order_by(AuditLog.entity_type.asc()).all()
+    ]
+    summary = {
+        'count': total_logs,
+        'users': len({log.user_id for log in query.all() if log.user_id}),
+        'actions': len(available_actions),
+    }
+    filters = {
+        'q': search,
+        'usuario': request.args.get('usuario', '').strip(),
+        'acao': request.args.get('acao', '').strip(),
+        'entidade': request.args.get('entidade', '').strip(),
+        'metodo': request.args.get('metodo', '').strip(),
+        'data_inicio': request.args.get('data_inicio', '').strip(),
+        'data_fim': request.args.get('data_fim', '').strip(),
+    }
+    pagination_query = {key: value for key, value in request.args.items() if key != 'page'}
+    return render_template(
+        'audit/index.html',
+        logs=logs,
+        users=users,
+        available_actions=available_actions,
+        available_entities=available_entities,
+        audit_action_label=audit_action_label,
+        entity_label=entity_label,
+        audit_json_lines=audit_json_lines,
+        summary=summary,
+        filters=filters,
+        page=page,
+        total_pages=total_pages,
+        pagination_query=pagination_query,
+        master_view=False,
+    )
+
+
+@main_bp.route('/master/auditoria')
+@login_required
+def master_audit_logs():
+    if current_user.role != 'master':
+        abort(403)
+    page = max(request.args.get('page', 1, type=int) or 1, 1)
+    per_page = 20
+    query = db.session.query(AuditLog)
+    if request.args.get('adega', '').strip().isdigit():
+        query = query.filter(AuditLog.company_id == int(request.args.get('adega')))
+    if request.args.get('usuario', '').strip().isdigit():
+        query = query.filter(AuditLog.user_id == int(request.args.get('usuario')))
+    if request.args.get('acao', '').strip():
+        query = query.filter(AuditLog.action == request.args.get('acao').strip())
+    query = apply_date_filters(query, AuditLog, request.args.get('data_inicio'), request.args.get('data_fim'))
+    query = query.order_by(AuditLog.created_at.desc())
+
+    total_logs = query.order_by(None).count()
+    total_pages = max((total_logs + per_page - 1) // per_page, 1)
+    page = min(page, total_pages)
+    logs = query.offset((page - 1) * per_page).limit(per_page).all()
+    companies = db.session.query(Company).order_by(Company.name.asc()).all()
+    users = db.session.query(User).order_by(User.username.asc()).all()
+    available_actions = [action for (action,) in db.session.query(AuditLog.action).distinct().order_by(AuditLog.action.asc()).all()]
+    filters = {
+        'adega': request.args.get('adega', '').strip(),
+        'usuario': request.args.get('usuario', '').strip(),
+        'acao': request.args.get('acao', '').strip(),
+        'data_inicio': request.args.get('data_inicio', '').strip(),
+        'data_fim': request.args.get('data_fim', '').strip(),
+    }
+    return render_template(
+        'audit/master.html',
+        logs=logs,
+        companies=companies,
+        users=users,
+        available_actions=available_actions,
+        audit_action_label=audit_action_label,
+        entity_label=entity_label,
+        audit_json_lines=audit_json_lines,
+        filters=filters,
+        page=page,
+        total_pages=total_pages,
+        pagination_query={key: value for key, value in request.args.items() if key != 'page'},
     )
 
 
@@ -594,6 +1109,16 @@ def export_data(export_type):
         abort(404)
 
     today_label = date.today().strftime('%Y-%m-%d')
+    record_audit_event(
+        'data_exported',
+        'export',
+        None,
+        f'Exportação de {export_type} realizada.',
+        new_values={'export_type': export_type},
+        company_id=current_tenant_company().id,
+        db_session=tenant_session(),
+    )
+    tenant_session().commit()
     if export_type == 'produtos':
         return csv_response(
             f'produtos-{today_label}.csv',
@@ -636,14 +1161,30 @@ def payables():
             flash('Informe uma data de vencimento válida.', 'danger')
         else:
             tenant_db = tenant_session()
-            tenant_db.add(Payable(
+            payable = Payable(
                 company_id=current_tenant_company().id,
                 description=description,
                 category=category if category in PAYABLE_CATEGORIES else 'Outros',
                 amount=amount,
                 due_date=due_date,
                 notes=notes,
-            ))
+            )
+            tenant_db.add(payable)
+            tenant_db.flush()
+            record_audit_event(
+                'payable_created',
+                'payable',
+                payable.id,
+                f'Conta {payable.description} cadastrada.',
+                new_values={
+                    'description': payable.description,
+                    'category': payable.category,
+                    'amount': payable.amount,
+                    'due_date': payable.due_date,
+                },
+                company_id=current_tenant_company().id,
+                db_session=tenant_db,
+            )
             tenant_db.commit()
             flash('Conta a pagar cadastrada com sucesso.', 'success')
             return redirect(url_for('main.payables'))
@@ -683,8 +1224,19 @@ def payables():
 @permission_required('can_manage_payables')
 def pay_payable(payable_id):
     payable = tenant_get_or_404(Payable, payable_id)
+    old_values = {'paid': payable.paid, 'paid_at': payable.paid_at}
     payable.paid = True
     payable.paid_at = datetime.now(timezone.utc)
+    record_audit_event(
+        'payable_paid',
+        'payable',
+        payable.id,
+        f'Conta {payable.description} marcada como paga.',
+        old_values=old_values,
+        new_values={'paid': payable.paid, 'paid_at': payable.paid_at},
+        company_id=current_tenant_company().id,
+        db_session=tenant_session(),
+    )
     tenant_session().commit()
     flash('Conta marcada como paga.', 'success')
     return redirect(url_for('main.payables'))
@@ -695,8 +1247,19 @@ def pay_payable(payable_id):
 @permission_required('can_manage_payables')
 def reopen_payable(payable_id):
     payable = tenant_get_or_404(Payable, payable_id)
+    old_values = {'paid': payable.paid, 'paid_at': payable.paid_at}
     payable.paid = False
     payable.paid_at = None
+    record_audit_event(
+        'payable_reopened',
+        'payable',
+        payable.id,
+        f'Conta {payable.description} reaberta.',
+        old_values=old_values,
+        new_values={'paid': payable.paid, 'paid_at': payable.paid_at},
+        company_id=current_tenant_company().id,
+        db_session=tenant_session(),
+    )
     tenant_session().commit()
     flash('Conta reaberta.', 'info')
     return redirect(url_for('main.payables', status='all'))
@@ -706,6 +1269,9 @@ def reopen_payable(payable_id):
 @login_required
 @permission_required('can_view_reports')
 def reports():
+    report_view = request.args.get('view', 'summary')
+    if report_view not in ('summary', 'products'):
+        report_view = 'summary'
     selected_period = request.args.get('period', 'daily')
     chart_metric = request.args.get('chart_metric', 'revenue')
     if chart_metric not in ('revenue', 'quantity'):
@@ -727,9 +1293,34 @@ def reports():
     totals, payment_totals, top_products = build_sales_report(sales)
     daily_activity = build_daily_sales_activity(start_datetime, end_datetime, chart_metric) if period == 'daily' else None
     chart_data = daily_activity['buckets'] if daily_activity else build_sales_chart(period, start, end, sales)
+    product_start_arg = request.args.get('product_start_date', '').strip()
+    product_end_arg = request.args.get('product_end_date', '').strip()
+    product_has_date_filter = bool(product_start_arg or product_end_arg)
+    product_start = parse_date(product_start_arg) if product_start_arg else None
+    product_end = parse_date(product_end_arg) if product_end_arg else None
+    if product_has_date_filter:
+        product_start = product_start or start
+        product_end = product_end or end
+    if product_start and product_end and product_end < product_start:
+        product_start, product_end = product_end, product_start
+    product_start_datetime = datetime.combine(product_start, time.min) if product_start else None
+    product_end_datetime = datetime.combine(product_end + timedelta(days=1), time.min) if product_end else None
+    product_category_id = request.args.get('product_category_id', '').strip()
+    product_id = request.args.get('product_id', '').strip()
+    product_sort = request.args.get('product_sort', 'quantity_desc')
+    product_report, product_report_totals, product_sort = build_product_report(
+        product_start_datetime,
+        product_end_datetime,
+        category_id=product_category_id,
+        product_id=product_id,
+        sort=product_sort,
+    )
+    categories = tenant_session().query(Category).filter_by(company_id=current_tenant_company().id).order_by(Category.name.asc()).all()
+    products = tenant_query(Product).order_by(Product.name.asc()).all()
 
     return render_template(
         'reports/index.html',
+        report_view=report_view,
         period=period,
         period_label=label,
         start_date=start,
@@ -741,6 +1332,16 @@ def reports():
         daily_activity=daily_activity,
         payment_totals=payment_totals,
         top_products=top_products,
+        product_report=product_report,
+        product_report_totals=product_report_totals,
+        product_start_date=product_start,
+        product_end_date=product_end,
+        product_has_date_filter=product_has_date_filter,
+        product_category_id=product_category_id,
+        product_id=product_id,
+        product_sort=product_sort,
+        categories=categories,
+        products=products,
         payment_methods=PAYMENT_METHODS,
         sale_profit=sale_profit,
     )
@@ -879,23 +1480,67 @@ def new_sale():
         tenant_db.add(sale)
         tenant_db.flush()
 
-        for product, quantity, line_total in selected_items:
-            stock_product, units_per_sale = stock_source_for_product(product)
-            stock_product.stock_quantity = (stock_product.stock_quantity or 0) - (units_per_sale * quantity)
-            unit_cost_price = product.cost_price or 0.0
-            item_fee = machine_fee_total * (line_total / total_amount) if total_amount > 0 else 0.0
-            tenant_db.add(SaleItem(
-                sale_id=sale.id,
-                product_id=product.id,
-                quantity=quantity,
-                unit_price=product.sale_price,
-                unit_cost_price=unit_cost_price,
-                total_price=line_total,
-                profit_amount=round((((product.sale_price or 0.0) - unit_cost_price) * quantity) - item_fee, 2),
-            ))
+        try:
+            for product, quantity, line_total in selected_items:
+                stock_product, units_per_sale = stock_source_for_product(product)
+                decrease_stock(
+                    tenant_db,
+                    stock_product,
+                    units_per_sale * quantity,
+                    movement_type='sale',
+                    source_type='sale',
+                    user_id=tenant_actor_user_id(),
+                    source_id=sale.id,
+                    unit_cost=stock_product.cost_price,
+                    reason=f'Baixa da venda #{sale.id}',
+                    notes=f'Produto vendido: {product.name}',
+                    allow_negative_stock=company.allow_negative_stock,
+                )
+                unit_cost_price = product.cost_price or 0.0
+                item_fee = machine_fee_total * (line_total / total_amount) if total_amount > 0 else 0.0
+                tenant_db.add(SaleItem(
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    quantity=quantity,
+                    unit_price=product.sale_price,
+                    unit_cost_price=unit_cost_price,
+                    total_price=line_total,
+                    profit_amount=round((((product.sale_price or 0.0) - unit_cost_price) * quantity) - item_fee, 2),
+                ))
+        except StockMovementError as error:
+            tenant_db.rollback()
+            flash(str(error), 'danger')
+            return render_template(
+                'sales/form.html',
+                products=products,
+                payment_methods=PAYMENT_METHODS,
+                form_state=form_state,
+            )
 
         for method, amount in payments:
             tenant_db.add(Payment(sale_id=sale.id, method=method, amount=amount))
+
+        record_audit_event(
+            'sale_completed',
+            'sale',
+            sale.id,
+            f'Venda #{sale.id} concluída no valor de {format_brl(final_amount)}.',
+            new_values={
+                'sale_id': sale.id,
+                'subtotal': total_amount,
+                'discount': discount_amount,
+                'final_amount': final_amount,
+                'paid_amount': paid_amount,
+                'cash_register_id': cash_register.id,
+                'payments': {method: amount for method, amount in payments},
+                'items': [
+                    {'product_id': product.id, 'name': product.name, 'quantity': quantity, 'total': line_total}
+                    for product, quantity, line_total in selected_items
+                ],
+            },
+            company_id=company.id,
+            db_session=tenant_db,
+        )
 
         tenant_db.commit()
         change_amount = max(paid_amount - final_amount, 0.0)
@@ -935,9 +1580,14 @@ def sale_detail(sale_id):
 @permission_required('can_manage_cash_register')
 def cash_register():
     current_cash_register = open_cash_register()
+    if current_cash_register:
+        current_cash_register = tenant_query(CashRegister).options(
+            selectinload(CashRegister.sales).selectinload(Sale.payments),
+            selectinload(CashRegister.sales).selectinload(Sale.items).selectinload(SaleItem.product),
+        ).filter_by(id=current_cash_register.id).first()
     closed_registers = tenant_query(CashRegister).options(
         selectinload(CashRegister.sales).selectinload(Sale.payments),
-        selectinload(CashRegister.sales).selectinload(Sale.items),
+        selectinload(CashRegister.sales).selectinload(Sale.items).selectinload(SaleItem.product),
     ).filter_by(status='closed').order_by(CashRegister.closed_at.desc()).limit(10).all()
     show_cash_financials = can_view_cash_financials()
     user_ids = {item.user_id for item in closed_registers if item.user_id}
@@ -959,6 +1609,7 @@ def cash_register():
             'expected_amount': expected_amount,
             'difference': round((item.closing_amount or 0.0) - expected_amount, 2),
         }
+    current_cash_snapshot = build_cash_register_snapshot(current_cash_register) if current_cash_register else None
     return render_template(
         'cash_register.html',
         cash_register=current_cash_register,
@@ -967,6 +1618,7 @@ def cash_register():
         closed_register_profits={item.id: cash_register_profit(item) for item in closed_registers} if show_cash_financials else {},
         closed_registers=closed_registers,
         cash_history=cash_history,
+        current_cash_snapshot=current_cash_snapshot,
         payment_methods=PAYMENT_METHODS,
         show_cash_financials=show_cash_financials,
     )
@@ -976,19 +1628,26 @@ def cash_register():
 @login_required
 @permission_required('can_manage_cash_register')
 def cash_register_detail(cash_register_id):
-    selected_cash_register = tenant_get_or_404(CashRegister, cash_register_id)
+    selected_cash_register = tenant_query(CashRegister).options(
+        selectinload(CashRegister.sales).selectinload(Sale.payments),
+        selectinload(CashRegister.sales).selectinload(Sale.items).selectinload(SaleItem.product),
+    ).filter_by(id=cash_register_id).first()
+    if not selected_cash_register:
+        abort(404)
     sales = sorted(
         selected_cash_register.sales,
         key=lambda sale: sale.created_at or datetime.min,
         reverse=True,
     )
     totals, payment_totals, top_products = build_sales_report(sales)
+    timeline = build_sale_timeline(sales)
     return render_template(
         'cash_register_detail.html',
         cash_register=selected_cash_register,
         totals=totals,
         payment_totals=payment_totals,
         top_products=top_products,
+        sale_timeline=timeline,
         peak_hours=cash_register_peak_hours(selected_cash_register),
         payment_methods=PAYMENT_METHODS,
         cash_register_profit=cash_register_profit(selected_cash_register),
@@ -1013,6 +1672,16 @@ def open_cash_register_route():
     )
     tenant_db = tenant_session()
     tenant_db.add(cash_register)
+    tenant_db.flush()
+    record_audit_event(
+        'cash_register_opened',
+        'cash_register',
+        cash_register.id,
+        f'Caixa #{cash_register.id} aberto.',
+        new_values={'opening_amount': cash_register.opening_amount, 'status': cash_register.status},
+        company_id=current_tenant_company().id,
+        db_session=tenant_db,
+    )
     tenant_db.commit()
     flash('Caixa aberto com sucesso.', 'success')
     return redirect(url_for('main.cash_register'))
@@ -1042,6 +1711,20 @@ def close_cash_register_route():
     cash_register.closing_amount = closing_amount
     cash_register.closed_at = datetime.now(timezone.utc)
     cash_register.status = 'closed'
+    record_audit_event(
+        'cash_register_closed',
+        'cash_register',
+        cash_register.id,
+        f'Caixa #{cash_register.id} fechado.',
+        new_values={
+            'closing_amount': cash_register.closing_amount,
+            'expected_amount': expected_amount,
+            'closed_at': cash_register.closed_at,
+            'status': cash_register.status,
+        },
+        company_id=current_tenant_company().id,
+        db_session=tenant_session(),
+    )
     tenant_session().commit()
     flash('Caixa fechado com sucesso.', 'success')
     return redirect(url_for('main.cash_register'))

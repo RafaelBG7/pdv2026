@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Movimentações de estoque</h2>
+    <p class="text-muted mb-0">Acompanhe entradas, saídas, ajustes, vendas e importações.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-light" href="{{ url_for('main.stock_adjustment') }}">Ajuste de estoque</a>
+    <a class="btn btn-primary" href="{{ url_for('main.stock_entry') }}">Entrada de estoque</a>
+  </div>
+</div>
+
+<div class="dashboard-grid mb-4">
+  <div class="metric-card"><span>Entradas no período</span><strong>{{ summary.entries }} un.</strong></div>
+  <div class="metric-card"><span>Saídas no período</span><strong>{{ summary.exits }} un.</strong></div>
+  <div class="metric-card"><span>Movimentações</span><strong>{{ summary.count }}</strong></div>
+  <div class="metric-card"><span>Produtos movimentados</span><strong>{{ summary.products }}</strong></div>
+</div>
+
+<form class="card card-dark p-3 mb-4" method="get">
+  <div class="stock-filter-grid">
+    <div>
+      <label class="form-label" for="produto">Produto</label>
+      <input class="form-control" id="produto" name="produto" value="{{ filters.produto }}" placeholder="Buscar produto">
+    </div>
+    <div>
+      <label class="form-label" for="categoria">Categoria</label>
+      <select class="form-select" id="categoria" name="categoria">
+        <option value="">Todas</option>
+        {% for category in categories %}
+        <option value="{{ category.id }}" {% if filters.categoria == category.id|string %}selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="tipo">Tipo</label>
+      <select class="form-select" id="tipo" name="tipo">
+        <option value="">Todos</option>
+        {% for value, label in movement_type_labels.items() %}
+        <option value="{{ value }}" {% if filters.tipo == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="usuario">Usuário</label>
+      <select class="form-select" id="usuario" name="usuario">
+        <option value="">Todos</option>
+        {% for user in users %}
+        <option value="{{ user.id }}" {% if filters.usuario == user.id|string %}selected{% endif %}>{{ user.full_name or user.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="data_inicio">Data inicial</label>
+      <input class="form-control" id="data_inicio" name="data_inicio" type="date" value="{{ filters.data_inicio }}">
+    </div>
+    <div>
+      <label class="form-label" for="data_fim">Data final</label>
+      <input class="form-control" id="data_fim" name="data_fim" type="date" value="{{ filters.data_fim }}">
+    </div>
+    <div class="d-flex gap-2 align-items-end">
+      <button class="btn btn-primary w-100" type="submit">Filtrar</button>
+      <a class="btn btn-outline-light" href="{{ url_for('main.stock_movements') }}">Limpar</a>
+    </div>
+  </div>
+</form>
+
+<div class="card card-dark table-card">
+  <div class="table-responsive">
+    <table class="table table-dark align-middle mb-0 data-table">
+      <thead>
+        <tr>
+          <th>Data e hora</th>
+          <th>Produto</th>
+          <th>Tipo</th>
+          <th class="text-end">Entrada</th>
+          <th class="text-end">Saída</th>
+          <th class="text-end">Anterior</th>
+          <th class="text-end">Posterior</th>
+          <th>Usuário</th>
+          <th>Origem</th>
+          <th>Motivo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for movement in movements %}
+        {% set is_entry = movement.new_stock >= movement.previous_stock %}
+        <tr class="expandable-row" data-expand-row>
+          <td>{{ movement.created_at.strftime('%d/%m/%Y %H:%M') if movement.created_at else '-' }}</td>
+          <td>{{ products_by_id.get(movement.product_id, 'Produto removido') }}</td>
+          <td><span class="status-badge {{ 'status-paid' if is_entry else 'status-danger' }}">{{ stock_movement_label(movement.movement_type) }}</span></td>
+          <td class="text-end">{{ movement.quantity if is_entry else '-' }}</td>
+          <td class="text-end">{{ movement.quantity if not is_entry else '-' }}</td>
+          <td class="text-end">{{ movement.previous_stock }}</td>
+          <td class="text-end">{{ movement.new_stock }}</td>
+          <td>{{ users_by_id.get(movement.user_id, 'Sistema') }}</td>
+          <td>{{ stock_source_label(movement.source_type) }}</td>
+          <td>{{ movement.reason or '-' }}</td>
+        </tr>
+        <tr class="expandable-detail-row">
+          <td colspan="10">
+            <div class="expanded-product-panel">
+              <div class="settings-summary">
+                <div><span>Custo unitário</span><strong>R$ {{ '%.2f'|format(movement.unit_cost or 0)|replace('.', ',') }}</strong></div>
+                <div><span>Custo total</span><strong>R$ {{ '%.2f'|format(movement.total_cost or 0)|replace('.', ',') }}</strong></div>
+                <div><span>Origem técnica</span><strong>{{ movement.source_type }}</strong></div>
+                <div><span>ID origem</span><strong>{{ movement.source_id or '-' }}</strong></div>
+              </div>
+              {% if movement.notes %}<p class="text-muted mb-0 mt-3">{{ movement.notes }}</p>{% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="text-center text-muted py-5">Nenhuma movimentação encontrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total_pages > 1 %}
+<nav class="pagination-bar mt-3" aria-label="Paginação de movimentações">
+  {% for item_page in range(1, total_pages + 1) %}
+    <a class="btn btn-sm {{ 'btn-primary' if item_page == page else 'btn-outline-light' }}" href="{{ url_for('main.stock_movements', page=item_page, **pagination_query) }}">{{ item_page }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+{% endblock %}

@@ -13,6 +13,8 @@ from flask_login import current_user, login_required
 from app.extensions import db
 from app.models import Category, Product
 from app.permissions import authorize_permission_override, permission_required
+from app.services.audit_service import changed_values, record_audit_event
+from app.services.stock_service import StockMovementError, adjust_stock, increase_stock, register_stock_movement
 from app.tenant import current_tenant_company, tenant_session
 
 
@@ -219,12 +221,29 @@ def find_or_create_category(name, tenant_db, company_id):
     return category
 
 
+def product_audit_values(product):
+    return {
+        'name': product.name,
+        'barcode': product.barcode,
+        'category_id': product.category_id,
+        'cost_price': product.cost_price,
+        'sale_price': product.sale_price,
+        'stock_quantity': product.stock_quantity,
+        'min_stock_quantity': product.min_stock_quantity,
+        'active': product.active,
+        'is_kit': product.is_kit,
+        'kit_component_product_id': product.kit_component_product_id,
+        'kit_component_quantity': product.kit_component_quantity,
+    }
+
+
 def import_products_from_rows(rows):
     tenant_db = tenant_session()
     company_id = current_tenant_company().id
     created = 0
     updated = 0
     skipped = 0
+    movements = 0
 
     for row in rows:
         product_name = str(import_column(row, 'produto', 'nome', 'nome_produto', 'product', 'name') or '').strip()
@@ -242,25 +261,83 @@ def import_products_from_rows(rows):
         product = tenant_query(Product).filter(func.lower(Product.name) == product_name.lower()).first()
         if product:
             updated += 1
+            old_values = product_audit_values(product)
+            previous_stock = int(product.stock_quantity or 0)
         else:
             product = Product(name=product_name, company_id=company_id, active=True, stock_quantity=0)
             tenant_db.add(product)
+            tenant_db.flush()
             created += 1
+            old_values = {}
+            previous_stock = 0
 
         product.company_id = company_id
         product.name = product_name
         product.category_id = category.id if category else None
         product.cost_price = cost_price
         product.sale_price = sale_price
-        product.stock_quantity = stock_quantity
         product.min_stock_quantity = min_stock_quantity
         product.active = True
+        tenant_db.flush()
+
+        if previous_stock == 0 and product.stock_quantity == 0 and stock_quantity > 0 and not old_values:
+            register_stock_movement(
+                tenant_db,
+                product,
+                'import',
+                'spreadsheet_import',
+                stock_quantity,
+                stock_quantity,
+                user_id=current_user.id,
+                unit_cost=cost_price,
+                reason='Estoque importado na criação do produto',
+            )
+            movements += 1
+        elif stock_quantity != previous_stock:
+            adjust_stock(
+                tenant_db,
+                product,
+                stock_quantity,
+                source_type='spreadsheet_import',
+                user_id=current_user.id,
+                unit_cost=cost_price,
+                reason='Estoque ajustado por importação de planilha',
+                allow_negative_stock=current_tenant_company().allow_negative_stock,
+            )
+            movements += 1
+
+        new_values = product_audit_values(product)
+        old_diff, new_diff = changed_values(old_values, new_values)
+        record_audit_event(
+            'product_created' if not old_values else 'product_updated',
+            'product',
+            product.id,
+            f'Produto {product.name} {"criado" if not old_values else "atualizado"} por importação.',
+            old_values=old_diff,
+            new_values=new_diff,
+            company_id=company_id,
+            db_session=tenant_db,
+        )
 
     tenant_db.commit()
-    return created, updated, skipped
+    record_audit_event(
+        'products_imported',
+        'product',
+        None,
+        f'Importação concluída: {created} criado(s), {updated} atualizado(s), {skipped} ignorado(s), {movements} movimentação(ões).',
+        new_values={
+            'created': created,
+            'updated': updated,
+            'skipped': skipped,
+            'movements': movements,
+        },
+        company_id=company_id,
+    )
+    db.session.commit()
+    return created, updated, skipped, movements
 
 
-def populate_product(product):
+def populate_product(product, include_stock=True):
     barcode = request.form.get('barcode', '').strip()
     category_id = request.form.get('category_id') or None
     kit_component_product_id = request.form.get('kit_component_product_id') or None
@@ -271,7 +348,8 @@ def populate_product(product):
     product.category_id = int(category_id) if category_id else None
     product.cost_price = parse_money(request.form.get('cost_price'))
     product.sale_price = parse_money(request.form.get('sale_price'))
-    product.stock_quantity = parse_int(request.form.get('stock_quantity'))
+    if include_stock:
+        product.stock_quantity = parse_int(request.form.get('stock_quantity'))
     product.min_stock_quantity = parse_int(request.form.get('min_stock_quantity'))
     product.active = request.form.get('active') == 'on'
     product.is_kit = request.form.get('is_kit') == 'on'
@@ -392,7 +470,7 @@ def import_products():
 
     try:
         rows = read_import_rows(file_storage)
-        created, updated, skipped = import_products_from_rows(rows)
+        created, updated, skipped, movements = import_products_from_rows(rows)
     except (ValueError, KeyError, zipfile.BadZipFile, ElementTree.ParseError) as error:
         flash(str(error) or 'Não foi possível ler a planilha.', 'danger')
         return import_redirect_target()
@@ -402,7 +480,7 @@ def import_products():
         return import_redirect_target()
 
     flash(
-        f'Importação concluída: {created} produto(s) criado(s), {updated} atualizado(s), {skipped} linha(s) ignorada(s).',
+        f'Importação concluída: {created} produto(s) criado(s), {updated} atualizado(s), {skipped} linha(s) ignorada(s). {movements} movimentação(ões) de estoque.',
         'success',
     )
     return import_redirect_target()
@@ -417,7 +495,9 @@ def new_product():
     kit_products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
 
     if request.method == 'POST':
-        populate_product(product)
+        initial_stock = parse_int(request.form.get('stock_quantity'))
+        populate_product(product, include_stock=False)
+        product.stock_quantity = 0
         if not product.name:
             flash('Informe o nome do produto.', 'danger')
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
@@ -434,10 +514,36 @@ def new_product():
         tenant_db = tenant_session()
         tenant_db.add(product)
         try:
+            tenant_db.flush()
+            if initial_stock > 0:
+                register_stock_movement(
+                    tenant_db,
+                    product,
+                    'initial_stock',
+                    'product_creation',
+                    initial_stock,
+                    initial_stock,
+                    user_id=current_user.id,
+                    unit_cost=product.cost_price,
+                    reason='Estoque inicial informado no cadastro',
+                )
+            record_audit_event(
+                'product_created',
+                'product',
+                product.id,
+                f'Produto {product.name} cadastrado.',
+                new_values=product_audit_values(product),
+                company_id=current_tenant_company().id,
+                db_session=tenant_db,
+            )
             tenant_db.commit()
         except IntegrityError:
             tenant_db.rollback()
             flash('Já existe um produto com este código de barras.', 'danger')
+            return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
+        except StockMovementError as error:
+            tenant_db.rollback()
+            flash(str(error), 'danger')
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
 
         flash('Produto cadastrado com sucesso.', 'success')
@@ -455,7 +561,11 @@ def edit_product(product_id):
     kit_products = tenant_query(Product).filter(Product.id != product.id, Product.active.is_(True)).order_by(Product.name.asc()).all()
 
     if request.method == 'POST':
-        populate_product(product)
+        tenant_db = tenant_session()
+        old_values = product_audit_values(product)
+        previous_stock = int(product.stock_quantity or 0)
+        requested_stock = parse_int(request.form.get('stock_quantity'))
+        populate_product(product, include_stock=False)
         if not product.name:
             flash('Informe o nome do produto.', 'danger')
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
@@ -470,10 +580,39 @@ def edit_product(product_id):
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
 
         try:
-            tenant_session().commit()
+            tenant_db.flush()
+            if requested_stock != previous_stock:
+                adjust_stock(
+                    tenant_db,
+                    product,
+                    requested_stock,
+                    source_type='product_edit',
+                    user_id=current_user.id,
+                    unit_cost=product.cost_price,
+                    reason=request.form.get('stock_reason', '').strip() or 'Ajuste registrado pela edição do produto',
+                    allow_negative_stock=current_tenant_company().allow_negative_stock,
+                )
+            new_values = product_audit_values(product)
+            old_diff, new_diff = changed_values(old_values, new_values)
+            if old_diff or new_diff:
+                record_audit_event(
+                    'product_updated',
+                    'product',
+                    product.id,
+                    f'Produto {product.name} atualizado.',
+                    old_values=old_diff,
+                    new_values=new_diff,
+                    company_id=current_tenant_company().id,
+                    db_session=tenant_db,
+                )
+            tenant_db.commit()
         except IntegrityError:
-            tenant_session().rollback()
+            tenant_db.rollback()
             flash('Já existe um produto com este código de barras.', 'danger')
+            return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
+        except StockMovementError as error:
+            tenant_db.rollback()
+            flash(str(error), 'danger')
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
 
         flash('Produto atualizado com sucesso.', 'success')
@@ -487,6 +626,10 @@ def edit_product(product_id):
 @permission_required('can_manage_products')
 def quick_update_product(product_id):
     product = tenant_get_or_404(Product, product_id)
+    tenant_db = tenant_session()
+    old_values = product_audit_values(product)
+    previous_stock = int(product.stock_quantity or 0)
+    requested_stock = parse_int(request.form.get('stock_quantity'))
     product.company_id = current_tenant_company().id
     product.name = request.form.get('name', '').strip()
     product.barcode = request.form.get('barcode', '').strip() or None
@@ -494,7 +637,6 @@ def quick_update_product(product_id):
     product.category_id = int(category_id) if category_id else None
     product.cost_price = parse_money(request.form.get('cost_price'))
     product.sale_price = parse_money(request.form.get('sale_price'))
-    product.stock_quantity = parse_int(request.form.get('stock_quantity'))
     product.min_stock_quantity = parse_int(request.form.get('min_stock_quantity'))
     product.is_kit = request.form.get('is_kit') == 'on'
     kit_component_product_id = request.form.get('kit_component_product_id') or None
@@ -519,10 +661,39 @@ def quick_update_product(product_id):
         return redirect(url_for('catalog.products', status='all'))
 
     try:
-        tenant_session().commit()
+        tenant_db.flush()
+        if requested_stock != previous_stock:
+            adjust_stock(
+                tenant_db,
+                product,
+                requested_stock,
+                source_type='product_edit',
+                user_id=current_user.id,
+                unit_cost=product.cost_price,
+                reason=request.form.get('stock_reason', '').strip() or 'Ajuste registrado pela atualização rápida',
+                allow_negative_stock=current_tenant_company().allow_negative_stock,
+            )
+        new_values = product_audit_values(product)
+        old_diff, new_diff = changed_values(old_values, new_values)
+        if old_diff or new_diff:
+            record_audit_event(
+                'product_updated',
+                'product',
+                product.id,
+                f'Produto {product.name} atualizado.',
+                old_values=old_diff,
+                new_values=new_diff,
+                company_id=current_tenant_company().id,
+                db_session=tenant_db,
+            )
+        tenant_db.commit()
     except IntegrityError:
-        tenant_session().rollback()
+        tenant_db.rollback()
         flash('Já existe um produto com este código de barras.', 'danger')
+        return redirect(url_for('catalog.products', status='all'))
+    except StockMovementError as error:
+        tenant_db.rollback()
+        flash(str(error), 'danger')
         return redirect(url_for('catalog.products', status='all'))
 
     flash('Produto atualizado com sucesso.', 'success')
@@ -551,7 +722,18 @@ def dismiss_low_stock_notification(product_id):
 @permission_required('can_manage_products')
 def toggle_product(product_id):
     product = tenant_get_or_404(Product, product_id)
+    old_active = product.active
     product.active = not product.active
+    record_audit_event(
+        'product_activated' if product.active else 'product_deactivated',
+        'product',
+        product.id,
+        f'Produto {product.name} {"ativado" if product.active else "inativado"}.',
+        old_values={'active': old_active},
+        new_values={'active': product.active},
+        company_id=current_tenant_company().id,
+        db_session=tenant_session(),
+    )
     tenant_session().commit()
 
     status = 'ativado' if product.active else 'desativado'
@@ -565,6 +747,15 @@ def toggle_product(product_id):
 def delete_product(product_id):
     product = tenant_get_or_404(Product, product_id)
     tenant_db = tenant_session()
+    record_audit_event(
+        'product_deleted',
+        'product',
+        product.id,
+        f'Produto {product.name} excluído.',
+        old_values=product_audit_values(product),
+        company_id=current_tenant_company().id,
+        db_session=tenant_db,
+    )
     tenant_db.delete(product)
     tenant_db.commit()
 
@@ -588,6 +779,16 @@ def categories():
             tenant_db = tenant_session()
             tenant_db.add(category)
             try:
+                tenant_db.flush()
+                record_audit_event(
+                    'category_created',
+                    'category',
+                    category.id,
+                    f'Categoria {category.name} cadastrada.',
+                    new_values={'name': category.name},
+                    company_id=current_tenant_company().id,
+                    db_session=tenant_db,
+                )
                 tenant_db.commit()
                 flash('Categoria cadastrada com sucesso.', 'success')
             except IntegrityError as error:
@@ -649,6 +850,7 @@ def categories():
 @permission_required('can_manage_categories')
 def update_category(category_id):
     category = tenant_get_or_404(Category, category_id)
+    old_name = category.name
     category.name = request.form.get('name', '').strip()
     category.company_id = current_tenant_company().id
 
@@ -660,6 +862,16 @@ def update_category(category_id):
         return redirect(url_for('catalog.categories'))
 
     try:
+        record_audit_event(
+            'category_updated',
+            'category',
+            category.id,
+            f'Categoria {category.name} atualizada.',
+            old_values={'name': old_name},
+            new_values={'name': category.name},
+            company_id=current_tenant_company().id,
+            db_session=tenant_session(),
+        )
         tenant_session().commit()
     except IntegrityError as error:
         tenant_session().rollback()
@@ -683,6 +895,15 @@ def delete_category(category_id):
         return redirect(url_for('catalog.categories'))
 
     tenant_db = tenant_session()
+    record_audit_event(
+        'category_deleted',
+        'category',
+        category.id,
+        f'Categoria {category.name} excluída.',
+        old_values={'name': category.name},
+        company_id=current_tenant_company().id,
+        db_session=tenant_db,
+    )
     tenant_db.delete(category)
     tenant_db.commit()
     flash('Categoria excluída com sucesso.', 'success')

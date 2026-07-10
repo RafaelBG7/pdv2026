@@ -10,6 +10,9 @@ Implementado:
 - Eventos externos, como rotas inexistentes anônimas, em `logs/security.log`.
 - Visualização dos logs recentes no painel master.
 - Botão para limpar logs no painel master.
+- Auditoria de ações críticas em `audit_logs`.
+- Consulta de auditoria operacional em `/auditoria`.
+- Consulta de auditoria central em `/master/auditoria`.
 - Notificações de estoque baixo, produto sem estoque e contas a pagar.
 - Mensagens visuais com `flash`.
 
@@ -18,7 +21,6 @@ Ainda não implementado:
 - Métricas externas.
 - Monitoramento de disponibilidade.
 - Alertas por WhatsApp.
-- Auditoria completa de ações de negócio.
 - Dashboard técnico de performance.
 
 ## Logs de Erro
@@ -47,6 +49,25 @@ não é persistida. Exceções não tratadas são registradas uma única vez com
 
 O master do sistema consegue ver os erros recentes em `/master/logs`. O botão
 `Limpar logs` limpa `errors.log` e `security.log`.
+
+## Auditoria de Ações
+
+A auditoria complementa os logs de erro. Ela registra eventos de negócio em banco de
+dados, com usuário, perfil, rota, método, IP, request id, entidade afetada e valores
+antigos/novos sanitizados.
+
+Eventos cobertos:
+
+- Login, logout e falha de login.
+- Cadastro de empresa e usuário.
+- Geração, uso e alteração de key/assinatura.
+- Criação, edição, ativação/inativação e exclusão de produto.
+- Criação, edição e exclusão de categoria.
+- Importação e exportação de dados.
+- Abertura e fechamento de caixa.
+- Venda concluída.
+- Contas a pagar criadas, pagas e reabertas.
+- Entrada e ajuste de estoque.
 
 ## Alertas Operacionais
 
@@ -119,13 +140,5 @@ Backup:
 
 ## Próximo Passo Recomendado
 
-Criar auditoria de ações críticas separada de logs de erro:
-
-- Login.
-- Alteração de preço.
-- Exclusão/inativação de produto.
-- Abertura e fechamento de caixa.
-- Venda concluída.
-- Tentativa de venda bloqueada.
-- Alteração de permissões.
-- Geração e uso de key.
+Evoluir a auditoria para eventos ainda não existentes no produto, como cancelamento de
+venda, estorno, sangria, suprimento de caixa e aprovações por senha.

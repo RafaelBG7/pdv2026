@@ -38,6 +38,9 @@ As permissões ficam no modelo `User`:
 | `can_view_reports` | Acessar relatórios. |
 | `can_manage_payables` | Gerenciar contas a pagar. |
 | `can_manage_settings` | Acessar configurações permitidas ao perfil. |
+| `can_view_stock_movements` | Consultar histórico de movimentações de estoque. |
+| `can_manage_stock` | Registrar entrada e ajuste manual de estoque. |
+| `can_view_audit_logs` | Consultar auditoria da adega. |
 
 `master` e `admin` retornam verdadeiro para todas as permissões em `User.has_permission()`.
 
@@ -54,7 +57,10 @@ As permissões ficam no modelo `User`:
 | Categorias | Sim | Sim | Sim | Não |
 | Venda | Sim | Sim | Sim | Sim |
 | Caixa | Sim | Sim | Sim | Sim |
+| Estoque - histórico | Sim | Sim | Sim | Não |
+| Estoque - entrada/ajuste | Sim | Sim | Sim | Não |
 | Relatórios | Sim | Sim | Sim | Não |
+| Auditoria da adega | Sim | Sim | Sim | Não |
 | Contas a pagar | Sim | Sim | Sim | Não |
 | Configurações pessoais | Sim | Sim | Sim | Sim |
 | Equipe | Sim | Sim | Não | Não |
@@ -79,6 +85,7 @@ O funcionário comum deve ter acesso limitado:
 O gerente é operacional:
 
 - Pode vender, abrir caixa, ver relatórios e gerenciar catálogo.
+- Pode consultar auditoria operacional e movimentar estoque, conforme permissões padrão.
 - Não deve acessar financeiro sensível, plano/assinatura ou gestão avançada da equipe.
 
 ## Admin da Adega
@@ -91,6 +98,8 @@ O admin é o responsável pela adega:
 - Pode importar/exportar dados.
 - Pode configurar taxas de Pix, débito e crédito.
 - Pode configurar backups.
+- Pode consultar auditoria da adega.
+- Pode registrar entrada e ajuste de estoque.
 
 Proteções importantes:
 
@@ -106,6 +115,7 @@ O master do sistema:
 - Pode entrar em qualquer adega para suporte.
 - Gera keys avulsas ou vinculadas a uma adega.
 - Vê e limpa logs de erro.
+- Vê auditoria central em `/master/auditoria`.
 - Pode editar/inativar/excluir adegas.
 
 Esse usuário não representa o dono de uma adega específica.

@@ -69,19 +69,30 @@ jobs:
           TESTING: '1'
           MAIL_SUPPRESS_SEND: '1'
           DATABASE_URL: sqlite://
-        run: dist/GirofyPDV.app/Contents/MacOS/GirofyPDV
+        run: dist/Girofy.app/Contents/MacOS/Girofy
+
+      - name: Sign and notarize macOS app
+        env:
+          APPLE_DEVELOPER_ID_CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APPLE_DEVELOPER_IDENTITY: ${{ secrets.APPLE_DEVELOPER_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_BUILD_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_BUILD_KEYCHAIN_PASSWORD }}
+        run: bash scripts/sign_macos_app.sh dist/Girofy.app
 
       - name: Package macOS artifact
         run: |
           cd dist
-          ditto -c -k --sequesterRsrc --keepParent GirofyPDV.app GirofyPDV-macOS.zip
-          if [ -f .env.example ]; then zip -q GirofyPDV-macOS.zip .env.example; fi
+          ditto -c -k --sequesterRsrc --keepParent Girofy.app Girofy-macOS.zip
+          if [ -f .env.example ]; then zip -q Girofy-macOS.zip .env.example; fi
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GirofyPDV-macOS
-          path: dist/GirofyPDV-macOS.zip
+          name: Girofy-macOS
+          path: dist/Girofy-macOS.zip
           if-no-files-found: error
 
   build-windows:
@@ -118,7 +129,7 @@ jobs:
           TESTING: '1'
           MAIL_SUPPRESS_SEND: '1'
           DATABASE_URL: sqlite://
-        run: .\dist\GirofyPDV\GirofyPDV.exe
+        run: .\dist\Girofy\Girofy.exe
 
       - name: Download MySQL Community Server
         shell: pwsh
@@ -139,28 +150,36 @@ jobs:
             $env:APP_VERSION = "0.0.${{ github.run_number }}"
           }
           $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
-          & $iscc installer\windows\GirofyPDV.iss
+          & $iscc installer\windows\Girofy.iss
+
+      - name: Sign Windows executable and installer
+        shell: pwsh
+        env:
+          WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+          WINDOWS_CODESIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PFX_PASSWORD }}
+          WINDOWS_CODESIGN_TIMESTAMP_URL: ${{ vars.WINDOWS_CODESIGN_TIMESTAMP_URL }}
+        run: .\scripts\sign_windows_artifacts.ps1
 
       - name: Package Windows artifact
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\GirofyPDV -DestinationPath dist\GirofyPDV-Windows.zip -Force
+          Compress-Archive -Path dist\Girofy -DestinationPath dist\Girofy-Windows.zip -Force
           if (Test-Path dist\.env.example) {
-            Compress-Archive -Path dist\.env.example -DestinationPath dist\GirofyPDV-Windows.zip -Update
+            Compress-Archive -Path dist\.env.example -DestinationPath dist\Girofy-Windows.zip -Update
           }
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GirofyPDV-Windows
-          path: dist/GirofyPDV-Windows.zip
+          name: Girofy-Windows
+          path: dist/Girofy-Windows.zip
           if-no-files-found: error
 
       - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GirofyPDV-Windows-Installer
-          path: dist/installer/GirofyPDV-Setup.exe
+          name: Girofy-Windows-Installer
+          path: dist/installer/Girofy-Setup.exe
           if-no-files-found: error
 
   publish-release:
@@ -185,5 +204,5 @@ jobs:
         run: |
           mapfile -d '' files < <(find release-artifacts -type f -print0)
           gh release create "${GITHUB_REF_NAME}" "${files[@]}" \
-            --title "GirofyPDV ${GITHUB_REF_NAME}" \
+            --title "Girofy ${GITHUB_REF_NAME}" \
             --notes "Build automático desktop para macOS e Windows. O instalador Windows inclui configuração local do MySQL."

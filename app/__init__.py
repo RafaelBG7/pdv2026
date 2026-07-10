@@ -138,6 +138,9 @@ def ensure_user_permission_columns():
         'can_view_reports': 'ALTER TABLE users ADD COLUMN can_view_reports BOOLEAN DEFAULT 1',
         'can_manage_payables': 'ALTER TABLE users ADD COLUMN can_manage_payables BOOLEAN DEFAULT 1',
         'can_manage_settings': 'ALTER TABLE users ADD COLUMN can_manage_settings BOOLEAN DEFAULT 1',
+        'can_view_stock_movements': 'ALTER TABLE users ADD COLUMN can_view_stock_movements BOOLEAN DEFAULT 1',
+        'can_manage_stock': 'ALTER TABLE users ADD COLUMN can_manage_stock BOOLEAN DEFAULT 1',
+        'can_view_audit_logs': 'ALTER TABLE users ADD COLUMN can_view_audit_logs BOOLEAN DEFAULT 1',
     }
 
     for column, statement in migrations.items():

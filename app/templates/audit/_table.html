@@ -1,8 +1,8 @@
 {% if not master_view|default(true) %}
-<div class="dashboard-grid mb-4">
-  <div class="metric-card"><span>Eventos</span><strong>{{ summary.count }}</strong></div>
-  <div class="metric-card"><span>Usuários envolvidos</span><strong>{{ summary.users }}</strong></div>
-  <div class="metric-card"><span>Ações diferentes</span><strong>{{ summary.actions }}</strong></div>
+<div class="dashboard-grid audit-metric-grid mb-4">
+  <div class="metric-card audit-metric-card audit-metric-card-events"><span>Eventos</span><strong>{{ summary.count }}</strong></div>
+  <div class="metric-card audit-metric-card audit-metric-card-users"><span>Usuários envolvidos</span><strong>{{ summary.users }}</strong></div>
+  <div class="metric-card audit-metric-card audit-metric-card-actions"><span>Ações diferentes</span><strong>{{ summary.actions }}</strong></div>
 </div>
 
 <form class="card card-dark audit-filter-card mb-4" method="get">
@@ -63,9 +63,9 @@
 </form>
 {% endif %}
 
-<div class="card card-dark table-card">
+<div class="card card-dark table-card audit-table-card">
   <div class="table-responsive">
-    <table class="table table-dark align-middle mb-0 data-table">
+    <table class="table table-dark align-middle mb-0 data-table audit-table">
       <thead>
         <tr>
           <th>Data e hora</th>
@@ -81,41 +81,58 @@
       <tbody>
         {% for log in logs %}
         <tr class="expandable-row" data-expand-row>
-          <td>{{ log.created_at.strftime('%d/%m/%Y %H:%M') if log.created_at else '-' }}</td>
-          <td>{{ log.user_name or 'Sistema' }}</td>
-          <td><span class="status-badge status-paid">{{ audit_action_label(log.action) }}</span></td>
-          <td>{{ entity_label(log.entity_type) }}</td>
-          <td>{{ log.description }}</td>
-          <td>{{ log.entity_type }}</td>
-          <td>{{ log.entity_id or '-' }}</td>
-          <td>{{ log.ip_address or '-' }}</td>
+          <td>
+            <span class="audit-date">{{ log.created_at.strftime('%d/%m/%Y') if log.created_at else '-' }}</span>
+            <small>{{ log.created_at.strftime('%H:%M') if log.created_at else '' }}</small>
+          </td>
+          <td>
+            <span class="audit-user">{{ log.user_name or 'Sistema' }}</span>
+          </td>
+          <td><span class="audit-action-pill">{{ audit_action_label(log.action) }}</span></td>
+          <td><span class="audit-module-pill">{{ entity_label(log.entity_type) }}</span></td>
+          <td><span class="audit-description">{{ log.description }}</span></td>
+          <td><span class="audit-entity">{{ log.entity_type }}</span></td>
+          <td><span class="audit-id">{{ log.entity_id or '-' }}</span></td>
+          <td><span class="audit-ip">{{ log.ip_address or '-' }}</span></td>
         </tr>
         <tr class="expandable-detail-row">
           <td colspan="8">
-            <div class="expanded-product-panel audit-detail-grid">
-              <div>
-                <h6>Dados anteriores</h6>
-                {% for line in audit_json_lines(log.old_values) %}
-                <code>{{ line }}</code>
+            <div class="audit-detail-panel">
+              <div class="audit-change-grid">
+                <section class="audit-change-card">
+                  <h6>Antes</h6>
+                  <div class="audit-value-list">
+                {% for item in audit_value_items(log.old_values) %}
+                    <div class="audit-value-item">
+                      <span>{{ item.label }}</span>
+                      <strong>{{ item.value }}</strong>
+                    </div>
                 {% else %}
-                <span class="text-muted">Sem dados anteriores.</span>
+                    <p class="audit-empty-text">Sem dados anteriores.</p>
                 {% endfor %}
-              </div>
-              <div>
-                <h6>Dados posteriores</h6>
-                {% for line in audit_json_lines(log.new_values) %}
-                <code>{{ line }}</code>
+                  </div>
+                </section>
+                <section class="audit-change-card audit-change-card-after">
+                  <h6>Depois</h6>
+                  <div class="audit-value-list">
+                {% for item in audit_value_items(log.new_values) %}
+                    <div class="audit-value-item">
+                      <span>{{ item.label }}</span>
+                      <strong>{{ item.value }}</strong>
+                    </div>
                 {% else %}
-                <span class="text-muted">Sem dados posteriores.</span>
+                    <p class="audit-empty-text">Sem dados posteriores.</p>
                 {% endfor %}
+                  </div>
+                </section>
               </div>
-              <div class="settings-summary">
+              <div class="settings-summary audit-request-summary">
                 <div><span>Rota</span><strong>{{ log.route or '-' }}</strong></div>
                 <div><span>Método</span><strong>{{ log.http_method or '-' }}</strong></div>
                 <div><span>Request ID</span><strong>{{ log.request_id or '-' }}</strong></div>
                 <div><span>Empresa</span><strong>{{ log.company_id or '-' }}</strong></div>
               </div>
-              <p class="text-muted mb-0">{{ log.user_agent or 'User-agent não registrado.' }}</p>
+              <p class="audit-user-agent mb-0">{{ log.user_agent or 'User-agent não registrado.' }}</p>
             </div>
           </td>
         </tr>

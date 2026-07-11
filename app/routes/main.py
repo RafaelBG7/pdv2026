@@ -287,6 +287,37 @@ def audit_json_lines(value):
     return [str(data)]
 
 
+def audit_value_items(value):
+    if not value:
+        return []
+    import json
+
+    def format_value(item):
+        if item is None:
+            return 'Vazio'
+        if isinstance(item, bool):
+            return 'Sim' if item else 'Não'
+        if isinstance(item, (dict, list)):
+            return json.dumps(item, ensure_ascii=False, sort_keys=True)
+        return str(item)
+
+    try:
+        data = json.loads(value)
+    except (TypeError, ValueError):
+        return [{'label': 'Registro', 'value': str(value)}]
+    if isinstance(data, dict):
+        return [
+            {'label': str(key).replace('_', ' ').title(), 'value': format_value(data[key])}
+            for key in sorted(data)
+        ]
+    if isinstance(data, list):
+        return [
+            {'label': f'Item {index}', 'value': format_value(item)}
+            for index, item in enumerate(data, start=1)
+        ]
+    return [{'label': 'Registro', 'value': format_value(data)}]
+
+
 def apply_date_filters(query, model, start_value, end_value):
     start_date = parse_date(start_value)
     end_date = parse_date(end_value)
@@ -1043,6 +1074,7 @@ def audit_logs():
         audit_action_label=audit_action_label,
         entity_label=entity_label,
         audit_json_lines=audit_json_lines,
+        audit_value_items=audit_value_items,
         summary=summary,
         filters=filters,
         page=page,
@@ -1092,6 +1124,7 @@ def master_audit_logs():
         audit_action_label=audit_action_label,
         entity_label=entity_label,
         audit_json_lines=audit_json_lines,
+        audit_value_items=audit_value_items,
         filters=filters,
         page=page,
         total_pages=total_pages,

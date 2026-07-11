@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-document.querySelectorAll('[data-settings-tabs]').forEach(function (tabs) {
+  document.querySelectorAll('[data-settings-tabs]').forEach(function (tabs) {
     const buttons = Array.from(tabs.querySelectorAll('[data-settings-tab]'));
     const panels = Array.from(tabs.querySelectorAll('[data-settings-panel]'));
 
@@ -302,6 +302,51 @@ document.querySelectorAll('[data-settings-tabs]').forEach(function (tabs) {
     }
   });
 
+  function autocompleteMatchRank(term, primaryText, secondaryText) {
+    const normalizedTerm = normalizeSuggestionText(term);
+    const primary = normalizeSuggestionText(primaryText);
+    const secondary = normalizeSuggestionText(secondaryText);
+    const combined = normalizeSuggestionText(`${primaryText || ''} ${secondaryText || ''}`);
+
+    if (!normalizedTerm) {
+      return 99;
+    }
+    if (primary === normalizedTerm || secondary === normalizedTerm) {
+      return 0;
+    }
+    if (primary.startsWith(normalizedTerm)) {
+      return 1;
+    }
+    if (primary.split(/\s+/).some(function (word) { return word.startsWith(normalizedTerm); })) {
+      return 2;
+    }
+    if (secondary.startsWith(normalizedTerm)) {
+      return 3;
+    }
+    if (combined.includes(normalizedTerm)) {
+      return 4;
+    }
+    return 99;
+  }
+
+  function compareAutocompleteMatches(left, right, term, primaryGetter, secondaryGetter) {
+    const leftPrimary = primaryGetter(left);
+    const rightPrimary = primaryGetter(right);
+    const leftSecondary = secondaryGetter ? secondaryGetter(left) : '';
+    const rightSecondary = secondaryGetter ? secondaryGetter(right) : '';
+    const leftRank = autocompleteMatchRank(term, leftPrimary, leftSecondary);
+    const rightRank = autocompleteMatchRank(term, rightPrimary, rightSecondary);
+
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
+    }
+
+    return String(leftPrimary || '').localeCompare(String(rightPrimary || ''), 'pt-BR', {
+      numeric: true,
+      sensitivity: 'base',
+    });
+  }
+
   document.querySelectorAll('[data-employee-search]').forEach(function (searchArea) {
     const input = searchArea.querySelector('[data-employee-search-input]');
     const countLabel = searchArea.querySelector('[data-employee-search-count]');
@@ -324,6 +369,14 @@ document.querySelectorAll('[data-settings-tabs]').forEach(function (tabs) {
       return cards.filter(function (card) {
         const text = normalizeSearch(card.dataset.employeeSearchText || card.textContent);
         return !term || text.includes(term);
+      }).sort(function (left, right) {
+        return compareAutocompleteMatches(
+          left,
+          right,
+          input.value,
+          function (card) { return card.dataset.employeeName || card.textContent; },
+          function (card) { return `${card.dataset.employeeSearchText || ''} ${card.dataset.employeeMeta || ''}`; }
+        );
       });
     }
 
@@ -612,6 +665,14 @@ document.querySelectorAll('[data-settings-tabs]').forEach(function (tabs) {
 
       return options.filter(function (option) {
         return normalizeSuggestionText(`${option.title} ${option.meta} ${option.value}`).includes(term);
+      }).sort(function (left, right) {
+        return compareAutocompleteMatches(
+          left,
+          right,
+          input.value,
+          function (option) { return option.title || option.value; },
+          function (option) { return `${option.value || ''} ${option.meta || ''}`; }
+        );
       }).slice(0, 8);
     }
 
@@ -1071,13 +1132,13 @@ document.querySelectorAll('[data-settings-tabs]').forEach(function (tabs) {
           || normalizeSearch(product.barcode).includes(normalizedTerm)
           || product.id === normalizedTerm;
       }).sort(function (left, right) {
-        const leftExact = normalizeSearch(left.name) === normalizedTerm
-          || normalizeSearch(left.barcode) === normalizedTerm
-          || left.id === normalizedTerm;
-        const rightExact = normalizeSearch(right.name) === normalizedTerm
-          || normalizeSearch(right.barcode) === normalizedTerm
-          || right.id === normalizedTerm;
-        return Number(rightExact) - Number(leftExact);
+        return compareAutocompleteMatches(
+          left,
+          right,
+          term,
+          function (product) { return product.name; },
+          function (product) { return `${product.barcode || ''} ${product.id || ''}`; }
+        );
       }).slice(0, 8);
     }
 

@@ -12,6 +12,7 @@ O sistema centraliza:
 - Relatórios por período e gráfico de vendas.
 - Contas a pagar com alertas de vencimento.
 - Notificações operacionais no topo da interface.
+- Interface Girofy com tema claro/escuro, paleta não monocromática e status semânticos.
 - Usuários, funcionários e permissões por perfil.
 - Assinatura/key de ativação por adega.
 - Movimentações de estoque rastreáveis.
@@ -68,6 +69,7 @@ O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MyS
 | Logs de erro | Implementado | Arquivo `logs/errors.log` e visualização no painel master. |
 | Movimentação de estoque | Implementado | Histórico por produto, usuário, origem e saldo antes/depois. |
 | Auditoria de ações | Implementado | Eventos críticos com valores sanitizados e consulta por adega/master. |
+| Interface responsiva | Implementado | Paleta Girofy, filtros alinhados, menu lateral recolhível e ajustes para textos longos. |
 | Deploy OCI | Implementado | Docker Compose em VM OCI Free Tier na porta pública alta `18080`. |
 | Pipeline de deploy | Implementado | Workflow self-hosted recomendado para publicar sem depender do IP do desenvolvedor. |
 | API pública | Não implementado | Rotas atuais são HTML/formulário. |
@@ -78,6 +80,7 @@ O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MyS
 - As principais rotinas de uma adega estão cobertas.
 - O controle de permissões já reduz risco operacional de funcionário comum.
 - O dashboard dá uma visão rápida de vendas, lucro, caixa e alertas.
+- A interface usa cores semânticas para diferenciar sucesso, aviso, erro e informação.
 - A arquitetura ainda é simples o suficiente para manutenção rápida.
 
 ## O Que Ainda Faz Falta

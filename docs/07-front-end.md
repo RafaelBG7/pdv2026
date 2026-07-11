@@ -34,6 +34,32 @@ Elementos:
 - JavaScript Bootstrap via CDN.
 - JavaScript local.
 
+## Identidade Visual
+
+Arquivo: `app/static/css/style.css`.
+
+A interface usa tokens CSS em `:root` e `[data-theme='dark']` para manter a
+identidade Girofy em tema claro e escuro.
+
+Paleta atual:
+
+- Roxo como cor principal da marca.
+- Ciano como cor de destaque para ações, foco, sidebar e gradientes.
+- Verde para sucesso, ativo, pago, aberto e picos positivos.
+- Âmbar para avisos e pendências.
+- Vermelho para erro, perigo, inativo, fechado e vencido.
+- Azul para informação e estados neutros.
+
+Componentes que herdam esses tokens:
+
+- Botões principais.
+- Sidebar e item ativo.
+- Avatar/menu do usuário.
+- Badges de status.
+- Cards, tabelas, formulários e painéis.
+- Gráfico de relatórios e destaque de pico.
+- Alertas de assinatura e contas a pagar.
+
 ## Navegação
 
 Menu autenticado:
@@ -104,7 +130,7 @@ Arquivos:
 Funcionalidades:
 
 - Busca por nome ou código de barras.
-- Menu lateral de categorias: Todas + categorias da adega.
+- Menu lateral de categorias: Todas + categorias da adega, com coluna própria e nomes longos limitados a duas linhas.
 - Filtro por status.
 - Filtros avançados por categoria, estoque e preço.
 - Ordenação.
@@ -118,6 +144,13 @@ Funcionalidades:
 - Exibição de custo, venda, lucro e margem.
 - Configuração de produto kit.
 - Campo de motivo quando a alteração muda o saldo de estoque.
+
+Comportamento visual:
+
+- A coluna lateral de categorias usa largura responsiva entre `220px` e `300px`.
+- Cada categoria usa grade interna com nome flexível e contador fixo à direita.
+- Nomes longos quebram com limite de duas linhas para evitar corte horizontal.
+- Em telas menores, o menu de categorias deixa de ser lateral e passa a ocupar a largura disponível.
 
 Eventos JavaScript:
 
@@ -224,6 +257,13 @@ Funcionalidades:
 - Prévia de saldo atual e saldo resultante no formulário.
 - Linhas expansíveis para ver origem, motivo, observações e custo.
 
+Comportamento visual:
+
+- Filtros organizados em grade de quatro colunas no desktop.
+- Datas e botões seguem a mesma altura dos demais campos.
+- Botões `Filtrar` e `Limpar` ficam alinhados e não quebram texto.
+- Em resoluções menores, a grade passa para duas colunas e depois uma coluna.
+
 ## Auditoria
 
 Arquivos:
@@ -239,6 +279,13 @@ Funcionalidades:
 - Filtro por usuário, ação, entidade e período.
 - Linhas expansíveis com valores antigos e novos.
 - Versão operacional por adega e versão central para master.
+
+Comportamento visual:
+
+- Filtros usam grade alinhada em quatro colunas na auditoria da adega.
+- A auditoria master usa grade de três colunas.
+- Campos de data usam tamanho de fonte responsivo para evitar corte do calendário.
+- Botões e selects respeitam largura máxima do card, evitando estouro lateral.
 
 ## Relatórios
 
@@ -311,7 +358,9 @@ Comportamentos:
 - Menu lateral vira navegação superior em telas menores.
 - Grids passam para 1 ou 2 colunas.
 - Tabelas mantêm rolagem horizontal.
-- Barras críticas de filtros evitam quebra de texto e usam rolagem horizontal quando necessário.
+- Barras críticas de filtros evitam quebra de texto com grids responsivos por card.
+- Auditoria e estoque priorizam alinhamento em múltiplas linhas em vez de comprimir todos os controles em uma linha.
+- Menu lateral de categorias de produtos evita corte de nomes longos com quebra controlada.
 - Linha de venda se adapta para uma coluna.
 - Linhas expansíveis usam o mesmo comportamento em produtos, caixas, estoque e auditoria.
 

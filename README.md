@@ -59,6 +59,7 @@ Pontos mais maduros:
 - movimentações de estoque com origem, usuário e saldo antes/depois;
 - auditoria de ações críticas com mascaramento de dados sensíveis;
 - dashboard operacional com indicadores úteis;
+- identidade visual Girofy com paleta menos monocromática, status coloridos e tema claro/escuro;
 - ambiente OCI Free Tier publicado em porta alta;
 - deploy automatizado por GitHub Actions.
 
@@ -84,7 +85,7 @@ Pontos que ainda merecem prioridade antes de produção pública:
 | MySQL | Banco relacional principal. Existe um banco central e bancos separados por adega. |
 | Jinja2 | Renderização de templates HTML. |
 | HTML | Estrutura das telas. |
-| CSS | Interface visual em `app/static/css/style.css`, com tema claro/escuro e layout responsivo. |
+| CSS | Interface visual em `app/static/css/style.css`, com tema claro/escuro, tokens de cor, status semânticos e layout responsivo. |
 | JavaScript | Interações da interface em `app/static/js/main.js`, incluindo menu lateral, autocomplete, venda, desconto, atalhos e tema. |
 | Bootstrap | CSS/JS carregado via CDN nos templates para base visual e componentes. |
 | unittest | Testes automatizados de rotas e regras principais. |
@@ -304,7 +305,7 @@ O sistema permite:
 - cadastrar produto;
 - listar produto;
 - filtrar por nome/código, status, categoria, estoque, preço mínimo/máximo e ordenação;
-- navegar por menu de categorias com opção "Todas";
+- navegar por menu lateral de categorias com opção "Todas", nomes longos em até duas linhas e contador alinhado;
 - editar produto;
 - atualizar produto na linha expandida;
 - ativar/inativar produto;
@@ -391,6 +392,7 @@ Onde fica:
 O sistema permite:
 
 - consultar histórico de movimentações por produto, categoria, tipo, usuário e período;
+- usar filtros alinhados em grade responsiva, sem quebra de texto nos botões;
 - registrar entrada manual de mercadoria;
 - ajustar estoque para cima ou para baixo com motivo;
 - visualizar saldo anterior, saldo novo, quantidade, custo unitário e custo total;
@@ -437,7 +439,8 @@ Regras importantes:
 - valores antigos e novos são salvos em JSON sanitizado;
 - o evento guarda usuário, perfil, IP, user-agent, rota, método e request id;
 - auditoria operacional fica isolada por adega;
-- o master do sistema acessa a auditoria central.
+- o master do sistema acessa a auditoria central;
+- filtros de busca, usuário, ação, módulo, método e período são organizados em grade responsiva para manter alinhamento em diferentes resoluções.
 
 ### Categorias
 
@@ -1514,6 +1517,12 @@ ip addr
 
 ## Templates e Interface
 
+A interface usa a identidade visual Girofy com roxo como cor principal da marca e
+ciano como cor de destaque. Estados operacionais usam cores semânticas: verde para
+sucesso/ativo/pago, âmbar para avisos, vermelho para erro/inativo/vencido e azul para
+informação. Essa paleta é centralizada em tokens CSS e aplicada em botões, sidebar,
+badges, cards, tabelas, formulários e gráficos.
+
 | Template | Função |
 |---|---|
 | `base.html` | Layout base com sidebar, topbar, notificações, mensagens flash, Bootstrap, CSS e JS. |
@@ -1545,7 +1554,7 @@ ip addr
 
 | Arquivo | Função |
 |---|---|
-| `app/static/css/style.css` | Tema visual, layout responsivo, sidebar, cards, tabelas, formulários, vendas, caixa, relatórios, notificações e dark/light mode. |
+| `app/static/css/style.css` | Tema visual Girofy, tokens de cor, modo claro/escuro, layout responsivo, sidebar, cards, tabelas, formulários, vendas, caixa, relatórios, notificações e badges de status. |
 | `app/static/js/main.js` | Tema light/dark, sidebar colapsável, abas, filtros avançados, autocomplete, moeda, kits, venda, pagamento, desconto e atalhos F2/F3. |
 
 O repositório possui assets de marca do Girofy em `app/static/img/` e usa CSS/Bootstrap para compor a interface.
@@ -1756,6 +1765,7 @@ Próximos passos para SaaS completo:
 - [x] Alertas de contas vencendo
 - [x] Funcionários e permissões
 - [x] Tema claro/escuro
+- [x] Paleta visual Girofy com cores semânticas
 - [x] Navbar colapsável
 - [x] Logs de erro
 - [x] Auditoria de ações críticas

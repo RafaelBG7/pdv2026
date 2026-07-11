@@ -54,6 +54,8 @@ Responsabilidades:
 
 - Layout responsivo com menu lateral recolhível.
 - Tema claro/escuro.
+- Paleta centralizada em tokens CSS com roxo Girofy, ciano de destaque e cores semânticas para status.
+- Filtros críticos alinhados por grids responsivos em auditoria, estoque, vendas e produtos.
 - Autocomplete de produtos, categorias e funcionários.
 - Venda com produtos, desconto, pagamentos, falta e troco.
 - Atalhos `F2` para finalização e `F3` para desconto.

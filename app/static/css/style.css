@@ -6145,10 +6145,10 @@ body:has(.login-screen) {
 }
 
 .sale-payment-step .form-control {
-  min-height: 54px;
+  min-height: 58px;
   border-radius: 0.65rem;
-  font-size: clamp(1rem, 0.94rem + 0.22vw, 1.14rem);
-  font-weight: 850;
+  font-size: clamp(1.18rem, 1.02rem + 0.48vw, 1.45rem);
+  font-weight: 950;
 }
 
 .sale-payment-step .sale-payment-layout {
@@ -6178,18 +6178,20 @@ body:has(.login-screen) {
 .sale-payment-summary > div {
   align-items: center;
   min-width: 0;
-  padding: 0.18rem 0;
+  padding: 0.3rem 0;
 }
 
 .sale-payment-summary strong {
-  font-size: 1.12rem;
+  font-size: clamp(1.22rem, 1.02rem + 0.58vw, 1.55rem);
+  font-weight: 950;
   text-align: right;
   white-space: nowrap;
 }
 
 .sale-payment-summary span {
   color: var(--muted);
-  font-weight: 750;
+  font-size: clamp(1.05rem, 0.95rem + 0.35vw, 1.25rem);
+  font-weight: 850;
   white-space: nowrap;
 }
 

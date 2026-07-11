@@ -4508,29 +4508,15 @@ th {
 
 .audit-filter-row {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1.25fr)
-    minmax(0, 0.95fr)
-    minmax(0, 0.95fr)
-    minmax(0, 0.9fr)
-    minmax(0, 0.78fr)
-    minmax(0, 0.98fr)
-    minmax(0, 0.98fr)
-    minmax(0, 1.08fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
   align-items: end;
   width: 100%;
   min-width: 0;
 }
 
 .audit-filter-row-master {
-  grid-template-columns:
-    minmax(0, 1.05fr)
-    minmax(0, 0.95fr)
-    minmax(0, 0.95fr)
-    minmax(0, 0.9fr)
-    minmax(0, 0.9fr)
-    minmax(0, 1.05fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   min-width: 0;
 }
 
@@ -4558,10 +4544,14 @@ th {
   text-overflow: ellipsis;
 }
 
+.audit-filter-date .form-control {
+  font-size: clamp(0.86rem, 0.78rem + 0.18vw, 1rem);
+}
+
 .audit-filter-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
   align-items: end;
   min-width: 0;
 }
@@ -4577,17 +4567,9 @@ th {
   text-overflow: ellipsis;
 }
 
-@container (max-width: 1380px) {
-  .audit-filter-row {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .audit-filter-row-master {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .audit-filter-actions {
-    grid-column: span 2;
+@container (min-width: 1381px) {
+  .audit-filter-row:not(.audit-filter-row-master) .audit-filter-actions {
+    grid-column: auto;
   }
 }
 

@@ -4619,6 +4619,12 @@ th {
     var(--audit-surface);
 }
 
+.audit-log-table {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
 .audit-metric-card {
   position: relative;
   overflow: hidden;
@@ -4640,6 +4646,17 @@ th {
 
 .audit-metric-card-actions::before {
   background: var(--audit-gold);
+}
+
+.audit-metric-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+
+.audit-metric-card span,
+.audit-metric-card strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stock-filter-card {
@@ -4792,12 +4809,67 @@ th {
   }
 }
 
+.audit-table {
+  width: 100%;
+  min-width: 1080px;
+  table-layout: fixed;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 0.85rem 0.75rem;
+  overflow-wrap: normal;
+  word-break: normal;
+  vertical-align: middle;
+}
+
+.audit-table th:nth-child(1),
+.audit-table td:nth-child(1) {
+  width: 13%;
+}
+
+.audit-table th:nth-child(2),
+.audit-table td:nth-child(2) {
+  width: 11%;
+}
+
+.audit-table th:nth-child(3),
+.audit-table td:nth-child(3) {
+  width: 14%;
+}
+
+.audit-table th:nth-child(4),
+.audit-table td:nth-child(4) {
+  width: 10%;
+}
+
+.audit-table th:nth-child(5),
+.audit-table td:nth-child(5) {
+  width: 28%;
+}
+
+.audit-table th:nth-child(6),
+.audit-table td:nth-child(6) {
+  width: 11%;
+}
+
+.audit-table th:nth-child(7),
+.audit-table td:nth-child(7) {
+  width: 5%;
+}
+
+.audit-table th:nth-child(8),
+.audit-table td:nth-child(8) {
+  width: 8%;
+}
+
 .audit-table thead th {
   background: rgba(var(--audit-accent-rgb), 0.1);
   color: var(--text);
   font-size: 0.86rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .audit-table tbody tr.expandable-row {
@@ -4835,10 +4907,9 @@ th {
 }
 
 .audit-description {
-  max-width: 360px;
+  max-width: none;
   color: var(--text);
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .audit-entity,
@@ -4863,6 +4934,8 @@ th {
   font-size: 0.78rem;
   font-weight: 900;
   line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -4979,6 +5052,104 @@ th {
 
   .audit-value-item {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .audit-log-table {
+    overflow-x: visible;
+  }
+
+  .audit-table {
+    min-width: 0;
+  }
+
+  .audit-table thead {
+    display: none;
+  }
+
+  .audit-table,
+  .audit-table tbody,
+  .audit-table tr,
+  .audit-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .audit-table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .audit-table tbody tr.expandable-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem 0.8rem;
+    padding: 0.85rem;
+    border: 1px solid var(--audit-border);
+    border-radius: 0.75rem;
+    background: rgba(var(--audit-accent-rgb), 0.06);
+  }
+
+  .audit-table tbody tr.expandable-row td {
+    display: grid;
+    grid-template-columns: minmax(86px, 0.36fr) minmax(0, 1fr);
+    gap: 0.55rem;
+    align-items: center;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .audit-table tbody tr.expandable-row td:nth-child(5),
+  .audit-table tbody tr.expandable-row td:nth-child(6) {
+    grid-column: 1 / -1;
+  }
+
+  .audit-table tbody tr.expandable-row td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .audit-description {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .audit-table tbody tr.expandable-detail-row {
+    display: none;
+  }
+
+  .audit-table tbody tr.expandable-detail-row.is-visible {
+    display: block;
+    margin-top: -0.75rem;
+  }
+
+  .audit-table tbody tr.expandable-detail-row td {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .audit-table tbody tr.expandable-row {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-table tbody tr.expandable-row td {
+    grid-template-columns: minmax(84px, 0.32fr) minmax(0, 1fr);
+  }
+
+  .audit-action-pill,
+  .audit-module-pill {
+    justify-content: flex-start;
   }
 }
 

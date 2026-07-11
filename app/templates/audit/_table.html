@@ -64,7 +64,7 @@
 {% endif %}
 
 <div class="card card-dark table-card audit-table-card">
-  <div class="table-responsive">
+  <div class="table-responsive audit-log-table">
     <table class="table table-dark align-middle mb-0 data-table audit-table">
       <thead>
         <tr>
@@ -81,19 +81,19 @@
       <tbody>
         {% for log in logs %}
         <tr class="expandable-row" data-expand-row>
-          <td>
+          <td data-label="Data e hora">
             <span class="audit-date">{{ log.created_at.strftime('%d/%m/%Y') if log.created_at else '-' }}</span>
             <small>{{ log.created_at.strftime('%H:%M') if log.created_at else '' }}</small>
           </td>
-          <td>
+          <td data-label="Usuário">
             <span class="audit-user">{{ log.user_name or 'Sistema' }}</span>
           </td>
-          <td><span class="audit-action-pill">{{ audit_action_label(log.action) }}</span></td>
-          <td><span class="audit-module-pill">{{ entity_label(log.entity_type) }}</span></td>
-          <td><span class="audit-description">{{ log.description }}</span></td>
-          <td><span class="audit-entity">{{ log.entity_type }}</span></td>
-          <td><span class="audit-id">{{ log.entity_id or '-' }}</span></td>
-          <td><span class="audit-ip">{{ log.ip_address or '-' }}</span></td>
+          <td data-label="Ação"><span class="audit-action-pill">{{ audit_action_label(log.action) }}</span></td>
+          <td data-label="Módulo"><span class="audit-module-pill">{{ entity_label(log.entity_type) }}</span></td>
+          <td data-label="Descrição"><span class="audit-description">{{ log.description }}</span></td>
+          <td data-label="Entidade"><span class="audit-entity">{{ log.entity_type }}</span></td>
+          <td data-label="ID"><span class="audit-id">{{ log.entity_id or '-' }}</span></td>
+          <td data-label="IP"><span class="audit-ip">{{ log.ip_address or '-' }}</span></td>
         </tr>
         <tr class="expandable-detail-row">
           <td colspan="8">

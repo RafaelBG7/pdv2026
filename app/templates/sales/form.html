@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+<div class="sale-page-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
     <h2>Realizar venda</h2>
     <p class="text-muted mb-0">Adicione os produtos do pedido e finalize o pagamento.</p>
@@ -9,7 +9,7 @@
   <a class="btn btn-outline-light" href="{{ url_for('main.sales') }}">Voltar</a>
 </div>
 
-<form method="post" data-sale-form {% if needs_permission_override('can_manage_sales') %}data-permission-override="true"{% endif %}>
+<form method="post" data-sale-form class="sale-form-shell" {% if needs_permission_override('can_manage_sales') %}data-permission-override="true"{% endif %}>
   <datalist id="sale-product-suggestions">
     {% for product in products %}
     <option
@@ -23,7 +23,7 @@
   </datalist>
 
   <div class="sale-layout">
-    <section class="card card-dark sale-panel">
+    <section class="card card-dark sale-panel sale-products-panel">
       <div class="mb-3">
         <h5 class="mb-1">Produtos da venda</h5>
         <p class="text-muted mb-0">Pesquise, selecione o produto e informe a quantidade.</p>
@@ -116,10 +116,10 @@
       </template>
     </section>
 
-    <aside class="card card-dark sale-panel">
+    <aside class="card card-dark sale-panel sale-summary-panel">
       <h5 class="mb-3">Resumo da venda</h5>
 
-      <div class="sale-total-box">
+      <div class="sale-total-box sale-total-box--primary">
         <span>Total</span>
         <strong data-sale-total>R$ 0,00</strong>
       </div>

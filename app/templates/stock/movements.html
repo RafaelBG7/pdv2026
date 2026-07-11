@@ -19,13 +19,13 @@
   <div class="metric-card"><span>Produtos movimentados</span><strong>{{ summary.products }}</strong></div>
 </div>
 
-<form class="card card-dark p-3 mb-4" method="get">
+<form class="card card-dark stock-filter-card mb-4" method="get">
   <div class="stock-filter-grid">
-    <div>
+    <div class="stock-filter-field">
       <label class="form-label" for="produto">Produto</label>
       <input class="form-control" id="produto" name="produto" value="{{ filters.produto }}" placeholder="Buscar produto">
     </div>
-    <div>
+    <div class="stock-filter-field">
       <label class="form-label" for="categoria">Categoria</label>
       <select class="form-select" id="categoria" name="categoria">
         <option value="">Todas</option>
@@ -34,7 +34,7 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="stock-filter-field">
       <label class="form-label" for="tipo">Tipo</label>
       <select class="form-select" id="tipo" name="tipo">
         <option value="">Todos</option>
@@ -43,7 +43,7 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="stock-filter-field">
       <label class="form-label" for="usuario">Usuário</label>
       <select class="form-select" id="usuario" name="usuario">
         <option value="">Todos</option>
@@ -52,15 +52,15 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="stock-filter-field stock-filter-date">
       <label class="form-label" for="data_inicio">Data inicial</label>
       <input class="form-control" id="data_inicio" name="data_inicio" type="date" value="{{ filters.data_inicio }}">
     </div>
-    <div>
+    <div class="stock-filter-field stock-filter-date">
       <label class="form-label" for="data_fim">Data final</label>
       <input class="form-control" id="data_fim" name="data_fim" type="date" value="{{ filters.data_fim }}">
     </div>
-    <div class="d-flex gap-2 align-items-end">
+    <div class="stock-filter-actions">
       <button class="btn btn-primary w-100" type="submit">Filtrar</button>
       <a class="btn btn-outline-light" href="{{ url_for('main.stock_movements') }}">Limpar</a>
     </div>

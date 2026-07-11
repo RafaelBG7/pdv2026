@@ -6008,7 +6008,7 @@ body:has(.login-screen) {
 .sale-items-header,
 .sale-items-lines .sale-item-row,
 .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
-  grid-template-columns: minmax(300px, 1.85fr) minmax(126px, 0.58fr) minmax(108px, 0.48fr) minmax(88px, 0.35fr) minmax(134px, 0.62fr) minmax(142px, 0.5fr) !important;
+  grid-template-columns: minmax(0, 1.9fr) minmax(112px, 0.56fr) minmax(94px, 0.46fr) minmax(76px, 0.34fr) minmax(120px, 0.58fr) 132px !important;
 }
 
 .sale-items-header {
@@ -6030,6 +6030,7 @@ body:has(.login-screen) {
   background:
     linear-gradient(90deg, rgba(var(--accent-rgb), 0.055), transparent 42%),
     var(--surface-2);
+  overflow: hidden;
 }
 
 .sale-items-lines .sale-item-row:first-of-type {
@@ -6085,13 +6086,22 @@ body:has(.login-screen) {
 .sale-items-lines .sale-row-action .btn {
   min-height: 48px;
   width: 100%;
+  min-width: 0;
   max-width: 100%;
-  padding-inline: 0.8rem;
+  box-sizing: border-box;
+  padding-inline: 0.55rem;
   border-radius: 0.55rem;
-  font-size: clamp(0.9rem, 0.84rem + 0.18vw, 1rem);
+  font-size: 0.95rem;
   font-weight: 850;
   line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sale-items-lines .sale-row-action {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .sale-payment-step {

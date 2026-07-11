@@ -6196,7 +6196,7 @@ body:has(.login-screen) {
 }
 
 .sale-payment-summary [data-payment-step-total] {
-  color: var(--accent);
+  color: var(--success);
   font-size: clamp(1.8rem, 1.25rem + 1.5vw, 2.6rem);
   font-weight: 950;
 }
@@ -6206,7 +6206,7 @@ body:has(.login-screen) {
 }
 
 .sale-payment-summary [data-change-total] {
-  color: var(--success);
+  color: var(--info);
 }
 
 @media (max-width: 1320px) {

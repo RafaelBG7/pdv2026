@@ -4920,7 +4920,7 @@ body:has(.login-screen) {
 
 .product-list-layout {
   display: grid;
-  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -4957,12 +4957,32 @@ body:has(.login-screen) {
 }
 
 .category-chip-nav.category-chip-nav-vertical .category-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   justify-content: space-between;
   width: 100%;
   min-height: 42px;
   border-radius: 0.5rem;
   text-align: left;
   white-space: normal;
+}
+
+.category-chip-nav.category-chip-nav-vertical .category-chip .category-chip-name {
+  display: -webkit-box;
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-overflow: clip;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.category-chip-nav.category-chip-nav-vertical .category-chip .category-chip-count {
+  align-self: center;
+  justify-self: end;
 }
 
 @media (max-height: 760px) {

@@ -73,9 +73,7 @@
           <th>Ação</th>
           <th>Módulo</th>
           <th>Descrição</th>
-          <th>Entidade</th>
           <th>ID</th>
-          <th>IP</th>
         </tr>
       </thead>
       <tbody>
@@ -91,12 +89,10 @@
           <td data-label="Ação"><span class="audit-action-pill">{{ audit_action_label(log.action) }}</span></td>
           <td data-label="Módulo"><span class="audit-module-pill">{{ entity_label(log.entity_type) }}</span></td>
           <td data-label="Descrição"><span class="audit-description">{{ log.description }}</span></td>
-          <td data-label="Entidade"><span class="audit-entity">{{ log.entity_type }}</span></td>
           <td data-label="ID"><span class="audit-id">{{ log.entity_id or '-' }}</span></td>
-          <td data-label="IP"><span class="audit-ip">{{ log.ip_address or '-' }}</span></td>
         </tr>
         <tr class="expandable-detail-row">
-          <td colspan="8">
+          <td colspan="6">
             <div class="audit-detail-panel">
               <div class="audit-change-grid">
                 <section class="audit-change-card">
@@ -126,18 +122,20 @@
                   </div>
                 </section>
               </div>
-              <div class="settings-summary audit-request-summary">
-                <div><span>Rota</span><strong>{{ log.route or '-' }}</strong></div>
-                <div><span>Método</span><strong>{{ log.http_method or '-' }}</strong></div>
-                <div><span>Request ID</span><strong>{{ log.request_id or '-' }}</strong></div>
-                <div><span>Empresa</span><strong>{{ log.company_id or '-' }}</strong></div>
+              <div class="audit-request-summary">
+                <div class="audit-request-item"><span>Rota</span><strong>{{ log.route or '-' }}</strong></div>
+                <div class="audit-request-item"><span>Método</span><strong>{{ log.http_method or '-' }}</strong></div>
+                <div class="audit-request-item"><span>Request ID</span><strong>{{ log.request_id or '-' }}</strong></div>
+                <div class="audit-request-item"><span>Empresa</span><strong>{{ log.company_id or '-' }}</strong></div>
+                <div class="audit-request-item"><span>Entidade</span><strong>{{ log.entity_type or '-' }}</strong></div>
+                <div class="audit-request-item"><span>IP</span><strong>{{ log.ip_address or '-' }}</strong></div>
               </div>
               <p class="audit-user-agent mb-0">{{ log.user_agent or 'User-agent não registrado.' }}</p>
             </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="text-center text-muted py-5">Nenhum evento de auditoria encontrado.</td></tr>
+        <tr><td colspan="6" class="text-center text-muted py-5">Nenhum evento de auditoria encontrado.</td></tr>
         {% endfor %}
       </tbody>
     </table>

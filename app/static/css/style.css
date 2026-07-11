@@ -4811,7 +4811,7 @@ th {
 
 .audit-table {
   width: 100%;
-  min-width: 1080px;
+  min-width: 860px;
   table-layout: fixed;
 }
 
@@ -4825,42 +4825,32 @@ th {
 
 .audit-table th:nth-child(1),
 .audit-table td:nth-child(1) {
-  width: 13%;
+  width: 14%;
 }
 
 .audit-table th:nth-child(2),
 .audit-table td:nth-child(2) {
-  width: 11%;
+  width: 13%;
 }
 
 .audit-table th:nth-child(3),
 .audit-table td:nth-child(3) {
-  width: 14%;
+  width: 16%;
 }
 
 .audit-table th:nth-child(4),
 .audit-table td:nth-child(4) {
-  width: 10%;
+  width: 12%;
 }
 
 .audit-table th:nth-child(5),
 .audit-table td:nth-child(5) {
-  width: 28%;
+  width: 35%;
 }
 
 .audit-table th:nth-child(6),
 .audit-table td:nth-child(6) {
-  width: 11%;
-}
-
-.audit-table th:nth-child(7),
-.audit-table td:nth-child(7) {
-  width: 5%;
-}
-
-.audit-table th:nth-child(8),
-.audit-table td:nth-child(8) {
-  width: 8%;
+  width: 10%;
 }
 
 .audit-table thead th {
@@ -4954,7 +4944,11 @@ th {
 .audit-detail-panel {
   display: grid;
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 1rem;
+  overflow: hidden;
   border: 1px solid var(--audit-border);
   border-radius: 0.75rem;
   background:
@@ -4964,8 +4958,10 @@ th {
 
 .audit-change-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 1rem;
+  align-items: start;
+  min-width: 0;
 }
 
 .audit-change-card {
@@ -4994,11 +4990,12 @@ th {
 .audit-value-list {
   display: grid;
   gap: 0.55rem;
+  min-width: 0;
 }
 
 .audit-value-item {
   display: grid;
-  grid-template-columns: minmax(110px, 0.42fr) minmax(0, 1fr);
+  grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
   min-width: 0;
@@ -5012,7 +5009,10 @@ th {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .audit-value-item strong {
@@ -5034,7 +5034,39 @@ th {
 }
 
 .audit-request-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.audit-request-item {
+  display: grid;
+  grid-template-columns: minmax(84px, 0.28fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid rgba(var(--audit-accent-rgb), 0.16);
+  border-radius: 0.55rem;
   background: var(--audit-surface);
+}
+
+.audit-request-item span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.audit-request-item strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: clamp(0.78rem, 0.72rem + 0.22vw, 0.92rem);
+  font-weight: 800;
+  text-align: right;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .audit-user-agent {
@@ -5052,6 +5084,14 @@ th {
 
   .audit-value-item {
     grid-template-columns: 1fr;
+  }
+
+  .audit-request-item {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-request-item strong {
+    text-align: left;
   }
 }
 

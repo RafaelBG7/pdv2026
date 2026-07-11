@@ -3678,6 +3678,37 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Auditoria'.encode(), response.data)
         self.assertIn('Evento de auditoria visível'.encode(), response.data)
 
+    def test_audit_detail_translates_technical_fields_to_brazilian_portuguese(self):
+        self.login()
+        with self.app.app_context():
+            record_audit_event(
+                'stock_sale',
+                'stock_movement',
+                15,
+                'Venda de estoque traduzida',
+                old_values={'stock_quantity': 10},
+                new_values={
+                    'stock_quantity': 8,
+                    'source_type': 'sale',
+                    'product_id': 3,
+                    'quantity': 2,
+                },
+                company_id=self.master_company_id(),
+                db_session=db.session,
+            )
+            db.session.commit()
+
+        response = self.client.get('/auditoria')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Estoque'.encode(), response.data)
+        self.assertIn('Origem'.encode(), response.data)
+        self.assertIn('Venda'.encode(), response.data)
+        self.assertIn('Produto'.encode(), response.data)
+        self.assertIn('Quantidade'.encode(), response.data)
+        self.assertNotIn('stock_quantity'.encode(), response.data)
+        self.assertNotIn('source_type'.encode(), response.data)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -671,6 +671,37 @@ Campos como senha, token, secret, API key e key de ativação são mascarados. E
 não tratadas geram uma única entrada contextual com traceback. O botão `Limpar logs`
 do painel master limpa os dois arquivos.
 
+### Auditoria
+
+Onde fica:
+
+- Adega: `/auditoria`
+- Master: `/master/auditoria`
+- Código: `app/services/audit_service.py` e `app/routes/main.py`
+- Tabela: `audit_logs`
+
+O sistema registra ações críticas como login, alteração de produtos, categorias, estoque,
+vendas, caixa, configurações, exportações e backups. A interface exibe ações, módulos,
+campos alterados e valores em português do Brasil, inclusive nos detalhes técnicos como
+`Estoque`, `Origem`, `Produto`, `Quantidade`, `Venda` e `Preço de venda`.
+
+Dados sensíveis continuam protegidos antes de serem salvos, como senha, token, API key,
+secret e key de ativação.
+
+Para evitar crescimento excessivo da tabela `audit_logs`, o container de manutenção roda
+uma limpeza automática. Por padrão, a cada 3 dias ele remove registros de auditoria com
+mais de 90 dias, tanto do banco central quanto dos bancos das adegas.
+
+Variáveis:
+
+```env
+AUTO_AUDIT_CLEANUP_ENABLED=1
+AUTO_AUDIT_CLEANUP_INTERVAL_SECONDS=259200
+AUTO_AUDIT_RETENTION_DAYS=90
+```
+
+Essa rotina apenas remove registros antigos. Ela não apaga auditorias recentes.
+
 ## Banco de Dados MySQL
 
 O projeto usa MySQL em dois níveis:
@@ -1344,6 +1375,9 @@ MAIL_SMTP_PASSWORD=sua-senha-de-app-do-gmail
 MAIL_FROM_EMAIL=girofy2026@gmail.com
 MAIL_FROM_NAME=Girofy
 MAIL_SUPPRESS_SEND=0
+AUTO_AUDIT_CLEANUP_ENABLED=1
+AUTO_AUDIT_CLEANUP_INTERVAL_SECONDS=259200
+AUTO_AUDIT_RETENTION_DAYS=90
 PORT=5003
 ```
 

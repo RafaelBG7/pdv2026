@@ -287,18 +287,129 @@ def audit_json_lines(value):
     return [str(data)]
 
 
+AUDIT_FIELD_LABELS = {
+    'activation_key': 'Key de ativação',
+    'active': 'Ativo',
+    'allow_negative_stock': 'Permitir estoque negativo',
+    'barcode': 'Código de barras',
+    'billing_cycle': 'Ciclo de cobrança',
+    'can_manage_cash_register': 'Permissão para caixa',
+    'can_manage_categories': 'Permissão para categorias',
+    'can_manage_payables': 'Permissão para contas a pagar',
+    'can_manage_products': 'Permissão para produtos',
+    'can_manage_sales': 'Permissão para vendas',
+    'can_manage_settings': 'Permissão para configurações',
+    'can_manage_stock': 'Permissão para estoque',
+    'can_view_audit_logs': 'Permissão para auditoria',
+    'can_view_products': 'Permissão para consultar produtos',
+    'can_view_reports': 'Permissão para relatórios',
+    'can_view_stock_movements': 'Permissão para movimentações de estoque',
+    'category_id': 'Categoria',
+    'company_id': 'Adega',
+    'cost_price': 'Preço de custo',
+    'credit_fee_enabled': 'Taxa crédito ativa',
+    'credit_fee_percent': 'Taxa de crédito',
+    'database_path': 'Banco de dados',
+    'debit_fee_enabled': 'Taxa débito ativa',
+    'debit_fee_percent': 'Taxa de débito',
+    'email': 'E-mail',
+    'email_verified': 'E-mail confirmado',
+    'email_verified_at': 'Confirmado em',
+    'export_type': 'Tipo de exportação',
+    'first_name': 'Nome',
+    'is_active': 'Usuário ativo',
+    'is_kit': 'Produto kit',
+    'kit_component_product_id': 'Produto base do kit',
+    'kit_component_quantity': 'Quantidade do kit',
+    'last_name': 'Sobrenome',
+    'min_stock_quantity': 'Estoque mínimo',
+    'movement_id': 'Movimentação',
+    'name': 'Nome',
+    'notes': 'Observações',
+    'opening_amount': 'Valor inicial',
+    'paid': 'Pago',
+    'paid_at': 'Pago em',
+    'payment_cycle': 'Ciclo de pagamento',
+    'phone': 'Telefone',
+    'pix_fee_enabled': 'Taxa Pix ativa',
+    'pix_fee_percent': 'Taxa Pix',
+    'plan': 'Plano',
+    'product_id': 'Produto',
+    'quantity': 'Quantidade',
+    'renews_at': 'Renova em',
+    'role': 'Perfil',
+    'sale_id': 'Venda',
+    'sale_price': 'Preço de venda',
+    'source_type': 'Origem',
+    'status': 'Status',
+    'stock_quantity': 'Estoque',
+    'subscription_plan': 'Plano',
+    'subscription_renews_at': 'Renovação',
+    'unit_cost': 'Custo unitário',
+    'username': 'Usuário',
+}
+
+AUDIT_VALUE_LABELS = {
+    'billing_cycle': {
+        'monthly': 'Mensal',
+        'annual': 'Anual',
+    },
+    'export_type': {
+        'produtos': 'Produtos',
+        'vendas': 'Vendas',
+        'caixas': 'Caixas',
+        'contas': 'Contas',
+        'contas_a_pagar': 'Contas a pagar',
+    },
+    'role': {
+        'master': 'Master do sistema',
+        'admin': 'Administrador',
+        'manager': 'Gerente',
+        'operator': 'Funcionário',
+        'employee': 'Funcionário',
+    },
+    'source_type': {
+        'manual': 'Manual',
+        'sale': 'Venda',
+        'spreadsheet_import': 'Importação de planilha',
+        'import': 'Importação',
+        'return': 'Devolução',
+        'adjustment': 'Ajuste',
+    },
+    'status': {
+        'active': 'Ativo',
+        'inactive': 'Inativo',
+        'open': 'Aberto',
+        'closed': 'Fechado',
+        'paid': 'Pago',
+        'pending': 'Pendente',
+    },
+}
+
+
+def audit_field_label(key):
+    key = str(key or '')
+    if key in AUDIT_FIELD_LABELS:
+        return AUDIT_FIELD_LABELS[key]
+    return key.replace('_', ' ').strip().capitalize()
+
+
 def audit_value_items(value):
     if not value:
         return []
     import json
 
-    def format_value(item):
+    def format_value(key, item):
         if item is None:
             return 'Vazio'
         if isinstance(item, bool):
             return 'Sim' if item else 'Não'
         if isinstance(item, (dict, list)):
             return json.dumps(item, ensure_ascii=False, sort_keys=True)
+        text = str(item)
+        translated = AUDIT_VALUE_LABELS.get(str(key or ''), {}).get(text)
+        if translated:
+            return translated
         return str(item)
 
     try:
@@ -307,15 +418,15 @@ def audit_value_items(value):
         return [{'label': 'Registro', 'value': str(value)}]
     if isinstance(data, dict):
         return [
-            {'label': str(key).replace('_', ' ').title(), 'value': format_value(data[key])}
+            {'label': audit_field_label(key), 'value': format_value(key, data[key])}
             for key in sorted(data)
         ]
     if isinstance(data, list):
         return [
-            {'label': f'Item {index}', 'value': format_value(item)}
+            {'label': f'Item {index}', 'value': format_value('', item)}
             for index, item in enumerate(data, start=1)
         ]
-    return [{'label': 'Registro', 'value': format_value(data)}]
+    return [{'label': 'Registro', 'value': format_value('', data)}]
 
 
 def apply_date_filters(query, model, start_value, end_value):

@@ -5906,7 +5906,7 @@ body:has(.login-screen) {
 }
 
 .sale-form-shell .sale-layout {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 440px);
   gap: clamp(1rem, 1.45vw, 1.35rem);
   align-items: start;
 }
@@ -5950,19 +5950,10 @@ body:has(.login-screen) {
 }
 
 .sale-summary-panel {
-  position: static;
+  position: sticky;
+  top: 1rem;
   display: grid;
   gap: 0.75rem;
-}
-
-.sale-summary-panel {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.5fr) minmax(180px, 0.34fr) minmax(190px, 0.38fr);
-  align-items: stretch;
-}
-
-.sale-summary-panel h5 {
-  grid-column: 1 / -1;
-  margin-bottom: 0 !important;
 }
 
 .sale-total-box--primary {
@@ -5998,12 +5989,8 @@ body:has(.login-screen) {
 
 .sale-summary-panel .sale-discount-summary {
   align-items: center;
-  align-self: stretch;
   padding: 0.85rem 0.15rem;
   font-size: 1rem;
-  border: 1px solid rgba(var(--accent-rgb), 0.16);
-  border-radius: 0.75rem;
-  background: var(--surface-2);
 }
 
 .sale-summary-panel .sale-discount-summary strong {
@@ -6013,7 +6000,6 @@ body:has(.login-screen) {
 
 .sale-summary-panel .btn {
   min-height: 56px;
-  margin-top: 0 !important;
   border-radius: 0.7rem;
   font-size: 1.03rem;
   font-weight: 900;
@@ -6105,11 +6091,68 @@ body:has(.login-screen) {
 
 .sale-payment-step {
   width: min(calc(100% - 2rem), 1040px);
+  padding: clamp(1rem, 0.8rem + 0.8vw, 1.55rem);
   border-color: rgba(var(--accent-rgb), 0.24);
   border-radius: 0.9rem;
+  overflow-x: hidden;
+}
+
+.sale-payment-step > .d-flex:first-child {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start !important;
+}
+
+.sale-payment-step h5 {
+  font-size: clamp(1.35rem, 1.05rem + 0.85vw, 1.85rem);
+  font-weight: 950;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.sale-payment-step p {
+  max-width: 58rem;
+  line-height: 1.35;
+}
+
+.sale-payment-step .btn {
+  min-height: 48px;
+  border-radius: 0.65rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.sale-payment-step .form-label {
+  margin-bottom: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.sale-payment-step .form-control {
+  min-height: 54px;
+  border-radius: 0.65rem;
+  font-size: clamp(1rem, 0.94rem + 0.22vw, 1.14rem);
+  font-weight: 850;
+}
+
+.sale-payment-step .sale-payment-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: clamp(0.85rem, 1.2vw, 1.25rem);
+}
+
+.sale-payment-step .payment-grid {
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  align-items: end;
+  margin-top: 0 !important;
+}
+
+.sale-payment-step .payment-grid > div {
+  min-width: 0;
 }
 
 .sale-payment-summary {
+  margin-top: 0 !important;
   border-color: rgba(var(--accent-rgb), 0.24);
   border-radius: 0.75rem;
   background:
@@ -6119,10 +6162,20 @@ body:has(.login-screen) {
 
 .sale-payment-summary > div {
   align-items: center;
+  min-width: 0;
+  padding: 0.18rem 0;
 }
 
 .sale-payment-summary strong {
   font-size: 1.12rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sale-payment-summary span {
+  color: var(--muted);
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .sale-payment-summary [data-payment-step-total] {
@@ -6150,8 +6203,47 @@ body:has(.login-screen) {
 }
 
 @media (max-width: 1100px) {
-  .sale-summary-panel {
+  .sale-payment-step {
+    width: min(calc(100% - 1rem), 760px);
+  }
+
+  .sale-payment-step .sale-payment-layout {
     grid-template-columns: 1fr;
+  }
+
+  .sale-payment-step .payment-grid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .sale-payment-step {
+    width: calc(100% - 0.75rem);
+    max-height: calc(100vh - 0.75rem);
+  }
+
+  .sale-payment-step > .d-flex:first-child {
+    grid-template-columns: 1fr;
+  }
+
+  .sale-payment-step > .d-flex:first-child .btn {
+    width: 100%;
+  }
+
+  .sale-payment-step h5 {
+    white-space: normal;
+  }
+
+  .sale-payment-step p {
+    font-size: 0.95rem;
+  }
+
+  .sale-payment-step .payment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sale-payment-summary [data-payment-step-total] {
+    font-size: clamp(1.75rem, 1.35rem + 3vw, 2.25rem);
   }
 }
 

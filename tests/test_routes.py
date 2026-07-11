@@ -3286,24 +3286,51 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Abrir caixa'.encode(), response.data)
 
     def test_sales_list_renders_column_filters_and_sale_metadata(self):
-        self.login()
-        self.open_cash_register(amount='0,00')
-
         with self.app.app_context():
-            product = Product(name='Filtro Venda', sale_price=12, stock_quantity=5, active=True, company_id=self.master_company_id())
-            db.session.add(product)
+            company = Company(name='Adega Filtros Venda', activation_key='KEY-FILTROS-VENDA')
+            db.session.add(company)
+            db.session.flush()
+            user = User(username='vendedor_filtro', role='admin', company_id=company.id, is_active=True, email_verified=True)
+            user.set_password('123')
+            product = Product(name='Filtro Venda', sale_price=12, stock_quantity=5, active=True, company_id=company.id)
+            db.session.add_all([user, product])
+            db.session.flush()
+            cash_register = CashRegister(
+                opened_at=datetime.now(),
+                opening_amount=0,
+                status='open',
+                user_id=user.id,
+                company_id=company.id,
+            )
+            db.session.add(cash_register)
+            db.session.flush()
+            sale = Sale(
+                created_at=datetime.now(),
+                total_amount=12,
+                discount_amount=0,
+                final_amount=12,
+                payment_status='paid',
+                user_id=user.id,
+                company_id=company.id,
+                cash_register_id=cash_register.id,
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add_all([
+                SaleItem(
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    quantity=1,
+                    unit_price=12,
+                    unit_cost_price=0,
+                    total_price=12,
+                    profit_amount=12,
+                ),
+                Payment(sale_id=sale.id, method='money', amount=12),
+            ])
             db.session.commit()
-            product_id = product.id
 
-        self.client.post(
-            '/vendas/nova',
-            data={
-                'product_id[]': [str(product_id)],
-                'quantity[]': ['1'],
-                'payment_money': '12,00',
-            },
-            follow_redirects=True,
-        )
+        self.login(username='vendedor_filtro', password='123')
 
         response = self.client.get('/vendas')
 

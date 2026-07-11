@@ -4502,35 +4502,36 @@ th {
 
 .audit-filter-card {
   padding: 1rem;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: visible;
 }
 
 .audit-filter-row {
   display: grid;
   grid-template-columns:
-    minmax(210px, 1.2fr)
-    minmax(170px, 1fr)
-    minmax(170px, 1fr)
-    minmax(145px, 0.75fr)
-    minmax(125px, 0.65fr)
-    minmax(150px, 0.75fr)
-    minmax(150px, 0.75fr)
-    max-content;
-  gap: 12px;
+    minmax(150px, 1.15fr)
+    minmax(118px, 0.8fr)
+    minmax(118px, 0.8fr)
+    minmax(118px, 0.75fr)
+    minmax(104px, 0.62fr)
+    minmax(126px, 0.72fr)
+    minmax(126px, 0.72fr)
+    minmax(174px, 0.8fr);
+  gap: 10px;
   align-items: end;
-  min-width: 1370px;
+  width: 100%;
+  min-width: 0;
 }
 
 .audit-filter-row-master {
   grid-template-columns:
-    minmax(210px, 1fr)
-    minmax(180px, 1fr)
-    minmax(190px, 1fr)
-    minmax(150px, 0.7fr)
-    minmax(150px, 0.7fr)
-    max-content;
-  min-width: 1010px;
+    minmax(160px, 1fr)
+    minmax(145px, 0.9fr)
+    minmax(150px, 0.9fr)
+    minmax(126px, 0.7fr)
+    minmax(126px, 0.7fr)
+    minmax(174px, 0.8fr);
+  min-width: 0;
 }
 
 .audit-filter-field {
@@ -4542,18 +4543,25 @@ th {
   white-space: nowrap;
 }
 
+.audit-filter-field .form-label {
+  font-size: 0.95rem;
+}
+
 .audit-filter-field .form-control,
 .audit-filter-field .form-select {
   width: 100%;
   min-width: 0;
+  min-height: 42px;
+  padding-inline: 0.75rem;
   text-overflow: ellipsis;
 }
 
 .audit-filter-actions {
   display: grid;
-  grid-template-columns: 150px 112px;
-  gap: 12px;
+  grid-template-columns: minmax(88px, 1fr) minmax(76px, 0.85fr);
+  gap: 10px;
   align-items: end;
+  min-width: 0;
 }
 
 .audit-filter-actions .btn {
@@ -4561,8 +4569,22 @@ th {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 44px;
-  padding-inline: 1rem;
+  min-height: 42px;
+  padding-inline: 0.75rem;
+}
+
+@media (max-width: 1180px) {
+  .audit-filter-card {
+    overflow-x: auto;
+  }
+
+  .audit-filter-row {
+    min-width: 1040px;
+  }
+
+  .audit-filter-row-master {
+    min-width: 860px;
+  }
 }
 
 .stock-operation-card {

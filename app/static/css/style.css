@@ -1975,46 +1975,65 @@ body {
 
 .sales-table th,
 .sales-table td {
+  min-width: 0;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;
 }
 
 .sales-table .sales-id-column {
-  width: 22%;
+  width: 20%;
   min-width: 0;
 }
 
 .sales-table .sales-date-column {
-  width: 22%;
+  width: 21%;
   min-width: 0;
 }
 
 .sales-table .sales-seller-column {
-  width: 18%;
+  width: 17%;
   min-width: 0;
 }
 
 .sales-table .sales-total-column {
-  width: 14%;
+  width: 13%;
   min-width: 0;
 }
 
 .sales-table .sales-payment-column {
-  width: 14%;
+  width: 17%;
   min-width: 0;
 }
 
 .sales-table .actions-column {
   min-width: 0;
-  width: 10%;
+  width: 12%;
 }
 
 .sales-table .badge,
 .sales-table .btn,
 .sales-table .sales-column-filter summary,
 .sales-table .sales-column-search span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sales-table .actions-column,
+.sales-table .actions-column .btn {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.sales-table .action-button {
+  min-width: 64px;
+  width: 100%;
+  max-width: 92px;
 }
 
 html[data-text-scale='large'] .sales-table {
@@ -5893,8 +5912,8 @@ body:has(.login-screen) {
 }
 
 .sales-column-search .form-control {
-  width: 148px;
-  min-width: 148px;
+  width: min(148px, 100%);
+  min-width: 0;
   min-height: 34px;
   border-color: rgba(var(--primary-rgb), 0.18);
   background: var(--surface-2);

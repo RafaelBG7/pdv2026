@@ -1,6 +1,8 @@
 :root {
   --sidebar-width: 264px;
   --sidebar-collapsed-width: 84px;
+  --accessibility-component-min-font: 0.88rem;
+  --accessibility-control-min-font: 0.94rem;
   --bg: #f6f8ff;
   --surface: #ffffff;
   --surface-2: #eef6fb;
@@ -59,10 +61,14 @@
 }
 
 html[data-text-scale='large'] {
+  --accessibility-component-min-font: 0.98rem;
+  --accessibility-control-min-font: 1.02rem;
   font-size: 17.5px;
 }
 
 html[data-text-scale='extra'] {
+  --accessibility-component-min-font: 1.04rem;
+  --accessibility-control-min-font: 1.08rem;
   font-size: 19px;
 }
 
@@ -97,8 +103,22 @@ html[data-accessibility-bold='true'] body,
 html[data-accessibility-bold='true'] button,
 html[data-accessibility-bold='true'] input,
 html[data-accessibility-bold='true'] select,
-html[data-accessibility-bold='true'] textarea {
-  font-weight: 700;
+html[data-accessibility-bold='true'] textarea,
+html[data-accessibility-bold='true'] a,
+html[data-accessibility-bold='true'] span,
+html[data-accessibility-bold='true'] small,
+html[data-accessibility-bold='true'] th,
+html[data-accessibility-bold='true'] td,
+html[data-accessibility-bold='true'] .badge,
+html[data-accessibility-bold='true'] .form-control,
+html[data-accessibility-bold='true'] .form-select,
+html[data-accessibility-bold='true'] .dropdown-item,
+html[data-accessibility-bold='true'] .action-button,
+html[data-accessibility-bold='true'] .user-menu-link,
+html[data-accessibility-bold='true'] .user-theme-choice,
+html[data-accessibility-bold='true'] .settings-tab-button,
+html[data-accessibility-bold='true'] .accessibility-choice {
+  font-weight: 700 !important;
 }
 
 html[data-accessibility-bold='true'] h1,
@@ -112,7 +132,65 @@ html[data-accessibility-bold='true'] label,
 html[data-accessibility-bold='true'] .btn,
 html[data-accessibility-bold='true'] .sidebar-link,
 html[data-accessibility-bold='true'] .nav-link {
-  font-weight: 900;
+  font-weight: 900 !important;
+}
+
+html[data-accessibility-enabled='true'] :where(
+  .badge,
+  .status-badge,
+  .btn,
+  .action-button,
+  .form-control,
+  .form-select,
+  .nav-link,
+  .user-menu-button,
+  .user-menu-link,
+  .user-theme-choice,
+  .settings-tab-button,
+  .accessibility-choice,
+  .sales-column-filter summary,
+  .sales-column-search span,
+  .table th,
+  .table td,
+  .sales-table th,
+  .sales-table td,
+  .compact-table th,
+  .compact-table td,
+  .summary-card,
+  .stat-card,
+  .metric-card,
+  .timeline-item,
+  .payment-badge
+) {
+  font-size: max(1em, var(--accessibility-component-min-font));
+  line-height: 1.35;
+}
+
+html[data-accessibility-enabled='true'] :where(
+  button,
+  input,
+  select,
+  textarea,
+  .btn,
+  .form-control,
+  .form-select,
+  .action-button,
+  .user-menu-button,
+  .accessibility-choice
+) {
+  font-size: max(1em, var(--accessibility-control-min-font));
+}
+
+html[data-accessibility-enabled='true'] :where(
+  .text-muted,
+  .user-menu-identity small,
+  .user-accessibility-summary,
+  .card small,
+  .badge,
+  .table small,
+  .sales-table small
+) {
+  font-size: max(1em, var(--accessibility-component-min-font));
 }
 
 [data-theme='light'][data-contrast='high'] {

@@ -1093,6 +1093,8 @@ body {
 .table-responsive {
   border-radius: 0.5rem;
   overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-dark,
@@ -1904,7 +1906,8 @@ body {
 }
 
 .sales-table {
-  min-width: 1120px;
+  width: max-content;
+  min-width: 1460px;
 }
 
 .sales-table th:first-child,
@@ -1912,9 +1915,40 @@ body {
   min-width: 96px;
 }
 
+.sales-table th,
+.sales-table td {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.sales-table .sales-id-column {
+  min-width: 300px;
+}
+
+.sales-table .sales-date-column {
+  min-width: 240px;
+}
+
+.sales-table .sales-seller-column {
+  min-width: 180px;
+}
+
+.sales-table .sales-total-column {
+  min-width: 180px;
+}
+
+.sales-table .sales-payment-column {
+  min-width: 190px;
+}
+
+.sales-table .sales-status-column {
+  min-width: 150px;
+}
+
 .sales-table .actions-column {
-  min-width: 110px;
-  width: 110px;
+  min-width: 140px;
+  width: 140px;
 }
 
 .sales-table .sales-cash-column {
@@ -1923,6 +1957,32 @@ body {
   white-space: nowrap;
   overflow-wrap: normal;
   word-break: normal;
+}
+
+.sales-table .badge,
+.sales-table .btn,
+.sales-table .sales-column-filter summary,
+.sales-table .sales-column-search span {
+  white-space: nowrap;
+}
+
+html[data-text-scale='large'] .sales-table {
+  min-width: 1580px;
+}
+
+html[data-text-scale='extra'] .sales-table,
+html[data-accessibility-bold='true'] .sales-table {
+  min-width: 1720px;
+}
+
+html[data-text-scale='extra'] .sales-table .sales-date-column,
+html[data-accessibility-bold='true'] .sales-table .sales-date-column {
+  min-width: 280px;
+}
+
+html[data-text-scale='extra'] .sales-table .sales-total-column,
+html[data-accessibility-bold='true'] .sales-table .sales-total-column {
+  min-width: 220px;
 }
 
 .sale-detail-table {
@@ -3210,7 +3270,7 @@ body {
   }
 
   .app-shell:not(.sidebar-collapsed) .sales-table {
-    min-width: 620px;
+    min-width: 1320px;
   }
 
   .app-shell:not(.sidebar-collapsed) .sale-detail-table {
@@ -5758,7 +5818,7 @@ body:has(.login-screen) {
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  min-width: 0;
+  min-width: max-content;
   min-height: 42px;
 }
 
@@ -5766,7 +5826,7 @@ body:has(.login-screen) {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-width: min(100%, 260px);
+  min-width: 290px;
   min-height: 42px;
 }
 
@@ -5777,7 +5837,8 @@ body:has(.login-screen) {
 }
 
 .sales-column-search .form-control {
-  width: min(170px, 100%);
+  width: 180px;
+  min-width: 180px;
   min-height: 34px;
   border-color: rgba(var(--primary-rgb), 0.18);
   background: var(--surface-2);
@@ -5960,6 +6021,7 @@ body:has(.login-screen) {
 
 .sales-filter-clear-button {
   min-height: 34px;
+  min-width: 132px;
   white-space: nowrap;
 }
 

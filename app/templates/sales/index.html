@@ -19,13 +19,13 @@
     <table class="table table-dark table-hover align-middle mb-0 app-table compact-table sales-table" data-sales-table data-sales-filters>
       <thead>
         <tr>
-          <th>
+          <th class="sales-id-column">
             <div class="sales-column-search">
               <span>Venda</span>
               <input class="form-control form-control-sm" id="sale_filter_id" placeholder="Buscar venda" aria-label="Buscar venda" data-sales-filter="id">
             </div>
           </th>
-          <th>
+          <th class="sales-date-column">
             <details class="sales-column-filter">
               <summary>Data</summary>
               <div class="sales-filter-popover">
@@ -34,7 +34,7 @@
               </div>
             </details>
           </th>
-          <th>
+          <th class="sales-seller-column">
             <details class="sales-column-filter">
               <summary>Vendedor</summary>
               <div class="sales-filter-popover sales-filter-popover--options">
@@ -49,7 +49,7 @@
               </div>
             </details>
           </th>
-          <th class="text-end">
+          <th class="text-end sales-total-column">
             <details class="sales-column-filter sales-column-filter--right">
               <summary>Total</summary>
               <div class="sales-filter-popover">
@@ -64,7 +64,7 @@
               </div>
             </details>
           </th>
-          <th>
+          <th class="sales-payment-column">
             <details class="sales-column-filter">
               <summary>Pagamento</summary>
               <div class="sales-filter-popover sales-filter-popover--options">
@@ -79,7 +79,7 @@
               </div>
             </details>
           </th>
-          <th>
+          <th class="sales-status-column">
             <details class="sales-column-filter">
               <summary>Status</summary>
               <div class="sales-filter-popover">
@@ -121,18 +121,18 @@
           data-sale-date-iso="{{ sale.created_at.strftime('%Y-%m-%d') if sale.created_at else '' }}"
           data-sale-client=""
         >
-          <td class="fw-semibold">#{{ sale.id }}</td>
-          <td>{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
-          <td>{{ seller }}</td>
-          <td class="text-end">R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</td>
-          <td>
+          <td class="fw-semibold sales-id-column">#{{ sale.id }}</td>
+          <td class="sales-date-column">{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
+          <td class="sales-seller-column">{{ seller }}</td>
+          <td class="text-end sales-total-column">R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</td>
+          <td class="sales-payment-column">
             {% for payment in sale.payments %}
             <span class="badge text-bg-secondary">{{ payment_methods.get(payment.method, payment.method) }}</span>
             {% else %}
             <span class="text-muted">-</span>
             {% endfor %}
           </td>
-          <td><span class="badge text-bg-success">{{ 'Pago' if sale.payment_status == 'paid' else sale.payment_status|default('Pendente', true) }}</span></td>
+          <td class="sales-status-column"><span class="badge text-bg-success">{{ 'Pago' if sale.payment_status == 'paid' else sale.payment_status|default('Pendente', true) }}</span></td>
           <td class="sales-cash-column">{{ '#' ~ sale.cash_register_id if sale.cash_register_id else '-' }}</td>
           <td class="text-end actions-column">
             <a class="btn btn-sm btn-outline-light action-button" href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">Ver</a>

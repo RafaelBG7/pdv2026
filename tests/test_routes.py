@@ -2421,6 +2421,9 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Realizar Venda - F3'.encode(), response.data)
+        self.assertIn('sales-date-column'.encode(), response.data)
+        self.assertIn('sales-total-column'.encode(), response.data)
+        self.assertIn('sales-payment-column'.encode(), response.data)
         self.assertEqual(new_response.status_code, 200)
         self.assertIn('Finalizar venda'.encode(), new_response.data)
         self.assertIn('Escolha uma ou mais formas.'.encode(), new_response.data)

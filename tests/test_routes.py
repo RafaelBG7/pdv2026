@@ -444,6 +444,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(cash_response.status_code, 200)
         self.assertEqual(settings_response.status_code, 200)
         self.assertIn('Usuário'.encode(), settings_response.data)
+        self.assertIn('data-accessibility-enabled-toggle'.encode(), settings_response.data)
+        self.assertIn('data-accessibility-bold-toggle'.encode(), settings_response.data)
         self.assertIn('Autorizar Relatórios'.encode(), reports_response.data)
 
     def test_common_employee_can_view_products_but_needs_authorized_password_to_edit(self):

@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   const storedTheme = localStorage.getItem('girofy-theme');
+  let accessibilityEnabled = localStorage.getItem('girofy-accessibility-enabled') !== 'false';
+  let accessibilityBold = localStorage.getItem('girofy-accessibility-bold') === 'true';
   const storedTextScale = localStorage.getItem('girofy-text-scale') || 'normal';
   const storedContrast = localStorage.getItem('girofy-contrast') || 'default';
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -50,37 +52,79 @@ document.addEventListener('DOMContentLoaded', function () {
     return Object.prototype.hasOwnProperty.call(options, value) ? value : fallback;
   }
 
-  function applyTextScale(scale) {
-    const normalizedScale = normalizeAccessibilityValue(scale, textScaleLabels, 'normal');
-    document.documentElement.setAttribute('data-text-scale', normalizedScale);
-    localStorage.setItem('girofy-text-scale', normalizedScale);
+  function refreshAccessibilityUi() {
+    const selectedScale = normalizeAccessibilityValue(localStorage.getItem('girofy-text-scale') || 'normal', textScaleLabels, 'normal');
+    const selectedContrast = normalizeAccessibilityValue(localStorage.getItem('girofy-contrast') || 'default', contrastLabels, 'default');
+    const effectiveScale = accessibilityEnabled ? selectedScale : 'normal';
+    const effectiveContrast = accessibilityEnabled ? selectedContrast : 'default';
+    const effectiveBold = accessibilityEnabled && accessibilityBold;
+
+    document.documentElement.setAttribute('data-accessibility-enabled', accessibilityEnabled ? 'true' : 'false');
+    document.documentElement.setAttribute('data-text-scale', effectiveScale);
+    document.documentElement.setAttribute('data-contrast', effectiveContrast);
+    document.documentElement.setAttribute('data-accessibility-bold', effectiveBold ? 'true' : 'false');
+    localStorage.setItem('girofy-accessibility-enabled', accessibilityEnabled ? 'true' : 'false');
+    localStorage.setItem('girofy-accessibility-bold', accessibilityBold ? 'true' : 'false');
+
+    document.querySelectorAll('[data-accessibility-status-label]').forEach(function (label) {
+      label.textContent = accessibilityEnabled ? 'Ativa' : 'Desativada';
+    });
     document.querySelectorAll('[data-accessibility-text-scale-label]').forEach(function (label) {
-      label.textContent = textScaleLabels[normalizedScale];
+      label.textContent = accessibilityEnabled ? textScaleLabels[selectedScale] : 'Desativado';
+    });
+    document.querySelectorAll('[data-accessibility-contrast-label]').forEach(function (label) {
+      label.textContent = accessibilityEnabled ? contrastLabels[selectedContrast] : 'Desativado';
+    });
+    document.querySelectorAll('[data-accessibility-bold-label]').forEach(function (label) {
+      label.textContent = effectiveBold ? 'Ativo' : 'Inativo';
+    });
+    document.querySelectorAll('[data-accessibility-enabled-toggle]').forEach(function (input) {
+      input.checked = accessibilityEnabled;
+    });
+    document.querySelectorAll('[data-accessibility-bold-toggle]').forEach(function (input) {
+      input.checked = accessibilityBold;
+      input.disabled = !accessibilityEnabled;
     });
     document.querySelectorAll('[data-accessibility-text-scale-choice]').forEach(function (button) {
-      const active = button.dataset.accessibilityTextScaleChoice === normalizedScale;
+      const active = button.dataset.accessibilityTextScaleChoice === selectedScale;
       button.classList.toggle('is-active', active);
+      button.classList.toggle('is-disabled', !accessibilityEnabled);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+    document.querySelectorAll('[data-accessibility-contrast-choice]').forEach(function (button) {
+      const active = button.dataset.accessibilityContrastChoice === selectedContrast;
+      button.classList.toggle('is-active', active);
+      button.classList.toggle('is-disabled', !accessibilityEnabled);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function applyTextScale(scale) {
+    const normalizedScale = normalizeAccessibilityValue(scale, textScaleLabels, 'normal');
+    localStorage.setItem('girofy-text-scale', normalizedScale);
+    refreshAccessibilityUi();
   }
 
   function applyContrast(contrast) {
     const normalizedContrast = normalizeAccessibilityValue(contrast, contrastLabels, 'default');
-    document.documentElement.setAttribute('data-contrast', normalizedContrast);
     localStorage.setItem('girofy-contrast', normalizedContrast);
-    document.querySelectorAll('[data-accessibility-contrast-label]').forEach(function (label) {
-      label.textContent = contrastLabels[normalizedContrast];
-    });
-    document.querySelectorAll('[data-accessibility-contrast-choice]').forEach(function (button) {
-      const active = button.dataset.accessibilityContrastChoice === normalizedContrast;
-      button.classList.toggle('is-active', active);
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
+    refreshAccessibilityUi();
+  }
+
+  function applyAccessibilityEnabled(enabled) {
+    accessibilityEnabled = Boolean(enabled);
+    refreshAccessibilityUi();
+  }
+
+  function applyAccessibilityBold(enabled) {
+    accessibilityBold = Boolean(enabled);
+    refreshAccessibilityUi();
   }
 
   applyTheme(initialTheme);
-  applyTextScale(storedTextScale);
-  applyContrast(storedContrast);
+  localStorage.setItem('girofy-text-scale', normalizeAccessibilityValue(storedTextScale, textScaleLabels, 'normal'));
+  localStorage.setItem('girofy-contrast', normalizeAccessibilityValue(storedContrast, contrastLabels, 'default'));
+  refreshAccessibilityUi();
 
   if (globalNewSaleLink) {
     document.addEventListener('keydown', function (event) {
@@ -243,8 +287,22 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  document.querySelectorAll('[data-accessibility-enabled-toggle]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      applyAccessibilityEnabled(input.checked);
+    });
+  });
+
+  document.querySelectorAll('[data-accessibility-bold-toggle]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      applyAccessibilityBold(input.checked);
+    });
+  });
+
   document.querySelectorAll('[data-accessibility-reset]').forEach(function (button) {
     button.addEventListener('click', function () {
+      applyAccessibilityEnabled(true);
+      applyAccessibilityBold(false);
       applyTextScale('normal');
       applyContrast('default');
     });

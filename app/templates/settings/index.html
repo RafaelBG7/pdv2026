@@ -580,6 +580,24 @@
         <h5 class="mb-3">Acessibilidade visual</h5>
         <p class="text-muted">Essas preferências ficam salvas neste navegador e ajudam a adaptar o sistema ao operador.</p>
 
+        <div class="accessibility-switches">
+          <label class="form-check form-switch settings-switch-row accessibility-switch-row">
+            <input class="form-check-input" type="checkbox" data-accessibility-enabled-toggle>
+            <span>
+              <strong>Ativar acessibilidade</strong>
+              <small>Liga ou desliga tamanho de texto, contraste e negrito sem apagar suas escolhas.</small>
+            </span>
+          </label>
+
+          <label class="form-check form-switch settings-switch-row accessibility-switch-row">
+            <input class="form-check-input" type="checkbox" data-accessibility-bold-toggle>
+            <span>
+              <strong>Texto em negrito</strong>
+              <small>Aplica negrito nos textos principais para facilitar a leitura.</small>
+            </span>
+          </label>
+        </div>
+
         <div class="accessibility-block">
           <div>
             <h6>Tamanho do texto</h6>
@@ -612,8 +630,10 @@
         <h5>Venda rápida</h5>
         <p class="text-muted">Veja como títulos, textos e valores ficam com a configuração atual.</p>
         <div class="settings-summary">
+          <div><span>Status</span><strong data-accessibility-status-label>Ativa</strong></div>
           <div><span>Texto</span><strong data-accessibility-text-scale-label>Padrão</strong></div>
           <div><span>Contraste</span><strong data-accessibility-contrast-label>Padrão</strong></div>
+          <div><span>Negrito</span><strong data-accessibility-bold-label>Inativo</strong></div>
           <div><span>Total</span><strong>R$ 128,90</strong></div>
         </div>
       </section>

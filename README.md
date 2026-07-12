@@ -85,8 +85,8 @@ Pontos que ainda merecem prioridade antes de produção pública:
 | MySQL | Banco relacional principal. Existe um banco central e bancos separados por adega. |
 | Jinja2 | Renderização de templates HTML. |
 | HTML | Estrutura das telas. |
-| CSS | Interface visual em `app/static/css/style.css`, com tema claro/escuro, tokens de cor, status semânticos e layout responsivo. |
-| JavaScript | Interações da interface em `app/static/js/main.js`, incluindo menu lateral, autocomplete, venda, desconto, atalhos e tema. |
+| CSS | Interface visual em `app/static/css/style.css`, com tema claro/escuro, acessibilidade visual, tokens de cor, status semânticos e layout responsivo. |
+| JavaScript | Interações da interface em `app/static/js/main.js`, incluindo menu lateral, autocomplete, venda, desconto, atalhos, tema e acessibilidade. |
 | Bootstrap | CSS/JS carregado via CDN nos templates para base visual e componentes. |
 | unittest | Testes automatizados de rotas e regras principais. |
 
@@ -271,6 +271,7 @@ O sistema permite:
 - alterar senha;
 - configurar alertas críticos por e-mail por tipo de evento;
 - alternar tema light/dark pela aba Aparência;
+- ligar/desligar acessibilidade visual, escolher tamanho do texto, contraste e negrito global;
 - gerenciar equipe da adega;
 - contratar usuário;
 - alterar permissões de funcionário;

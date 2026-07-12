@@ -344,6 +344,8 @@ Funcionalidades:
 - Rodar backup manual e configurar frequência.
 - Importar produtos por planilha e baixar modelo.
 - Alternar tema light/dark.
+- Ligar/desligar acessibilidade visual.
+- Ajustar tamanho do texto, contraste e negrito global para leitura.
 
 ## Responsividade
 

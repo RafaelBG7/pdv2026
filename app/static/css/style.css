@@ -66,6 +66,28 @@ html[data-text-scale='extra'] {
   font-size: 19px;
 }
 
+html[data-accessibility-bold='true'] body,
+html[data-accessibility-bold='true'] button,
+html[data-accessibility-bold='true'] input,
+html[data-accessibility-bold='true'] select,
+html[data-accessibility-bold='true'] textarea {
+  font-weight: 700;
+}
+
+html[data-accessibility-bold='true'] h1,
+html[data-accessibility-bold='true'] h2,
+html[data-accessibility-bold='true'] h3,
+html[data-accessibility-bold='true'] h4,
+html[data-accessibility-bold='true'] h5,
+html[data-accessibility-bold='true'] h6,
+html[data-accessibility-bold='true'] strong,
+html[data-accessibility-bold='true'] label,
+html[data-accessibility-bold='true'] .btn,
+html[data-accessibility-bold='true'] .sidebar-link,
+html[data-accessibility-bold='true'] .nav-link {
+  font-weight: 900;
+}
+
 [data-theme='light'][data-contrast='high'] {
   --bg: #ffffff;
   --surface: #ffffff;
@@ -2760,7 +2782,18 @@ body {
   border-top: 1px solid var(--border);
 }
 
-.accessibility-block:first-of-type {
+.accessibility-switches {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0 0.35rem;
+}
+
+.accessibility-switch-row {
+  align-items: center;
+}
+
+.accessibility-block:first-of-type,
+.accessibility-switches + .accessibility-block {
   border-top: 0;
   padding-top: 0.25rem;
 }
@@ -2792,6 +2825,10 @@ body {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--text);
+}
+
+.accessibility-choice.is-disabled {
+  opacity: 0.72;
 }
 
 .accessibility-choice.is-active {

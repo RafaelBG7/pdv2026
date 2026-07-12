@@ -132,7 +132,7 @@
         class="category-chip {{ 'is-active' if not filters.category_id else '' }}"
         href="{{ url_for('catalog.products', q=filters.search, status=filters.status, sort=filters.sort, stock=filters.stock, min_price=filters.min_price, max_price=filters.max_price) }}"
       >
-        <span class="category-chip-name">Todas</span>
+        <span class="category-chip-name" title="Todas">Todas</span>
         <span class="category-chip-count">{{ total_products }}</span>
       </a>
       {% for category in categories %}
@@ -140,7 +140,7 @@
         class="category-chip {{ 'is-active' if filters.category_id == category.id|string else '' }}"
         href="{{ url_for('catalog.products', q=filters.search, status=filters.status, sort=filters.sort, stock=filters.stock, min_price=filters.min_price, max_price=filters.max_price, category_id=category.id) }}"
       >
-        <span class="category-chip-name">{{ category.name }}</span>
+        <span class="category-chip-name" title="{{ category.name }}">{{ category.name }}</span>
         <span class="category-chip-count">{{ category_counts.get(category.id, 0) }}</span>
       </a>
       {% endfor %}
@@ -163,8 +163,8 @@
         {% for product in products %}
         <tr class="product-summary-row">
           <td data-label="Produto">
-            <button class="product-name-button" type="button" data-bs-toggle="collapse" data-bs-target="#product-details-{{ product.id }}" aria-expanded="false" aria-controls="product-details-{{ product.id }}">
-              <span>{{ product.name }}</span>
+            <button class="product-name-button" type="button" data-bs-toggle="collapse" data-bs-target="#product-details-{{ product.id }}" aria-expanded="false" aria-controls="product-details-{{ product.id }}" title="{{ product.name }}">
+              <span title="{{ product.name }}">{{ product.name }}</span>
               <small>
                 {{ product.barcode or 'Sem código' }}
                 · Lucro R$ {{ '%.2f'|format(product.profit_amount or 0)|replace('.', ',') }}

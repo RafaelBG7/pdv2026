@@ -66,6 +66,33 @@ html[data-text-scale='extra'] {
   font-size: 19px;
 }
 
+@media (max-width: 1500px) {
+  html[data-text-scale='large'] {
+    font-size: 16.8px;
+  }
+
+  html[data-text-scale='extra'] {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 1200px) {
+  html[data-text-scale='large'] {
+    font-size: 16.25px;
+  }
+
+  html[data-text-scale='extra'] {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 900px) {
+  html[data-text-scale='large'],
+  html[data-text-scale='extra'] {
+    font-size: 16px;
+  }
+}
+
 html[data-accessibility-bold='true'] body,
 html[data-accessibility-bold='true'] button,
 html[data-accessibility-bold='true'] input,
@@ -917,6 +944,15 @@ body {
   min-width: 860px;
 }
 
+.product-filter-grid {
+  grid-template-columns:
+    minmax(240px, 1fr)
+    minmax(136px, 0.42fr)
+    minmax(190px, 0.62fr)
+    max-content;
+  min-width: 980px;
+}
+
 .category-filter-grid {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) 180px 190px auto;
@@ -953,6 +989,11 @@ body {
   justify-content: center;
   min-width: 92px;
   white-space: nowrap;
+}
+
+.product-filter-grid .filter-actions {
+  flex-wrap: nowrap;
+  min-width: max-content;
 }
 
 .advanced-filters {
@@ -1125,25 +1166,41 @@ body {
 }
 
 .product-table {
-  width: 100%;
-  min-width: 680px;
-  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
 }
 
 .product-table th,
 .product-table td {
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .product-table th:first-child,
 .product-table td:first-child {
-  width: 42%;
+  min-width: 460px;
 }
 
 .product-table th:nth-child(2),
 .product-table td:nth-child(2) {
-  width: 20%;
+  min-width: 240px;
+}
+
+.product-table th:nth-child(3),
+.product-table td:nth-child(3) {
+  min-width: 180px;
+}
+
+.product-table th:nth-child(4),
+.product-table td:nth-child(4) {
+  min-width: 140px;
+}
+
+.product-table th:nth-child(5),
+.product-table td:nth-child(5) {
+  min-width: 120px;
 }
 
 .product-image,
@@ -2036,7 +2093,8 @@ html[data-accessibility-bold='true'] .sales-table .sales-total-column {
 .product-name-button {
   display: grid;
   gap: 0.2rem;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border: 0;
   padding: 0;
   background: transparent;
@@ -2046,13 +2104,17 @@ html[data-accessibility-bold='true'] .sales-table .sales-total-column {
 
 .product-name-button span {
   font-weight: 700;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .product-name-button small {
   color: var(--muted);
   line-height: 1.45;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .product-name-button:hover span {
@@ -4361,7 +4423,8 @@ a,
 button,
 td,
 th {
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .btn {
@@ -4370,7 +4433,7 @@ th {
   justify-content: center;
   gap: 0.35rem;
   max-width: 100%;
-  white-space: normal;
+  white-space: nowrap;
   text-align: center;
 }
 
@@ -5688,7 +5751,7 @@ body:has(.login-screen) {
 
 .product-list-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -5719,7 +5782,7 @@ body:has(.login-screen) {
   display: grid;
   gap: 0.5rem;
   max-height: min(520px, calc(100vh - 8rem));
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: auto;
   padding: 0.1rem 0.15rem 0.1rem 0;
 }
@@ -5728,24 +5791,23 @@ body:has(.login-screen) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   justify-content: space-between;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   min-height: 42px;
   border-radius: 0.5rem;
   text-align: left;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .category-chip-nav.category-chip-nav-vertical .category-chip .category-chip-name {
-  display: -webkit-box;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
   min-width: 0;
   max-width: 100%;
   line-height: 1.18;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  overflow-wrap: normal;
+  white-space: nowrap;
   text-overflow: clip;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 .category-chip-nav.category-chip-nav-vertical .category-chip .category-chip-count {
@@ -6868,5 +6930,45 @@ html[data-text-scale='extra'] .sale-payment-summary [data-payment-step-total] {
 
   .product-ranking-item b {
     white-space: normal;
+  }
+}
+
+.product-table th,
+.product-table td,
+.product-table .product-name-button span,
+.product-table .product-name-button small,
+.product-table .badge {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.product-list-card .table-responsive {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+@media (max-width: 1300px) {
+  .product-list-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .product-category-sidebar {
+    position: static;
+    max-height: none;
+  }
+
+  .category-chip-nav.category-chip-nav-vertical {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    grid-template-columns: none;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.35rem;
+  }
+
+  .category-chip-nav.category-chip-nav-vertical .category-chip {
+    min-width: max-content;
   }
 }

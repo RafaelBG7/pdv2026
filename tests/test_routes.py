@@ -1988,6 +1988,9 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('Importar planilha'.encode(), response.data)
         self.assertIn('Lucro R$ 4,00'.encode(), response.data)
         self.assertIn('40,00%'.encode(), response.data)
+        self.assertIn('product-list-layout'.encode(), response.data)
+        self.assertIn('category-chip-name'.encode(), response.data)
+        self.assertIn('title="Produto Lucro"'.encode(), response.data)
 
     def test_product_list_is_paginated_and_reuses_kit_options(self):
         self.login()

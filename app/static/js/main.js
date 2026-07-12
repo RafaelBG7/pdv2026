@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   const storedTheme = localStorage.getItem('girofy-theme');
+  const storedTextScale = localStorage.getItem('girofy-text-scale') || 'normal';
+  const storedContrast = localStorage.getItem('girofy-contrast') || 'default';
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const initialTheme = storedTheme || (prefersDark ? 'dark' : 'light');
   const appShell = document.querySelector('.app-shell');
@@ -32,7 +34,53 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  const textScaleLabels = {
+    normal: 'Padrão',
+    large: 'Grande',
+    extra: 'Muito grande',
+  };
+
+  const contrastLabels = {
+    default: 'Padrão',
+    high: 'Alto contraste',
+    soft: 'Suave',
+  };
+
+  function normalizeAccessibilityValue(value, options, fallback) {
+    return Object.prototype.hasOwnProperty.call(options, value) ? value : fallback;
+  }
+
+  function applyTextScale(scale) {
+    const normalizedScale = normalizeAccessibilityValue(scale, textScaleLabels, 'normal');
+    document.documentElement.setAttribute('data-text-scale', normalizedScale);
+    localStorage.setItem('girofy-text-scale', normalizedScale);
+    document.querySelectorAll('[data-accessibility-text-scale-label]').forEach(function (label) {
+      label.textContent = textScaleLabels[normalizedScale];
+    });
+    document.querySelectorAll('[data-accessibility-text-scale-choice]').forEach(function (button) {
+      const active = button.dataset.accessibilityTextScaleChoice === normalizedScale;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function applyContrast(contrast) {
+    const normalizedContrast = normalizeAccessibilityValue(contrast, contrastLabels, 'default');
+    document.documentElement.setAttribute('data-contrast', normalizedContrast);
+    localStorage.setItem('girofy-contrast', normalizedContrast);
+    document.querySelectorAll('[data-accessibility-contrast-label]').forEach(function (label) {
+      label.textContent = contrastLabels[normalizedContrast];
+    });
+    document.querySelectorAll('[data-accessibility-contrast-choice]').forEach(function (button) {
+      const active = button.dataset.accessibilityContrastChoice === normalizedContrast;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
   applyTheme(initialTheme);
+  applyTextScale(storedTextScale);
+  applyContrast(storedContrast);
 
   if (globalNewSaleLink) {
     document.addEventListener('keydown', function (event) {
@@ -183,6 +231,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  document.querySelectorAll('[data-accessibility-text-scale-choice]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      applyTextScale(button.dataset.accessibilityTextScaleChoice || 'normal');
+    });
+  });
+
+  document.querySelectorAll('[data-accessibility-contrast-choice]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      applyContrast(button.dataset.accessibilityContrastChoice || 'default');
+    });
+  });
+
+  document.querySelectorAll('[data-accessibility-reset]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      applyTextScale('normal');
+      applyContrast('default');
+    });
+  });
+
   if (userMenu) {
     userMenu.addEventListener('toggle', function () {
       if (userMenu.open && notificationMenu) {
@@ -296,8 +363,11 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
 
+    const hashTab = window.location.hash === '#accessibility' ? 'accessibility' : '';
     const storedTab = localStorage.getItem('adega-jf-settings-tab');
-    if (storedTab && buttons.some(function (button) { return button.dataset.settingsTab === storedTab; })) {
+    if (hashTab && buttons.some(function (button) { return button.dataset.settingsTab === hashTab; })) {
+      activateTab(hashTab);
+    } else if (storedTab && buttons.some(function (button) { return button.dataset.settingsTab === storedTab; })) {
       activateTab(storedTab);
     }
   });

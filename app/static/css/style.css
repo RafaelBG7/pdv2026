@@ -58,6 +58,93 @@
   --shadow: 0 18px 44px rgba(0, 0, 0, 0.36);
 }
 
+html[data-text-scale='large'] {
+  font-size: 17.5px;
+}
+
+html[data-text-scale='extra'] {
+  font-size: 19px;
+}
+
+[data-theme='light'][data-contrast='high'] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #eef2ff;
+  --text: #000000;
+  --muted: #172554;
+  --border: #1d4ed8;
+  --primary: #4c1d95;
+  --primary-hover: #2e1065;
+  --primary-rgb: 76, 29, 149;
+  --accent: #0369a1;
+  --accent-rgb: 3, 105, 161;
+  --accent-soft: rgba(3, 105, 161, 0.18);
+  --success: #047857;
+  --success-rgb: 4, 120, 87;
+  --warning: #b45309;
+  --warning-rgb: 180, 83, 9;
+  --danger: #b91c1c;
+  --danger-rgb: 185, 28, 28;
+  --info: #1d4ed8;
+  --info-rgb: 29, 78, 216;
+  --shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+}
+
+[data-theme='dark'][data-contrast='high'] {
+  --bg: #000000;
+  --surface: #020617;
+  --surface-2: #07111f;
+  --text: #ffffff;
+  --muted: #dbeafe;
+  --border: #60a5fa;
+  --primary: #fbbf24;
+  --primary-hover: #fde68a;
+  --primary-rgb: 251, 191, 36;
+  --primary-text: #020617;
+  --accent: #38bdf8;
+  --accent-rgb: 56, 189, 248;
+  --accent-soft: rgba(56, 189, 248, 0.18);
+  --success: #4ade80;
+  --success-rgb: 74, 222, 128;
+  --warning: #facc15;
+  --warning-rgb: 250, 204, 21;
+  --danger: #f87171;
+  --danger-rgb: 248, 113, 113;
+  --info: #93c5fd;
+  --info-rgb: 147, 197, 253;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme='light'][data-contrast='soft'] {
+  --bg: #f8fbff;
+  --surface: #ffffff;
+  --surface-2: #f1f7fb;
+  --text: #102033;
+  --muted: #6a7b8d;
+  --border: #d9e6f2;
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --primary-rgb: 124, 58, 237;
+  --accent: #0ea5e9;
+  --accent-rgb: 14, 165, 233;
+  --accent-soft: rgba(14, 165, 233, 0.1);
+}
+
+[data-theme='dark'][data-contrast='soft'] {
+  --bg: #07111f;
+  --surface: #102033;
+  --surface-2: #172a40;
+  --text: #f1f7ff;
+  --muted: #b5c5d6;
+  --border: #33485f;
+  --primary: #a78bfa;
+  --primary-hover: #c4b5fd;
+  --primary-rgb: 167, 139, 250;
+  --accent: #67e8f9;
+  --accent-rgb: 103, 232, 249;
+  --accent-soft: rgba(103, 232, 249, 0.1);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -67,7 +154,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .app-shell {
@@ -489,6 +576,17 @@ body {
   gap: 0.5rem;
 }
 
+.user-accessibility-summary {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.user-accessibility-summary strong {
+  color: var(--text);
+}
+
 .user-theme-choice {
   display: inline-flex;
   align-items: center;
@@ -508,6 +606,27 @@ body {
   border-color: var(--primary);
   background: var(--primary);
   color: var(--primary-text);
+}
+
+.user-menu-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.user-menu-link:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 .user-menu-logout {
@@ -2632,6 +2751,56 @@ body {
   border-color: var(--primary);
   background: var(--primary);
   color: var(--primary-text);
+}
+
+.accessibility-block {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.accessibility-block:first-of-type {
+  border-top: 0;
+  padding-top: 0.25rem;
+}
+
+.accessibility-block h6 {
+  margin-bottom: 0.25rem;
+  font-weight: 900;
+}
+
+.accessibility-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.accessibility-choice {
+  min-height: 46px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.accessibility-choice:hover,
+.accessibility-choice.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.accessibility-choice.is-active {
+  box-shadow: inset 0 0 0 2px rgba(var(--accent-rgb), 0.22);
+}
+
+.accessibility-preview {
+  display: grid;
+  gap: 0.85rem;
 }
 
 .settings-layout > section:first-child {
@@ -6230,6 +6399,10 @@ body:has(.login-screen) {
 
   .sale-payment-step .payment-grid {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+
+  .accessibility-options {
+    grid-template-columns: 1fr;
   }
 }
 

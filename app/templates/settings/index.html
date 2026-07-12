@@ -36,6 +36,7 @@
     <a class="settings-tab-button" href="{{ url_for('auth.permission_unlock', permission='can_export_data', next=url_for('auth.settings')) }}">Autorizar Exportação</a>
     {% endif %}
     <button class="settings-tab-button" type="button" data-settings-tab="support" role="tab" aria-selected="false">Suporte</button>
+    <button class="settings-tab-button" type="button" data-settings-tab="accessibility" role="tab" aria-selected="false">Acessibilidade</button>
   </div>
 
   <section class="settings-tab-panel is-active" data-settings-panel="user" role="tabpanel">
@@ -568,6 +569,52 @@
           <div><span>Aplicação</span><strong>Girofy</strong></div>
           <div><span>Ambiente</span><strong>Aplicação Girofy</strong></div>
           <div><span>Status</span><strong>Operacional</strong></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="settings-tab-panel" data-settings-panel="accessibility" id="accessibility" role="tabpanel">
+    <div class="settings-layout">
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Acessibilidade visual</h5>
+        <p class="text-muted">Essas preferências ficam salvas neste navegador e ajudam a adaptar o sistema ao operador.</p>
+
+        <div class="accessibility-block">
+          <div>
+            <h6>Tamanho do texto</h6>
+            <p class="text-muted mb-0">Aumente a leitura sem mudar os dados da adega.</p>
+          </div>
+          <div class="accessibility-options" role="group" aria-label="Tamanho do texto">
+            <button class="accessibility-choice" type="button" data-accessibility-text-scale-choice="normal" aria-pressed="false">Padrão</button>
+            <button class="accessibility-choice" type="button" data-accessibility-text-scale-choice="large" aria-pressed="false">Grande</button>
+            <button class="accessibility-choice" type="button" data-accessibility-text-scale-choice="extra" aria-pressed="false">Muito grande</button>
+          </div>
+        </div>
+
+        <div class="accessibility-block">
+          <div>
+            <h6>Contraste de cor</h6>
+            <p class="text-muted mb-0">Escolha uma leitura mais forte ou uma paleta mais suave.</p>
+          </div>
+          <div class="accessibility-options" role="group" aria-label="Contraste de cor">
+            <button class="accessibility-choice" type="button" data-accessibility-contrast-choice="default" aria-pressed="false">Padrão</button>
+            <button class="accessibility-choice" type="button" data-accessibility-contrast-choice="high" aria-pressed="false">Alto contraste</button>
+            <button class="accessibility-choice" type="button" data-accessibility-contrast-choice="soft" aria-pressed="false">Suave</button>
+          </div>
+        </div>
+
+        <button class="btn btn-outline-light mt-3" type="button" data-accessibility-reset>Restaurar padrão</button>
+      </section>
+
+      <section class="card card-dark sale-panel accessibility-preview">
+        <span class="badge badge-accent">Prévia</span>
+        <h5>Venda rápida</h5>
+        <p class="text-muted">Veja como títulos, textos e valores ficam com a configuração atual.</p>
+        <div class="settings-summary">
+          <div><span>Texto</span><strong data-accessibility-text-scale-label>Padrão</strong></div>
+          <div><span>Contraste</span><strong data-accessibility-contrast-label>Padrão</strong></div>
+          <div><span>Total</span><strong>R$ 128,90</strong></div>
         </div>
       </section>
     </div>

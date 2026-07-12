@@ -1906,8 +1906,9 @@ body {
 }
 
 .sales-table {
-  width: max-content;
-  min-width: 1460px;
+  width: 100%;
+  min-width: 1180px;
+  table-layout: auto;
 }
 
 .sales-table th:first-child,
@@ -1923,27 +1924,33 @@ body {
 }
 
 .sales-table .sales-id-column {
-  min-width: 300px;
+  width: 230px;
+  min-width: 230px;
 }
 
 .sales-table .sales-date-column {
-  min-width: 240px;
-}
-
-.sales-table .sales-seller-column {
-  min-width: 180px;
-}
-
-.sales-table .sales-total-column {
-  min-width: 180px;
-}
-
-.sales-table .sales-payment-column {
+  width: 190px;
   min-width: 190px;
 }
 
-.sales-table .sales-status-column {
+.sales-table .sales-seller-column {
+  width: 150px;
   min-width: 150px;
+}
+
+.sales-table .sales-total-column {
+  width: 140px;
+  min-width: 140px;
+}
+
+.sales-table .sales-payment-column {
+  width: 170px;
+  min-width: 170px;
+}
+
+.sales-table .sales-status-column {
+  width: 130px;
+  min-width: 130px;
 }
 
 .sales-table .actions-column {
@@ -1967,22 +1974,22 @@ body {
 }
 
 html[data-text-scale='large'] .sales-table {
-  min-width: 1580px;
+  min-width: 1260px;
 }
 
 html[data-text-scale='extra'] .sales-table,
 html[data-accessibility-bold='true'] .sales-table {
-  min-width: 1720px;
+  min-width: 1360px;
 }
 
 html[data-text-scale='extra'] .sales-table .sales-date-column,
 html[data-accessibility-bold='true'] .sales-table .sales-date-column {
-  min-width: 280px;
+  min-width: 220px;
 }
 
 html[data-text-scale='extra'] .sales-table .sales-total-column,
 html[data-accessibility-bold='true'] .sales-table .sales-total-column {
-  min-width: 220px;
+  min-width: 160px;
 }
 
 .sale-detail-table {
@@ -3270,7 +3277,7 @@ html[data-accessibility-bold='true'] .sales-table .sales-total-column {
   }
 
   .app-shell:not(.sidebar-collapsed) .sales-table {
-    min-width: 1320px;
+    min-width: 1180px;
   }
 
   .app-shell:not(.sidebar-collapsed) .sale-detail-table {
@@ -5825,8 +5832,8 @@ body:has(.login-screen) {
 .sales-column-search {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  min-width: 290px;
+  gap: 0.55rem;
+  min-width: 0;
   min-height: 42px;
 }
 
@@ -5837,8 +5844,8 @@ body:has(.login-screen) {
 }
 
 .sales-column-search .form-control {
-  width: 180px;
-  min-width: 180px;
+  width: 148px;
+  min-width: 148px;
   min-height: 34px;
   border-color: rgba(var(--primary-rgb), 0.18);
   background: var(--surface-2);

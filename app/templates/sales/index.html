@@ -79,23 +79,6 @@
               </div>
             </details>
           </th>
-          <th class="sales-status-column">
-            <details class="sales-column-filter">
-              <summary>Status</summary>
-              <div class="sales-filter-popover">
-                <span>Status disponíveis</span>
-                <select class="form-select form-select-sm" id="sale_filter_status" aria-label="Filtrar por status" data-sales-filter="status">
-                  <option value="">Todos</option>
-                  {% for option in sales_filter_options.statuses %}
-                  <option value="{{ option.value }}">{{ option.label }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </details>
-          </th>
-          <th class="sales-cash-column">
-            Caixa
-          </th>
           <th class="text-end actions-column">
             <button class="btn btn-outline-secondary btn-sm sales-filter-clear-button" type="button" data-sales-filter-clear>Limpar filtros</button>
           </th>
@@ -114,10 +97,8 @@
           data-sale-date="{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '' }}"
           data-sale-user="{{ seller }}"
           data-sale-payment="{{ payment_text.value }}"
-          data-sale-status="{{ sale.payment_status or '' }}"
           data-sale-total="{{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}"
           data-sale-total-number="{{ '%.2f'|format(sale.final_amount or 0) }}"
-          data-sale-cash="{{ sale.cash_register_id or '' }}"
           data-sale-date-iso="{{ sale.created_at.strftime('%Y-%m-%d') if sale.created_at else '' }}"
           data-sale-client=""
         >
@@ -132,19 +113,17 @@
             <span class="text-muted">-</span>
             {% endfor %}
           </td>
-          <td class="sales-status-column"><span class="badge text-bg-success">{{ 'Pago' if sale.payment_status == 'paid' else sale.payment_status|default('Pendente', true) }}</span></td>
-          <td class="sales-cash-column">{{ '#' ~ sale.cash_register_id if sale.cash_register_id else '-' }}</td>
           <td class="text-end actions-column">
             <a class="btn btn-sm btn-outline-light action-button" href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">Ver</a>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="8" class="text-center text-muted py-4">Nenhuma venda realizada hoje.</td>
+          <td colspan="6" class="text-center text-muted py-4">Nenhuma venda realizada hoje.</td>
         </tr>
         {% endfor %}
         <tr class="is-hidden" data-sales-empty-row>
-          <td colspan="8" class="text-center text-muted py-4">Nenhuma venda encontrada com estes filtros.</td>
+          <td colspan="6" class="text-center text-muted py-4">Nenhuma venda encontrada com estes filtros.</td>
         </tr>
       </tbody>
     </table>

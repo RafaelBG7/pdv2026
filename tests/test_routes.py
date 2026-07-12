@@ -3348,7 +3348,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('data-sales-filter="payment"'.encode(), response.data)
         self.assertIn('data-sale-payment'.encode(), response.data)
         self.assertIn('Vendedor'.encode(), response.data)
-        self.assertIn('Caixa'.encode(), response.data)
+        self.assertNotIn('sales-status-column'.encode(), response.data)
+        self.assertNotIn('sales-cash-column'.encode(), response.data)
 
     def test_product_list_renders_category_menu_and_combines_category_filter(self):
         self.login()

@@ -163,6 +163,7 @@ Onde fica:
 O sistema permite:
 
 - login com usuário e senha;
+- opção "Lembre de mim" para manter sessão persistente no navegador;
 - logout;
 - cadastro de uma nova adega pela tela de login;
 - criação automática de uma empresa/adega;
@@ -175,6 +176,7 @@ O sistema permite:
 Regras importantes:
 
 - usuário não pode ser vazio;
+- "Lembre de mim" cria cookie persistente do Flask-Login apenas quando marcado;
 - senha de cadastro precisa ter pelo menos 3 caracteres;
 - confirmação de senha precisa bater;
 - username deve ser único;
@@ -281,6 +283,8 @@ O sistema permite:
 Regras importantes:
 
 - senha atual precisa ser informada para trocar senha;
+- o menu do perfil mostra apenas dados do usuário, tema claro/escuro e saída da conta;
+- os controles de acessibilidade ficam somente em `Configurações > Acessibilidade`;
 - troca de e-mail confirmada envia link para o e-mail antigo;
 - alertas críticos podem ser direcionados para emails específicos por adega;
 - nova senha precisa ter pelo menos 3 caracteres;
@@ -1685,7 +1689,7 @@ Os testes usam configuração própria com SQLite em memória (`TESTING = True`)
 Última validação completa:
 
 ```text
-Ran 118 tests in 15.597s
+Ran 120 tests in 16.093s
 OK
 ```
 

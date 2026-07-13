@@ -163,6 +163,18 @@ Na máquina local:
 OCI_DEPLOY_HOST=IP_PUBLICO_DA_VM OCI_DEPLOY_USER=ubuntu OCI_DEPLOY_PATH=/opt/girofy/app OCI_DEPLOY_PORT=18080 scripts/deploy_oci_app.sh
 ```
 
+Se o SSH estiver restrito ao IP administrativo, atualize antes:
+
+```bash
+scripts/oci/oci_harden_network.sh
+```
+
+com:
+
+```env
+OCI_ALLOWED_SSH_CIDR=SEU_IP_PUBLICO/32
+```
+
 Se concluir corretamente, a saída termina com:
 
 ```text

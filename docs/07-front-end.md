@@ -29,6 +29,7 @@ Elementos:
 - Inicialização antecipada de tema antes do carregamento visual.
 - Menu lateral para usuários autenticados.
 - Topbar com alertas de estoque e nome do usuário.
+- Menu do perfil com identificação do usuário, seleção de tema claro/escuro e saída da conta.
 - Flash messages Bootstrap.
 - Bloco `{% block content %}`.
 - JavaScript Bootstrap via CDN.
@@ -91,6 +92,7 @@ Componentes:
 - Card central com wrapper responsivo próprio.
 - Abas Bootstrap: Entrar e Cadastrar.
 - Formulário de login.
+- Checkbox "Lembre de mim" no login.
 - Formulário de cadastro.
 
 Validações visuais:
@@ -101,6 +103,11 @@ Validações visuais:
 Validações reais:
 
 - No backend em `auth.login()`.
+
+Comportamento:
+
+- Quando "Lembre de mim" é marcado, o backend cria sessão persistente via Flask-Login.
+- Quando não é marcado, a sessão segue o comportamento padrão do navegador.
 
 ## Dashboard
 
@@ -346,6 +353,11 @@ Funcionalidades:
 - Alternar tema light/dark.
 - Ligar/desligar acessibilidade visual.
 - Ajustar tamanho do texto, contraste e negrito global para leitura.
+
+Observação:
+
+- A acessibilidade visual fica concentrada nessa aba para evitar poluir o menu do perfil.
+- O menu do perfil mantém apenas Aparência e Sair da conta.
 
 ## Responsividade
 

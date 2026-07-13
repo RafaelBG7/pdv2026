@@ -30,6 +30,7 @@ Ou diretamente:
 Autenticação e assinatura:
 
 - Login.
+- Login com "Lembre de mim" e cookie persistente `remember_token`.
 - Logout.
 - Cadastro.
 - Verificação de e-mail.
@@ -128,10 +129,10 @@ Auditoria:
 
 ## Última Validação Conhecida
 
-Validação feita em 10/07/2026:
+Validação feita em 13/07/2026:
 
 ```text
-Ran 118 tests in 15.597s
+Ran 120 tests in 16.093s
 OK
 ```
 
@@ -143,6 +144,7 @@ Também foram validados:
 - workflow YAML de deploy OCI;
 - deploy real na VM OCI via `scripts/deploy_oci_app.sh`;
 - health check remoto em `/login`;
+- validação de que o template publicado na VM não mostra mais acessibilidade no menu do perfil;
 - containers Docker do app, MySQL e Caddy em execução;
 - bloqueio das portas 80/443 no ambiente sem domínio;
 - acesso público apenas pela porta alta `18080`.

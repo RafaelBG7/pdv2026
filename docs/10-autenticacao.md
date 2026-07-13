@@ -21,13 +21,28 @@ Rota:
 Fluxo:
 
 1. Usuário informa login e senha.
-2. Sistema busca `User.username`.
-3. Sistema valida `check_password()`.
-4. Se o usuário estiver inativo, o acesso é bloqueado.
-5. Se o e-mail ainda não foi confirmado, redireciona para `/verify-email`.
-6. Se for `master`, redireciona para o painel master.
-7. Se a adega exigir ativação, redireciona para `/assinatura`.
-8. Caso contrário, entra no dashboard.
+2. Opcionalmente marca "Lembre de mim".
+3. Sistema busca `User.username` ou e-mail.
+4. Sistema valida `check_password()`.
+5. Se o usuário estiver inativo, o acesso é bloqueado.
+6. Se o e-mail ainda não foi confirmado, redireciona para `/verify-email`.
+7. Se for `master`, redireciona para o painel master.
+8. Se a adega exigir ativação, redireciona para `/assinatura`.
+9. Caso contrário, entra no dashboard.
+
+### Lembre de Mim
+
+O formulário de login possui a opção:
+
+```text
+Lembre de mim
+```
+
+Quando marcada, a chamada `login_user(user, remember=True)` cria o cookie persistente
+`remember_token` do Flask-Login. Isso permite que o usuário continue autenticado
+mesmo após fechar e reabrir o navegador, enquanto o cookie continuar válido.
+
+Quando a opção não é marcada, o login usa a sessão padrão do navegador.
 
 ## Cadastro de Adega
 
@@ -161,6 +176,7 @@ Configuração importante:
 
 - `SECRET_KEY` deve ser forte em produção.
 - A chave padrão existe apenas para desenvolvimento local.
+- Sessão persistente depende do cookie `remember_token`, gerado somente quando "Lembre de mim" é marcado.
 
 ## Bloqueios de Segurança
 

@@ -52,7 +52,7 @@ O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MyS
 
 | Área | Status | Observações |
 |---|---|---|
-| Login e sessão | Implementado | Flask-Login com usuário ativo/inativo. |
+| Login e sessão | Implementado | Flask-Login com usuário ativo/inativo e opção "Lembre de mim". |
 | Cadastro de adega | Implementado | Cria empresa, usuário admin e banco da adega. |
 | Assinatura/key | Implementado | Key pode ser gerada pelo master e bloqueia uso quando ausente/vencida. |
 | Multiadega | Implementado | Banco central + banco MySQL separado por adega. |

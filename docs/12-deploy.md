@@ -107,6 +107,25 @@ scripts/deploy_oci_app.sh
 
 O script sincroniza o código, preserva o `.env` remoto, reconstrói os containers e valida `/login`.
 
+Antes do deploy manual por SSH, a security list da OCI precisa liberar o IP público
+atual do operador na porta 22. O script de rede usado para isso é:
+
+```bash
+scripts/oci/oci_harden_network.sh
+```
+
+Variável usada:
+
+```env
+OCI_ALLOWED_SSH_CIDR=SEU_IP_PUBLICO/32
+```
+
+Depois da publicação, valide:
+
+```bash
+curl -I http://IP_PUBLICO_DA_VM:18080/login
+```
+
 ## Pipeline GitHub Actions Recomendada
 
 Workflow:
@@ -187,6 +206,7 @@ Itens já aplicados no ambiente OCI atual:
 - UFW ativo;
 - porta pública alta `18080`;
 - 80/443 fechadas enquanto não houver domínio.
+- deploy manual validado via `scripts/deploy_oci_app.sh` com rebuild dos containers e health check em `/login`.
 
 Itens ainda recomendados:
 

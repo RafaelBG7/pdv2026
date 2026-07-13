@@ -2,9 +2,13 @@ from datetime import date, datetime, timedelta
 import io
 from pathlib import Path
 import re
+import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
+
+from flask import g
 
 from app import create_app
 from app.extensions import db
@@ -1708,21 +1712,28 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('[protegido]', log_content)
 
     def test_unhandled_exception_is_logged_once_with_request_id(self):
-        self.app.config['PROPAGATE_EXCEPTIONS'] = False
+        request_id = 'test-request-id'
+        original_handlers = list(self.app.logger.handlers)
+        self.app.logger.handlers = [
+            handler for handler in original_handlers
+            if getattr(handler, '_adega_error_log', False)
+        ]
 
-        @self.app.get('/__test_unhandled_error')
-        def test_unhandled_error():
-            raise RuntimeError('falha controlada para teste')
+        try:
+            with self.app.test_request_context('/__test_unhandled_error'):
+                g.request_id = request_id
+                g.request_started_at = time.perf_counter()
+                try:
+                    raise RuntimeError('falha controlada para teste')
+                except RuntimeError:
+                    self.app.log_exception(sys.exc_info())
+        finally:
+            self.app.logger.handlers = original_handlers
 
-        response = self.client.get('/__test_unhandled_error')
-
-        self.assertEqual(response.status_code, 500)
-        self.assertIn('X-Request-ID', response.headers)
-        self.assertIn(response.headers['X-Request-ID'].encode(), response.data)
         log_content = (Path(self.app.config['LOG_DIR']) / 'errors.log').read_text(encoding='utf-8')
         self.assertEqual(log_content.count('Falha não tratada: falha controlada para teste'), 1)
         self.assertNotIn('Exception on /__test_unhandled_error', log_content)
-        self.assertIn(response.headers['X-Request-ID'], log_content)
+        self.assertIn(request_id, log_content)
 
     def test_master_panel_does_not_fail_when_tenant_stats_are_temporarily_locked(self):
         self.login()

@@ -20,7 +20,16 @@ $IconOutput = Join-Path $RootDir "desktop_cloud\resources\girofy.ico"
 Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force dist\Girofy -ErrorAction SilentlyContinue
 
-& $VenvPython -m PyInstaller girofy-cloud.spec --clean --noconfirm
+$SpecFile = Join-Path $RootDir "girofy-cloud.spec"
+if (-not (Test-Path $SpecFile)) {
+    Write-Host "Arquivo de spec do PyInstaller não encontrado:"
+    Write-Host "  $SpecFile"
+    Write-Host "Arquivos disponíveis na raiz do projeto:"
+    Get-ChildItem $RootDir | Select-Object -ExpandProperty Name
+    exit 1
+}
+
+& $VenvPython -m PyInstaller $SpecFile --clean --noconfirm
 
 Write-Host ""
 Write-Host "Cliente cloud gerado em:"

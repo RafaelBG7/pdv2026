@@ -13,9 +13,12 @@ Set-Location $RootDir
 
 & $VenvPython -m pip install -r requirements-desktop-cloud.txt
 
-$IconSource = Join-Path $RootDir "app\static\favicon-v2.png"
 $IconOutput = Join-Path $RootDir "desktop_cloud\resources\girofy.ico"
-& $VenvPython -c "from PIL import Image; img=Image.open(r'$IconSource').convert('RGBA'); img.save(r'$IconOutput', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+if (-not (Test-Path $IconOutput)) {
+    Write-Host "Ícone do executável não encontrado:"
+    Write-Host "  $IconOutput"
+    exit 1
+}
 
 Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force dist\Girofy -ErrorAction SilentlyContinue

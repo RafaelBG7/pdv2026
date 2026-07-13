@@ -62,6 +62,9 @@ class DesktopCloudConfigTestCase(unittest.TestCase):
 
         self.assertEqual(config.app_url, "https://loja.girofy.com.br")
 
+    def test_default_timeout_is_short_for_lightweight_startup(self):
+        self.assertEqual(load_desktop_config(Path("/arquivo/inexistente.json")).timeout_seconds, 4)
+
 
 class DesktopCloudNavigationTestCase(unittest.TestCase):
     def test_allows_internal_navigation(self):

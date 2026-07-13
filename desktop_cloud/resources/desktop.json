@@ -4,5 +4,6 @@
     "168.75.101.126"
   ],
   "allow_http": true,
-  "environment": "development"
+  "environment": "development",
+  "timeout_seconds": 4
 }

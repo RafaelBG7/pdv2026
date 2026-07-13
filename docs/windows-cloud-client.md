@@ -112,6 +112,13 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-desktop-cloud.txt
 ```
 
+O cliente cloud é mantido leve: ele não instala MySQL, não sobe Flask local e não
+carrega o backend dentro do executável. O app abre uma WebView apontando para o
+servidor OCI e usa um timeout curto de conectividade para evitar sensação de
+travamento em máquinas simples ou redes instáveis. O ícone `.ico` já fica
+versionado em `desktop_cloud/resources/girofy.ico`, evitando instalar bibliotecas
+de imagem apenas durante o build.
+
 Execute:
 
 ```powershell

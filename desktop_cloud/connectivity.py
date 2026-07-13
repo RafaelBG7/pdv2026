@@ -30,7 +30,7 @@ def can_reach_host(url: str, timeout: float = 3.0) -> bool:
 
 
 def check_server_available(config: DesktopConfig) -> ConnectivityResult:
-    if not can_reach_host(config.app_url, min(config.timeout_seconds, 3.0)):
+    if not can_reach_host(config.app_url, min(config.timeout_seconds, 2.0)):
         return ConnectivityResult(False, "Sem conexão com o servidor do Girofy.")
 
     request = urllib.request.Request(

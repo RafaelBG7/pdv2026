@@ -44,8 +44,8 @@ _email_alert_check_lock = Lock()
 def claim_email_alert_check(company_id, interval_seconds=60):
     now = time.monotonic()
     with _email_alert_check_lock:
-        last_check = _email_alert_check_times.get(company_id, 0)
-        if now - last_check < interval_seconds:
+        last_check = _email_alert_check_times.get(company_id)
+        if last_check is not None and now - last_check < interval_seconds:
             return False
         _email_alert_check_times[company_id] = now
         return True

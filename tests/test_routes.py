@@ -1777,8 +1777,10 @@ class RouteTestCase(unittest.TestCase):
         alert_service._email_alert_check_times.pop(company_id, None)
 
         try:
-            self.assertTrue(alert_service.claim_email_alert_check(company_id, interval_seconds=60))
-            self.assertFalse(alert_service.claim_email_alert_check(company_id, interval_seconds=60))
+            with patch('app.services.alert_service.time.monotonic', side_effect=[1.0, 2.0, 62.0]):
+                self.assertTrue(alert_service.claim_email_alert_check(company_id, interval_seconds=60))
+                self.assertFalse(alert_service.claim_email_alert_check(company_id, interval_seconds=60))
+                self.assertTrue(alert_service.claim_email_alert_check(company_id, interval_seconds=60))
         finally:
             alert_service._email_alert_check_times.pop(company_id, None)
 

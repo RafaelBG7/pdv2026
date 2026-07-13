@@ -1192,16 +1192,19 @@ C:\ProgramData\Girofy\secrets
 
 Na desinstalação, o serviço `GirofyMySQL` é removido, mas os dados em `C:\ProgramData\Girofy` são preservados para evitar perda acidental de vendas, produtos e caixas.
 
-### 11. Cliente Windows cloud
+### 11. Cliente Windows cloud Tauri
 
-Também existe uma versão Windows cloud, criada para clientes que vão usar o Girofy hospedado na OCI ou em domínio próprio.
+A versão recomendada para clientes que acessam o Girofy hospedado na OCI é o cliente Windows em **Tauri 2 + WebView2**.
 
 Essa versão é apenas um cliente desktop:
 
-- abre o Girofy hospedado em uma janela nativa via `pywebview`;
-- verifica atualização automática ao iniciar;
+- abre o Girofy hospedado em uma janela nativa;
+- usa WebView2 do Windows;
+- mostra tela local de carregamento/offline;
+- verifica `/health` antes de abrir o sistema;
 - não sobe Flask local;
 - não instala MySQL;
+- não executa Python;
 - não conecta diretamente ao banco;
 - não cria serviço Windows;
 - não inclui `.env`, senhas, backups ou logs do servidor;
@@ -1210,30 +1213,17 @@ Essa versão é apenas um cliente desktop:
 Arquivos principais:
 
 ```text
-desktop_cloud/
-desktop_cloud_launcher.py
-girofy-cloud.spec
-installer/cloud/GirofyCloud.iss
-scripts/build_windows_cloud.ps1
-.github/workflows/build-windows-cloud-client.yml
-docs/windows-cloud-client.md
+desktop_tauri/
+scripts/build_windows_tauri.ps1
+.github/workflows/build-windows-tauri-client.yml
+docs/windows-tauri-client.md
+docs/windows-tauri-test-plan.md
 ```
 
 Configuração local do cliente:
 
 ```text
 C:\ProgramData\Girofy\config\desktop.json
-```
-
-Exemplo para produção futura com domínio e HTTPS:
-
-```json
-{
-  "app_url": "https://app.girofy.com.br",
-  "allowed_hosts": ["app.girofy.com.br", ".girofy.com.br"],
-  "allow_http": false,
-  "environment": "production"
-}
 ```
 
 Configuração temporária atual, enquanto você usa o IP da OCI:
@@ -1244,58 +1234,52 @@ Configuração temporária atual, enquanto você usa o IP da OCI:
   "allowed_hosts": ["168.75.101.126"],
   "allow_http": true,
   "environment": "development",
-  "timeout_seconds": 2,
-  "auto_update_enabled": true,
-  "update_check_on_start": true,
-  "update_manifest_url": "http://168.75.101.126:18080/desktop/update.json",
-  "update_install_silent": false
+  "timeout_seconds": 4,
+  "auto_update_enabled": false,
+  "update_check_on_start": false,
+  "update_manifest_url": "http://168.75.101.126:18080/desktop/update.json"
 }
 ```
 
-Em produção, o cliente aceita apenas HTTPS e domínios permitidos. Para desenvolvimento temporário com IP/porta alta, use `GIROFY_DESKTOP_ENV=development`, `GIROFY_DESKTOP_ALLOW_HTTP=1`, `GIROFY_DESKTOP_APP_URL` e `GIROFY_DESKTOP_ALLOWED_HOSTS`.
+Exemplo futuro com domínio e HTTPS:
 
-Atualização automática:
-
-- o cliente consulta `/desktop/update.json`;
-- o servidor publica a versão nova por `DESKTOP_UPDATE_VERSION`;
-- o link do instalador vem de `DESKTOP_UPDATE_INSTALLER_URL`;
-- `DESKTOP_UPDATE_SHA256` é opcional e valida a integridade do instalador;
-- se houver versão nova, o cliente pergunta se o usuário deseja atualizar;
-- após aceitar, o instalador é baixado e aberto automaticamente.
-
-Exemplo no `.env` do servidor:
-
-```env
-DESKTOP_UPDATE_VERSION=1.0.1
-DESKTOP_UPDATE_INSTALLER_URL=http://168.75.101.126:18080/downloads/Girofy-Setup.exe
-DESKTOP_UPDATE_RELEASE_URL=
-DESKTOP_UPDATE_SHA256=
-DESKTOP_UPDATE_NOTES=Atualização com melhorias de desempenho e estabilidade.
+```json
+{
+  "app_url": "https://app.girofy.com.br",
+  "allowed_hosts": ["app.girofy.com.br", ".girofy.com.br"],
+  "allow_http": false,
+  "environment": "production",
+  "timeout_seconds": 4,
+  "auto_update_enabled": true,
+  "update_check_on_start": true
+}
 ```
-
-A primeira instalação ainda precisa ser feita pelo `Girofy-Setup.exe`. Depois que o cliente já tiver uma versão com atualizador, as próximas versões podem ser recebidas pelo próprio aplicativo.
 
 Build local no Windows:
 
 ```powershell
-.\scripts\build_windows_cloud.ps1
+.\scripts\build_windows_tauri.ps1
 ```
 
 Workflow no GitHub:
 
 ```text
-Actions > Build Windows cloud client > Run workflow
+Actions > Build Windows Tauri client > Run workflow
 ```
 
-Artefatos:
+Artefato:
 
-- `Girofy-Windows-Cloud.zip`;
-- `Girofy-Setup.exe`.
+```text
+Girofy-Windows-Tauri-Installers
+```
+
+O cliente antigo em Python/pywebview continua preservado em `desktop_cloud/` como legado, mas não é recomendado para novas instalações.
 
 Detalhes completos ficam em:
 
 ```text
-docs/windows-cloud-client.md
+docs/windows-tauri-client.md
+docs/windows-tauri-test-plan.md
 ```
 
 ### 12. Assinatura digital dos instaladores

@@ -1,4 +1,4 @@
-name: Build Windows cloud client
+name: LEGACY - Build Windows cloud client
 
 on:
   workflow_dispatch:

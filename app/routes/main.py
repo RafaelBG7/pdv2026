@@ -34,6 +34,13 @@ PAYABLE_CATEGORIES = ('Aluguel', 'Luz', 'Água', 'Internet', 'Fornecedor', 'Impo
 EXPORT_TYPES = ('produtos', 'vendas', 'caixas', 'contas')
 
 
+@main_bp.get('/health')
+def health_check():
+    response = jsonify({'status': 'ok', 'service': 'girofy'})
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @main_bp.get('/desktop/update.json')
 def desktop_update_manifest():
     version = (current_app.config.get('DESKTOP_UPDATE_VERSION') or '').strip()

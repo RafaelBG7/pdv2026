@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissões mínimas do cliente Girofy.",
+  "windows": ["main"],
+  "permissions": ["core:default", "window-state:default"]
+}

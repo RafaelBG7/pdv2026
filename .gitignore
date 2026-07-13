@@ -12,6 +12,8 @@ __pycache__/
 logs/*.log
 build/
 dist/
+desktop_tauri/node_modules/
+desktop_tauri/src-tauri/target/
 *.spec
 !girofy-cloud.spec
 installer/windows/mysql/*.zip

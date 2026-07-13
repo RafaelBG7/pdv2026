@@ -1,5 +1,7 @@
 # Girofy Windows Cloud Client
 
+> **Legado:** este cliente usa Python, pywebview e PyInstaller. Ele continua preservado para compatibilidade e diagnóstico, mas novas instalações Windows cloud devem usar o cliente Tauri em `desktop_tauri/`. Veja `docs/windows-tauri-client.md`.
+
 O cliente Windows cloud do Girofy é um aplicativo desktop leve que abre a versão hospedada do sistema dentro de uma janela nativa via `pywebview`.
 
 Ele não instala banco local, não sobe Flask local, não conecta no MySQL diretamente e não possui sincronização offline.

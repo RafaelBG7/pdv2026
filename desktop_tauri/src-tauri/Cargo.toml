@@ -1,0 +1,32 @@
+[package]
+name = "girofy_tauri_client"
+version = "0.1.0"
+description = "Cliente Windows cloud do Girofy"
+authors = ["Girofy"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "girofy_tauri_client"
+path = "src/lib.rs"
+
+[[bin]]
+name = "girofy"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+dirs-next = "2"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2"
+tokio = { version = "1", features = ["time"] }
+url = "2"
+
+[dev-dependencies]
+tempfile = "3"

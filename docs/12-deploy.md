@@ -204,29 +204,28 @@ Artefatos:
 
 Para reduzir bloqueios do Windows SmartScreen e Apple Gatekeeper, configure certificados de assinatura nos secrets do GitHub. Sem assinatura reconhecida, o sistema operacional pode avisar que o app não é confiável.
 
-## Cliente Windows Cloud
+## Cliente Windows Cloud Tauri
 
-A versão cloud do desktop Windows é separada do instalador local com MySQL.
+A versão recomendada do desktop Windows cloud é separada do instalador local com MySQL e usa Tauri 2 + WebView2.
 
 Workflow:
 
 ```text
-.github/workflows/build-windows-cloud-client.yml
+.github/workflows/build-windows-tauri-client.yml
 ```
 
 Artefatos:
 
-- `Girofy-Windows-Cloud.zip`;
-- `Girofy-Setup.exe`.
+- `Girofy-Windows-Tauri-Installers`.
 
 Esse build:
 
-- usa `desktop_cloud_launcher.py`;
-- abre a URL hospedada do Girofy via `pywebview`;
-- valida HTTPS em produção;
-- restringe navegação aos domínios permitidos;
-- configura User-Agent `GirofyDesktop/1.0.0`;
-- grava logs locais em `C:\ProgramData\Girofy\logs`;
+- usa `desktop_tauri/`;
+- abre a URL hospedada do Girofy via WebView2;
+- valida `/health` antes de navegar;
+- valida URL, protocolo e host permitido;
+- grava logs locais em `%LOCALAPPDATA%\Girofy\logs\tauri-client.log`;
+- não executa Python;
 - não instala MySQL;
 - não inclui `.env`;
 - não inclui banco, backups, secrets ou backend Flask.
@@ -240,8 +239,11 @@ C:\ProgramData\Girofy\config\desktop.json
 Documentação completa:
 
 ```text
-docs/windows-cloud-client.md
+docs/windows-tauri-client.md
+docs/windows-tauri-test-plan.md
 ```
+
+O cliente antigo em `desktop_cloud/` usa Python, pywebview e PyInstaller. Ele permanece preservado como legado em `docs/windows-cloud-client.md`, mas não deve ser usado para novas instalações.
 
 ## Checklist de Produção
 

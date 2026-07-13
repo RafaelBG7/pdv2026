@@ -87,6 +87,14 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(data['version'], '1.2.3')
         self.assertEqual(data['installer_url'], 'http://168.75.101.126:18080/downloads/Girofy-Setup.exe')
 
+    def test_health_check_is_public_and_minimal(self):
+        response = self.client.get('/health')
+        data = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get('Cache-Control'), 'no-store')
+        self.assertEqual(data, {'status': 'ok', 'service': 'girofy'})
+
     def test_login_remember_me_sets_persistent_cookie(self):
         response = self.client.post(
             '/login',

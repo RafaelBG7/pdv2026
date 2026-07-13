@@ -1,0 +1,141 @@
+name: Build Windows cloud client
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - 'desktop_cloud/**'
+      - 'desktop_cloud_launcher.py'
+      - 'girofy-cloud.spec'
+      - 'installer/cloud/**'
+      - 'scripts/build_windows_cloud.ps1'
+      - 'requirements-desktop-cloud.txt'
+      - '.github/workflows/build-windows-cloud-client.yml'
+      - 'tests/**'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install server dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run full test suite
+        env:
+          TESTING: '1'
+          MAIL_SUPPRESS_SEND: '1'
+        run: python -m unittest discover
+
+      - name: Compile cloud client modules
+        run: python -m compileall desktop_cloud desktop_cloud_launcher.py
+
+  build-windows-cloud:
+    name: Build Windows cloud client
+    runs-on: windows-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Create virtualenv
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+
+      - name: Build Girofy.exe
+        shell: pwsh
+        run: .\scripts\build_windows_cloud.ps1
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Girofy-Setup.exe
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -match "^v") {
+            $env:APP_VERSION = "${{ github.ref_name }}".TrimStart("v")
+          } else {
+            $env:APP_VERSION = "0.0.${{ github.run_number }}"
+          }
+          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+          & $iscc installer\cloud\GirofyCloud.iss
+
+      - name: Sign Windows cloud artifacts
+        shell: pwsh
+        env:
+          WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+          WINDOWS_CODESIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PFX_PASSWORD }}
+          WINDOWS_CODESIGN_TIMESTAMP_URL: ${{ vars.WINDOWS_CODESIGN_TIMESTAMP_URL }}
+        run: .\scripts\sign_windows_artifacts.ps1
+
+      - name: Package cloud client
+        shell: pwsh
+        run: Compress-Archive -Path dist\Girofy -DestinationPath dist\Girofy-Windows-Cloud.zip -Force
+
+      - name: Upload Windows cloud zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Girofy-Windows-Cloud
+          path: dist/Girofy-Windows-Cloud.zip
+          if-no-files-found: error
+
+      - name: Upload Windows cloud installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Girofy-Windows-Cloud-Installer
+          path: dist/installer/Girofy-Setup.exe
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs: build-windows-cloud
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -d '' files < <(find release-artifacts -type f -print0)
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" "${files[@]}" \
+              --title "Girofy ${GITHUB_REF_NAME}" \
+              --notes "Build automático do cliente Windows cloud. O instalador não inclui MySQL, banco local, .env ou backend Flask."
+          fi

@@ -3,7 +3,9 @@ from __future__ import annotations
 import base64
 import html
 import inspect
+import json
 import sys
+import threading
 import webbrowser
 from pathlib import Path
 
@@ -208,28 +210,80 @@ class LauncherApi:
             }
 
     def install_update(self, update_payload: dict[str, object] | None = None) -> dict[str, object]:
-        try:
-            if update_payload and update_payload.get("available"):
-                update = UpdateInfo(
-                    available=True,
-                    current_version=str(update_payload.get("current_version") or ""),
-                    version=str(update_payload.get("version") or ""),
-                    installer_url=str(update_payload.get("installer_url") or ""),
-                    release_url=str(update_payload.get("release_url") or ""),
-                    notes=str(update_payload.get("notes") or ""),
-                    sha256=str(update_payload.get("sha256") or ""),
-                )
-            else:
+        def run_install() -> None:
+            try:
+                update = self._build_update_info(update_payload)
+                installer_path = download_update(update, self.config)
+                launch_installer(installer_path, silent=self.config.update_install_silent)
+                self.logger.info("desktop_update_installer_started version=%s", update.version)
+                if self.window:
+                    self.window.destroy()
+            except Exception as exc:
+                self.logger.exception("desktop_update_install_failed %s", exc.__class__.__name__)
+                if self.window:
+                    try:
+                        self.window.evaluate_js(
+                            "window.alert('Não foi possível baixar ou iniciar a atualização agora.');"
+                        )
+                    except Exception:
+                        pass
+
+        threading.Thread(target=run_install, daemon=True).start()
+        return {"ok": True, "message": "Atualização iniciada em segundo plano."}
+
+    def _build_update_info(self, update_payload: dict[str, object] | None = None) -> UpdateInfo:
+        if update_payload and update_payload.get("available"):
+            return UpdateInfo(
+                available=True,
+                current_version=str(update_payload.get("current_version") or ""),
+                version=str(update_payload.get("version") or ""),
+                installer_url=str(update_payload.get("installer_url") or ""),
+                release_url=str(update_payload.get("release_url") or ""),
+                notes=str(update_payload.get("notes") or ""),
+                sha256=str(update_payload.get("sha256") or ""),
+            )
+        return check_for_update(self.config)
+
+    def schedule_update_check(self) -> None:
+        if not self.config.auto_update_enabled or not self.config.update_check_on_start:
+            return
+
+        def run_check() -> None:
+            try:
                 update = check_for_update(self.config)
-            installer_path = download_update(update, self.config)
-            launch_installer(installer_path, silent=self.config.update_install_silent)
-            self.logger.info("desktop_update_installer_started version=%s", update.version)
-            if self.window:
-                self.window.destroy()
-            return {"ok": True, "message": "Atualizador iniciado."}
+                if not update.available:
+                    return
+                if update.version in self._prompted_update_versions:
+                    return
+                self._prompted_update_versions.add(update.version)
+                self.logger.info("desktop_update_available version=%s", update.version)
+                self._show_update_prompt(update)
+            except Exception as exc:
+                self.logger.warning("desktop_update_check_failed %s", exc.__class__.__name__)
+
+        threading.Thread(target=run_check, daemon=True).start()
+
+    def _show_update_prompt(self, update: UpdateInfo) -> None:
+        if not self.window:
+            return
+        update_payload = json.dumps(update.as_dict(), ensure_ascii=False)
+        script = f"""
+        (function () {{
+          var update = {update_payload};
+          var message = 'Nova atualização do Girofy disponível.\\n\\n'
+            + 'Versão atual: ' + (update.current_version || '-') + '\\n'
+            + 'Nova versão: ' + (update.version || '-') + '\\n\\n';
+          if (update.notes) message += update.notes + '\\n\\n';
+          message += 'Deseja atualizar agora?';
+          if (!window.confirm(message)) return;
+          if (!window.pywebview || !window.pywebview.api) return;
+          window.pywebview.api.install_update(update);
+        }})();
+        """
+        try:
+            self.window.evaluate_js(script)
         except Exception as exc:
-            self.logger.exception("desktop_update_install_failed %s", exc.__class__.__name__)
-            return {"ok": False, "message": "Não foi possível baixar ou iniciar a atualização."}
+            self.logger.warning("desktop_update_prompt_failed %s", exc.__class__.__name__)
 
 
 def _configure_webview(webview_module, config: DesktopConfig) -> None:
@@ -268,31 +322,8 @@ def open_window(config: DesktopConfig, logger, offline_message: str | None = Non
             window.evaluate_js(build_navigation_guard_script(config))
         except Exception as exc:
             logger.warning("navigation_guard_injection_failed %s", exc.__class__.__name__)
-        if offline_message is None and config.auto_update_enabled and config.update_check_on_start:
-            try:
-                window.evaluate_js(
-                    """
-                    (function () {
-                      if (!window.pywebview || !window.pywebview.api) return;
-                      window.pywebview.api.check_update().then(function (update) {
-                        if (!update || !update.available) return;
-                        var message = 'Nova atualização do Girofy disponível.\\n\\n'
-                          + 'Versão atual: ' + (update.current_version || '-') + '\\n'
-                          + 'Nova versão: ' + (update.version || '-') + '\\n\\n';
-                        if (update.notes) message += update.notes + '\\n\\n';
-                        message += 'Deseja atualizar agora?';
-                        if (!window.confirm(message)) return;
-                        window.pywebview.api.install_update(update).then(function (result) {
-                          if (!result || !result.ok) {
-                            window.alert((result && result.message) || 'Não foi possível iniciar a atualização.');
-                          }
-                        });
-                      });
-                    })();
-                    """
-                )
-            except Exception as exc:
-                logger.warning("desktop_update_injection_failed %s", exc.__class__.__name__)
+        if offline_message is None:
+            api.schedule_update_check()
 
     try:
         window.events.loaded += inject_startup_scripts

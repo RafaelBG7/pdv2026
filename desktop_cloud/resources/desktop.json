@@ -5,7 +5,7 @@
   ],
   "allow_http": true,
   "environment": "development",
-  "timeout_seconds": 4,
+  "timeout_seconds": 2,
   "auto_update_enabled": true,
   "update_check_on_start": true,
   "update_manifest_url": "http://168.75.101.126:18080/desktop/update.json",

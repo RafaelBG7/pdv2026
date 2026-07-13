@@ -26,7 +26,7 @@ class DesktopConfig:
     allowed_hosts: tuple[str, ...] = field(default_factory=lambda: DEFAULT_ALLOWED_HOSTS)
     allow_http: bool = False
     environment: str = "production"
-    timeout_seconds: float = 4.0
+    timeout_seconds: float = 2.0
     user_agent: str = DEFAULT_USER_AGENT
     auto_update_enabled: bool = True
     update_check_on_start: bool = True
@@ -146,7 +146,7 @@ def load_desktop_config(path: Path | None = None) -> DesktopConfig:
         allowed_hosts=allowed_hosts,
         allow_http=parse_bool(data.get("allow_http")),
         environment=str(data.get("environment") or "production").strip().lower(),
-        timeout_seconds=float(data.get("timeout_seconds") or 4),
+        timeout_seconds=float(data.get("timeout_seconds") or 2),
         user_agent=str(data.get("user_agent") or DEFAULT_USER_AGENT).strip() or DEFAULT_USER_AGENT,
         auto_update_enabled=parse_bool(data.get("auto_update_enabled", True)),
         update_check_on_start=parse_bool(data.get("update_check_on_start", True)),

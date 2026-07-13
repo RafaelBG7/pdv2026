@@ -4,7 +4,6 @@ import traceback
 
 from . import APP_VERSION
 from .config import ConfigError, DesktopConfig, load_desktop_config, validate_desktop_config
-from .connectivity import check_server_available
 from .local_logging import configure_launcher_logger
 from .single_instance import SingleInstanceLock
 from .window import open_window
@@ -28,12 +27,7 @@ def main() -> int:
             open_window(DesktopConfig(), logger, "A configuração local do Girofy Desktop é inválida. Verifique o domínio configurado.")
             return 1
 
-        result = check_server_available(config)
-        logger.info("connectivity_check ok=%s status=%s", result.ok, result.status_code)
-        if result.ok:
-            open_window(config, logger)
-        else:
-            open_window(config, logger, "Verifique sua conexão com a internet e tente novamente.")
+        open_window(config, logger)
         return 0
     except Exception:
         logger.error("launcher_unexpected_error\n%s", traceback.format_exc())

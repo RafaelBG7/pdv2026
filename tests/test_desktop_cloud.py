@@ -71,7 +71,7 @@ class DesktopCloudConfigTestCase(unittest.TestCase):
         self.assertEqual(config.app_url, "https://loja.girofy.com.br")
 
     def test_default_timeout_is_short_for_lightweight_startup(self):
-        self.assertEqual(load_desktop_config(Path("/arquivo/inexistente.json")).timeout_seconds, 4)
+        self.assertEqual(load_desktop_config(Path("/arquivo/inexistente.json")).timeout_seconds, 2)
 
     def test_default_update_manifest_uses_app_origin(self):
         manifest_url = default_update_manifest_url("http://168.75.101.126:18080/login")

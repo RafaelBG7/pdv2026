@@ -14,11 +14,10 @@ Fluxo de execução:
 2. O launcher impede múltiplas instâncias desnecessárias.
 3. Carrega `C:\ProgramData\Girofy\config\desktop.json`.
 4. Valida URL, protocolo e domínio permitido.
-5. Testa conectividade com o servidor hospedado.
-6. Abre a janela nativa do Girofy.
-7. Consulta o manifesto público de atualização do servidor.
-8. Se existir versão nova, pergunta se o usuário deseja atualizar.
-9. O usuário usa o mesmo app web hospedado, com login, permissões, CSRF, auditoria e cookies do servidor.
+5. Abre a janela nativa do Girofy sem bloquear a interface com testes prévios de rede.
+6. Consulta o manifesto público de atualização em segundo plano.
+7. Se existir versão nova, pergunta se o usuário deseja atualizar.
+8. O usuário usa o mesmo app web hospedado, com login, permissões, CSRF, auditoria e cookies do servidor.
 
 O executável não inclui:
 
@@ -65,7 +64,7 @@ Configuração temporária atual, enquanto o domínio ainda não existe:
   "allowed_hosts": ["168.75.101.126"],
   "allow_http": true,
   "environment": "development",
-  "timeout_seconds": 4,
+  "timeout_seconds": 2,
   "auto_update_enabled": true,
   "update_check_on_start": true,
   "update_manifest_url": "http://168.75.101.126:18080/desktop/update.json",
@@ -184,7 +183,7 @@ python -m venv .venv
 
 O cliente cloud é mantido leve: ele não instala MySQL, não sobe Flask local e não
 carrega o backend dentro do executável. O app abre uma WebView apontando para o
-servidor OCI e usa um timeout curto de conectividade para evitar sensação de
+servidor OCI e usa um timeout curto de rede para evitar sensação de
 travamento em máquinas simples ou redes instáveis. O ícone `.ico` já fica
 versionado em `desktop_cloud/resources/girofy.ico`, evitando instalar bibliotecas
 de imagem apenas durante o build.

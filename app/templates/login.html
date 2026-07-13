@@ -37,6 +37,10 @@
             <div class="invalid-feedback">{{ field_errors.get('password') }}</div>
             {% endif %}
           </div>
+          <label class="login-remember-option" for="remember_me">
+            <input type="checkbox" id="remember_me" name="remember_me" value="1" {% if form_values.get('remember_me') %}checked{% endif %}>
+            <span>Lembre de mim</span>
+          </label>
           <button type="submit" class="btn btn-primary w-100">Entrar</button>
           <div class="text-center mt-3">
             <a class="text-muted" href="{{ url_for('auth.forgot_password') }}">Esqueci minha senha</a>

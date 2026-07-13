@@ -60,9 +60,22 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('Gestão que faz girar o seu negócio'.encode(), response.data)
         self.assertNotIn('Sistema PDV Local'.encode(), response.data)
         self.assertIn('Entrar'.encode(), response.data)
+        self.assertIn('Lembre de mim'.encode(), response.data)
+        self.assertIn('name="remember_me"'.encode(), response.data)
         self.assertIn('Cadastrar'.encode(), response.data)
         self.assertNotIn('Key de ativação'.encode(), response.data)
         self.assertNotIn('Não tenho key'.encode(), response.data)
+
+    def test_login_remember_me_sets_persistent_cookie(self):
+        response = self.client.post(
+            '/login',
+            data={'username': 'master', 'password': 'master123', 'remember_me': '1'},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        cookies = response.headers.getlist('Set-Cookie')
+        self.assertTrue(any('remember_token=' in cookie for cookie in cookies))
 
     def test_browser_default_favicon_route_loads(self):
         response = self.client.get('/favicon.ico')

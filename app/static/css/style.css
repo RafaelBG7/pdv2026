@@ -4140,6 +4140,31 @@ body.sale-discount-open {
   gap: 0.5rem;
 }
 
+.login-remember-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: max-content;
+  max-width: 100%;
+  margin: -0.15rem 0 1rem;
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.login-remember-option input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--primary);
+  flex: 0 0 auto;
+}
+
+.login-remember-option span {
+  white-space: nowrap;
+}
+
 .topbar {
   position: relative;
   z-index: 40;

@@ -595,6 +595,7 @@ def current_basic_pro_plan(company):
 def login_form_values():
     return {
         'username': request.form.get('username', '').strip(),
+        'remember_me': request.form.get('remember_me') == '1',
     }
 
 
@@ -735,7 +736,8 @@ def login():
             if user.role != 'master' and user.company and not user.company.active:
                 flash('Esta adega está inativa. Fale com o usuário master.', 'danger')
                 return render_auth_form('login', login_form_values(), {'username': 'A adega deste usuário está inativa.'})
-            login_user(user)
+            remember_me = request.form.get('remember_me') == '1'
+            login_user(user, remember=remember_me)
             record_audit_event(
                 'login_success',
                 'auth',

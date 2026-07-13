@@ -86,6 +86,11 @@ class Config:
     MAIL_FROM_EMAIL = os.environ.get('MAIL_FROM_EMAIL', os.environ.get('BREVO_FROM_EMAIL', MAIL_SMTP_LOGIN))
     MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', os.environ.get('BREVO_FROM_NAME', 'Girofy'))
     MAIL_SUPPRESS_SEND = env_bool('MAIL_SUPPRESS_SEND', TESTING)
+    DESKTOP_UPDATE_VERSION = os.environ.get('DESKTOP_UPDATE_VERSION', '')
+    DESKTOP_UPDATE_INSTALLER_URL = os.environ.get('DESKTOP_UPDATE_INSTALLER_URL', '')
+    DESKTOP_UPDATE_RELEASE_URL = os.environ.get('DESKTOP_UPDATE_RELEASE_URL', '')
+    DESKTOP_UPDATE_SHA256 = os.environ.get('DESKTOP_UPDATE_SHA256', '')
+    DESKTOP_UPDATE_NOTES = os.environ.get('DESKTOP_UPDATE_NOTES', '')
     PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get('SESSION_LIFETIME_HOURS', '8')))
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')

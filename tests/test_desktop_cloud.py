@@ -5,8 +5,16 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from desktop_cloud.config import ConfigError, DesktopConfig, is_host_allowed, load_desktop_config, validate_desktop_config
+from desktop_cloud.config import (
+    ConfigError,
+    DesktopConfig,
+    default_update_manifest_url,
+    is_host_allowed,
+    load_desktop_config,
+    validate_desktop_config,
+)
 from desktop_cloud.navigation import is_navigation_allowed, should_open_externally
+from desktop_cloud.updater import is_newer_version
 
 
 class DesktopCloudConfigTestCase(unittest.TestCase):
@@ -64,6 +72,26 @@ class DesktopCloudConfigTestCase(unittest.TestCase):
 
     def test_default_timeout_is_short_for_lightweight_startup(self):
         self.assertEqual(load_desktop_config(Path("/arquivo/inexistente.json")).timeout_seconds, 4)
+
+    def test_default_update_manifest_uses_app_origin(self):
+        manifest_url = default_update_manifest_url("http://168.75.101.126:18080/login")
+
+        self.assertEqual(manifest_url, "http://168.75.101.126:18080/desktop/update.json")
+
+    def test_validate_rejects_update_manifest_outside_allowlist(self):
+        config = DesktopConfig(
+            app_url="https://app.girofy.com.br",
+            update_manifest_url="https://evil.example.com/desktop/update.json",
+        )
+
+        with self.assertRaises(ConfigError):
+            validate_desktop_config(config)
+
+    def test_compares_desktop_update_versions(self):
+        self.assertTrue(is_newer_version("1.0.1", "1.0.0"))
+        self.assertTrue(is_newer_version("v1.2.0", "1.1.9"))
+        self.assertFalse(is_newer_version("1.0.0", "1.0.0"))
+        self.assertFalse(is_newer_version("1.0.0", "1.0.1"))
 
 
 class DesktopCloudNavigationTestCase(unittest.TestCase):

@@ -16,7 +16,9 @@ Fluxo de execução:
 4. Valida URL, protocolo e domínio permitido.
 5. Testa conectividade com o servidor hospedado.
 6. Abre a janela nativa do Girofy.
-7. O usuário usa o mesmo app web hospedado, com login, permissões, CSRF, auditoria e cookies do servidor.
+7. Consulta o manifesto público de atualização do servidor.
+8. Se existir versão nova, pergunta se o usuário deseja atualizar.
+9. O usuário usa o mesmo app web hospedado, com login, permissões, CSRF, auditoria e cookies do servidor.
 
 O executável não inclui:
 
@@ -62,7 +64,12 @@ Configuração temporária atual, enquanto o domínio ainda não existe:
   "app_url": "http://168.75.101.126:18080",
   "allowed_hosts": ["168.75.101.126"],
   "allow_http": true,
-  "environment": "development"
+  "environment": "development",
+  "timeout_seconds": 4,
+  "auto_update_enabled": true,
+  "update_check_on_start": true,
+  "update_manifest_url": "http://168.75.101.126:18080/desktop/update.json",
+  "update_install_silent": false
 }
 ```
 
@@ -77,6 +84,69 @@ $env:GIROFY_DESKTOP_APP_URL="http://168.75.101.126:18080"
 $env:GIROFY_DESKTOP_ALLOWED_HOSTS="168.75.101.126"
 .\desktop_cloud_launcher.py
 ```
+
+## Atualização Automática
+
+O cliente Windows cloud possui um atualizador simples para evitar que o cliente precise baixar manualmente uma nova versão sempre que houver correção.
+
+Fluxo:
+
+1. Ao abrir o aplicativo, o cliente consulta `update_manifest_url`.
+2. O servidor responde o manifesto público em `/desktop/update.json`.
+3. O cliente compara a versão publicada com a versão embutida no EXE.
+4. Se a versão publicada for maior, aparece uma confirmação para atualizar.
+5. Ao confirmar, o cliente baixa o instalador, valida o SHA-256 quando configurado e abre o instalador.
+
+Por segurança:
+
+- o manifesto precisa estar em host permitido por `allowed_hosts`;
+- o instalador também precisa estar em host permitido por `allowed_hosts`;
+- HTTP só é aceito quando `allow_http` está ativo e o ambiente está como `development`;
+- em produção, use HTTPS e domínio próprio;
+- o cliente não baixa atualização de domínio desconhecido.
+
+Se `update_manifest_url` não estiver no `desktop.json`, o cliente monta automaticamente a URL usando a origem de `app_url`:
+
+```text
+http://168.75.101.126:18080/desktop/update.json
+```
+
+### Publicar uma atualização
+
+Depois que o workflow gerar um novo `Girofy-Setup.exe`, publique o arquivo em um local acessível ao cliente, preferencialmente no próprio servidor Girofy ou em uma URL pública sob o domínio permitido.
+
+No `.env` do servidor, configure:
+
+```env
+DESKTOP_UPDATE_VERSION=1.0.1
+DESKTOP_UPDATE_INSTALLER_URL=http://168.75.101.126:18080/downloads/Girofy-Setup.exe
+DESKTOP_UPDATE_RELEASE_URL=
+DESKTOP_UPDATE_SHA256=
+DESKTOP_UPDATE_NOTES=Atualização com melhorias de desempenho e estabilidade.
+```
+
+O endpoint público retornará:
+
+```json
+{
+  "available": true,
+  "version": "1.0.1",
+  "installer_url": "http://168.75.101.126:18080/downloads/Girofy-Setup.exe",
+  "release_url": "",
+  "sha256": "",
+  "notes": "Atualização com melhorias de desempenho e estabilidade."
+}
+```
+
+Se `DESKTOP_UPDATE_VERSION` ou `DESKTOP_UPDATE_INSTALLER_URL` estiver vazio, o manifesto informa que não há atualização publicada.
+
+### Recomendações
+
+- Aumente `APP_VERSION` em `desktop_cloud/__init__.py` antes de gerar um novo build.
+- Publique o instalador em URL estável.
+- Preencha `DESKTOP_UPDATE_SHA256` quando possível para validar integridade.
+- Quando tiver domínio, troque IP/HTTP por HTTPS.
+- Para cliente já instalado, não é necessário trocar o `desktop.json` se ele aponta para a URL correta do app.
 
 ## Logs Locais
 

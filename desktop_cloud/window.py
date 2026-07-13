@@ -10,6 +10,7 @@ from pathlib import Path
 from .config import DesktopConfig, storage_dir
 from .connectivity import check_server_available
 from .navigation import build_navigation_guard_script, is_navigation_allowed, should_open_externally
+from .updater import UpdateInfo, check_for_update, download_update, launch_installer
 
 
 WINDOW_TITLE = "Girofy"
@@ -168,6 +169,7 @@ class LauncherApi:
         self.config = config
         self.logger = logger
         self.window = None
+        self._prompted_update_versions: set[str] = set()
 
     def retry(self) -> dict[str, object]:
         result = check_server_available(self.config)
@@ -187,6 +189,47 @@ class LauncherApi:
 
     def is_navigation_allowed(self, url: str) -> bool:
         return is_navigation_allowed(url, self.config)
+
+    def check_update(self) -> dict[str, object]:
+        try:
+            update = check_for_update(self.config)
+            if update.available:
+                if update.version in self._prompted_update_versions:
+                    return UpdateInfo(False, message="Atualização já exibida nesta sessão.").as_dict()
+                self._prompted_update_versions.add(update.version)
+                self.logger.info("desktop_update_available version=%s", update.version)
+            return update.as_dict()
+        except Exception as exc:
+            self.logger.warning("desktop_update_check_failed %s", exc.__class__.__name__)
+            return {
+                "available": False,
+                "current_version": "",
+                "message": "Não foi possível verificar atualizações agora.",
+            }
+
+    def install_update(self, update_payload: dict[str, object] | None = None) -> dict[str, object]:
+        try:
+            if update_payload and update_payload.get("available"):
+                update = UpdateInfo(
+                    available=True,
+                    current_version=str(update_payload.get("current_version") or ""),
+                    version=str(update_payload.get("version") or ""),
+                    installer_url=str(update_payload.get("installer_url") or ""),
+                    release_url=str(update_payload.get("release_url") or ""),
+                    notes=str(update_payload.get("notes") or ""),
+                    sha256=str(update_payload.get("sha256") or ""),
+                )
+            else:
+                update = check_for_update(self.config)
+            installer_path = download_update(update, self.config)
+            launch_installer(installer_path, silent=self.config.update_install_silent)
+            self.logger.info("desktop_update_installer_started version=%s", update.version)
+            if self.window:
+                self.window.destroy()
+            return {"ok": True, "message": "Atualizador iniciado."}
+        except Exception as exc:
+            self.logger.exception("desktop_update_install_failed %s", exc.__class__.__name__)
+            return {"ok": False, "message": "Não foi possível baixar ou iniciar a atualização."}
 
 
 def _configure_webview(webview_module, config: DesktopConfig) -> None:
@@ -220,14 +263,39 @@ def open_window(config: DesktopConfig, logger, offline_message: str | None = Non
     window = webview.create_window(WINDOW_TITLE, initial_url, **create_window_kwargs)
     api.window = window
 
-    def inject_navigation_guard() -> None:
+    def inject_startup_scripts() -> None:
         try:
             window.evaluate_js(build_navigation_guard_script(config))
         except Exception as exc:
             logger.warning("navigation_guard_injection_failed %s", exc.__class__.__name__)
+        if offline_message is None and config.auto_update_enabled and config.update_check_on_start:
+            try:
+                window.evaluate_js(
+                    """
+                    (function () {
+                      if (!window.pywebview || !window.pywebview.api) return;
+                      window.pywebview.api.check_update().then(function (update) {
+                        if (!update || !update.available) return;
+                        var message = 'Nova atualização do Girofy disponível.\\n\\n'
+                          + 'Versão atual: ' + (update.current_version || '-') + '\\n'
+                          + 'Nova versão: ' + (update.version || '-') + '\\n\\n';
+                        if (update.notes) message += update.notes + '\\n\\n';
+                        message += 'Deseja atualizar agora?';
+                        if (!window.confirm(message)) return;
+                        window.pywebview.api.install_update(update).then(function (result) {
+                          if (!result || !result.ok) {
+                            window.alert((result && result.message) || 'Não foi possível iniciar a atualização.');
+                          }
+                        });
+                      });
+                    })();
+                    """
+                )
+            except Exception as exc:
+                logger.warning("desktop_update_injection_failed %s", exc.__class__.__name__)
 
     try:
-        window.events.loaded += inject_navigation_guard
+        window.events.loaded += inject_startup_scripts
     except Exception:
         logger.warning("navigation_guard_event_unavailable")
 

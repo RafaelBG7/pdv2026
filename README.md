@@ -1199,6 +1199,7 @@ Também existe uma versão Windows cloud, criada para clientes que vão usar o G
 Essa versão é apenas um cliente desktop:
 
 - abre o Girofy hospedado em uma janela nativa via `pywebview`;
+- verifica atualização automática ao iniciar;
 - não sobe Flask local;
 - não instala MySQL;
 - não conecta diretamente ao banco;
@@ -1242,11 +1243,37 @@ Configuração temporária atual, enquanto você usa o IP da OCI:
   "app_url": "http://168.75.101.126:18080",
   "allowed_hosts": ["168.75.101.126"],
   "allow_http": true,
-  "environment": "development"
+  "environment": "development",
+  "timeout_seconds": 4,
+  "auto_update_enabled": true,
+  "update_check_on_start": true,
+  "update_manifest_url": "http://168.75.101.126:18080/desktop/update.json",
+  "update_install_silent": false
 }
 ```
 
 Em produção, o cliente aceita apenas HTTPS e domínios permitidos. Para desenvolvimento temporário com IP/porta alta, use `GIROFY_DESKTOP_ENV=development`, `GIROFY_DESKTOP_ALLOW_HTTP=1`, `GIROFY_DESKTOP_APP_URL` e `GIROFY_DESKTOP_ALLOWED_HOSTS`.
+
+Atualização automática:
+
+- o cliente consulta `/desktop/update.json`;
+- o servidor publica a versão nova por `DESKTOP_UPDATE_VERSION`;
+- o link do instalador vem de `DESKTOP_UPDATE_INSTALLER_URL`;
+- `DESKTOP_UPDATE_SHA256` é opcional e valida a integridade do instalador;
+- se houver versão nova, o cliente pergunta se o usuário deseja atualizar;
+- após aceitar, o instalador é baixado e aberto automaticamente.
+
+Exemplo no `.env` do servidor:
+
+```env
+DESKTOP_UPDATE_VERSION=1.0.1
+DESKTOP_UPDATE_INSTALLER_URL=http://168.75.101.126:18080/downloads/Girofy-Setup.exe
+DESKTOP_UPDATE_RELEASE_URL=
+DESKTOP_UPDATE_SHA256=
+DESKTOP_UPDATE_NOTES=Atualização com melhorias de desempenho e estabilidade.
+```
+
+A primeira instalação ainda precisa ser feita pelo `Girofy-Setup.exe`. Depois que o cliente já tiver uma versão com atualizador, as próximas versões podem ser recebidas pelo próprio aplicativo.
 
 Build local no Windows:
 

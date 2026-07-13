@@ -73,6 +73,20 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('Key de ativação'.encode(), response.data)
         self.assertNotIn('Não tenho key'.encode(), response.data)
 
+    def test_desktop_update_manifest_is_public(self):
+        self.app.config['DESKTOP_UPDATE_VERSION'] = '1.2.3'
+        self.app.config['DESKTOP_UPDATE_INSTALLER_URL'] = 'http://168.75.101.126:18080/downloads/Girofy-Setup.exe'
+        self.app.config['DESKTOP_UPDATE_NOTES'] = 'Atualização de teste.'
+
+        response = self.client.get('/desktop/update.json')
+        data = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get('Cache-Control'), 'no-store')
+        self.assertTrue(data['available'])
+        self.assertEqual(data['version'], '1.2.3')
+        self.assertEqual(data['installer_url'], 'http://168.75.101.126:18080/downloads/Girofy-Setup.exe')
+
     def test_login_remember_me_sets_persistent_cookie(self):
         response = self.client.post(
             '/login',

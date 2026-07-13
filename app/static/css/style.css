@@ -7059,3 +7059,66 @@ html[data-text-scale='extra'] .sale-payment-summary [data-payment-step-total] {
     min-width: max-content;
   }
 }
+
+.cash-required-page {
+  min-height: min(680px, calc(100vh - 8rem));
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 3rem);
+}
+
+.cash-required-card {
+  width: min(100%, 720px);
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.35rem, 3vw, 2.25rem);
+  border-color: rgba(var(--warning-rgb), 0.42);
+  background:
+    linear-gradient(135deg, rgba(var(--warning-rgb), 0.1), transparent 48%),
+    var(--surface);
+}
+
+.cash-required-card h2 {
+  margin: 0;
+  font-size: clamp(1.9rem, 1.35rem + 1.8vw, 3.2rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.cash-required-badge {
+  width: max-content;
+  max-width: 100%;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgba(var(--warning-rgb), 0.55);
+  border-radius: 999px;
+  color: var(--warning);
+  background: rgba(var(--warning-rgb), 0.13);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cash-required-form {
+  margin: 0;
+}
+
+.cash-required-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.35rem;
+}
+
+.cash-required-actions .btn {
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  .cash-required-actions {
+    grid-template-columns: 1fr;
+  }
+}

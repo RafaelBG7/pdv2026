@@ -3287,11 +3287,31 @@ class RouteTestCase(unittest.TestCase):
     def test_new_sale_requires_open_cash_register(self):
         self.login()
 
-        response = self.client.get('/vendas/nova', follow_redirects=True)
+        response = self.client.get('/vendas/nova')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Abra o caixa antes de registrar uma venda.'.encode(), response.data)
-        self.assertIn('Abrir caixa'.encode(), response.data)
+        self.assertIn('Deseja abrir o caixa?'.encode(), response.data)
+        self.assertIn('data-cash-required-page'.encode(), response.data)
+        self.assertIn('data-cash-open-confirm'.encode(), response.data)
+        self.assertIn('name="opening_amount" value="0,00"'.encode(), response.data)
+        self.assertIn('name="next" value="/vendas/nova"'.encode(), response.data)
+        self.assertIn('Sim, abrir caixa'.encode(), response.data)
+        self.assertIn('Não, voltar'.encode(), response.data)
+
+        open_response = self.client.post(
+            '/caixa/abrir',
+            data={'opening_amount': '0,00', 'next': '/vendas/nova'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(open_response.status_code, 200)
+        self.assertIn('Realizar venda'.encode(), open_response.data)
+        with self.app.app_context():
+            cash_register = CashRegister.query.filter_by(
+                company_id=self.master_company_id(),
+                status='open',
+            ).one()
+            self.assertEqual(cash_register.opening_amount, 0)
 
     def test_sales_list_renders_column_filters_and_sale_metadata(self):
         with self.app.app_context():

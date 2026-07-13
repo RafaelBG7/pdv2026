@@ -48,6 +48,13 @@ def format_brl(value):
     return f'R$ {value:.2f}'.replace('.', ',')
 
 
+def safe_local_redirect(default_endpoint='main.dashboard'):
+    target = (request.form.get('next') or request.args.get('next') or '').strip()
+    if target.startswith('/') and not target.startswith('//'):
+        return target
+    return url_for(default_endpoint)
+
+
 def payable_status(payable):
     if payable.paid:
         return 'paid'
@@ -1497,8 +1504,12 @@ def reports():
 def new_sale():
     cash_register = open_cash_register()
     if not cash_register:
-        flash('Abra o caixa antes de registrar uma venda.', 'warning')
-        return redirect(url_for('main.cash_register'))
+        return render_template(
+            'sales/cash_required.html',
+            open_cash_url=url_for('main.open_cash_register_route'),
+            next_url=url_for('main.new_sale'),
+            cancel_url=url_for('main.sales'),
+        )
 
     company = current_tenant_company()
     products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
@@ -1806,7 +1817,7 @@ def cash_register_detail(cash_register_id):
 def open_cash_register_route():
     if open_cash_register():
         flash('Já existe um caixa aberto.', 'warning')
-        return redirect(url_for('main.cash_register'))
+        return redirect(safe_local_redirect('main.cash_register'))
 
     cash_register = CashRegister(
         opening_amount=parse_money(request.form.get('opening_amount')),
@@ -1828,7 +1839,7 @@ def open_cash_register_route():
     )
     tenant_db.commit()
     flash('Caixa aberto com sucesso.', 'success')
-    return redirect(url_for('main.cash_register'))
+    return redirect(safe_local_redirect('main.cash_register'))
 
 
 @main_bp.route('/caixa/fechar', methods=['POST'])

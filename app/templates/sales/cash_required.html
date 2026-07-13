@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="cash-required-page" data-cash-required-page>
+  <div class="card card-dark cash-required-card">
+    <span class="cash-required-badge">Caixa fechado</span>
+    <h2>Deseja abrir o caixa?</h2>
+    <p class="text-muted mb-0">
+      Para registrar uma venda é necessário ter um caixa aberto. Pressione Enter para abrir agora com valor inicial R$ 0,00.
+    </p>
+
+    <form
+      class="cash-required-form"
+      method="post"
+      action="{{ open_cash_url }}"
+      data-cash-open-confirm
+      {% if needs_permission_override('can_manage_cash_register') %}data-permission-override="true"{% endif %}
+    >
+      <input type="hidden" name="opening_amount" value="0,00">
+      <input type="hidden" name="next" value="{{ next_url }}">
+
+      <div class="cash-required-actions">
+        <button class="btn btn-primary" type="submit" autofocus>
+          <span>Sim, abrir caixa</span>
+          <span class="shortcut-label shortcut-label-light">Enter</span>
+        </button>
+        <a class="btn btn-outline-light" href="{{ cancel_url }}">Não, voltar</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

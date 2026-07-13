@@ -163,6 +163,27 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  const cashRequiredPage = document.querySelector('[data-cash-required-page]');
+  const cashOpenConfirmForm = document.querySelector('[data-cash-open-confirm]');
+  if (cashRequiredPage && cashOpenConfirmForm) {
+    document.addEventListener('keydown', function (event) {
+      const target = event.target;
+      const isEditing = target instanceof HTMLElement && (
+        target.matches('input, textarea, select') || target.isContentEditable
+      );
+      if (event.key !== 'Enter' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || isEditing) {
+        return;
+      }
+
+      event.preventDefault();
+      if (typeof cashOpenConfirmForm.requestSubmit === 'function') {
+        cashOpenConfirmForm.requestSubmit();
+      } else {
+        cashOpenConfirmForm.submit();
+      }
+    });
+  }
+
   function setHiddenField(form, name, value) {
     let input = form.querySelector(`input[name="${name}"]`);
     if (!input) {

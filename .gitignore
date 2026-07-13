@@ -13,4 +13,5 @@ logs/*.log
 build/
 dist/
 *.spec
+!girofy-cloud.spec
 installer/windows/mysql/*.zip

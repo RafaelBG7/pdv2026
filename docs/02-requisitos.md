@@ -66,7 +66,7 @@
 | Segurança | Bloqueio de tentativas de login | Implementado parcial | Limite simples em memória para ambiente local/controlado. |
 | Segurança | Permissão no backend | Implementado | `permission_required`. |
 | Segurança | Bloqueio por assinatura/key | Implementado | `company_requires_activation()`. |
-| Segurança | CSRF | Não implementado | Recomendado Flask-WTF ou proteção equivalente. |
+| Segurança | CSRF | Implementado | Token por sessão para formulários e `fetch`; testes específicos com CSRF habilitado. |
 | Disponibilidade | Execução local | Implementado | `python app.py` na porta 5003. |
 | Backup | Dump por adega e cópia automática completa | Implementado | `app/backup.py` e serviço Docker `backup`. |
 | Logs | Logs detalhados de erro | Implementado | `logs/errors.log`. |

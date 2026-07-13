@@ -74,6 +74,9 @@ class Config:
     MASTER_DEFAULT_USERNAME = os.environ.get('MASTER_DEFAULT_USERNAME', 'master')
     MASTER_DEFAULT_PASSWORD = os.environ.get('MASTER_DEFAULT_PASSWORD', 'master123')
     PASSWORD_MIN_LENGTH = int(os.environ.get('PASSWORD_MIN_LENGTH', '8'))
+    PASSWORD_MAX_LENGTH = int(os.environ.get('PASSWORD_MAX_LENGTH', '128'))
+    CSRF_ENABLED = env_bool('CSRF_ENABLED', not TESTING)
+    WTF_CSRF_ENABLED = CSRF_ENABLED
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', str(8 * 1024 * 1024)))
     PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', '')
     MAIL_SMTP_SERVER = os.environ.get('MAIL_SMTP_SERVER', os.environ.get('GMAIL_SMTP_SERVER', os.environ.get('BREVO_SMTP_SERVER', 'smtp.gmail.com')))

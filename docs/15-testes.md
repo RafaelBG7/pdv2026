@@ -31,7 +31,7 @@ Autenticação e assinatura:
 
 - Login.
 - Login com "Lembre de mim" e cookie persistente `remember_token`.
-- Logout.
+- Logout via `POST` e recusa de `GET /logout`.
 - Cadastro.
 - Verificação de e-mail.
 - Troca de e-mail com confirmação no e-mail antigo.
@@ -40,6 +40,14 @@ Autenticação e assinatura:
 - Cadastro com e sem key.
 - Bloqueio por assinatura/key.
 - Ativação.
+- Falha pública de login com mensagem genérica para reduzir enumeração.
+- Política de senha recusando senhas comuns ou fracas em formulários públicos.
+
+CSRF:
+
+- `POST` sem token recusado com HTTP 400 quando CSRF está habilitado.
+- `POST` com token válido da sessão aceito.
+- Página de erro de CSRF amigável, sem stack trace ao usuário.
 
 Multiadega:
 
@@ -132,7 +140,7 @@ Auditoria:
 Validação feita em 13/07/2026:
 
 ```text
-Ran 120 tests in 16.093s
+Ran 124 tests in 19.715s
 OK
 ```
 

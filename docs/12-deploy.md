@@ -70,6 +70,16 @@ Modelo em `.env.example`:
 
 ```env
 SECRET_KEY=troque-esta-chave-em-producao
+APP_ENV=production
+FLASK_DEBUG=0
+MASTER_DEFAULT_USERNAME=master
+MASTER_DEFAULT_PASSWORD=troque-esta-senha
+PASSWORD_MIN_LENGTH=8
+PASSWORD_MAX_LENGTH=128
+CSRF_ENABLED=1
+SESSION_LIFETIME_HOURS=8
+SESSION_COOKIE_SECURE=1
+SESSION_COOKIE_SAMESITE=Lax
 MYSQL_USER=root
 MYSQL_PASSWORD=
 MYSQL_HOST=127.0.0.1
@@ -81,6 +91,8 @@ MYSQL_SERVER_DATABASE_URL=mysql+pymysql://root@127.0.0.1:3306/mysql?charset=utf8
 PUBLIC_BASE_URL=http://127.0.0.1:5003
 PORT=5003
 ```
+
+Em produção, a aplicação recusa iniciar com `SECRET_KEY` padrão ou `MASTER_DEFAULT_PASSWORD=master123`. Para detalhes de segurança e validações, consulte `docs/security-hardening.md`.
 
 ## Deploy Manual na OCI
 
@@ -212,7 +224,7 @@ Itens ainda recomendados:
 
 - domínio definitivo;
 - HTTPS com Caddy;
-- CSRF nos formulários;
+- rate limit persistente para endpoints sensíveis;
 - Alembic/Flask-Migrate;
 - auditoria de ações de negócio;
 - backup externo fora da VM;

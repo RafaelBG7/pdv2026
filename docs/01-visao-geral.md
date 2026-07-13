@@ -86,7 +86,7 @@ O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MyS
 ## O Que Ainda Faz Falta
 
 - Migrações versionadas com Alembic/Flask-Migrate.
-- CSRF nos formulários.
+- Rate limit persistente para produção.
 - Ampliar auditoria para cancelamento, estorno, sangria e aprovações futuras.
 - Sangria e suprimento de caixa.
 - Cadastro de fornecedores e compras.

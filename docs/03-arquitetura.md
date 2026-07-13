@@ -114,5 +114,5 @@ Responsabilidades:
 
 - Ainda não há migração versionada com Alembic.
 - Algumas alterações de schema são feitas por funções de compatibilidade em `app/__init__.py`.
-- O servidor local usa `debug=True` em `app.py`, adequado apenas para desenvolvimento.
+- O servidor local só ativa debug quando `FLASK_DEBUG=1`; produção deve usar Gunicorn/Docker.
 - Não há fila/background worker; backups automáticos rodam durante requisições autenticadas elegíveis.

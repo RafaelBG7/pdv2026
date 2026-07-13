@@ -169,9 +169,9 @@ O master do sistema também vê logs recentes no painel master e pode limpar o a
 
 ## Antes de Produção
 
-- Remover `debug=True`.
+- Manter `FLASK_DEBUG=0` em produção.
 - Definir `SECRET_KEY` segura.
-- Ativar CSRF.
+- Manter `CSRF_ENABLED=1`.
 - Criar usuário MySQL dedicado.
 - Configurar HTTPS.
 - Configurar backup externo.

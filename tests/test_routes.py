@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 import io
 from pathlib import Path
+import re
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -25,6 +26,8 @@ class TestConfig:
 
 
 class RouteTestCase(unittest.TestCase):
+    STRONG_PASSWORD = 'SenhaForte123'
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         TestConfig.LOG_DIR = Path(self.temp_dir.name) / 'logs'
@@ -77,12 +80,87 @@ class RouteTestCase(unittest.TestCase):
         cookies = response.headers.getlist('Set-Cookie')
         self.assertTrue(any('remember_token=' in cookie for cookie in cookies))
 
+    def test_csrf_rejects_missing_token_when_enabled(self):
+        class CSRFConfig(TestConfig):
+            CSRF_ENABLED = True
+            WTF_CSRF_ENABLED = True
+
+        csrf_temp_dir = tempfile.TemporaryDirectory()
+        CSRFConfig.LOG_DIR = Path(csrf_temp_dir.name) / 'logs'
+        CSRFConfig.BACKUP_DIR = Path(csrf_temp_dir.name) / 'backups'
+        csrf_app = create_app(CSRFConfig)
+        csrf_client = csrf_app.test_client()
+
+        try:
+            rejected = csrf_client.post(
+                '/login',
+                data={'username': 'master', 'password': 'master123'},
+            )
+
+            self.assertEqual(rejected.status_code, 400)
+            self.assertIn('formulário não pôde ser validado'.encode(), rejected.data)
+        finally:
+            with csrf_app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+            csrf_temp_dir.cleanup()
+
+    def test_csrf_accepts_valid_session_token_when_enabled(self):
+        class CSRFConfig(TestConfig):
+            CSRF_ENABLED = True
+            WTF_CSRF_ENABLED = True
+
+        csrf_temp_dir = tempfile.TemporaryDirectory()
+        CSRFConfig.LOG_DIR = Path(csrf_temp_dir.name) / 'logs'
+        CSRFConfig.BACKUP_DIR = Path(csrf_temp_dir.name) / 'backups'
+        csrf_app = create_app(CSRFConfig)
+        csrf_client = csrf_app.test_client()
+
+        try:
+            page = csrf_client.get('/login')
+            match = re.search(br'<meta name="csrf-token" content="([^"]+)">', page.data)
+            self.assertIsNotNone(match)
+            token = match.group(1).decode()
+
+            response = csrf_client.post(
+                '/login',
+                data={'username': 'master', 'password': 'master123', '_csrf_token': token},
+            )
+
+            self.assertEqual(response.status_code, 302)
+            self.assertTrue(response.location.endswith('/master'))
+        finally:
+            with csrf_app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+            csrf_temp_dir.cleanup()
+
     def test_browser_default_favicon_route_loads(self):
         response = self.client.get('/favicon.ico')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, 'image/png')
         response.close()
+
+    def test_security_headers_are_present(self):
+        response = self.client.get('/login')
+
+        self.assertEqual(response.headers.get('X-Content-Type-Options'), 'nosniff')
+        self.assertEqual(response.headers.get('X-Frame-Options'), 'SAMEORIGIN')
+        self.assertIn("default-src 'self'", response.headers.get('Content-Security-Policy', ''))
+        self.assertIn("form-action 'self'", response.headers.get('Content-Security-Policy', ''))
+        self.assertEqual(response.headers.get('Cross-Origin-Opener-Policy'), 'same-origin')
+
+    def test_production_rejects_insecure_default_secrets(self):
+        class ProductionConfig(TestConfig):
+            ENVIRONMENT = 'production'
+            SECRET_KEY = 'adega-jf-secret-key'
+            MASTER_DEFAULT_PASSWORD = 'master123'
+
+        with self.assertRaises(RuntimeError):
+            create_app(ProductionConfig)
 
     def test_register_creates_user_but_requires_subscription(self):
         response = self.client.post(
@@ -92,8 +170,8 @@ class RouteTestCase(unittest.TestCase):
                 'username': 'operador',
                 'company_name': 'Adega Operador',
                 'email': 'operador@example.com',
-                'password': 'senha123',
-                'confirm_password': 'senha123',
+                'password': self.STRONG_PASSWORD,
+                'confirm_password': self.STRONG_PASSWORD,
             },
             follow_redirects=True,
         )
@@ -108,7 +186,7 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(user.company.name, 'Adega Operador')
             self.assertEqual(user.company.activation_key, '')
             self.assertIsNone(user.company.subscription_renews_at)
-            self.assertTrue(user.check_password('senha123'))
+            self.assertTrue(user.check_password(self.STRONG_PASSWORD))
             self.assertEqual(EmailVerificationCode.query.filter_by(user_id=user.id).count(), 1)
 
         blocked_response = self.client.get('/dashboard', follow_redirects=True)
@@ -129,8 +207,8 @@ class RouteTestCase(unittest.TestCase):
                 'company_name': 'Adega Com Key',
                 'email': 'key@example.com',
                 'activation_key': 'ABCD-1234-EFGH-5678',
-                'password': 'senha123',
-                'confirm_password': 'senha123',
+                'password': self.STRONG_PASSWORD,
+                'confirm_password': self.STRONG_PASSWORD,
             },
             follow_redirects=True,
         )
@@ -297,7 +375,7 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(company.billing_cycle, 'annual')
             self.assertTrue(company.subscription_valid)
 
-        self.client.get('/logout')
+        self.client.post('/logout')
         login_response = self.login(username='renovadosemkey', password='senha123', follow_redirects=True)
 
         self.assertEqual(login_response.status_code, 200)
@@ -442,7 +520,7 @@ class RouteTestCase(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='vendedor', password='123')
 
         products_response = self.client.get('/catalogo/produtos', follow_redirects=True)
@@ -479,7 +557,7 @@ class RouteTestCase(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='consulta', password='123')
 
         products_response = self.client.get('/catalogo/produtos', follow_redirects=True)
@@ -540,7 +618,7 @@ class RouteTestCase(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='gerente', password='123')
 
         products_response = self.client.get('/catalogo/produtos')
@@ -627,7 +705,7 @@ class RouteTestCase(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='gerenteimport', password='123')
 
         response = self.client.post(
@@ -682,7 +760,7 @@ class RouteTestCase(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='semexport', password='123')
 
         settings_response = self.client.get('/configuracoes')
@@ -714,7 +792,7 @@ class RouteTestCase(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='funcionario', password='123')
 
         response = self.client.get('/configuracoes')
@@ -766,7 +844,7 @@ class RouteTestCase(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='semplano', password='123')
 
         dashboard_response = self.client.get('/dashboard')
@@ -801,7 +879,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Produto Girofy'.encode(), response_a.data)
         self.assertNotIn('Produto Jorge'.encode(), response_a.data)
 
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='adegadojorge123', password='123')
         response_b = self.client.get('/catalogo/produtos')
         self.assertEqual(response_b.status_code, 200)
@@ -831,7 +909,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(first_response.status_code, 200)
         self.assertIn('Categoria cadastrada com sucesso.'.encode(), first_response.data)
 
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='cat_b', password='123')
         second_response = self.client.post(
             '/catalogo/categorias',
@@ -967,7 +1045,7 @@ class RouteTestCase(unittest.TestCase):
             ))
             db.session.commit()
 
-        access_response = self.client.get(
+        access_response = self.client.post(
             f'/master/adegas/{company_id}/acessar',
             follow_redirects=True,
         )
@@ -976,7 +1054,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Master conectado em Adega Editada.'.encode(), access_response.data)
         self.assertIn('Dashboard'.encode(), access_response.data)
 
-        leave_response = self.client.get('/master/adegas/sair-acesso', follow_redirects=True)
+        leave_response = self.client.post('/master/adegas/sair-acesso', follow_redirects=True)
 
         self.assertEqual(leave_response.status_code, 200)
         self.assertIn('Você voltou para o painel master.'.encode(), leave_response.data)
@@ -988,7 +1066,7 @@ class RouteTestCase(unittest.TestCase):
         with self.app.app_context():
             self.assertFalse(db.session.get(Company, company_id).active)
 
-        self.client.get('/logout')
+        self.client.post('/logout')
         inactive_login = self.login(username='removivel', password='123')
 
         self.assertEqual(inactive_login.status_code, 200)
@@ -1174,8 +1252,8 @@ class RouteTestCase(unittest.TestCase):
                 'form_type': 'register',
                 'username': 'master',
                 'email': 'master2@example.com',
-                'password': 'senha123',
-                'confirm_password': 'senha123',
+                'password': self.STRONG_PASSWORD,
+                'confirm_password': self.STRONG_PASSWORD,
             },
         )
 
@@ -1192,8 +1270,8 @@ class RouteTestCase(unittest.TestCase):
                 'username': 'cliente',
                 'company_name': 'Adega Cliente',
                 'email': 'email-invalido',
-                'password': 'senha123',
-                'confirm_password': 'senha123',
+                'password': self.STRONG_PASSWORD,
+                'confirm_password': self.STRONG_PASSWORD,
             },
         )
 
@@ -1266,7 +1344,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Produto Baixo está com 2 un. Mínimo: 3 un.'.encode(), response.data)
         self.assertIn('Produto Sem Estoque está sem estoque. Mínimo: 5 un.'.encode(), response.data)
 
-        dismiss_response = self.client.get(f'/catalogo/produtos/{low_product_id}/notificacao-estoque', follow_redirects=True)
+        dismiss_response = self.client.post(f'/catalogo/produtos/{low_product_id}/notificacao-estoque', follow_redirects=True)
 
         self.assertEqual(dismiss_response.status_code, 200)
         self.assertNotIn('Produto Baixo está com 2 un. Mínimo: 3 un.'.encode(), dismiss_response.data)
@@ -1424,7 +1502,7 @@ class RouteTestCase(unittest.TestCase):
             ))
             db.session.commit()
 
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='dashboard_func', password='123')
         response = self.client.get('/dashboard')
 
@@ -1444,7 +1522,7 @@ class RouteTestCase(unittest.TestCase):
         response = self.login(password='senha-errada')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Senha incorreta.'.encode(), response.data)
+        self.assertIn('Usuário/e-mail ou senha inválidos.'.encode(), response.data)
         self.assertIn('value="master"'.encode(), response.data)
         self.assertIn('Entrar'.encode(), response.data)
 
@@ -1452,7 +1530,7 @@ class RouteTestCase(unittest.TestCase):
         unknown_response = self.login(username='ninguem@example.com', password='master123')
 
         self.assertEqual(unknown_response.status_code, 200)
-        self.assertIn('Usuário ou e-mail não encontrado.'.encode(), unknown_response.data)
+        self.assertIn('Usuário/e-mail ou senha inválidos.'.encode(), unknown_response.data)
         self.assertIn('value="ninguem@example.com"'.encode(), unknown_response.data)
 
         with self.app.app_context():
@@ -1553,14 +1631,18 @@ class RouteTestCase(unittest.TestCase):
     def test_logout_redirects_to_login(self):
         self.login()
 
-        response = self.client.get('/logout', follow_redirects=True)
+        get_response = self.client.get('/logout', follow_redirects=True)
+
+        self.assertEqual(get_response.status_code, 405)
+
+        response = self.client.post('/logout', follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Você saiu do sistema.'.encode(), response.data)
         self.assertIn('Entrar'.encode(), response.data)
 
     def test_logout_redirects_anonymous_users_to_login(self):
-        response = self.client.get('/logout')
+        response = self.client.post('/logout')
 
         self.assertEqual(response.status_code, 302)
         self.assertIn('/login', response.location)
@@ -1749,7 +1831,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.add(company)
             db.session.commit()
             company_id = company.id
-        self.client.get(f'/master/adegas/{company_id}/acessar', follow_redirects=True)
+        self.client.post(f'/master/adegas/{company_id}/acessar', follow_redirects=True)
 
         response = self.client.get('/assinaturas?planos=1')
 
@@ -3090,7 +3172,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.commit()
             company_id = company.id
 
-        access_response = self.client.get(f'/master/adegas/{company_id}/acessar', follow_redirects=True)
+        access_response = self.client.post(f'/master/adegas/{company_id}/acessar', follow_redirects=True)
         self.assertEqual(access_response.status_code, 200)
         self.assertIn('Painel master'.encode(), access_response.data)
         self.assertIn('Você está acessando a adega'.encode(), access_response.data)
@@ -3205,7 +3287,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.commit()
             cash_register_id = cash_register.id
 
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.login(username='caixa_sem_total', password='123')
 
         cash_response = self.client.get('/caixa')

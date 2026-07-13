@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db, login_manager
 from app.error_logging import log_http_error, setup_error_logging
+from app.security.csrf import init_csrf
 from config import Config
 
 
@@ -334,11 +335,18 @@ def ensure_company_backup_columns():
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    environment = (app.config.get('ENVIRONMENT') or app.config.get('APP_ENV') or '').lower()
+    if environment == 'production':
+        if app.config.get('SECRET_KEY') == 'adega-jf-secret-key':
+            raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em produção.')
+        if app.config.get('MASTER_DEFAULT_PASSWORD') == 'master123':
+            raise RuntimeError('Defina MASTER_DEFAULT_PASSWORD seguro antes de rodar em produção.')
     setup_error_logging(app)
     ensure_mysql_database_exists(app.config['SQLALCHEMY_DATABASE_URI'])
 
     db.init_app(app)
     login_manager.init_app(app)
+    init_csrf(app)
 
     with app.app_context():
         from app.models import Company, User
@@ -487,6 +495,21 @@ def create_app(config_class=Config):
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+        response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+        if app.config.get('SESSION_COOKIE_SECURE'):
+            response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        response.headers.setdefault('Content-Security-Policy', (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data:; "
+            "font-src 'self' data: https://cdn.jsdelivr.net; "
+            "connect-src 'self'; "
+            "frame-ancestors 'self'; "
+            "base-uri 'self'; "
+            "form-action 'self'"
+        ))
         return response
 
     @app.context_processor
@@ -600,6 +623,7 @@ def create_app(config_class=Config):
                     'title': title,
                     'message': message,
                     'url': url_for('catalog.dismiss_low_stock_notification', product_id=product.id),
+                    'method': 'post',
                     'key': notification_key,
                 })
 

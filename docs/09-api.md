@@ -28,7 +28,7 @@ Payload login:
 {
   "form_type": "login",
   "username": "admin",
-  "password": "admin123"
+  "password": "SenhaForte123"
 }
 ```
 
@@ -39,8 +39,8 @@ Payload cadastro:
   "form_type": "register",
   "username": "operador",
   "email": "operador@example.com",
-  "password": "senha123",
-  "confirm_password": "senha123"
+  "password": "SenhaForte123",
+  "confirm_password": "SenhaForte123"
 }
 ```
 
@@ -48,19 +48,21 @@ Sucesso: redirect para `/dashboard`.
 
 Erros:
 
-- Usuário ou senha inválidos.
+- Usuário/e-mail ou senha inválidos.
 - Usuário obrigatório.
-- Senha menor que 6 caracteres.
+- Senha fora da política mínima.
 - Confirmação divergente.
 - Usuário duplicado.
 
-### `GET /logout`
+### `POST /logout`
 
 Descrição: encerra sessão.
 
 Permissão: autenticado.
 
 Sucesso: redirect para `/login`.
+
+Observação: `GET /logout` não altera sessão e retorna método não permitido.
 
 ## Configurações
 
@@ -101,9 +103,9 @@ Payload senha:
 ```json
 {
   "form_type": "password",
-  "current_password": "admin123",
-  "new_password": "nova123",
-  "confirm_password": "nova123"
+  "current_password": "SenhaForte123",
+  "new_password": "NovaSenhaForte123",
+  "confirm_password": "NovaSenhaForte123"
 }
 ```
 

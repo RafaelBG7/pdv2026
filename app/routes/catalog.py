@@ -700,7 +700,7 @@ def quick_update_product(product_id):
     return redirect(url_for('catalog.products', status='all'))
 
 
-@catalog_bp.route('/produtos/<int:product_id>/notificacao-estoque')
+@catalog_bp.route('/produtos/<int:product_id>/notificacao-estoque', methods=['POST'])
 @login_required
 @permission_required('can_view_products')
 def dismiss_low_stock_notification(product_id):

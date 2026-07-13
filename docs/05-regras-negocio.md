@@ -11,7 +11,7 @@
 - Cadastro pode receber uma key válida ou marcar "Não tenho key".
 - Cadastro sem key é permitido, mas a adega fica bloqueada para operação.
 - Cada nova adega deve ter seu banco MySQL operacional próprio.
-- O usuário inicial global é `master/master123`.
+- O usuário inicial global usa `MASTER_DEFAULT_USERNAME` e `MASTER_DEFAULT_PASSWORD`; em produção a senha padrão `master123` é recusada.
 
 ## Assinatura e Key
 

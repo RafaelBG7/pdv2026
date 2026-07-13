@@ -271,7 +271,9 @@
         <div><span>Cadastrado em</span><strong>{{ user.created_at.strftime('%d/%m/%Y') if user.created_at else '-' }}</strong></div>
       </div>
       {% if user.company %}
-      <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.access_company', company_id=user.company.id) }}">Acessar adega</a>
+      <form method="post" action="{{ url_for('auth.access_company', company_id=user.company.id) }}">
+        <button class="btn btn-outline-light btn-sm" type="submit">Acessar adega</button>
+      </form>
       {% endif %}
     </details>
     {% else %}
@@ -283,7 +285,9 @@
 {% elif master_section == 'companies' %}
 {% macro company_actions(company) %}
 <div class="table-actions justify-content-end">
-  <a class="btn btn-primary btn-sm" href="{{ url_for('auth.access_company', company_id=company.id) }}">Acessar</a>
+  <form method="post" action="{{ url_for('auth.access_company', company_id=company.id) }}">
+    <button class="btn btn-primary btn-sm" type="submit">Acessar</button>
+  </form>
   <form method="post" action="{{ url_for('auth.toggle_company_status', company_id=company.id) }}">
     <button class="btn btn-outline-warning btn-sm" type="submit" {% if company.id == current_user.company_id %}disabled{% endif %}>
       {{ 'Inativar' if company.active else 'Ativar' }}

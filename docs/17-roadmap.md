@@ -32,10 +32,10 @@ Implementado:
 
 ## Prioridade Alta
 
-- Implementar CSRF nos formulários.
+- Evoluir rate limit para Redis ou armazenamento compartilhado.
 - Adicionar migrações versionadas com Alembic/Flask-Migrate.
 - Criar fluxo de restauração de backup.
-- Remover `debug=True` em ambiente de produção.
+- Manter `FLASK_DEBUG=0` em ambiente de produção.
 - Forçar `SECRET_KEY` segura fora do desenvolvimento.
 
 ## Operação do PDV

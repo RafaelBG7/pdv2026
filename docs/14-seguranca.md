@@ -2,7 +2,7 @@
 
 ## Status Atual
 
-O projeto possui segurança básica funcional para uso local/controlado, mas ainda precisa de hardening antes de produção pública.
+O projeto possui segurança funcional para uso controlado e recebeu uma primeira etapa de hardening de aplicação. A base atual cobre autenticação, permissões, isolamento por adega, CSRF, headers de segurança, cookies por ambiente, logs mascarados e auditoria. Ainda existem pontos de produção pública que exigem próximas etapas, principalmente rate limit persistente, migrações versionadas, reautenticação para operações destrutivas e revisão Docker completa.
 
 ## Implementado
 
@@ -36,9 +36,62 @@ Senhas são armazenadas com hash Werkzeug:
 generate_password_hash(password, method='scrypt')
 ```
 
+### Política de Senha
+
+A validação fica centralizada em `app/security/passwords.py` e é reutilizada em:
+
+- cadastro público;
+- recuperação/redefinição de senha;
+- alteração de senha nas configurações;
+- contratação/criação de funcionário.
+
+Regras atuais:
+
+- mínimo de 8 caracteres;
+- máximo configurável, padrão 128 caracteres;
+- recusa senha vazia ou formada só por espaços;
+- recusa senha igual ao usuário;
+- recusa senha igual ao e-mail;
+- recusa senhas comuns como `senha123`, `admin123`, `master123` e similares.
+
+As variáveis relevantes são:
+
+```env
+PASSWORD_MIN_LENGTH=8
+PASSWORD_MAX_LENGTH=128
+```
+
 ### Sessão Autenticada
 
 Rotas principais usam `@login_required`.
+
+### CSRF
+
+O projeto possui proteção CSRF central em `app/security/csrf.py`.
+
+Funcionamento:
+
+- cada sessão recebe um token aleatório gerado com `secrets.token_urlsafe`;
+- o token fica disponível no layout base por `<meta name="csrf-token">`;
+- `app/static/js/main.js` injeta `_csrf_token` em formulários não-GET;
+- requisições `fetch` com `POST`, `PUT`, `PATCH` ou `DELETE` recebem header `X-CSRFToken`;
+- requisições sem token, com token inválido ou de outra sessão retornam HTTP 400;
+- falha de CSRF é registrada sem stack trace para o usuário.
+
+Configuração:
+
+```env
+CSRF_ENABLED=1
+```
+
+Em testes, `WTF_CSRF_ENABLED=False` pode ser usado para manter os testes de rotas focados. A suíte também possui testes específicos com CSRF habilitado.
+
+Ações que alteram estado foram migradas para `POST`:
+
+- `/logout`;
+- `/master/adegas/<id>/acessar`;
+- `/master/adegas/sair-acesso`;
+- `/catalogo/produtos/<id>/notificacao-estoque`.
 
 ### Permissões por Perfil
 
@@ -104,6 +157,34 @@ SQLAlchemy reduz risco de SQL Injection nas consultas normais.
 
 Jinja2 escapa variáveis por padrão, reduzindo risco de XSS básico.
 
+### Cabeçalhos HTTP
+
+As respostas recebem headers centralizados na factory:
+
+- `X-Content-Type-Options: nosniff`;
+- `X-Frame-Options: SAMEORIGIN`;
+- `Referrer-Policy`;
+- `Permissions-Policy`;
+- `Cross-Origin-Opener-Policy`;
+- `Cross-Origin-Resource-Policy`;
+- `Content-Security-Policy`.
+
+A CSP atual permite recursos próprios e Bootstrap via `cdn.jsdelivr.net`, mantendo compatibilidade com scripts e estilos existentes. A próxima etapa recomendada é reduzir gradualmente `unsafe-inline`.
+
+### Cookies e Ambiente
+
+Configurações principais:
+
+```env
+APP_ENV=production
+FLASK_DEBUG=0
+SESSION_LIFETIME_HOURS=8
+SESSION_COOKIE_SECURE=1
+SESSION_COOKIE_SAMESITE=Lax
+```
+
+Em produção, a aplicação recusa inicializar com `SECRET_KEY` padrão e com `MASTER_DEFAULT_PASSWORD=master123`.
+
 ## Parcialmente Implementado
 
 ### Chave Secreta
@@ -129,27 +210,19 @@ Backup por adega existe, mas produção deve enviar cópias para local externo.
 
 Existe bloqueio simples em memória após tentativas inválidas de login. Ele protege o uso local/controlado, mas em produção deve ser substituído ou complementado por uma solução persistente, como Flask-Limiter com Redis ou outro armazenamento compartilhado.
 
-## Não Implementado
-
-### CSRF
-
-Formulários POST ainda não possuem token CSRF.
-
-Recomendação:
-
-- Adicionar Flask-WTF ou proteção CSRF equivalente.
-- Incluir token em todos os formulários.
-
 ## Recomendações de Produção
 
-- Trocar senha padrão do `master`.
+- Definir `MASTER_DEFAULT_PASSWORD` forte antes da primeira inicialização.
 - Definir `SECRET_KEY` forte.
 - Rodar com `DEBUG=False`.
 - Usar domínio com HTTPS.
 - Criar usuário MySQL dedicado.
 - Restringir painel master.
-- Ativar CSRF.
 - Usar rate limit persistente para `/login` e endpoints sensíveis.
+- Exigir confirmação digitada/reautenticação para excluir adega e operações destrutivas.
+- Adotar Alembic/Flask-Migrate para migrações versionadas.
+- Revisar upload/importação com limites de linhas e validação MIME mais forte.
+- Revisar Docker para usuário não-root e imagem final mínima.
 - Guardar backups fora do servidor.
 - Ampliar auditoria para cancelamentos, estornos e aprovações futuras.
 - Monitorar erros 500 e tentativas negadas.

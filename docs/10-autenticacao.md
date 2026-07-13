@@ -134,14 +134,14 @@ Regras:
 
 ## Usuário Master do Sistema
 
-Na inicialização, o sistema garante um usuário global:
+Na inicialização, o sistema garante um usuário global usando as variáveis:
 
 ```text
-Usuário: master
-Senha: master123
+MASTER_DEFAULT_USERNAME
+MASTER_DEFAULT_PASSWORD
 ```
 
-Esse usuário administra o SaaS inteiro e não deve ser confundido com o admin de uma adega.
+Em desenvolvimento, o padrão local pode ser `master/master123` para facilitar testes. Em produção, a aplicação recusa iniciar com `MASTER_DEFAULT_PASSWORD=master123`. Esse usuário administra o SaaS inteiro e não deve ser confundido com o admin de uma adega.
 
 ## Admin da Adega
 
@@ -177,6 +177,16 @@ Configuração importante:
 - `SECRET_KEY` deve ser forte em produção.
 - A chave padrão existe apenas para desenvolvimento local.
 - Sessão persistente depende do cookie `remember_token`, gerado somente quando "Lembre de mim" é marcado.
+- Cookies usam `HttpOnly`, `SameSite=Lax` e `Secure` quando `APP_ENV=production`.
+
+## CSRF
+
+Formulários e requisições JavaScript que usam `POST`, `PUT`, `PATCH` ou `DELETE` são protegidos por token CSRF de sessão.
+
+O token é exposto no `base.html` e enviado automaticamente pelo JavaScript em:
+
+- campo oculto `_csrf_token`;
+- header `X-CSRFToken` para `fetch`.
 
 ## Bloqueios de Segurança
 
@@ -189,9 +199,9 @@ O sistema bloqueia:
 - Operação de adega sem assinatura/key ativa.
 - Acesso a rotas sem autenticação.
 - Acesso a rotas protegidas sem permissão.
+- POST sem token CSRF válido.
 
 ## Pendências
 
-- CSRF nos formulários.
 - Rate limit persistente/distribuído para produção.
-- Política de senha mais forte.
+- Reautenticação para operações extremamente críticas.

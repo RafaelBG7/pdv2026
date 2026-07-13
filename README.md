@@ -65,7 +65,7 @@ Pontos mais maduros:
 
 Pontos que ainda merecem prioridade antes de produção pública:
 
-- CSRF nos formulários;
+- rate limit persistente/distribuído para endpoints sensíveis;
 - migrações versionadas com Alembic/Flask-Migrate;
 - restauração guiada de backup;
 - cobrança real e regras concretas para Basic/Pro;
@@ -141,6 +141,7 @@ pdv-adega-jf/
 | `app/extensions.py` | Instâncias globais de `SQLAlchemy` e `LoginManager`. |
 | `app/error_logging.py` | Logs detalhados de erro com `request_id`, usuário, endpoint, método, formulário protegido e rotação de arquivo. |
 | `app/permissions.py` | Decorator `permission_required` e nomes das permissões do sistema. |
+| `app/security/` | Validações e proteções de segurança reutilizáveis, incluindo CSRF por sessão e política de senha. |
 | `app/tenant.py` | Gerencia banco separado por adega, criação automática de databases MySQL, sessão por tenant e sincronização de empresa/usuários no banco da adega. |
 | `app/models/` | Modelos SQLAlchemy: empresas, usuários, produtos, categorias, caixa, vendas, itens, pagamentos e contas a pagar. |
 | `app/routes/` | Rotas Flask separadas por domínio: autenticação/configurações, catálogo, estoque, auditoria e operação principal. |
@@ -177,7 +178,7 @@ Regras importantes:
 
 - usuário não pode ser vazio;
 - "Lembre de mim" cria cookie persistente do Flask-Login apenas quando marcado;
-- senha de cadastro precisa ter pelo menos 3 caracteres;
+- senha de cadastro precisa seguir a política mínima: 8 a 128 caracteres, não pode ser vazia, igual ao usuário/e-mail ou extremamente comum;
 - confirmação de senha precisa bater;
 - username deve ser único;
 - e-mail é obrigatório no cadastro inicial para receber o código de confirmação;
@@ -188,14 +189,14 @@ Regras importantes:
 
 ### Usuário master inicial
 
-Na primeira inicialização, caso não exista um usuário `master`, o sistema cria:
+Na primeira inicialização, caso não exista um usuário `master`, o sistema cria o usuário definido pelas variáveis:
 
 ```text
-Usuário: master
-Senha: master123
+MASTER_DEFAULT_USERNAME
+MASTER_DEFAULT_PASSWORD
 ```
 
-Esse usuário é o master do sistema inteiro, não apenas de uma adega.
+Em desenvolvimento, o padrão local continua sendo `master/master123` para facilitar testes. Em produção (`APP_ENV=production`), a aplicação recusa inicializar com `SECRET_KEY` padrão ou `MASTER_DEFAULT_PASSWORD=master123`.
 
 ### Painel master de adegas
 
@@ -287,7 +288,7 @@ Regras importantes:
 - os controles de acessibilidade ficam somente em `Configurações > Acessibilidade`;
 - troca de e-mail confirmada envia link para o e-mail antigo;
 - alertas críticos podem ser direcionados para emails específicos por adega;
-- nova senha precisa ter pelo menos 3 caracteres;
+- nova senha precisa seguir a política mínima de segurança do sistema;
 - funcionário comum não vê abas sensíveis como equipe, financeiro e plano;
 - cada adega pode ter usuário administrador próprio;
 - não é permitido criar outro usuário com username já existente;
@@ -1364,6 +1365,13 @@ SELECT id, username, role, company_id, is_active FROM users;
 
 ```env
 SECRET_KEY=troque-esta-chave-em-producao
+APP_ENV=development
+FLASK_DEBUG=0
+MASTER_DEFAULT_USERNAME=master
+MASTER_DEFAULT_PASSWORD=troque-esta-senha
+PASSWORD_MIN_LENGTH=8
+PASSWORD_MAX_LENGTH=128
+CSRF_ENABLED=1
 MYSQL_USER=root
 MYSQL_PASSWORD=
 MYSQL_HOST=127.0.0.1
@@ -1383,6 +1391,9 @@ MAIL_SUPPRESS_SEND=0
 AUTO_AUDIT_CLEANUP_ENABLED=1
 AUTO_AUDIT_CLEANUP_INTERVAL_SECONDS=259200
 AUTO_AUDIT_RETENTION_DAYS=90
+SESSION_LIFETIME_HOURS=8
+SESSION_COOKIE_SECURE=0
+SESSION_COOKIE_SAMESITE=Lax
 PORT=5003
 ```
 
@@ -1400,7 +1411,7 @@ Quando `DATABASE_URL` existe, ela substitui a montagem automática baseada em `M
 O `app.py` já roda com:
 
 ```python
-app.run(host='0.0.0.0', port=port, debug=True)
+app.run(host='0.0.0.0', port=port, debug=debug)
 ```
 
 Isso permite acesso por outro computador da mesma rede.
@@ -1504,13 +1515,13 @@ ip addr
 | Método | Rota | Função | Template | Login | Descrição |
 |---|---|---|---|---|---|
 | GET/POST | `/login` | `login` | `login.html` | Não | Exibe login, autentica usuário e cadastra nova adega. |
-| GET | `/logout` | `logout` | - | Sim | Encerra sessão e redireciona para login. |
+| POST | `/logout` | `logout` | - | Sim | Encerra sessão e redireciona para login. |
 | GET/POST | `/assinatura` | `subscription_activation` | `subscription/activation.html` | Sim | Mostra status da assinatura e valida key. |
 | GET | `/assinaturas` | `subscriptions` | `subscription/plans.html` | Sim | Mostra planos Basic e Pro. |
 | GET | `/master/adegas` | `master_companies` | `master/companies.html` | Sim, master | Lista e gerencia adegas. |
 | POST | `/master/adegas/<company_id>/editar` | `edit_company` | - | Sim, master | Edita dados, plano, renovação e key da adega. |
-| GET | `/master/adegas/<company_id>/acessar` | `access_company` | - | Sim, master | Conecta o master em uma adega. |
-| GET | `/master/adegas/sair-acesso` | `leave_company_access` | - | Sim, master | Sai do acesso da adega. |
+| POST | `/master/adegas/<company_id>/acessar` | `access_company` | - | Sim, master | Conecta o master em uma adega. |
+| POST | `/master/adegas/sair-acesso` | `leave_company_access` | - | Sim, master | Sai do acesso da adega. |
 | POST | `/master/adegas/<company_id>/alternar-status` | `toggle_company_status` | - | Sim, master | Ativa/inativa adega. |
 | POST | `/master/adegas/<company_id>/excluir` | `delete_company` | - | Sim, master | Exclui adega, usuários e banco MySQL da adega. |
 | GET/POST | `/configuracoes` | `settings` | `settings/index.html` | Sim | Perfil, email, senha, equipe, permissões, taxas e aparência. |
@@ -1524,7 +1535,7 @@ ip addr
 | GET/POST | `/catalogo/produtos/novo` | `new_product` | `catalog/product_form.html` | `can_manage_products` | Cadastra produto. |
 | GET/POST | `/catalogo/produtos/<product_id>/editar` | `edit_product` | `catalog/product_form.html` | `can_manage_products` | Edita produto. |
 | POST | `/catalogo/produtos/<product_id>/atualizar` | `quick_update_product` | - | `can_manage_products` | Atualização rápida pela lista. |
-| GET | `/catalogo/produtos/<product_id>/notificacao-estoque` | `dismiss_low_stock_notification` | - | `can_view_products` | Dispensa alerta de estoque baixo. |
+| POST | `/catalogo/produtos/<product_id>/notificacao-estoque` | `dismiss_low_stock_notification` | - | `can_view_products` | Dispensa alerta de estoque baixo. |
 | POST | `/catalogo/produtos/<product_id>/alternar-status` | `toggle_product` | - | `can_manage_products` | Ativa/inativa produto. |
 | POST | `/catalogo/produtos/<product_id>/excluir` | `delete_product` | - | `can_manage_products` | Exclui produto. |
 | GET/POST | `/catalogo/categorias` | `categories` | `catalog/categories.html` | `can_manage_categories` | Lista, filtra e cadastra categorias. |
@@ -1603,6 +1614,8 @@ O repositório possui assets de marca do Girofy em `app/static/img/` e usa CSS/B
 O projeto já possui:
 
 - login e logout com Flask-Login;
+- proteção CSRF por token de sessão em formulários e requisições JavaScript `POST`, `PUT`, `PATCH` e `DELETE`;
+- logout, acesso master a adega, saída do acesso master e dispensa de notificação migrados para `POST`;
 - senha armazenada com hash via Werkzeug;
 - proteção de rotas com `@login_required`;
 - permissões por usuário com `permission_required`;
@@ -1612,6 +1625,10 @@ O projeto já possui:
 - consultas ORM/parametrizadas, reduzindo risco de SQL Injection;
 - logs com proteção de campos sensíveis como senhas;
 - `SECRET_KEY` configurável por variável de ambiente;
+- política central de senha com tamanho mínimo/máximo e bloqueio de senhas comuns;
+- resposta pública genérica para falhas de login, reduzindo enumeração de usuários;
+- cookies de sessão e remember configuráveis por ambiente com `HttpOnly`, `SameSite` e `Secure` em produção;
+- headers HTTP de segurança como `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy` e CSP;
 - verificação de e-mail no cadastro;
 - troca de e-mail protegida por confirmação no e-mail antigo;
 - recuperação de senha por token temporário;
@@ -1625,9 +1642,9 @@ O projeto já possui:
 ### Pontos de atenção de segurança
 
 - O `SECRET_KEY` padrão deve ser trocado em qualquer ambiente real.
-- O app roda com `debug=True` em `app.py`; isso não deve ser usado em produção.
-- Não há CSRF explícito nos formulários.
-- Não há política de força de senha além de tamanho mínimo 3.
+- O app só ativa debug quando `FLASK_DEBUG=1`; em produção use Gunicorn/Docker e `APP_ENV=production`.
+- CSRF está ativo por padrão fora de testes. Testes podem usar `WTF_CSRF_ENABLED=False` apenas no ambiente de teste.
+- Rate limit de login ainda é simples e em memória; produção com múltiplos workers deve evoluir para armazenamento compartilhado.
 - O `.env` não deve ser versionado com senhas reais.
 - O usuário MySQL `root` não é recomendado em produção.
 
@@ -1753,8 +1770,8 @@ Próximos passos para SaaS completo:
 
 - Adotar Flask-Migrate/Alembic para migrações versionadas.
 - Criar Dockerfile e `docker-compose.yml`.
-- Desativar debug em produção.
-- Adicionar CSRF nos formulários.
+- Evoluir rate limit para armazenamento compartilhado em produção.
+- Reduzir `unsafe-inline` da CSP com nonce ou hashes.
 - Ampliar camada de services para outras regras além de estoque/auditoria.
 - Ampliar auditoria para cancelamentos, estornos e aprovações futuras.
 - Melhorar testes de banco MySQL real.
@@ -1808,13 +1825,13 @@ Próximos passos para SaaS completo:
 - [x] Navbar colapsável
 - [x] Logs de erro
 - [x] Auditoria de ações críticas
+- [x] CSRF em formulários e requisições JavaScript
 - [x] Movimentações de estoque separadas
 - [x] Backup manual pela interface
 - [x] Backup por período
 - [x] Testes automatizados de rotas
 - [ ] Migrações com Alembic
 - [ ] Docker
-- [ ] CSRF
 - [ ] Impressão de comprovante
 - [ ] Integração real com pagamento
 - [x] Deploy de produção

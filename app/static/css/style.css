@@ -757,14 +757,18 @@ body {
 }
 
 .user-menu-logout {
+  width: 100%;
+  border: 0;
   display: flex;
   align-items: center;
   gap: 0.6rem;
   padding: 0.85rem 1rem;
   border-top: 1px solid var(--border);
+  background: transparent;
   color: var(--danger);
   font-weight: 800;
   text-decoration: none;
+  text-align: left;
 }
 
 .user-menu-logout:hover {
@@ -865,6 +869,7 @@ body {
 }
 
 .notification-item {
+  width: 100%;
   display: grid;
   gap: 0.25rem;
   padding: 0.75rem;
@@ -872,7 +877,17 @@ body {
   border-radius: 0.5rem;
   color: var(--text);
   text-decoration: none;
+  text-align: left;
   background: var(--surface-2);
+}
+
+.notification-dismiss-form {
+  margin: 0;
+}
+
+.notification-item-button {
+  border: 1px solid var(--border);
+  font: inherit;
 }
 
 .notification-item:hover {

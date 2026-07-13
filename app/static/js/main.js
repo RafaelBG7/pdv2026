@@ -20,8 +20,44 @@ document.addEventListener('DOMContentLoaded', function () {
   const notificationMenu = document.querySelector('.notification-menu');
   const globalNewSaleLink = document.querySelector('[data-global-new-sale]');
   const postSaleNewSaleLink = document.querySelector('[data-post-sale-new-sale]');
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   let pendingPermissionForm = null;
   let pendingPermissionSubmitter = null;
+
+  function ensureCsrfField(form) {
+    if (!csrfToken || !form || (form.method || '').toLowerCase() === 'get') {
+      return;
+    }
+    let csrfField = form.querySelector('input[name="_csrf_token"]');
+    if (!csrfField) {
+      csrfField = document.createElement('input');
+      csrfField.type = 'hidden';
+      csrfField.name = '_csrf_token';
+      form.appendChild(csrfField);
+    }
+    csrfField.value = csrfToken;
+  }
+
+  document.querySelectorAll('form').forEach(ensureCsrfField);
+  document.addEventListener('submit', function (event) {
+    ensureCsrfField(event.target);
+  }, true);
+
+  if (csrfToken && window.fetch) {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+      const requestInit = init || {};
+      const method = (requestInit.method || (input && input.method) || 'GET').toUpperCase();
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].indexOf(method) >= 0) {
+        const headers = new Headers(requestInit.headers || (input && input.headers) || {});
+        if (!headers.has('X-CSRFToken')) {
+          headers.set('X-CSRFToken', csrfToken);
+        }
+        requestInit.headers = headers;
+      }
+      return originalFetch(input, requestInit);
+    };
+  }
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);

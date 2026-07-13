@@ -24,6 +24,7 @@ from app.permissions import (
     has_permission_view_override,
     user_can_override_permission,
 )
+from app.security.passwords import validate_password_strength
 from app.services.alert_service import EMAIL_ALERT_TYPES, alert_settings_for_company, parse_recipients
 from app.services.audit_service import record_audit_event
 from app.services.email_service import EmailAuthenticationError, send_email_change_confirmation, send_password_reset_email, send_verification_code_email
@@ -78,6 +79,7 @@ KEY_PRESETS = (
 LOGIN_ATTEMPTS = {}
 LOGIN_ATTEMPT_LIMIT = 5
 LOGIN_BLOCK_SECONDS = 15 * 60
+LOGIN_FAILED_MESSAGE = 'Usuário/e-mail ou senha inválidos.'
 VERIFICATION_CODE_TTL_MINUTES = 15
 VERIFICATION_ATTEMPT_LIMIT = 5
 VERIFICATION_RESEND_SECONDS = 60
@@ -173,6 +175,21 @@ def password_min_length():
 
 def password_too_short(password):
     return len(password or '') < password_min_length()
+
+
+def password_validation_messages(password, username='', email=''):
+    return validate_password_strength(
+        password,
+        username=username,
+        email=email,
+        min_length=password_min_length(),
+        max_length=int(current_app.config.get('PASSWORD_MAX_LENGTH') or 128),
+    )
+
+
+def password_first_error(password, username='', email=''):
+    messages = password_validation_messages(password, username=username, email=email)
+    return messages[0] if messages else ''
 
 
 def valid_email(value):
@@ -643,9 +660,10 @@ def login():
             if not valid_email(email):
                 flash('Informe um e-mail válido.', 'danger')
                 return render_auth_form('register', form_values, {'email': 'Este e-mail não parece válido.'})
-            if password_too_short(password):
-                flash(f'A senha deve ter pelo menos {password_min_length()} caracteres.', 'danger')
-                return render_auth_form('register', form_values, {'password': f'Use pelo menos {password_min_length()} caracteres.'})
+            password_error = password_first_error(password, username=username, email=email)
+            if password_error:
+                flash(password_error, 'danger')
+                return render_auth_form('register', form_values, {'password': password_error})
             if password != confirm_password:
                 flash('A confirmação da senha não confere.', 'danger')
                 return render_auth_form('register', form_values, {'confirm_password': 'A confirmação não confere com a senha.'})
@@ -764,18 +782,14 @@ def login():
             'auth',
             None,
             f'Tentativa de login falhou para {username}.',
-            new_values={'identifier': username, 'user_exists': bool(user)},
+            new_values={'identifier': username},
             company_id=user.company_id if user else None,
             user=user,
             db_session=db.session,
         )
         db.session.commit()
-        if user:
-            flash('Senha incorreta.', 'danger')
-            return render_auth_form('login', login_form_values(), {'password': 'Senha incorreta.'})
-
-        flash('Usuário ou e-mail não encontrado.', 'danger')
-        return render_auth_form('login', login_form_values(), {'username': 'Usuário ou e-mail não encontrado.'})
+        flash(LOGIN_FAILED_MESSAGE, 'danger')
+        return render_auth_form('login', login_form_values(), {'password': LOGIN_FAILED_MESSAGE})
 
     return render_auth_form('login')
 
@@ -930,8 +944,9 @@ def reset_password(token):
     if request.method == 'POST':
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
-        if password_too_short(password):
-            flash(f'A senha deve ter pelo menos {password_min_length()} caracteres.', 'danger')
+        password_error = password_first_error(password, username=user.username, email=user.email)
+        if password_error:
+            flash(password_error, 'danger')
             return render_template('reset_password.html', token=token)
         if password != confirm_password:
             flash('A confirmação da senha não confere.', 'danger')
@@ -979,7 +994,7 @@ def confirm_email_change(token):
     return redirect(url_for('auth.login'))
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
     record_audit_event(
@@ -1533,7 +1548,7 @@ def edit_company(company_id):
     return redirect(url_for('auth.master_companies', view=request.form.get('view_mode', 'table')))
 
 
-@auth_bp.route('/master/adegas/<int:company_id>/acessar')
+@auth_bp.route('/master/adegas/<int:company_id>/acessar', methods=['POST'])
 @login_required
 def access_company(company_id):
     if not master_required():
@@ -1555,7 +1570,7 @@ def access_company(company_id):
     return redirect(url_for('main.dashboard'))
 
 
-@auth_bp.route('/master/adegas/sair-acesso')
+@auth_bp.route('/master/adegas/sair-acesso', methods=['POST'])
 @login_required
 def leave_company_access():
     if not master_required():
@@ -1781,8 +1796,9 @@ def settings():
             if not current_user.check_password(current_password):
                 flash('Senha atual incorreta.', 'danger')
                 return redirect(url_for('auth.settings'))
-            if password_too_short(new_password):
-                flash(f'A nova senha deve ter pelo menos {password_min_length()} caracteres.', 'danger')
+            password_error = password_first_error(new_password, username=current_user.username, email=current_user.email)
+            if password_error:
+                flash(password_error, 'danger')
                 return redirect(url_for('auth.settings'))
             if new_password != confirm_password:
                 flash('A confirmação da senha não confere.', 'danger')
@@ -1902,8 +1918,9 @@ def settings():
             if not username:
                 flash('Informe o login do novo usuário.', 'danger')
                 return redirect(url_for('auth.settings'))
-            if password_too_short(password):
-                flash(f'A senha inicial deve ter pelo menos {password_min_length()} caracteres.', 'danger')
+            password_error = password_first_error(password, username=username, email=email)
+            if password_error:
+                flash(password_error, 'danger')
                 return redirect(url_for('auth.settings'))
             if User.query.filter_by(username=username).first():
                 flash('Já existe um usuário com este login.', 'danger')

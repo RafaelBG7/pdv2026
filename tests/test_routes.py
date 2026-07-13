@@ -1753,11 +1753,21 @@ class RouteTestCase(unittest.TestCase):
         tenant_module._reference_sync_locks.pop(cache_key, None)
 
         try:
-            with patch('app.tenant.sync_tenant_reference_data') as sync_reference_data:
+            with (
+                patch('app.tenant.time.monotonic', return_value=1000.0),
+                patch('app.tenant.current_user_missing_from_tenant', return_value=False),
+                patch('app.tenant.sync_tenant_reference_data') as sync_reference_data,
+            ):
                 tenant_module.ensure_tenant_reference_data(company, engine, cache_key)
+                self.assertEqual(sync_reference_data.call_count, 1)
+
                 tenant_module.ensure_tenant_reference_data(company, engine, cache_key)
 
-            self.assertEqual(sync_reference_data.call_count, 1)
+            self.assertEqual(
+                sync_reference_data.call_count,
+                1,
+                f'sync_tenant_reference_data foi chamado {sync_reference_data.call_count} vezes, esperado 1',
+            )
         finally:
             tenant_module._reference_sync_times.pop(cache_key, None)
             tenant_module._reference_sync_locks.pop(cache_key, None)

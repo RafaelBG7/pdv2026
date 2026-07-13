@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 import io
+import logging
 from pathlib import Path
 import re
 import sys
@@ -29,6 +30,34 @@ class TestConfig:
     PUBLIC_BASE_URL = 'http://localhost'
 
 
+def close_test_log_handlers(app):
+    configured_log_dir = app.config.get('LOG_DIR')
+    if not configured_log_dir:
+        return
+    log_dir = Path(configured_log_dir).resolve()
+
+    for handler in list(app.logger.handlers):
+        base_filename = getattr(handler, 'baseFilename', None)
+        if not base_filename:
+            continue
+
+        try:
+            handler_path = Path(base_filename).resolve()
+        except (OSError, RuntimeError):
+            continue
+
+        if handler_path == log_dir or log_dir in handler_path.parents:
+            app.logger.removeHandler(handler)
+            try:
+                handler.flush()
+            finally:
+                handler.close()
+
+    # Windows keeps files locked while logging handlers are alive. Shutting down
+    # logging here releases RotatingFileHandler handles before temp dir cleanup.
+    logging.shutdown()
+
+
 class RouteTestCase(unittest.TestCase):
     STRONG_PASSWORD = 'SenhaForte123'
 
@@ -44,6 +73,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.remove()
             db.drop_all()
             db.engine.dispose()
+        close_test_log_handlers(self.app)
         self.temp_dir.cleanup()
 
     def login(self, username='master', password='master123', follow_redirects=False):
@@ -130,6 +160,7 @@ class RouteTestCase(unittest.TestCase):
                 db.session.remove()
                 db.drop_all()
                 db.engine.dispose()
+            close_test_log_handlers(csrf_app)
             csrf_temp_dir.cleanup()
 
     def test_csrf_accepts_valid_session_token_when_enabled(self):
@@ -161,6 +192,7 @@ class RouteTestCase(unittest.TestCase):
                 db.session.remove()
                 db.drop_all()
                 db.engine.dispose()
+            close_test_log_handlers(csrf_app)
             csrf_temp_dir.cleanup()
 
     def test_browser_default_favicon_route_loads(self):

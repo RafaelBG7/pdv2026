@@ -1192,7 +1192,86 @@ C:\ProgramData\Girofy\secrets
 
 Na desinstalação, o serviço `GirofyMySQL` é removido, mas os dados em `C:\ProgramData\Girofy` são preservados para evitar perda acidental de vendas, produtos e caixas.
 
-### 11. Assinatura digital dos instaladores
+### 11. Cliente Windows cloud
+
+Também existe uma versão Windows cloud, criada para clientes que vão usar o Girofy hospedado na OCI ou em domínio próprio.
+
+Essa versão é apenas um cliente desktop:
+
+- abre o Girofy hospedado em uma janela nativa via `pywebview`;
+- não sobe Flask local;
+- não instala MySQL;
+- não conecta diretamente ao banco;
+- não cria serviço Windows;
+- não inclui `.env`, senhas, backups ou logs do servidor;
+- depende integralmente de internet.
+
+Arquivos principais:
+
+```text
+desktop_cloud/
+desktop_cloud_launcher.py
+girofy-cloud.spec
+installer/cloud/GirofyCloud.iss
+scripts/build_windows_cloud.ps1
+.github/workflows/build-windows-cloud-client.yml
+docs/windows-cloud-client.md
+```
+
+Configuração local do cliente:
+
+```text
+C:\ProgramData\Girofy\config\desktop.json
+```
+
+Exemplo para produção futura com domínio e HTTPS:
+
+```json
+{
+  "app_url": "https://app.girofy.com.br",
+  "allowed_hosts": ["app.girofy.com.br", ".girofy.com.br"],
+  "allow_http": false,
+  "environment": "production"
+}
+```
+
+Configuração temporária atual, enquanto você usa o IP da OCI:
+
+```json
+{
+  "app_url": "http://168.75.101.126:18080",
+  "allowed_hosts": ["168.75.101.126"],
+  "allow_http": true,
+  "environment": "development"
+}
+```
+
+Em produção, o cliente aceita apenas HTTPS e domínios permitidos. Para desenvolvimento temporário com IP/porta alta, use `GIROFY_DESKTOP_ENV=development`, `GIROFY_DESKTOP_ALLOW_HTTP=1`, `GIROFY_DESKTOP_APP_URL` e `GIROFY_DESKTOP_ALLOWED_HOSTS`.
+
+Build local no Windows:
+
+```powershell
+.\scripts\build_windows_cloud.ps1
+```
+
+Workflow no GitHub:
+
+```text
+Actions > Build Windows cloud client > Run workflow
+```
+
+Artefatos:
+
+- `Girofy-Windows-Cloud.zip`;
+- `Girofy-Setup.exe`.
+
+Detalhes completos ficam em:
+
+```text
+docs/windows-cloud-client.md
+```
+
+### 12. Assinatura digital dos instaladores
 
 Windows Smart App Control, Microsoft Defender SmartScreen e Apple Gatekeeper podem bloquear builds sem assinatura. Isso não é resolvido por HTML, Flask ou PyInstaller; é necessário assinar os arquivos com certificados reconhecidos.
 
@@ -1248,7 +1327,7 @@ Quando configurado, o workflow:
 
 Sem esses certificados, os sistemas operacionais podem continuar exibindo alertas de app não confiável.
 
-### 12. Deploy automatizado na OCI
+### 13. Deploy automatizado na OCI
 
 O repositório possui o workflow `.github/workflows/deploy-oci-self-hosted.yml` para publicar o Girofy na VM da Oracle Cloud. Esse é o fluxo recomendado: o deploy roda dentro da própria VM por um GitHub Actions self-hosted runner, sem depender do IP público do desenvolvedor nem de sessão OCI CLI.
 

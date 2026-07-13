@@ -204,6 +204,45 @@ Artefatos:
 
 Para reduzir bloqueios do Windows SmartScreen e Apple Gatekeeper, configure certificados de assinatura nos secrets do GitHub. Sem assinatura reconhecida, o sistema operacional pode avisar que o app não é confiável.
 
+## Cliente Windows Cloud
+
+A versão cloud do desktop Windows é separada do instalador local com MySQL.
+
+Workflow:
+
+```text
+.github/workflows/build-windows-cloud-client.yml
+```
+
+Artefatos:
+
+- `Girofy-Windows-Cloud.zip`;
+- `Girofy-Setup.exe`.
+
+Esse build:
+
+- usa `desktop_cloud_launcher.py`;
+- abre a URL hospedada do Girofy via `pywebview`;
+- valida HTTPS em produção;
+- restringe navegação aos domínios permitidos;
+- configura User-Agent `GirofyDesktop/1.0.0`;
+- grava logs locais em `C:\ProgramData\Girofy\logs`;
+- não instala MySQL;
+- não inclui `.env`;
+- não inclui banco, backups, secrets ou backend Flask.
+
+Configuração local:
+
+```text
+C:\ProgramData\Girofy\config\desktop.json
+```
+
+Documentação completa:
+
+```text
+docs/windows-cloud-client.md
+```
+
 ## Checklist de Produção
 
 Itens já aplicados no ambiente OCI atual:

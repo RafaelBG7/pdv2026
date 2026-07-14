@@ -35,8 +35,19 @@ pub async fn check_health(config: &DesktopConfig) -> HealthResult {
         }
     };
 
-    match client.get(config.health_url()).send().await {
-        Ok(response) if response.status().is_success() => {
+    match check_url(&client, &config.health_url()).await {
+        HealthResult {
+            ok: false,
+            status_code: Some(404),
+            ..
+        } => check_url(&client, &config.login_url()).await,
+        result => result,
+    }
+}
+
+async fn check_url(client: &reqwest::Client, url: &str) -> HealthResult {
+    match client.get(url).send().await {
+        Ok(response) if response.status().is_success() || response.status().is_redirection() => {
             HealthResult::ok(response.status().as_u16())
         }
         Ok(response) => HealthResult::fail(

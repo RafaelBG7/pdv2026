@@ -200,9 +200,27 @@ impl DesktopConfig {
     }
 
     pub fn health_url(&self) -> String {
-        let mut url = self.app_url.trim_end_matches('/').to_string();
-        url.push_str("/health");
-        url
+        self.app_endpoint_url("/health")
+    }
+
+    pub fn login_url(&self) -> String {
+        self.app_endpoint_url("/login")
+    }
+
+    pub fn app_endpoint_url(&self, path: &str) -> String {
+        match Url::parse(&self.app_url) {
+            Ok(mut url) => {
+                url.set_path(path);
+                url.set_query(None);
+                url.set_fragment(None);
+                url.to_string()
+            }
+            Err(_) => {
+                let mut url = self.app_url.trim_end_matches('/').to_string();
+                url.push_str(path);
+                url
+            }
+        }
     }
 
     pub fn timeout(&self) -> Duration {
@@ -241,6 +259,19 @@ mod tests {
         let config = DesktopConfig::default().validate().unwrap();
         assert_eq!(config.app_url, DEFAULT_APP_URL);
         assert_eq!(config.health_url(), "http://168.75.101.126:18080/health");
+    }
+
+    #[test]
+    fn health_url_uses_origin_even_when_app_url_has_path() {
+        let config = DesktopConfig {
+            app_url: "http://168.75.101.126:18080/login?next=%2F".to_string(),
+            ..DesktopConfig::default()
+        }
+        .validate()
+        .unwrap();
+
+        assert_eq!(config.health_url(), "http://168.75.101.126:18080/health");
+        assert_eq!(config.login_url(), "http://168.75.101.126:18080/login");
     }
 
     #[test]

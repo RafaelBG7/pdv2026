@@ -3357,201 +3357,201 @@ html[data-accessibility-bold='true'] .sales-table .sales-total-column {
 }
 
 @media (max-width: 1280px) {
-  .app-shell:not(.sidebar-collapsed) .content-frame {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .content-frame {
     padding-inline: 1.25rem;
   }
 
-  .app-shell:not(.sidebar-collapsed) .dashboard-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .dashboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .dashboard-detail-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .dashboard-detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-2,
-  .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-4,
-  .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-6,
-  .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-8 {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-2,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-4,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-6,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-8 {
     width: 50%;
   }
 
-  .app-shell:not(.sidebar-collapsed) .category-filter-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .category-filter-grid {
     grid-template-columns: minmax(240px, 1fr) 170px;
   }
 
-  .app-shell:not(.sidebar-collapsed) .report-filter-form {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .report-filter-form {
     grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .advanced-filters {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .advanced-filters {
     grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-profit-summary {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-profit-summary {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-inline-form {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-inline-form {
     grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-inline-actions {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-inline-actions {
     grid-column: 1 / -1;
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-kit-fields {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-kit-fields {
     grid-template-columns: 120px minmax(220px, 1fr) 170px;
   }
 
-  .app-shell:not(.sidebar-collapsed) .sale-layout {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-layout {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .report-layout {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .report-layout {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .company-card-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-card-grid {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .company-details-stats {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-details-stats {
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .company-main-form,
-  .app-shell:not(.sidebar-collapsed) .company-subscription-form {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-main-form,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-subscription-form {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .company-details-form .btn {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-details-form .btn {
     grid-column: 1 / -1;
     width: 100%;
   }
 
-  .app-shell:not(.sidebar-collapsed) .settings-layout {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .settings-layout {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .settings-layout > section:first-child {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .settings-layout > section:first-child {
     grid-row: auto;
   }
 
-  .app-shell:not(.sidebar-collapsed) .report-summary-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .report-summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .cash-summary-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .cash-summary-grid {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .cash-history-item {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .cash-history-item {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .cash-detail-layout {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .cash-detail-layout {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .sale-item-row {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-item-row {
     grid-template-columns: minmax(260px, 1fr) minmax(120px, 0.55fr) minmax(110px, 0.5fr);
     min-width: 0;
   }
 
-  .app-shell:not(.sidebar-collapsed) .app-table {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .app-table {
     min-width: 900px;
   }
 
-  .app-shell:not(.sidebar-collapsed) .compact-table {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .compact-table {
     min-width: 640px;
   }
 
-  .app-shell:not(.sidebar-collapsed) .sales-table {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sales-table {
     min-width: 1180px;
   }
 
-  .app-shell:not(.sidebar-collapsed) .sale-detail-table {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-detail-table {
     min-width: 520px;
   }
 
-  .app-shell:not(.sidebar-collapsed) .report-sales-table {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .report-sales-table {
     min-width: 820px;
   }
 }
 
 @media (max-width: 1080px) {
-  .app-shell:not(.sidebar-collapsed) .category-filter-grid,
-  .app-shell:not(.sidebar-collapsed) .report-filter-form,
-  .app-shell:not(.sidebar-collapsed) .advanced-filters,
-  .app-shell:not(.sidebar-collapsed) .product-inline-form,
-  .app-shell:not(.sidebar-collapsed) .payable-form,
-  .app-shell:not(.sidebar-collapsed) .product-kit-fields {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .category-filter-grid,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .report-filter-form,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .advanced-filters,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-inline-form,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .payable-form,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-kit-fields {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .payable-form-notes {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .payable-form-notes {
     grid-column: auto;
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-profit-summary {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-profit-summary {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-danger-actions {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-danger-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .app-shell:not(.sidebar-collapsed) .dashboard-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .dashboard-detail-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .dashboard-detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .report-summary-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .report-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .app-shell:not(.sidebar-collapsed) .cash-summary-grid,
-  .app-shell:not(.sidebar-collapsed) .cash-history-item,
-  .app-shell:not(.sidebar-collapsed) .cash-detail-layout,
-  .app-shell:not(.sidebar-collapsed) .company-card-grid,
-  .app-shell:not(.sidebar-collapsed) .company-inline-edit,
-  .app-shell:not(.sidebar-collapsed) .cash-action-form {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .cash-summary-grid,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .cash-history-item,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .cash-detail-layout,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-card-grid,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-inline-edit,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .cash-action-form {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .company-details-stats,
-  .app-shell:not(.sidebar-collapsed) .company-main-form,
-  .app-shell:not(.sidebar-collapsed) .company-subscription-form {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-details-stats,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-main-form,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .company-subscription-form {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .cash-action-form .btn {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .cash-action-form .btn {
     width: 100%;
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-2,
-  .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-4,
-  .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-6,
-  .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-8 {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-2,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-4,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-6,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-form-card .col-md-8 {
     width: 100%;
   }
 
-  .app-shell:not(.sidebar-collapsed) .sale-item-row,
-  .app-shell:not(.sidebar-collapsed) .payment-grid,
-  .app-shell:not(.sidebar-collapsed) .sale-payment-layout,
-  .app-shell:not(.sidebar-collapsed) .machine-fee-row,
-  .app-shell:not(.sidebar-collapsed) .export-action-grid,
-  .app-shell:not(.sidebar-collapsed) .settings-form-grid {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-item-row,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .payment-grid,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-payment-layout,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .machine-fee-row,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .export-action-grid,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .settings-form-grid {
     grid-template-columns: 1fr;
     min-width: 0;
   }
 
-  .app-shell:not(.sidebar-collapsed) .sale-row-action .btn {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-row-action .btn {
     width: 100%;
   }
 }
@@ -4010,7 +4010,7 @@ body.sale-discount-open {
     grid-template-columns: 1fr;
   }
 
-  .app-shell:not(.sidebar-collapsed) .product-table,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .product-table,
   .product-table {
     min-width: 0;
   }
@@ -6338,12 +6338,12 @@ body:has(.login-screen) {
 
 .sale-items-header,
 .sale-items-lines .sale-item-row,
-.app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
+html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
   grid-template-columns: minmax(260px, 1.7fr) minmax(108px, 0.55fr) minmax(96px, 0.48fr) minmax(72px, 0.34fr) minmax(108px, 0.55fr) minmax(92px, auto) !important;
 }
 
 .sale-items-lines .sale-item-row > div:first-child,
-.app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row > div:first-child {
+html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row > div:first-child {
   grid-column: auto !important;
 }
 
@@ -6353,7 +6353,7 @@ body:has(.login-screen) {
   }
 
   .sale-items-lines .sale-item-row,
-  .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
     grid-template-columns: 1fr !important;
     padding: 0.85rem;
   }
@@ -6500,7 +6500,7 @@ body:has(.login-screen) {
 
 .sale-items-header,
 .sale-items-lines .sale-item-row,
-.app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
+html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
   grid-template-columns: minmax(0, 1.9fr) minmax(112px, 0.56fr) minmax(94px, 0.46fr) minmax(76px, 0.34fr) minmax(120px, 0.58fr) 132px !important;
 }
 
@@ -6907,7 +6907,7 @@ html[data-text-scale='extra'] .sale-payment-summary [data-payment-step-total] {
   }
 
   .sale-items-lines .sale-item-row,
-  .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
     grid-template-columns: 1fr !important;
   }
 

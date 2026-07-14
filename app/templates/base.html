@@ -29,6 +29,14 @@
   </head>
   <body>
     <div class="app-shell">
+      <script>
+        (function () {
+          var shell = document.currentScript && document.currentScript.parentElement;
+          if (shell && localStorage.getItem('adega-jf-sidebar') === 'collapsed') {
+            shell.classList.add('sidebar-collapsed');
+          }
+        }());
+      </script>
         {% if current_user.is_authenticated %}
         <nav class="sidebar">
           <div class="sidebar-sticky">

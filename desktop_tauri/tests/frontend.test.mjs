@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 test("boot page has retry and browser fallback controls", async () => {
-  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const html = await readFile(new URL("../src/index.html", import.meta.url), "utf8");
   assert.match(html, /Tentar novamente/);
   assert.match(html, /Abrir no navegador/);
   assert.match(html, /main\.js/);

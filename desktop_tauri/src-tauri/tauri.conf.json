@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "br.com.girofy.desktop",
   "build": {
-    "frontendDist": "../",
+    "frontendDist": "../src",
     "beforeBuildCommand": "",
     "beforeDevCommand": ""
   },

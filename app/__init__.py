@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db, login_manager
 from app.error_logging import log_http_error, setup_error_logging
+from app.schema import ensure_performance_indexes
 from app.security.csrf import init_csrf
 from config import Config
 
@@ -370,6 +371,7 @@ def create_app(config_class=Config):
         ensure_company_card_fee_columns()
         ensure_company_operation_columns()
         ensure_company_backup_columns()
+        ensure_performance_indexes(db.engine, app.logger)
 
         if not User.query.filter_by(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master')).first():
             company = Company.query.filter_by(name='Painel Master').order_by(Company.id.asc()).first()

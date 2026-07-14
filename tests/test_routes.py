@@ -3485,6 +3485,31 @@ class RouteTestCase(unittest.TestCase):
             ).one()
             self.assertEqual(cash_register.opening_amount, 0)
 
+    def test_new_sale_searches_products_on_demand(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            user_id = User.query.filter_by(username='master').one().id
+            db.session.add(CashRegister(company_id=company_id, user_id=user_id, status='open', opening_amount=0))
+            db.session.add_all([
+                Product(name='Cerveja Alpha', barcode='111', sale_price=10, stock_quantity=5, active=True, company_id=company_id),
+                Product(name='Cerveja Beta', barcode='222', sale_price=11, stock_quantity=3, active=True, company_id=company_id),
+                Product(name='Whisky Oculto', barcode='333', sale_price=80, stock_quantity=2, active=True, company_id=company_id),
+            ])
+            db.session.commit()
+
+        page = self.client.get('/vendas/nova')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('data-product-search-url="/api/produtos/busca"'.encode(), page.data)
+        self.assertNotIn('Cerveja Alpha'.encode(), page.data)
+
+        search = self.client.get('/api/produtos/busca?q=cerveja')
+        self.assertEqual(search.status_code, 200)
+        payload = search.get_json()
+        self.assertEqual([item['name'] for item in payload['products']], ['Cerveja Alpha', 'Cerveja Beta'])
+        self.assertNotIn('Whisky Oculto', [item['name'] for item in payload['products']])
+
     def test_sales_list_renders_column_filters_and_sale_metadata(self):
         with self.app.app_context():
             company = Company(name='Adega Filtros Venda', activation_key='KEY-FILTROS-VENDA')

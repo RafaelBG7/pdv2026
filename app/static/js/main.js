@@ -1240,14 +1240,21 @@ document.addEventListener('DOMContentLoaded', function () {
     let isAutofillingPayment = false;
     let pendingProduct = null;
     let activeProductIndex = 0;
-    const productSuggestions = Array.from(document.querySelectorAll('#sale-product-suggestions option')).map(function (option) {
-      return {
+    let productSuggestionTimer = null;
+    let productSearchAbortController = null;
+    let currentProductResults = [];
+    const productSearchUrl = saleForm.dataset.productSearchUrl || '';
+    const productSuggestions = [];
+    const productSuggestionById = new Map();
+    const productSearchCache = new Map();
+    Array.from(document.querySelectorAll('#sale-product-suggestions option')).forEach(function (option) {
+      rememberProduct({
         id: option.dataset.id,
         name: option.value,
         barcode: option.dataset.barcode || '',
         price: Number.parseFloat(option.dataset.price || '0'),
         stock: Number.parseInt(option.dataset.stock || '0', 10),
-      };
+      });
     });
 
     function parseCurrency(value) {
@@ -1286,9 +1293,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function selectedProductOption(row) {
       const productId = row.querySelector('[data-product-id]').value;
-      return productSuggestions.find(function (option) {
-        return option.id === productId;
-      });
+      return productSuggestionById.get(productId);
     }
 
     function syncProductId(row) {
@@ -1306,7 +1311,35 @@ document.addEventListener('DOMContentLoaded', function () {
         .toLowerCase();
     }
 
-    function matchingProducts(term) {
+    function normalizeProduct(product) {
+      return {
+        id: String(product.id || ''),
+        name: String(product.name || ''),
+        barcode: String(product.barcode || ''),
+        price: Number.parseFloat(product.price || '0'),
+        stock: Number.parseInt(product.stock || '0', 10),
+      };
+    }
+
+    function rememberProduct(product) {
+      const normalizedProduct = normalizeProduct(product);
+      if (!normalizedProduct.id) {
+        return null;
+      }
+
+      const existingIndex = productSuggestions.findIndex(function (item) {
+        return item.id === normalizedProduct.id;
+      });
+      if (existingIndex >= 0) {
+        productSuggestions[existingIndex] = normalizedProduct;
+      } else {
+        productSuggestions.push(normalizedProduct);
+      }
+      productSuggestionById.set(normalizedProduct.id, normalizedProduct);
+      return normalizedProduct;
+    }
+
+    function localMatchingProducts(term) {
       const normalizedTerm = normalizeSearch(term);
       if (!normalizedTerm) {
         return [];
@@ -1325,6 +1358,55 @@ document.addEventListener('DOMContentLoaded', function () {
           function (product) { return `${product.barcode || ''} ${product.id || ''}`; }
         );
       }).slice(0, 8);
+    }
+
+    function fetchProductSuggestions(term) {
+      const normalizedTerm = normalizeSearch(term);
+      if (!normalizedTerm) {
+        return Promise.resolve([]);
+      }
+      if (productSearchCache.has(normalizedTerm)) {
+        return Promise.resolve(productSearchCache.get(normalizedTerm));
+      }
+      if (!productSearchUrl || !window.fetch) {
+        const localResults = localMatchingProducts(term);
+        productSearchCache.set(normalizedTerm, localResults);
+        return Promise.resolve(localResults);
+      }
+
+      if (productSearchAbortController) {
+        productSearchAbortController.abort();
+      }
+      productSearchAbortController = new AbortController();
+
+      const url = new URL(productSearchUrl, window.location.origin);
+      url.searchParams.set('q', term);
+      url.searchParams.set('limit', '8');
+
+      return fetch(url.toString(), {
+        headers: { Accept: 'application/json' },
+        signal: productSearchAbortController.signal,
+      }).then(function (response) {
+        if (!response.ok) {
+          return localMatchingProducts(term);
+        }
+        return response.json().then(function (payload) {
+          return Array.isArray(payload.products) ? payload.products.map(rememberProduct).filter(Boolean) : [];
+        });
+      }).then(function (products) {
+        productSearchCache.set(normalizedTerm, products);
+        return products;
+      }).catch(function (error) {
+        if (error && error.name === 'AbortError') {
+          return [];
+        }
+        return localMatchingProducts(term);
+      });
+    }
+
+    function scheduleProductSuggestions() {
+      window.clearTimeout(productSuggestionTimer);
+      productSuggestionTimer = window.setTimeout(renderProductSuggestions, 120);
     }
 
     function closeSuggestionLists() {
@@ -1365,49 +1447,56 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderProductSuggestions() {
-      if (!productPickerInput.value.trim()) {
+      const term = productPickerInput.value.trim();
+      if (!term) {
+        currentProductResults = [];
         closeSuggestionLists();
         return;
       }
 
-      const products = matchingProducts(productPickerInput.value);
+      fetchProductSuggestions(term).then(function (products) {
+        if (productPickerInput.value.trim() !== term) {
+          return;
+        }
 
-      productPickerList.innerHTML = '';
-      activeProductIndex = Math.min(activeProductIndex, Math.max(products.length - 1, 0));
+        currentProductResults = products;
+        productPickerList.innerHTML = '';
+        activeProductIndex = Math.min(activeProductIndex, Math.max(products.length - 1, 0));
 
-      if (!products.length) {
-        const empty = document.createElement('div');
-        empty.className = 'product-suggestion-empty';
-        empty.textContent = 'Nenhum produto encontrado';
-        productPickerList.appendChild(empty);
-        productPickerList.classList.add('is-open');
-        return;
-      }
+        if (!products.length) {
+          const empty = document.createElement('div');
+          empty.className = 'product-suggestion-empty';
+          empty.textContent = 'Nenhum produto encontrado';
+          productPickerList.appendChild(empty);
+          productPickerList.classList.add('is-open');
+          return;
+        }
 
-      products.forEach(function (product, index) {
-        const button = document.createElement('button');
-        const title = document.createElement('span');
-        const meta = document.createElement('span');
+        products.forEach(function (product, index) {
+          const button = document.createElement('button');
+          const title = document.createElement('span');
+          const meta = document.createElement('span');
 
-        button.type = 'button';
-        button.className = 'product-suggestion-item';
-        title.className = 'product-suggestion-title';
-        meta.className = 'product-suggestion-meta';
-        title.textContent = product.name;
-        const barcodeLabel = product.barcode ? ` · código ${product.barcode}` : '';
-        meta.textContent = `${formatCurrency(product.price)}${barcodeLabel} · estoque ${Number.isFinite(product.stock) ? product.stock : 0} un.`;
-        button.classList.toggle('is-active', index === activeProductIndex);
+          button.type = 'button';
+          button.className = 'product-suggestion-item';
+          title.className = 'product-suggestion-title';
+          meta.className = 'product-suggestion-meta';
+          title.textContent = product.name;
+          const barcodeLabel = product.barcode ? ` · código ${product.barcode}` : '';
+          meta.textContent = `${formatCurrency(product.price)}${barcodeLabel} · estoque ${Number.isFinite(product.stock) ? product.stock : 0} un.`;
+          button.classList.toggle('is-active', index === activeProductIndex);
 
-        button.appendChild(title);
-        button.appendChild(meta);
-        button.addEventListener('mousedown', function (event) {
-          event.preventDefault();
-          openQuantityModal(product);
+          button.appendChild(title);
+          button.appendChild(meta);
+          button.addEventListener('mousedown', function (event) {
+            event.preventDefault();
+            openQuantityModal(product);
+          });
+          productPickerList.appendChild(button);
         });
-        productPickerList.appendChild(button);
-      });
 
-      productPickerList.classList.add('is-open');
+        productPickerList.classList.add('is-open');
+      });
     }
 
     function openQuantityModal(product) {
@@ -1781,8 +1870,9 @@ document.addEventListener('DOMContentLoaded', function () {
       productPickerInput.addEventListener('input', function () {
         activeProductIndex = 0;
         if (productPickerInput.value.trim()) {
-          renderProductSuggestions();
+          scheduleProductSuggestions();
         } else {
+          currentProductResults = [];
           closeSuggestionLists();
         }
       });
@@ -1790,7 +1880,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(closeSuggestionLists, 120);
       });
       productPickerInput.addEventListener('keydown', function (event) {
-        const products = matchingProducts(productPickerInput.value);
+        const products = currentProductResults;
 
         if (event.key === 'ArrowDown' && products.length) {
           event.preventDefault();
@@ -1803,8 +1893,18 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (event.key === 'Enter' && products.length) {
           event.preventDefault();
           openQuantityModal(products[activeProductIndex] || products[0]);
+        } else if (event.key === 'Enter' && productPickerInput.value.trim()) {
+          event.preventDefault();
+          fetchProductSuggestions(productPickerInput.value.trim()).then(function (items) {
+            if (items.length) {
+              openQuantityModal(items[0]);
+            } else {
+              renderProductSuggestions();
+            }
+          });
         } else if (event.key === 'Escape') {
           event.preventDefault();
+          currentProductResults = [];
           closeSuggestionLists();
         }
       });

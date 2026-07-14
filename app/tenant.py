@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from app.extensions import db
+from app.schema import ensure_performance_indexes
 
 
 _engines = {}
@@ -118,6 +119,8 @@ def drop_mysql_database(database_name):
 
 def sync_tenant_reference_data(company, engine):
     from app.models import User
+
+    ensure_performance_indexes(engine, current_app.logger)
 
     users = User.query.filter_by(company_id=company.id).all()
     inspector = inspect(engine)

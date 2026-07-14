@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
@@ -264,6 +264,19 @@ def sale_form_state():
             for method in PAYMENT_METHODS
         },
     }
+
+
+def sale_form_products(form_state):
+    product_ids = set()
+    for item in form_state.get('items', []):
+        product_id = str(item.get('product_id') or '').strip()
+        if product_id.isdigit():
+            product_ids.add(int(product_id))
+
+    if not product_ids:
+        return []
+
+    return tenant_query(Product).filter(Product.id.in_(product_ids)).order_by(Product.name.asc()).all()
 
 
 def open_cash_register():
@@ -1015,12 +1028,16 @@ def stock_movements():
     all_categories = tenant_session().query(Category).filter_by(company_id=current_tenant_company().id).order_by(Category.name.asc()).all()
     all_users = tenant_session().query(User).filter_by(company_id=current_tenant_company().id).order_by(User.username.asc()).all()
 
-    filtered_movements = query.all()
+    summary_query = query.order_by(None)
     summary = {
-        'entries': sum(item.quantity or 0 for item in filtered_movements if item.new_stock >= item.previous_stock),
-        'exits': sum(item.quantity or 0 for item in filtered_movements if item.new_stock < item.previous_stock),
+        'entries': summary_query.filter(StockMovement.new_stock >= StockMovement.previous_stock)
+        .with_entities(func.coalesce(func.sum(StockMovement.quantity), 0))
+        .scalar() or 0,
+        'exits': summary_query.filter(StockMovement.new_stock < StockMovement.previous_stock)
+        .with_entities(func.coalesce(func.sum(StockMovement.quantity), 0))
+        .scalar() or 0,
         'count': total_movements,
-        'products': len({item.product_id for item in filtered_movements}),
+        'products': summary_query.with_entities(func.count(func.distinct(StockMovement.product_id))).scalar() or 0,
     }
     filters = {
         'produto': product_search,
@@ -1194,7 +1211,10 @@ def audit_logs():
     ]
     summary = {
         'count': total_logs,
-        'users': len({log.user_id for log in query.all() if log.user_id}),
+        'users': query.order_by(None)
+        .filter(AuditLog.user_id.isnot(None))
+        .with_entities(func.count(func.distinct(AuditLog.user_id)))
+        .scalar() or 0,
         'actions': len(available_actions),
     }
     filters = {
@@ -1522,6 +1542,45 @@ def reports():
     )
 
 
+@main_bp.get('/api/produtos/busca')
+@login_required
+@permission_required('can_manage_sales')
+def product_search_api():
+    term = request.args.get('q', '').strip()
+    limit = min(max(request.args.get('limit', 8, type=int) or 8, 1), 20)
+    if not term:
+        response = jsonify({'products': []})
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    filters = [
+        Product.name.ilike(f'%{term}%'),
+        Product.barcode.ilike(f'%{term}%'),
+    ]
+    if term.isdigit():
+        filters.append(Product.id == int(term))
+
+    products = tenant_query(Product).filter(
+        Product.active.is_(True),
+        or_(*filters),
+    ).order_by(Product.name.asc()).limit(limit).all()
+
+    response = jsonify({
+        'products': [
+            {
+                'id': str(product.id),
+                'name': f'{product.name} (kit)' if product.is_kit else product.name,
+                'barcode': product.barcode or '',
+                'price': float(product.sale_price or 0),
+                'stock': int(product.effective_stock_quantity or 0),
+            }
+            for product in products
+        ],
+    })
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @main_bp.route('/vendas/nova', methods=['GET', 'POST'])
 @login_required
 @permission_required('can_manage_sales')
@@ -1536,13 +1595,20 @@ def new_sale():
         )
 
     company = current_tenant_company()
-    products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
     form_state = {
         'items': [{'product_id': '', 'quantity': '1'}],
         'discount_amount': '',
         'show_payment_step': False,
         'payments': {},
     }
+
+    def render_sale_form():
+        return render_template(
+            'sales/form.html',
+            products=sale_form_products(form_state),
+            payment_methods=PAYMENT_METHODS,
+            form_state=form_state,
+        )
 
     if request.method == 'POST':
         form_state = sale_form_state()
@@ -1562,12 +1628,7 @@ def new_sale():
                 product_id_int = int(product_id)
             except (TypeError, ValueError):
                 flash('Selecione um produto válido para finalizar a venda.', 'danger')
-                return render_template(
-                    'sales/form.html',
-                    products=products,
-                    payment_methods=PAYMENT_METHODS,
-                    form_state=form_state,
-                )
+                return render_sale_form()
 
             product = tenant_query(Product).filter_by(id=product_id_int).first()
             if not product or not product.active:
@@ -1576,12 +1637,7 @@ def new_sale():
             stock_product, units_per_sale = stock_source_for_product(product)
             if not stock_product:
                 flash(f'Configure o kit do produto {product.name} antes de vender.', 'danger')
-                return render_template(
-                    'sales/form.html',
-                    products=products,
-                    payment_methods=PAYMENT_METHODS,
-                    form_state=form_state,
-                )
+                return render_sale_form()
 
             stock_requirements[stock_product.id] = stock_requirements.get(stock_product.id, 0) + (units_per_sale * quantity)
             line_total = round(product.sale_price * quantity, 2)
@@ -1595,23 +1651,13 @@ def new_sale():
             if (stock_product.stock_quantity or 0) < required_quantity:
                 if not company.allow_negative_stock:
                     flash(f'Estoque insuficiente para {stock_product.name}.', 'danger')
-                    return render_template(
-                        'sales/form.html',
-                        products=products,
-                        payment_methods=PAYMENT_METHODS,
-                        form_state=form_state,
-                    )
+                    return render_sale_form()
                 resulting_stock = (stock_product.stock_quantity or 0) - required_quantity
                 stock_warnings.append(f'{stock_product.name}: {resulting_stock} un.')
 
         if not selected_items:
             flash('Adicione pelo menos um produto à venda.', 'danger')
-            return render_template(
-                'sales/form.html',
-                products=products,
-                payment_methods=PAYMENT_METHODS,
-                form_state=form_state,
-            )
+            return render_sale_form()
 
         payments = []
         paid_amount = 0.0
@@ -1625,24 +1671,14 @@ def new_sale():
         requested_discount = parse_money(request.form.get('discount_amount'))
         if requested_discount > total_amount:
             flash(f'O desconto não pode ser maior que o subtotal de {format_brl(total_amount)}.', 'danger')
-            return render_template(
-                'sales/form.html',
-                products=products,
-                payment_methods=PAYMENT_METHODS,
-                form_state=form_state,
-            )
+            return render_sale_form()
         discount_amount = requested_discount
         final_amount = round(total_amount - discount_amount, 2)
         paid_amount = round(paid_amount, 2)
         if paid_amount < final_amount:
             missing = final_amount - paid_amount
             flash(f'Falta pagar {format_brl(missing)}.', 'danger')
-            return render_template(
-                'sales/form.html',
-                products=products,
-                payment_methods=PAYMENT_METHODS,
-                form_state=form_state,
-            )
+            return render_sale_form()
 
         machine_fee_total = card_fee_total(company, payments, final_amount, paid_amount)
 
@@ -1689,12 +1725,7 @@ def new_sale():
         except StockMovementError as error:
             tenant_db.rollback()
             flash(str(error), 'danger')
-            return render_template(
-                'sales/form.html',
-                products=products,
-                payment_methods=PAYMENT_METHODS,
-                form_state=form_state,
-            )
+            return render_sale_form()
 
         for method, amount in payments:
             tenant_db.add(Payment(sale_id=sale.id, method=method, amount=amount))
@@ -1728,12 +1759,7 @@ def new_sale():
         flash(f'Venda finalizada com sucesso. Troco: {format_brl(change_amount)}.', 'success')
         return redirect(url_for('main.sale_detail', sale_id=sale.id))
 
-    return render_template(
-        'sales/form.html',
-        products=products,
-        payment_methods=PAYMENT_METHODS,
-        form_state=form_state,
-    )
+    return render_sale_form()
 
 
 @main_bp.route('/vendas/<int:sale_id>')

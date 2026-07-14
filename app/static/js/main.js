@@ -305,6 +305,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     appShell.classList.toggle('sidebar-collapsed', collapsed);
+    document.documentElement.setAttribute('data-sidebar-state', collapsed ? 'collapsed' : 'expanded');
     localStorage.setItem('adega-jf-sidebar', collapsed ? 'collapsed' : 'expanded');
 
     if (sidebarToggle) {
@@ -322,6 +323,12 @@ document.addEventListener('DOMContentLoaded', function () {
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', function () {
       const collapsed = appShell && appShell.classList.contains('sidebar-collapsed');
+      if (appShell) {
+        appShell.classList.add('sidebar-animating');
+        window.setTimeout(function () {
+          appShell.classList.remove('sidebar-animating');
+        }, 220);
+      }
       applySidebar(!collapsed);
     });
   }

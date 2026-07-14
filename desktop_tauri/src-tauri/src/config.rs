@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     env,
     error::Error,
-    fmt,
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -59,7 +58,9 @@ impl fmt::Display for ConfigError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ConfigError::InvalidUrl(value) => write!(formatter, "URL inválida: {value}"),
-            ConfigError::InvalidProtocol(value) => write!(formatter, "Protocolo não permitido: {value}"),
+            ConfigError::InvalidProtocol(value) => {
+                write!(formatter, "Protocolo não permitido: {value}")
+            }
             ConfigError::HostNotAllowed(value) => write!(formatter, "Host não permitido: {value}"),
             ConfigError::InvalidTimeout => write!(formatter, "Timeout inválido"),
             ConfigError::Io(error) => write!(formatter, "Falha ao ler configuração: {error}"),
@@ -166,8 +167,8 @@ impl DesktopConfig {
             return Err(ConfigError::InvalidTimeout);
         }
 
-        let parsed = Url::parse(&self.app_url)
-            .map_err(|_| ConfigError::InvalidUrl(self.app_url.clone()))?;
+        let parsed =
+            Url::parse(&self.app_url).map_err(|_| ConfigError::InvalidUrl(self.app_url.clone()))?;
         let scheme = parsed.scheme();
         if scheme != "https" && !(scheme == "http" && self.allow_http) {
             return Err(ConfigError::InvalidProtocol(scheme.to_string()));
@@ -187,8 +188,12 @@ impl DesktopConfig {
         }
 
         if let Some(manifest_url) = &self.update_manifest_url {
-            security::validate_url_against_policy(manifest_url, &self.allowed_hosts, self.allow_http)
-                .map_err(|_| ConfigError::InvalidUrl(manifest_url.clone()))?;
+            security::validate_url_against_policy(
+                manifest_url,
+                &self.allowed_hosts,
+                self.allow_http,
+            )
+            .map_err(|_| ConfigError::InvalidUrl(manifest_url.clone()))?;
         }
 
         Ok(self)
@@ -244,7 +249,10 @@ mod tests {
             allow_http: false,
             ..DesktopConfig::default()
         };
-        assert!(matches!(config.validate(), Err(ConfigError::InvalidProtocol(_))));
+        assert!(matches!(
+            config.validate(),
+            Err(ConfigError::InvalidProtocol(_))
+        ));
     }
 
     #[test]
@@ -255,7 +263,10 @@ mod tests {
             allow_http: false,
             ..DesktopConfig::default()
         };
-        assert!(matches!(config.validate(), Err(ConfigError::HostNotAllowed(_))));
+        assert!(matches!(
+            config.validate(),
+            Err(ConfigError::HostNotAllowed(_))
+        ));
     }
 
     #[test]
@@ -275,7 +286,11 @@ mod tests {
     #[test]
     fn writes_default_config_file() {
         let temp = tempfile::tempdir().unwrap();
-        let path = temp.path().join("Girofy").join("config").join("desktop.json");
+        let path = temp
+            .path()
+            .join("Girofy")
+            .join("config")
+            .join("desktop.json");
         DesktopConfig::default().write_default_file(&path).unwrap();
 
         let contents = fs::read_to_string(path).unwrap();

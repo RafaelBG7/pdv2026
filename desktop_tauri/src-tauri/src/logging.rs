@@ -61,7 +61,11 @@ pub fn sanitize_message(message: &str) -> String {
 }
 
 fn rotate_if_needed(path: &Path) -> io::Result<()> {
-    if fs::metadata(path).map(|metadata| metadata.len()).unwrap_or(0) <= MAX_LOG_BYTES {
+    if fs::metadata(path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0)
+        <= MAX_LOG_BYTES
+    {
         return Ok(());
     }
     let rotated = path.with_extension("log.1");

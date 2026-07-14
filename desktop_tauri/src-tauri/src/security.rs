@@ -23,7 +23,11 @@ pub fn is_host_allowed(host: &str, allowed_hosts: &[String]) -> bool {
     })
 }
 
-pub fn validate_url_against_policy(url: &str, allowed_hosts: &[String], allow_http: bool) -> Result<(), ()> {
+pub fn validate_url_against_policy(
+    url: &str,
+    allowed_hosts: &[String],
+    allow_http: bool,
+) -> Result<(), ()> {
     let parsed = Url::parse(url).map_err(|_| ())?;
     match parsed.scheme() {
         "https" => {}
@@ -38,7 +42,11 @@ pub fn validate_url_against_policy(url: &str, allowed_hosts: &[String], allow_ht
     }
 }
 
-pub fn classify_navigation(url: &str, allowed_hosts: &[String], allow_http: bool) -> NavigationDecision {
+pub fn classify_navigation(
+    url: &str,
+    allowed_hosts: &[String],
+    allow_http: bool,
+) -> NavigationDecision {
     let Ok(parsed) = Url::parse(url) else {
         return NavigationDecision::Block;
     };
@@ -62,7 +70,10 @@ mod tests {
 
     #[test]
     fn allows_exact_and_wildcard_hosts() {
-        let hosts = vec!["app.girofy.com.br".to_string(), ".girofy.com.br".to_string()];
+        let hosts = vec![
+            "app.girofy.com.br".to_string(),
+            ".girofy.com.br".to_string(),
+        ];
         assert!(is_host_allowed("app.girofy.com.br", &hosts));
         assert!(is_host_allowed("cliente.girofy.com.br", &hosts));
         assert!(!is_host_allowed("girofy.com.br.evil.test", &hosts));

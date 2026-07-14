@@ -5,7 +5,11 @@ pub enum UpdateMode {
     TauriUpdaterReady,
 }
 
-pub fn select_update_mode(auto_update_enabled: bool, has_manifest_url: bool, has_tauri_endpoint: bool) -> UpdateMode {
+pub fn select_update_mode(
+    auto_update_enabled: bool,
+    has_manifest_url: bool,
+    has_tauri_endpoint: bool,
+) -> UpdateMode {
     if !auto_update_enabled {
         return UpdateMode::Disabled;
     }
@@ -42,7 +46,13 @@ mod tests {
     #[test]
     fn disables_update_when_not_enabled() {
         assert_eq!(select_update_mode(false, true, true), UpdateMode::Disabled);
-        assert_eq!(select_update_mode(true, true, false), UpdateMode::ManualManifest);
-        assert_eq!(select_update_mode(true, true, true), UpdateMode::TauriUpdaterReady);
+        assert_eq!(
+            select_update_mode(true, true, false),
+            UpdateMode::ManualManifest
+        );
+        assert_eq!(
+            select_update_mode(true, true, true),
+            UpdateMode::TauriUpdaterReady
+        );
     }
 }

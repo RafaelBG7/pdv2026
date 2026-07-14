@@ -30,16 +30,25 @@ impl HealthResult {
 pub async fn check_health(config: &DesktopConfig) -> HealthResult {
     let client = match reqwest::Client::builder().timeout(config.timeout()).build() {
         Ok(client) => client,
-        Err(error) => return HealthResult::fail(None, format!("Falha ao preparar conexão: {error}")),
+        Err(error) => {
+            return HealthResult::fail(None, format!("Falha ao preparar conexão: {error}"))
+        }
     };
 
     match client.get(config.health_url()).send().await {
-        Ok(response) if response.status().is_success() => HealthResult::ok(response.status().as_u16()),
+        Ok(response) if response.status().is_success() => {
+            HealthResult::ok(response.status().as_u16())
+        }
         Ok(response) => HealthResult::fail(
             Some(response.status().as_u16()),
-            format!("Servidor respondeu com HTTP {}.", response.status().as_u16()),
+            format!(
+                "Servidor respondeu com HTTP {}.",
+                response.status().as_u16()
+            ),
         ),
-        Err(error) if error.is_timeout() => HealthResult::fail(None, "Tempo limite ao conectar ao servidor."),
+        Err(error) if error.is_timeout() => {
+            HealthResult::fail(None, "Tempo limite ao conectar ao servidor.")
+        }
         Err(error) => HealthResult::fail(None, format!("Falha de conexão: {error}")),
     }
 }

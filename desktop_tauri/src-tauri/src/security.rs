@@ -7,6 +7,14 @@ pub enum NavigationDecision {
     Block,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UrlPolicyError {
+    InvalidUrl,
+    InvalidProtocol,
+    MissingHost,
+    HostNotAllowed,
+}
+
 pub fn normalize_host(host: &str) -> String {
     host.trim().trim_end_matches('.').to_ascii_lowercase()
 }
@@ -27,18 +35,18 @@ pub fn validate_url_against_policy(
     url: &str,
     allowed_hosts: &[String],
     allow_http: bool,
-) -> Result<(), ()> {
-    let parsed = Url::parse(url).map_err(|_| ())?;
+) -> Result<(), UrlPolicyError> {
+    let parsed = Url::parse(url).map_err(|_| UrlPolicyError::InvalidUrl)?;
     match parsed.scheme() {
         "https" => {}
         "http" if allow_http => {}
-        _ => return Err(()),
+        _ => return Err(UrlPolicyError::InvalidProtocol),
     }
-    let host = parsed.host_str().ok_or(())?;
+    let host = parsed.host_str().ok_or(UrlPolicyError::MissingHost)?;
     if is_host_allowed(host, allowed_hosts) {
         Ok(())
     } else {
-        Err(())
+        Err(UrlPolicyError::HostNotAllowed)
     }
 }
 

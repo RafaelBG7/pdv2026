@@ -35,7 +35,7 @@ pub fn append_log(level: &str, message: &str) -> io::Result<()> {
 pub fn log_path() -> PathBuf {
     let base = env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
-        .or_else(|| dirs_next::data_local_dir())
+        .or_else(dirs_next::data_local_dir)
         .unwrap_or_else(env::temp_dir);
     base.join("Girofy").join("logs").join("tauri-client.log")
 }

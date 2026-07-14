@@ -149,7 +149,7 @@ impl DesktopConfig {
     pub fn default_config_path() -> Option<PathBuf> {
         let base = env::var_os("PROGRAMDATA")
             .map(PathBuf::from)
-            .or_else(|| dirs_next::data_dir());
+            .or_else(dirs_next::data_dir);
         base.map(|path| path.join("Girofy").join("config").join("desktop.json"))
     }
 

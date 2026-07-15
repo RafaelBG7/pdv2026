@@ -300,7 +300,7 @@ body {
   background: linear-gradient(180deg, #031525 0%, var(--sidebar-bg) 56%, #160b2f 100%);
   color: var(--sidebar-text);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .app-shell.sidebar-animating .sidebar {
@@ -328,7 +328,19 @@ body {
 
 html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar {
   width: var(--sidebar-collapsed-width);
+  min-width: var(--sidebar-collapsed-width);
+  max-width: var(--sidebar-collapsed-width);
   flex-basis: var(--sidebar-collapsed-width);
+  overflow: hidden;
+}
+
+.app-shell.sidebar-collapsed .sidebar,
+body.sidebar-navigation-lock .app-shell .sidebar {
+  width: var(--sidebar-collapsed-width) !important;
+  min-width: var(--sidebar-collapsed-width) !important;
+  max-width: var(--sidebar-collapsed-width) !important;
+  flex: 0 0 var(--sidebar-collapsed-width) !important;
+  overflow: hidden !important;
 }
 
 .sidebar-sticky {
@@ -521,12 +533,33 @@ html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .brand-b
 .app-shell.sidebar-collapsed .sidebar-sticky,
 html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar-sticky {
   padding: 1rem 0.8rem;
+  width: var(--sidebar-collapsed-width);
+  min-width: var(--sidebar-collapsed-width);
+  max-width: var(--sidebar-collapsed-width);
+  overflow: hidden;
+}
+
+body.sidebar-navigation-lock .sidebar-sticky,
+body.sidebar-navigation-lock .sidebar .nav,
+body.sidebar-navigation-lock .sidebar .nav-item,
+body.sidebar-navigation-lock .sidebar .nav-link,
+.app-shell.sidebar-collapsed .sidebar .nav,
+.app-shell.sidebar-collapsed .sidebar .nav-item,
+.app-shell.sidebar-collapsed .sidebar .nav-link,
+html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar .nav,
+html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar .nav-item,
+html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar .nav-link {
+  min-width: 0 !important;
+  max-width: calc(var(--sidebar-collapsed-width) - 1.6rem) !important;
+  overflow: hidden !important;
 }
 
 .app-shell.sidebar-collapsed .sidebar .nav-link,
 html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar .nav-link {
   justify-content: center;
+  gap: 0;
   padding: 0.8rem;
+  width: calc(var(--sidebar-collapsed-width) - 1.6rem) !important;
 }
 
 .app-shell.sidebar-collapsed .nav-label,

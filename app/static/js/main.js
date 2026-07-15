@@ -333,6 +333,29 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  let sidebarNavigationLockTimer = null;
+
+  function lockCollapsedSidebarDuringNavigation() {
+    if (!appShell || !appShell.classList.contains('sidebar-collapsed')) {
+      return;
+    }
+
+    document.body.classList.add('sidebar-navigation-lock');
+    document.documentElement.setAttribute('data-sidebar-state', 'collapsed');
+    appShell.classList.add('sidebar-collapsed');
+    appShell.classList.remove('sidebar-animating');
+
+    window.clearTimeout(sidebarNavigationLockTimer);
+    sidebarNavigationLockTimer = window.setTimeout(function () {
+      document.body.classList.remove('sidebar-navigation-lock');
+    }, 900);
+  }
+
+  document.querySelectorAll('.sidebar .nav-link').forEach(function (link) {
+    link.addEventListener('pointerdown', lockCollapsedSidebarDuringNavigation, { passive: true });
+    link.addEventListener('click', lockCollapsedSidebarDuringNavigation, { passive: true });
+  });
+
   document.querySelectorAll('[data-settings-theme-choice]').forEach(function (button) {
     button.addEventListener('click', function () {
       applyTheme(button.dataset.settingsThemeChoice || 'light');

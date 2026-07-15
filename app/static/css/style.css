@@ -295,16 +295,19 @@ body {
 
 .sidebar {
   width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  max-width: var(--sidebar-width);
   min-height: 100vh;
   flex: 0 0 var(--sidebar-width);
   background: linear-gradient(180deg, #031525 0%, var(--sidebar-bg) 56%, #160b2f 100%);
   color: var(--sidebar-text);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  contain: inline-size layout paint;
 }
 
 .app-shell.sidebar-animating .sidebar {
-  transition: width 160ms ease, flex-basis 160ms ease;
+  transition: none;
 }
 
 .app-shell.sidebar-animating .sidebar-toggle span {
@@ -313,28 +316,17 @@ body {
 
 .app-shell.sidebar-animating .brand-block,
 .app-shell.sidebar-animating .nav-label {
-  transition: opacity 120ms ease;
+  transition: opacity 140ms ease, transform 140ms ease;
 }
 
 .app-shell.sidebar-animating.sidebar-collapsed .brand-block,
 .app-shell.sidebar-animating.sidebar-collapsed .nav-label {
   opacity: 0;
-}
-
-.app-shell.sidebar-collapsed .sidebar {
-  width: var(--sidebar-collapsed-width);
-  flex-basis: var(--sidebar-collapsed-width);
-}
-
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar {
-  width: var(--sidebar-collapsed-width);
-  min-width: var(--sidebar-collapsed-width);
-  max-width: var(--sidebar-collapsed-width);
-  flex-basis: var(--sidebar-collapsed-width);
-  overflow: hidden;
+  transform: translateX(-0.35rem);
 }
 
 .app-shell.sidebar-collapsed .sidebar,
+html[data-sidebar-state='collapsed'] .app-shell .sidebar,
 body.sidebar-navigation-lock .app-shell .sidebar {
   width: var(--sidebar-collapsed-width) !important;
   min-width: var(--sidebar-collapsed-width) !important;
@@ -347,6 +339,9 @@ body.sidebar-navigation-lock .app-shell .sidebar {
   position: sticky;
   top: 0;
   padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -496,11 +491,22 @@ html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .brand-b
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  width: 100%;
+  max-width: 100%;
   color: var(--sidebar-text);
   padding: 0.85rem 0.95rem;
   border-radius: 0.5rem;
   min-height: 44px;
   white-space: nowrap;
+  overflow: hidden;
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.sidebar .nav,
+.sidebar .nav-item {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -511,18 +517,25 @@ html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .brand-b
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+.sidebar .nav-link:hover {
+  transform: translateX(2px);
+}
+
 .nav-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  border-radius: 0.45rem;
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.35), rgba(var(--accent-rgb), 0.24));
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 0.75rem;
+  background:
+    linear-gradient(135deg, rgba(var(--primary-rgb), 0.38), rgba(var(--accent-rgb), 0.34)),
+    rgba(255, 255, 255, 0.08);
   color: inherit;
-  font-size: 0.82rem;
+  font-size: 1rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .nav-label {
@@ -531,7 +544,7 @@ html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .brand-b
 }
 
 .app-shell.sidebar-collapsed .sidebar-sticky,
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar-sticky {
+html[data-sidebar-state='collapsed'] .app-shell .sidebar-sticky {
   padding: 1rem 0.8rem;
   width: var(--sidebar-collapsed-width);
   min-width: var(--sidebar-collapsed-width);
@@ -546,34 +559,35 @@ body.sidebar-navigation-lock .sidebar .nav-link,
 .app-shell.sidebar-collapsed .sidebar .nav,
 .app-shell.sidebar-collapsed .sidebar .nav-item,
 .app-shell.sidebar-collapsed .sidebar .nav-link,
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar .nav,
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar .nav-item,
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar .nav-link {
+html[data-sidebar-state='collapsed'] .app-shell .sidebar .nav,
+html[data-sidebar-state='collapsed'] .app-shell .sidebar .nav-item,
+html[data-sidebar-state='collapsed'] .app-shell .sidebar .nav-link {
   min-width: 0 !important;
   max-width: calc(var(--sidebar-collapsed-width) - 1.6rem) !important;
   overflow: hidden !important;
 }
 
 .app-shell.sidebar-collapsed .sidebar .nav-link,
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar .nav-link {
+html[data-sidebar-state='collapsed'] .app-shell .sidebar .nav-link {
   justify-content: center;
   gap: 0;
   padding: 0.8rem;
   width: calc(var(--sidebar-collapsed-width) - 1.6rem) !important;
+  transform: none;
 }
 
 .app-shell.sidebar-collapsed .nav-label,
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .nav-label {
+html[data-sidebar-state='collapsed'] .app-shell .nav-label {
   display: none;
 }
 
 .app-shell.sidebar-collapsed .nav-icon,
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .nav-icon {
+html[data-sidebar-state='collapsed'] .app-shell .nav-icon {
   margin: 0;
 }
 
 .app-shell.sidebar-collapsed .sidebar-toggle span,
-html[data-sidebar-state='collapsed'] .app-shell:not(.sidebar-animating) .sidebar-toggle span {
+html[data-sidebar-state='collapsed'] .app-shell .sidebar-toggle span {
   transform: rotate(180deg);
 }
 

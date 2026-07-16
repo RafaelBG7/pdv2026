@@ -2,6 +2,18 @@ name: Build Windows WPF preview
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'desktop_wpf/**'
+      - 'app/models/api_refresh_token.py'
+      - 'app/routes/api/**'
+      - 'app/services/api_auth_service.py'
+      - 'app/security/csrf.py'
+      - 'config.py'
+      - 'tests/test_routes.py'
+      - '.github/workflows/build-windows-wpf.yml'
   pull_request:
     paths:
       - 'desktop_wpf/**'

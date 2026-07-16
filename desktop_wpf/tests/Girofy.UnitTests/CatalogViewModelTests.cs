@@ -168,5 +168,10 @@ public sealed class CatalogViewModelTests
 
         public Task LogoutAsync(string accessToken, CancellationToken cancellationToken) =>
             Task.FromException(new NotSupportedException());
+
+        public Task<DashboardSnapshot> GetDashboardSummaryAsync(
+            string accessToken,
+            CancellationToken cancellationToken) =>
+            Task.FromException<DashboardSnapshot>(new NotSupportedException());
     }
 }

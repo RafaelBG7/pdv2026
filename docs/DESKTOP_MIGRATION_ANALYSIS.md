@@ -24,9 +24,13 @@ Já existem no cliente WPF:
 - sessão local protegida pelo DPAPI do Windows;
 - restauração de sessão, logout e revogação de token;
 - opção de lembrar apenas o identificador do usuário;
-- shell autenticado com navegação entre Produtos e Categorias;
+- shell autenticado com navegação entre Dashboard, Produtos e Categorias;
+- dashboard operacional agregado e isolado por adega;
+- caixa atual, vendas do dia, ticket, lucro conforme permissão, pagamentos, estoque baixo,
+  produtos mais vendidos e vendas recentes;
 - API de catálogo paginada, filtrada pela empresa do token;
 - busca, filtros, ordenação e tabelas WPF virtualizadas;
+- carregamento do catálogo sob demanda, sem consulta automática após o login;
 - logs locais rotativos sem senha ou token completo;
 - workflow Windows para testes e build de prévia.
 
@@ -46,10 +50,10 @@ fonte de verdade. O cliente nunca acessa o MySQL diretamente.
 ## Ordem Recomendada
 
 1. Publicar a OCI atrás de domínio e HTTPS.
-2. Adicionar cache local limitado por tenant para consultas não sensíveis.
-3. Implementar detalhes e edição de produtos conforme as permissões.
-4. Migrar estoque com trilha de auditoria e controle de concorrência.
-5. Migrar caixa e vendas com chaves de idempotência.
+2. Implementar abertura e consulta do caixa atual pela API.
+3. Implementar registro de vendas com idempotência e transação no servidor.
+4. Implementar detalhes e edição de produtos conforme as permissões.
+5. Migrar estoque com trilha de auditoria e controle de concorrência.
 6. Preparar assinatura digital, instalador e atualização apenas quando o cliente nativo
    alcançar paridade suficiente com o fluxo web.
 

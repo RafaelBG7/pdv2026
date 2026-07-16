@@ -20,6 +20,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private int _page = 1;
     private int _totalPages;
     private int _totalProducts;
+    private bool _isInitialized;
 
     public CatalogViewModel(
         IGirofyApiClient apiClient,
@@ -190,10 +191,15 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             return;
         }
 
+        if (_isInitialized)
+        {
+            return;
+        }
+
         await LoadCatalogAsync(cancellationToken);
     }
 
-    private async void HandleSessionChanged(object? sender, EventArgs e)
+    private void HandleSessionChanged(object? sender, EventArgs e)
     {
         if (_sessionContext.Current is null)
         {
@@ -201,14 +207,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             return;
         }
 
-        try
-        {
-            await LoadCatalogAsync(CancellationToken.None);
-        }
-        catch
-        {
-            // LoadCatalogAsync converts failures into safe UI state.
-        }
+        Reset();
     }
 
     private async Task SearchAsync(CancellationToken cancellationToken)
@@ -248,6 +247,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         {
             await LoadCategoriesCoreAsync(cancellationToken);
             await LoadProductsCoreAsync(cancellationToken);
+            _isInitialized = true;
         }
         catch (Exception exception)
         {
@@ -353,6 +353,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         Page = 1;
         TotalPages = 0;
         TotalProducts = 0;
+        _isInitialized = false;
     }
 
     public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;

@@ -18,6 +18,7 @@ from app.services.api_auth_service import (
     user_identity_data,
 )
 from app.services.audit_service import record_audit_event
+from app.services.dashboard_service import build_dashboard_snapshot
 from app.tenant import tenant_engine
 
 
@@ -310,6 +311,22 @@ def api_logout():
 @api_auth_required
 def api_me():
     return api_success(user_identity_data(g.api_user))
+
+
+@api_v1_bp.get('/dashboard/summary')
+@api_auth_required
+def api_dashboard_summary():
+    try:
+        with api_tenant_database(g.api_user) as tenant_db:
+            snapshot = build_dashboard_snapshot(
+                tenant_db,
+                g.api_user.company_id,
+                can_view_reports=g.api_user.has_permission('can_view_reports'),
+                can_manage_payables=g.api_user.has_permission('can_manage_payables'),
+            )
+        return api_success(snapshot)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
 
 
 @api_v1_bp.get('/catalog/categories')

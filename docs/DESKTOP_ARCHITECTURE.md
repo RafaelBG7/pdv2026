@@ -62,7 +62,18 @@ Configurações do servidor:
 ## Próximas etapas
 
 1. Publicar o backend atrás de domínio e HTTPS.
-2. Adicionar cache de leitura limitado e invalidação por tenant.
-3. Implementar detalhes e edição de produtos conforme as permissões.
-4. Migrar movimentações de estoque com controle de concorrência.
-5. Migrar vendas e caixa somente após contratos de idempotência e concorrência.
+2. Implementar abertura, estado e fechamento de caixa por contratos transacionais.
+3. Migrar o fluxo de venda com idempotência, baixa de estoque e pagamentos no servidor.
+4. Implementar detalhes e edição de produtos conforme as permissões.
+5. Migrar movimentações de estoque com controle de concorrência.
+
+## Dashboard nativo
+
+O cliente consulta `GET /api/v1/dashboard/summary` após autenticação. O endpoint agrega os
+dados no servidor e devolve apenas a adega vinculada ao token. Nenhum `company_id` enviado
+na query altera o tenant.
+
+O contrato inclui vendas de hoje, caixa atual, formas de pagamento, produtos mais vendidos,
+estoque baixo, vendas recentes e contas críticas. Lucro, ticket médio, totais do caixa,
+pagamentos e contas são omitidos quando as permissões do usuário não autorizam a leitura.
+Produtos e categorias são carregados somente ao abrir o respectivo módulo.

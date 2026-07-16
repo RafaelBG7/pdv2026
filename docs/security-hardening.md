@@ -241,7 +241,7 @@ rtk .venv/bin/python -m unittest tests.test_routes
 Último resultado desta etapa:
 
 ```text
-Ran 124 tests in 19.715s
+Ran 138 tests in 18.385s
 OK
 ```
 

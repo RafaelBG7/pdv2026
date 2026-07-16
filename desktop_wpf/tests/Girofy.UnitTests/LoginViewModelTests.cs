@@ -202,6 +202,11 @@ public sealed class LoginViewModelTests
                 ? Task.CompletedTask
                 : Task.FromException(LogoutException);
 
+        public Task<DashboardSnapshot> GetDashboardSummaryAsync(
+            string accessToken,
+            CancellationToken cancellationToken) =>
+            Task.FromException<DashboardSnapshot>(new NotSupportedException());
+
         public Task<CatalogCategoryList> GetCatalogCategoriesAsync(
             string accessToken,
             string search,

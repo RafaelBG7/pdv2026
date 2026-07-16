@@ -1123,8 +1123,11 @@ Nesta etapa ele já possui:
 - sessão local criptografada com DPAPI do Windows;
 - restauração automática de sessão e logout revogável;
 - opção para lembrar somente o usuário, nunca a senha;
-- shell nativo autenticado com menu de Produtos e Categorias;
+- shell nativo autenticado com Dashboard, Produtos e Categorias;
+- dashboard agregado com caixa atual, vendas de hoje, ticket médio, lucro conforme
+  permissão, formas de pagamento, estoque baixo, produtos mais vendidos e vendas recentes;
 - catálogo paginado com busca, filtros e ordenação;
+- carregamento do catálogo somente ao abrir o módulo, reduzindo consumo na inicialização;
 - tabelas virtualizadas para catálogos grandes;
 - proteção de custo e lucro conforme a permissão do usuário;
 - timeout, cancelamento e mensagens seguras de falha;
@@ -1144,11 +1147,12 @@ O artefato gerado se chama:
 Girofy-Windows-WPF-preview
 ```
 
-Essa prévia não é o canal oficial para os clientes. O catálogo já funciona em modo
-somente leitura; edição, estoque operacional, vendas e caixa serão migrados por módulos,
-mantendo a versão web no ar durante todo o processo.
-O login nativo já está implementado, porém o servidor exige HTTPS para aceitar credenciais;
-o endereço HTTP atual da OCI serve somente para a validação inicial de conectividade.
+Essa prévia não é o canal oficial para os clientes. Dashboard e catálogo já funcionam em
+modo somente leitura; edição, estoque operacional, vendas e caixa serão migrados por
+módulos, mantendo a versão web no ar durante todo o processo.
+O login nativo já está implementado. No ambiente OCI atual, a autenticação por HTTP está
+liberada temporariamente para os testes controlados da prévia; antes da distribuição
+comercial será obrigatório publicar domínio e HTTPS e remover essa exceção.
 
 Documentação técnica:
 
@@ -1616,7 +1620,7 @@ Os testes usam configuração própria com SQLite em memória (`TESTING = True`)
 Última validação completa:
 
 ```text
-Ran 120 tests in 16.093s
+Ran 138 tests in 18.385s
 OK
 ```
 

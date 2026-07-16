@@ -178,6 +178,31 @@ Resposta:
 - o cliente WPF protege a sessão com DPAPI no perfil do usuário Windows;
 - senhas nunca são persistidas pelo cliente.
 
+## Dashboard da API
+
+### `GET /api/v1/dashboard/summary`
+
+Descrição: retorna uma visão agregada da operação da adega autenticada. A empresa é
+determinada exclusivamente pelo access token; parâmetros como `company_id` são ignorados.
+
+Permissão: Bearer access token. Campos financeiros sensíveis respeitam
+`can_view_reports`; contas a pagar respeitam `can_manage_payables`.
+
+Conteúdo de `data`:
+
+- data de referência;
+- total e quantidade de vendas do dia;
+- ticket médio e lucro, quando autorizados;
+- status e identificação do caixa atual;
+- totais por forma de pagamento, quando autorizados;
+- cinco produtos mais vendidos;
+- produtos abaixo do estoque mínimo;
+- seis vendas recentes;
+- contas vencidas ou com vencimento em até três dias, quando autorizadas.
+
+As somas, agrupamentos e limites são calculados no backend para manter o cliente Windows
+leve e evitar o envio de listas completas de vendas.
+
 ## Catálogo da API
 
 Todos os endpoints de catálogo exigem Bearer access token, transporte seguro e a

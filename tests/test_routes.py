@@ -428,6 +428,195 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(product_data['profit_amount'], 5.0)
         self.assertEqual(product_data['profit_margin_percent'], 33.33)
 
+    def test_api_dashboard_summary_is_aggregated_and_company_scoped(self):
+        user, company = self.create_api_user()
+        _, other_company = self.create_api_user(
+            username='api-dashboard-outra',
+            company_name='Outra adega dashboard',
+        )
+        today_at_ten = datetime.combine(date.today(), datetime.min.time()).replace(hour=10)
+        with self.app.app_context():
+            product = Product(
+                name='Coca Cola 2L',
+                company_id=company.id,
+                cost_price=7,
+                sale_price=12,
+                stock_quantity=1,
+                min_stock_quantity=2,
+                active=True,
+            )
+            other_product = Product(
+                name='Produto de outra adega',
+                company_id=other_company.id,
+                cost_price=1,
+                sale_price=500,
+                stock_quantity=0,
+                min_stock_quantity=10,
+                active=True,
+            )
+            cash_register = CashRegister(
+                company_id=company.id,
+                user_id=user.id,
+                status='open',
+                opening_amount=100,
+                opened_at=today_at_ten - timedelta(hours=1),
+            )
+            db.session.add_all([product, other_product, cash_register])
+            db.session.flush()
+
+            first_sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                cash_register_id=cash_register.id,
+                created_at=today_at_ten,
+                total_amount=24,
+                final_amount=24,
+                payment_status='paid',
+            )
+            second_sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                cash_register_id=cash_register.id,
+                created_at=today_at_ten + timedelta(hours=1),
+                total_amount=12,
+                final_amount=10,
+                discount_amount=2,
+                payment_status='paid',
+            )
+            other_sale = Sale(
+                company_id=other_company.id,
+                created_at=today_at_ten,
+                total_amount=500,
+                final_amount=500,
+                payment_status='paid',
+            )
+            db.session.add_all([first_sale, second_sale, other_sale])
+            db.session.flush()
+            second_sale_id = second_sale.id
+            db.session.add_all([
+                SaleItem(
+                    sale_id=first_sale.id,
+                    product_id=product.id,
+                    quantity=2,
+                    unit_price=12,
+                    unit_cost_price=7,
+                    total_price=24,
+                    profit_amount=10,
+                ),
+                SaleItem(
+                    sale_id=second_sale.id,
+                    product_id=product.id,
+                    quantity=1,
+                    unit_price=12,
+                    unit_cost_price=7,
+                    total_price=12,
+                    profit_amount=5,
+                ),
+                SaleItem(
+                    sale_id=other_sale.id,
+                    product_id=other_product.id,
+                    quantity=1,
+                    unit_price=500,
+                    unit_cost_price=1,
+                    total_price=500,
+                    profit_amount=499,
+                ),
+                Payment(sale_id=first_sale.id, method='money', amount=24),
+                Payment(sale_id=second_sale.id, method='pix', amount=10),
+                Payment(sale_id=other_sale.id, method='credit', amount=500),
+                Payable(
+                    company_id=company.id,
+                    description='Energia',
+                    amount=180,
+                    due_date=date.today() + timedelta(days=2),
+                    paid=False,
+                ),
+                Payable(
+                    company_id=other_company.id,
+                    description='Conta de outra adega',
+                    amount=999,
+                    due_date=date.today(),
+                    paid=False,
+                ),
+            ])
+            db.session.commit()
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.get(
+            '/api/v1/dashboard/summary?company_id=999999',
+            headers=self.bearer_header(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['summary']['sales_count'], 2)
+        self.assertEqual(data['summary']['sales_total'], 34.0)
+        self.assertEqual(data['summary']['average_ticket'], 17.0)
+        self.assertEqual(data['summary']['profit'], 15.0)
+        self.assertEqual(data['summary']['low_stock_count'], 1)
+        self.assertEqual(data['summary']['payables_due_count'], 1)
+        self.assertEqual(data['cash_register']['status'], 'open')
+        self.assertEqual(data['cash_register']['sales_total'], 34.0)
+        self.assertEqual(data['cash_register']['profit'], 15.0)
+        self.assertEqual(
+            {item['method']: item['amount'] for item in data['payment_totals']},
+            {'money': 24.0, 'pix': 10.0, 'debit': 0.0, 'credit': 0.0},
+        )
+        self.assertEqual(data['top_products'][0]['name'], 'Coca Cola 2L')
+        self.assertEqual(data['top_products'][0]['quantity'], 3)
+        self.assertEqual(data['low_stock_products'][0]['name'], 'Coca Cola 2L')
+        self.assertEqual(data['recent_sales'][0]['id'], second_sale_id)
+        self.assertEqual(data['upcoming_payables'][0]['description'], 'Energia')
+        self.assertNotIn('Produto de outra adega', str(data))
+        self.assertNotIn('Conta de outra adega', str(data))
+
+    def test_api_dashboard_redacts_financial_details_without_permissions(self):
+        user, company = self.create_api_user(
+            username='api-dashboard-operador',
+            role='operator',
+            can_view_reports=False,
+            can_manage_payables=False,
+        )
+        with self.app.app_context():
+            cash_register = CashRegister(
+                company_id=company.id,
+                user_id=user.id,
+                status='open',
+                opening_amount=50,
+            )
+            db.session.add(cash_register)
+            db.session.flush()
+            sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                cash_register_id=cash_register.id,
+                created_at=datetime.now(),
+                total_amount=20,
+                final_amount=20,
+                payment_status='paid',
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add(Payment(sale_id=sale.id, method='money', amount=20))
+            db.session.commit()
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.get(
+            '/api/v1/dashboard/summary',
+            headers=self.bearer_header(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['summary']['sales_total'], 20.0)
+        self.assertIsNone(data['summary']['profit'])
+        self.assertIsNone(data['summary']['average_ticket'])
+        self.assertIsNone(data['summary']['payables_due_count'])
+        self.assertIsNone(data['cash_register']['sales_total'])
+        self.assertIsNone(data['cash_register']['profit'])
+        self.assertEqual(data['payment_totals'], [])
+        self.assertEqual(data['upcoming_payables'], [])
+
     def test_login_remember_me_sets_persistent_cookie(self):
         response = self.client.post(
             '/login',

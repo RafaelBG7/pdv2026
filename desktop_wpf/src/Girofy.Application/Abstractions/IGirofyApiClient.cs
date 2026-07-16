@@ -23,6 +23,10 @@ public interface IGirofyApiClient
         string accessToken,
         CancellationToken cancellationToken);
 
+    Task<DashboardSnapshot> GetDashboardSummaryAsync(
+        string accessToken,
+        CancellationToken cancellationToken);
+
     Task<CatalogCategoryList> GetCatalogCategoriesAsync(
         string accessToken,
         string search,

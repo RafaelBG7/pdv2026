@@ -10,6 +10,7 @@ on:
       - 'app/models/api_refresh_token.py'
       - 'app/routes/api/**'
       - 'app/services/api_auth_service.py'
+      - 'app/services/dashboard_service.py'
       - 'app/security/csrf.py'
       - 'config.py'
       - 'tests/test_routes.py'
@@ -20,6 +21,7 @@ on:
       - 'app/models/api_refresh_token.py'
       - 'app/routes/api/**'
       - 'app/services/api_auth_service.py'
+      - 'app/services/dashboard_service.py'
       - 'app/security/csrf.py'
       - 'config.py'
       - 'tests/test_routes.py'
@@ -41,6 +43,21 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run backend contract tests
+        env:
+          TESTING: '1'
+          MAIL_SUPPRESS_SEND: '1'
+        run: python -m unittest tests.test_routes
 
       - name: Restore solution
         run: dotnet restore desktop_wpf/Girofy.Desktop.sln

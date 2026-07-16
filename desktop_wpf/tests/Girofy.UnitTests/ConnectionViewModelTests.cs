@@ -21,7 +21,8 @@ public sealed class ConnectionViewModelTests
             new StubBrowserService(),
             new Uri("https://girofy.example"),
             CreateLoginViewModel(apiClient),
-            CreateCatalogViewModel(apiClient));
+            CreateCatalogViewModel(apiClient),
+            CreateDashboardViewModel(apiClient));
 
         await viewModel.InitializeAsync();
 
@@ -38,7 +39,8 @@ public sealed class ConnectionViewModelTests
             new StubBrowserService(),
             new Uri("https://girofy.example"),
             CreateLoginViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
-            CreateCatalogViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
+            CreateCatalogViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreateDashboardViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
 
         await viewModel.InitializeAsync();
 
@@ -58,6 +60,9 @@ public sealed class ConnectionViewModelTests
             new Uri("https://girofy.example/forgot-password"));
 
     private static CatalogViewModel CreateCatalogViewModel(IGirofyApiClient apiClient) =>
+        new(apiClient, new AppSessionContext());
+
+    private static DashboardViewModel CreateDashboardViewModel(IGirofyApiClient apiClient) =>
         new(apiClient, new AppSessionContext());
 
     private sealed class StubApiClient : IGirofyApiClient
@@ -99,6 +104,11 @@ public sealed class ConnectionViewModelTests
             string accessToken,
             CancellationToken cancellationToken) =>
             Task.FromException(new NotSupportedException());
+
+        public Task<DashboardSnapshot> GetDashboardSummaryAsync(
+            string accessToken,
+            CancellationToken cancellationToken) =>
+            Task.FromException<DashboardSnapshot>(new NotSupportedException());
 
         public Task<CatalogCategoryList> GetCatalogCategoriesAsync(
             string accessToken,

@@ -82,6 +82,21 @@ public sealed class GirofyApiClient(
         await ReadEnvelopeAsync<LogoutResult>(response, cancellationToken);
     }
 
+    public async Task<DashboardSnapshot> GetDashboardSummaryAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "api/v1/dashboard/summary",
+            accessToken);
+        using var response = await httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        return await ReadEnvelopeAsync<DashboardSnapshot>(response, cancellationToken);
+    }
+
     public async Task<CatalogCategoryList> GetCatalogCategoriesAsync(
         string accessToken,
         string search,

@@ -14,26 +14,48 @@ public sealed class ConnectionViewModel : ObservableObject
     private bool _isBusy;
     private bool _isConnected;
     private bool _hasConnectionError;
+    private bool _isDashboardView = true;
 
     public ConnectionViewModel(
         IGirofyApiClient apiClient,
         IExternalBrowserService browserService,
         Uri serverUri,
         LoginViewModel login,
-        CatalogViewModel catalog)
+        CatalogViewModel catalog,
+        DashboardViewModel dashboard)
     {
         _apiClient = apiClient;
         _browserService = browserService;
         _serverUri = serverUri;
         Login = login;
         Catalog = catalog;
+        Dashboard = dashboard;
         RetryConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
         OpenWebCommand = new RelayCommand(() => _browserService.Open(_serverUri));
+        ShowDashboardCommand = new AsyncRelayCommand(ShowDashboardAsync);
+        ShowProductsCommand = new AsyncRelayCommand(ShowProductsAsync);
+        ShowCategoriesCommand = new AsyncRelayCommand(ShowCategoriesAsync);
     }
 
     public LoginViewModel Login { get; }
 
     public CatalogViewModel Catalog { get; }
+
+    public DashboardViewModel Dashboard { get; }
+
+    public bool IsDashboardView
+    {
+        get => _isDashboardView;
+        private set
+        {
+            if (SetProperty(ref _isDashboardView, value))
+            {
+                OnPropertyChanged(nameof(IsCatalogView));
+            }
+        }
+    }
+
+    public bool IsCatalogView => !IsDashboardView;
 
     public string StatusTitle
     {
@@ -77,8 +99,34 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public RelayCommand OpenWebCommand { get; }
 
+    public AsyncRelayCommand ShowDashboardCommand { get; }
+
+    public AsyncRelayCommand ShowProductsCommand { get; }
+
+    public AsyncRelayCommand ShowCategoriesCommand { get; }
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         CheckConnectionAsync(cancellationToken);
+
+    private async Task ShowDashboardAsync(CancellationToken cancellationToken)
+    {
+        IsDashboardView = true;
+        await Dashboard.InitializeAsync(cancellationToken);
+    }
+
+    private async Task ShowProductsAsync(CancellationToken cancellationToken)
+    {
+        IsDashboardView = false;
+        Catalog.ShowProductsCommand.Execute(null);
+        await Catalog.InitializeAsync(cancellationToken);
+    }
+
+    private async Task ShowCategoriesAsync(CancellationToken cancellationToken)
+    {
+        IsDashboardView = false;
+        Catalog.ShowCategoriesCommand.Execute(null);
+        await Catalog.InitializeAsync(cancellationToken);
+    }
 
     private async Task CheckConnectionAsync(CancellationToken cancellationToken)
     {

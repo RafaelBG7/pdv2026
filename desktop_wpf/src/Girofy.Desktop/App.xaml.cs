@@ -57,12 +57,14 @@ public partial class App : System.Windows.Application
                     provider.GetRequiredService<IAppSessionContext>(),
                     new Uri(serverUri, "forgot-password")));
                 services.AddSingleton<CatalogViewModel>();
+                services.AddSingleton<DashboardViewModel>();
                 services.AddSingleton(provider => new ConnectionViewModel(
                     provider.GetRequiredService<IGirofyApiClient>(),
                     provider.GetRequiredService<IExternalBrowserService>(),
                     serverUri,
                     provider.GetRequiredService<LoginViewModel>(),
-                    provider.GetRequiredService<CatalogViewModel>()));
+                    provider.GetRequiredService<CatalogViewModel>(),
+                    provider.GetRequiredService<DashboardViewModel>()));
                 services.AddSingleton<MainWindow>();
             })
             .Build();

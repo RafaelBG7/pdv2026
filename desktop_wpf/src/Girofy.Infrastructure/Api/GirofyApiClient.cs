@@ -156,7 +156,7 @@ public sealed class GirofyApiClient(
             payload = await response.Content.ReadFromJsonAsync<ApiEnvelope<T>>(
                 cancellationToken: cancellationToken);
         }
-        catch (System.Text.Json.JsonException exception)
+        catch (global::System.Text.Json.JsonException exception)
         {
             logger.LogWarning(
                 exception,
@@ -182,15 +182,15 @@ public sealed class GirofyApiClient(
     }
 
     private sealed record LoginRequest(
-        [property: System.Text.Json.Serialization.JsonPropertyName("identifier")] string Identifier,
-        [property: System.Text.Json.Serialization.JsonPropertyName("password")] string Password);
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("identifier")] string Identifier,
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("password")] string Password);
 
     private sealed record RefreshRequest(
-        [property: System.Text.Json.Serialization.JsonPropertyName("refresh_token")] string RefreshToken);
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("refresh_token")] string RefreshToken);
 
     private sealed class LogoutResult
     {
-        [System.Text.Json.Serialization.JsonPropertyName("logged_out")]
+        [global::System.Text.Json.Serialization.JsonPropertyName("logged_out")]
         public bool LoggedOut { get; init; }
     }
 }

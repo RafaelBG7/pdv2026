@@ -31,17 +31,25 @@ Quarto corte vertical implementado:
 - consulta de categorias com quantidade de produtos;
 - tabelas WPF virtualizadas para reduzir consumo com catálogos grandes;
 - custo e lucro omitidos pelo servidor quando o perfil não pode gerenciar produtos;
+- tela nativa de Caixa com consulta do caixa atual e dos dez caixas fechados mais
+  recentes;
+- abertura de caixa com valor inicial e proteção contra dois caixas simultâneos;
+- fechamento com conferência exata do valor esperado, sem perder o valor digitado em
+  caso de divergência;
+- totais por forma de pagamento e valores do caixa exibidos apenas para usuários com
+  permissão de relatórios;
+- abertura e fechamento registrados na auditoria da adega;
 - abertura opcional da versão web no navegador externo;
 - logs locais em `%LOCALAPPDATA%\Girofy\logs`;
 - catálogo carregado somente quando Produtos ou Categorias é aberto, evitando consultas
   e uso de memória desnecessários na inicialização;
-- testes unitários de conexão, login, restauração de sessão, logout, dashboard e catálogo;
+- testes unitários de conexão, login, restauração de sessão, logout, dashboard, catálogo
+  e caixa;
 - workflow separado para build Windows self-contained.
 
-O dashboard e o catálogo já funcionam em modo somente leitura. Ainda não existem edição
-de produtos, vendas, estoque operacional ou abertura/fechamento de caixa nativos no WPF.
-Esses módulos serão adicionados por API sem remover nem substituir a versão web durante
-a migração.
+O dashboard, o catálogo e o caixa já funcionam de forma nativa. Ainda não existem edição
+de produtos, vendas ou estoque operacional no WPF. Esses módulos serão adicionados por
+API sem remover nem substituir a versão web durante a migração.
 
 ## Configuração
 
@@ -91,6 +99,6 @@ GitHub > Actions > Build Windows WPF preview > Run workflow
 
 O artefato `Girofy-Windows-WPF-preview` é self-contained. O cliente final não precisa instalar .NET, Python, MySQL ou ferramentas de desenvolvimento.
 
-Esta prévia valida a base nativa, o ciclo completo de autenticação, o dashboard operacional
-e a consulta real do catálogo. Ela ainda não substitui a versão web em produção porque as
-operações de venda e caixa não foram migradas.
+Esta prévia valida a base nativa, o ciclo completo de autenticação, o dashboard operacional,
+a consulta real do catálogo e o fluxo de abertura/fechamento de caixa. Ela ainda não
+substitui a versão web em produção porque o registro de vendas não foi migrado.

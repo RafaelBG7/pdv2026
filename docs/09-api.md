@@ -203,6 +203,67 @@ Conteúdo de `data`:
 As somas, agrupamentos e limites são calculados no backend para manter o cliente Windows
 leve e evitar o envio de listas completas de vendas.
 
+## Caixa da API
+
+Os endpoints de caixa exigem Bearer access token, transporte seguro e a permissão
+`can_manage_cash_register`. A adega é sempre obtida do token. Valores financeiros são
+retornados somente quando o usuário também possui `can_view_reports`.
+
+### `GET /api/v1/cash-registers/summary`
+
+Descrição: retorna o caixa aberto da adega e os dez caixas fechados mais recentes.
+
+Cada registro contém identificação, status, abertura, fechamento, responsável e
+quantidade de vendas. Quando autorizado, também inclui valor inicial, valor final, total
+vendido, valor esperado, diferença e totais de Dinheiro, Pix, Débito e Crédito.
+
+### `POST /api/v1/cash-registers/open`
+
+Descrição: abre um caixa para a adega autenticada.
+
+Payload:
+
+```json
+{
+  "opening_amount": "150,00"
+}
+```
+
+Resposta: o mesmo snapshot de `summary`, com o novo caixa em `current_register` e HTTP
+`201`. A abertura bloqueia a empresa durante a transação para impedir dois caixas
+simultâneos e registra o evento na auditoria.
+
+Erros principais:
+
+- `422 invalid_money`: valor ausente, inválido ou fora do limite;
+- `409 cash_register_already_open`: já existe um caixa aberto.
+
+### `POST /api/v1/cash-registers/close`
+
+Descrição: fecha o caixa atual após conferir exatamente o valor inicial somado às vendas.
+
+Payload:
+
+```json
+{
+  "cash_register_id": 18,
+  "closing_amount": "487,50"
+}
+```
+
+O fechamento usa transação e bloqueio de linha. Se o caixa mudou desde a última consulta,
+o cliente precisa atualizar o snapshot. Quando o valor não confere, o servidor não altera
+o caixa e retorna HTTP `422`; usuários autorizados recebem o valor faltante ou excedente,
+enquanto os demais recebem uma orientação sem revelar totais financeiros.
+
+Erros principais:
+
+- `422 invalid_integer`: identificador inválido;
+- `422 invalid_money`: valor de fechamento inválido;
+- `422 cash_register_amount_mismatch`: valor diferente do esperado;
+- `409 cash_register_not_open`: não existe caixa aberto;
+- `409 cash_register_changed`: o caixa aberto não corresponde ao identificador enviado.
+
 ## Catálogo da API
 
 Todos os endpoints de catálogo exigem Bearer access token, transporte seguro e a

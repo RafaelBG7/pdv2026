@@ -97,6 +97,52 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<DashboardSnapshot>(response, cancellationToken);
     }
 
+    public async Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "api/v1/cash-registers/summary",
+            accessToken);
+        using var response = await httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        return await ReadEnvelopeAsync<CashRegisterSnapshot>(response, cancellationToken);
+    }
+
+    public async Task<CashRegisterSnapshot> OpenCashRegisterAsync(
+        string accessToken,
+        decimal openingAmount,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "api/v1/cash-registers/open",
+            accessToken);
+        request.Content = JsonContent.Create(new OpenCashRegisterRequest(openingAmount));
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<CashRegisterSnapshot>(response, cancellationToken);
+    }
+
+    public async Task<CashRegisterSnapshot> CloseCashRegisterAsync(
+        string accessToken,
+        int cashRegisterId,
+        decimal closingAmount,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "api/v1/cash-registers/close",
+            accessToken);
+        request.Content = JsonContent.Create(new CloseCashRegisterRequest(
+            cashRegisterId,
+            closingAmount));
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<CashRegisterSnapshot>(response, cancellationToken);
+    }
+
     public async Task<CatalogCategoryList> GetCatalogCategoriesAsync(
         string accessToken,
         string search,
@@ -202,6 +248,13 @@ public sealed class GirofyApiClient(
 
     private sealed record RefreshRequest(
         [property: global::System.Text.Json.Serialization.JsonPropertyName("refresh_token")] string RefreshToken);
+
+    private sealed record OpenCashRegisterRequest(
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("opening_amount")] decimal OpeningAmount);
+
+    private sealed record CloseCashRegisterRequest(
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("cash_register_id")] int CashRegisterId,
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("closing_amount")] decimal ClosingAmount);
 
     private sealed class LogoutResult
     {

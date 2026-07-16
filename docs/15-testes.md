@@ -140,7 +140,7 @@ Auditoria:
 Validação feita em 16/07/2026:
 
 ```text
-Ran 138 tests in 18.385s
+Ran 142 tests in 19.963s
 OK
 ```
 
@@ -148,7 +148,11 @@ Também foram validados:
 
 - compilação de sintaxe dos principais arquivos Python;
 - contrato agregado do dashboard nativo, incluindo isolamento por adega e ocultação por permissão;
-- sintaxe XML das telas WPF de dashboard e catálogo;
+- contratos de abertura, consulta e fechamento de caixa pela API, incluindo concorrência,
+  conferência de valores, permissões e isolamento por adega;
+- sintaxe XML das telas WPF de dashboard, catálogo e caixa;
+- ViewModel nativa de caixa, incluindo abertura, fechamento, preservação do valor após
+  erro e limpeza ao encerrar a sessão;
 - sintaxe dos scripts OCI e deploy;
 - workflow YAML de build desktop;
 - workflow YAML de deploy OCI;

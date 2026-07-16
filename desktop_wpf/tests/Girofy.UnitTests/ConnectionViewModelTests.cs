@@ -22,7 +22,8 @@ public sealed class ConnectionViewModelTests
             new Uri("https://girofy.example"),
             CreateLoginViewModel(apiClient),
             CreateCatalogViewModel(apiClient),
-            CreateDashboardViewModel(apiClient));
+            CreateDashboardViewModel(apiClient),
+            CreateCashRegisterViewModel(apiClient));
 
         await viewModel.InitializeAsync();
 
@@ -40,7 +41,8 @@ public sealed class ConnectionViewModelTests
             new Uri("https://girofy.example"),
             CreateLoginViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
             CreateCatalogViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
-            CreateDashboardViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
+            CreateDashboardViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreateCashRegisterViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
 
         await viewModel.InitializeAsync();
 
@@ -63,6 +65,9 @@ public sealed class ConnectionViewModelTests
         new(apiClient, new AppSessionContext());
 
     private static DashboardViewModel CreateDashboardViewModel(IGirofyApiClient apiClient) =>
+        new(apiClient, new AppSessionContext());
+
+    private static CashRegisterViewModel CreateCashRegisterViewModel(IGirofyApiClient apiClient) =>
         new(apiClient, new AppSessionContext());
 
     private sealed class StubApiClient : IGirofyApiClient
@@ -109,6 +114,24 @@ public sealed class ConnectionViewModelTests
             string accessToken,
             CancellationToken cancellationToken) =>
             Task.FromException<DashboardSnapshot>(new NotSupportedException());
+
+        public Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
+            string accessToken,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+
+        public Task<CashRegisterSnapshot> OpenCashRegisterAsync(
+            string accessToken,
+            decimal openingAmount,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+
+        public Task<CashRegisterSnapshot> CloseCashRegisterAsync(
+            string accessToken,
+            int cashRegisterId,
+            decimal closingAmount,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
 
         public Task<CatalogCategoryList> GetCatalogCategoriesAsync(
             string accessToken,

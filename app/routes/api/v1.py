@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
 
 from flask import Blueprint, current_app, g, jsonify, request
@@ -18,6 +20,12 @@ from app.services.api_auth_service import (
     user_identity_data,
 )
 from app.services.audit_service import record_audit_event
+from app.services.cash_register_service import (
+    CashRegisterOperationError,
+    build_cash_register_snapshot,
+    close_cash_register,
+    open_cash_register,
+)
 from app.services.dashboard_service import build_dashboard_snapshot
 from app.tenant import tenant_engine
 
@@ -160,6 +168,68 @@ def positive_integer_argument(name, default, maximum=None):
             name,
         )
     return min(value, maximum) if maximum else value
+
+
+def json_positive_integer(payload, name):
+    raw_value = payload.get(name)
+    if isinstance(raw_value, bool):
+        raw_value = None
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError) as error:
+        raise ApiAuthError(
+            f'O campo {name} precisa ser um número inteiro maior que zero.',
+            'invalid_integer',
+            422,
+            name,
+        ) from error
+    if value < 1:
+        raise ApiAuthError(
+            f'O campo {name} precisa ser maior que zero.',
+            'invalid_integer',
+            422,
+            name,
+        )
+    return value
+
+
+def json_money(payload, name):
+    raw_value = payload.get(name)
+    if isinstance(raw_value, bool) or raw_value is None:
+        raise ApiAuthError(
+            f'Informe o campo {name}.',
+            'money_required',
+            422,
+            name,
+        )
+
+    text = str(raw_value).strip()
+    if not text:
+        raise ApiAuthError(
+            f'Informe o campo {name}.',
+            'money_required',
+            422,
+            name,
+        )
+    if ',' in text:
+        text = text.replace('.', '').replace(',', '.')
+    try:
+        value = Decimal(text)
+    except InvalidOperation as error:
+        raise ApiAuthError(
+            f'O campo {name} precisa ser um valor monetário válido.',
+            'invalid_money',
+            422,
+            name,
+        ) from error
+    if not value.is_finite() or value < 0 or value > Decimal('999999999.99'):
+        raise ApiAuthError(
+            f'O campo {name} está fora do intervalo permitido.',
+            'invalid_money',
+            422,
+            name,
+        )
+    return value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
 def catalog_category_data(category, product_count):
@@ -327,6 +397,96 @@ def api_dashboard_summary():
         return api_success(snapshot)
     except ApiAuthError as error:
         return api_auth_error_response(error)
+
+
+@api_v1_bp.get('/cash-registers/summary')
+@api_permission_required('can_manage_cash_register')
+def api_cash_register_summary():
+    try:
+        with api_tenant_database(g.api_user) as tenant_db:
+            snapshot = build_cash_register_snapshot(
+                tenant_db,
+                g.api_user.company_id,
+                can_view_financials=g.api_user.has_permission('can_view_reports'),
+            )
+        return api_success(snapshot)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+
+
+@api_v1_bp.post('/cash-registers/open')
+@api_permission_required('can_manage_cash_register')
+def api_open_cash_register():
+    try:
+        payload = json_object_body()
+        opening_amount = json_money(payload, 'opening_amount')
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                open_cash_register(
+                    tenant_db,
+                    g.api_user.company_id,
+                    g.api_user,
+                    opening_amount,
+                )
+                tenant_db.commit()
+                snapshot = build_cash_register_snapshot(
+                    tenant_db,
+                    g.api_user.company_id,
+                    can_view_financials=g.api_user.has_permission('can_view_reports'),
+                )
+            except Exception:
+                tenant_db.rollback()
+                raise
+        return api_success(snapshot, 201)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except CashRegisterOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )
+
+
+@api_v1_bp.post('/cash-registers/close')
+@api_permission_required('can_manage_cash_register')
+def api_close_cash_register():
+    try:
+        payload = json_object_body()
+        cash_register_id = json_positive_integer(payload, 'cash_register_id')
+        closing_amount = json_money(payload, 'closing_amount')
+        can_view_financials = g.api_user.has_permission('can_view_reports')
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                close_cash_register(
+                    tenant_db,
+                    g.api_user.company_id,
+                    g.api_user,
+                    cash_register_id,
+                    closing_amount,
+                    can_view_financials,
+                    datetime.now(timezone.utc),
+                )
+                tenant_db.commit()
+                snapshot = build_cash_register_snapshot(
+                    tenant_db,
+                    g.api_user.company_id,
+                    can_view_financials=can_view_financials,
+                )
+            except Exception:
+                tenant_db.rollback()
+                raise
+        return api_success(snapshot)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except CashRegisterOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )
 
 
 @api_v1_bp.get('/catalog/categories')

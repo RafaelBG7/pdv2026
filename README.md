@@ -1123,13 +1123,18 @@ Nesta etapa ele já possui:
 - sessão local criptografada com DPAPI do Windows;
 - restauração automática de sessão e logout revogável;
 - opção para lembrar somente o usuário, nunca a senha;
-- shell nativo autenticado com Dashboard, Produtos e Categorias;
+- shell nativo autenticado com Dashboard, Produtos, Categorias e Caixa;
 - dashboard agregado com caixa atual, vendas de hoje, ticket médio, lucro conforme
   permissão, formas de pagamento, estoque baixo, produtos mais vendidos e vendas recentes;
 - catálogo paginado com busca, filtros e ordenação;
 - carregamento do catálogo somente ao abrir o módulo, reduzindo consumo na inicialização;
 - tabelas virtualizadas para catálogos grandes;
 - proteção de custo e lucro conforme a permissão do usuário;
+- consulta do caixa atual e dos dez caixas fechados mais recentes;
+- abertura nativa de caixa com valor inicial e bloqueio de abertura duplicada;
+- fechamento nativo com conferência exata, totais por forma de pagamento e auditoria;
+- ocultação de valores financeiros do caixa quando o usuário não possui permissão de
+  relatórios;
 - timeout, cancelamento e mensagens seguras de falha;
 - logs locais rotativos em `%LOCALAPPDATA%\Girofy\logs`;
 - testes unitários da camada de apresentação;
@@ -1147,8 +1152,8 @@ O artefato gerado se chama:
 Girofy-Windows-WPF-preview
 ```
 
-Essa prévia não é o canal oficial para os clientes. Dashboard e catálogo já funcionam em
-modo somente leitura; edição, estoque operacional, vendas e caixa serão migrados por
+Essa prévia não é o canal oficial para os clientes. Dashboard, catálogo e caixa já
+funcionam de forma nativa; edição, estoque operacional e vendas serão migrados por
 módulos, mantendo a versão web no ar durante todo o processo.
 O login nativo já está implementado. No ambiente OCI atual, a autenticação por HTTP está
 liberada temporariamente para os testes controlados da prévia; antes da distribuição

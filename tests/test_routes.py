@@ -617,6 +617,188 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(data['payment_totals'], [])
         self.assertEqual(data['upcoming_payables'], [])
 
+    def test_api_cash_register_opens_once_and_returns_current_snapshot(self):
+        user, company = self.create_api_user()
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+
+        empty_response = self.client.get('/api/v1/cash-registers/summary', headers=headers)
+        opened_response = self.client.post(
+            '/api/v1/cash-registers/open',
+            headers=headers,
+            json={'opening_amount': '100,50'},
+        )
+        duplicate_response = self.client.post(
+            '/api/v1/cash-registers/open',
+            headers=headers,
+            json={'opening_amount': 10},
+        )
+
+        self.assertEqual(empty_response.status_code, 200)
+        self.assertIsNone(empty_response.get_json()['data']['current_register'])
+        self.assertEqual(opened_response.status_code, 201)
+        opened = opened_response.get_json()['data']['current_register']
+        self.assertEqual(opened['status'], 'open')
+        self.assertEqual(opened['opening_amount'], 100.5)
+        self.assertEqual(opened['sales_count'], 0)
+        self.assertEqual(opened['expected_amount'], 100.5)
+        self.assertEqual(duplicate_response.status_code, 409)
+        self.assertEqual(
+            duplicate_response.get_json()['errors'][0]['code'],
+            'cash_register_already_open',
+        )
+        with self.app.app_context():
+            self.assertEqual(
+                CashRegister.query.filter_by(company_id=company.id, status='open').count(),
+                1,
+            )
+            self.assertEqual(
+                AuditLog.query.filter_by(
+                    company_id=company.id,
+                    action='cash_register_opened',
+                ).count(),
+                1,
+            )
+
+    def test_api_cash_register_rejects_wrong_close_amount_and_closes_exact_value(self):
+        user, company = self.create_api_user()
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+        opened = self.client.post(
+            '/api/v1/cash-registers/open',
+            headers=headers,
+            json={'opening_amount': 100},
+        ).get_json()['data']['current_register']
+
+        with self.app.app_context():
+            sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                cash_register_id=opened['id'],
+                total_amount=25,
+                final_amount=25,
+                payment_status='paid',
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add(Payment(sale_id=sale.id, method='pix', amount=25))
+            db.session.commit()
+
+        mismatch_response = self.client.post(
+            '/api/v1/cash-registers/close',
+            headers=headers,
+            json={
+                'cash_register_id': opened['id'],
+                'closing_amount': '124,00',
+            },
+        )
+        close_response = self.client.post(
+            '/api/v1/cash-registers/close',
+            headers=headers,
+            json={
+                'cash_register_id': opened['id'],
+                'closing_amount': '125,00',
+            },
+        )
+
+        self.assertEqual(mismatch_response.status_code, 422)
+        mismatch = mismatch_response.get_json()
+        self.assertEqual(mismatch['errors'][0]['code'], 'cash_register_amount_mismatch')
+        self.assertIn('Falta R$ 1,00', mismatch['message'])
+        self.assertEqual(close_response.status_code, 200)
+        closed_data = close_response.get_json()['data']
+        self.assertIsNone(closed_data['current_register'])
+        self.assertEqual(closed_data['recent_registers'][0]['id'], opened['id'])
+        self.assertEqual(closed_data['recent_registers'][0]['closing_amount'], 125.0)
+        self.assertEqual(closed_data['recent_registers'][0]['sales_total'], 25.0)
+        self.assertEqual(
+            {item['method']: item['amount'] for item in closed_data['recent_registers'][0]['payment_totals']},
+            {'money': 0.0, 'pix': 25.0, 'debit': 0.0, 'credit': 0.0},
+        )
+        with self.app.app_context():
+            cash_register = db.session.get(CashRegister, opened['id'])
+            self.assertEqual(cash_register.status, 'closed')
+            self.assertIsNotNone(cash_register.closed_at)
+            self.assertEqual(
+                AuditLog.query.filter_by(
+                    company_id=company.id,
+                    action='cash_register_closed',
+                ).count(),
+                1,
+            )
+
+    def test_api_cash_register_redacts_financials_without_reports_permission(self):
+        user, _ = self.create_api_user(
+            username='api-caixa-operador',
+            role='operator',
+            can_manage_cash_register=True,
+            can_view_reports=False,
+        )
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.post(
+            '/api/v1/cash-registers/open',
+            headers=self.bearer_header(token),
+            json={'opening_amount': 50},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        data = response.get_json()['data']
+        self.assertFalse(data['permissions']['can_view_financials'])
+        self.assertIsNone(data['current_register']['opening_amount'])
+        self.assertIsNone(data['current_register']['sales_total'])
+        self.assertIsNone(data['current_register']['expected_amount'])
+        self.assertEqual(data['current_register']['payment_totals'], [])
+
+    def test_api_cash_register_requires_permission_and_is_company_scoped(self):
+        blocked_user, _ = self.create_api_user(
+            username='api-caixa-bloqueado',
+            role='operator',
+            can_manage_cash_register=False,
+        )
+        allowed_user, allowed_company = self.create_api_user(
+            username='api-caixa-permitido',
+            company_name='Adega caixa permitida',
+        )
+        _, other_company = self.create_api_user(
+            username='api-caixa-outra',
+            company_name='Outra adega caixa',
+        )
+        with self.app.app_context():
+            db.session.add(CashRegister(
+                company_id=other_company.id,
+                status='open',
+                opening_amount=999,
+            ))
+            db.session.commit()
+
+        blocked_token = self.api_login(
+            blocked_user.username,
+            'SenhaApi123',
+        ).get_json()['data']['access_token']
+        blocked_response = self.client.get(
+            '/api/v1/cash-registers/summary',
+            headers=self.bearer_header(blocked_token),
+        )
+        allowed_token = self.api_login(
+            allowed_user.username,
+            'SenhaApi123',
+        ).get_json()['data']['access_token']
+        scoped_response = self.client.get(
+            '/api/v1/cash-registers/summary',
+            headers=self.bearer_header(allowed_token),
+        )
+
+        self.assertEqual(blocked_response.status_code, 403)
+        self.assertEqual(blocked_response.get_json()['errors'][0]['code'], 'permission_denied')
+        self.assertEqual(scoped_response.status_code, 200)
+        self.assertIsNone(scoped_response.get_json()['data']['current_register'])
+        self.assertEqual(scoped_response.get_json()['data']['recent_registers'], [])
+        with self.app.app_context():
+            self.assertEqual(
+                CashRegister.query.filter_by(company_id=allowed_company.id).count(),
+                0,
+            )
+
     def test_login_remember_me_sets_persistent_cookie(self):
         response = self.client.post(
             '/login',

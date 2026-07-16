@@ -207,6 +207,24 @@ public sealed class LoginViewModelTests
             CancellationToken cancellationToken) =>
             Task.FromException<DashboardSnapshot>(new NotSupportedException());
 
+        public Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
+            string accessToken,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+
+        public Task<CashRegisterSnapshot> OpenCashRegisterAsync(
+            string accessToken,
+            decimal openingAmount,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+
+        public Task<CashRegisterSnapshot> CloseCashRegisterAsync(
+            string accessToken,
+            int cashRegisterId,
+            decimal closingAmount,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+
         public Task<CatalogCategoryList> GetCatalogCategoriesAsync(
             string accessToken,
             string search,

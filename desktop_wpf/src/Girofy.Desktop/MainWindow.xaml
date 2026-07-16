@@ -314,6 +314,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
@@ -363,7 +364,21 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <StackPanel Grid.Row="6" Margin="8">
+                        <Button Grid.Row="5" Margin="0,8,0,0"
+                                IsEnabled="{Binding CashRegister.IsAvailable}"
+                                Command="{Binding ShowCashRegisterCommand}"
+                                Content="Caixa">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCashRegisterView}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <StackPanel Grid.Row="7" Margin="8">
                             <TextBlock FontSize="11" FontWeight="SemiBold"
                                        Foreground="{StaticResource TextMutedBrush}" Text="SERVIDOR" />
                             <TextBlock Margin="0,4,0,0" FontSize="12"
@@ -388,6 +403,19 @@
                             </Style>
                         </Grid.Style>
                         <views:DashboardView DataContext="{Binding Dashboard}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCashRegisterView}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <views:CashRegisterView DataContext="{Binding CashRegister}" />
                     </Grid>
                     <Grid>
                         <Grid.Style>

@@ -62,10 +62,9 @@ Configurações do servidor:
 ## Próximas etapas
 
 1. Publicar o backend atrás de domínio e HTTPS.
-2. Implementar abertura, estado e fechamento de caixa por contratos transacionais.
-3. Migrar o fluxo de venda com idempotência, baixa de estoque e pagamentos no servidor.
-4. Implementar detalhes e edição de produtos conforme as permissões.
-5. Migrar movimentações de estoque com controle de concorrência.
+2. Migrar o fluxo de venda com idempotência, baixa de estoque e pagamentos no servidor.
+3. Implementar detalhes e edição de produtos conforme as permissões.
+4. Migrar movimentações de estoque com controle de concorrência.
 
 ## Dashboard nativo
 
@@ -77,3 +76,14 @@ O contrato inclui vendas de hoje, caixa atual, formas de pagamento, produtos mai
 estoque baixo, vendas recentes e contas críticas. Lucro, ticket médio, totais do caixa,
 pagamentos e contas são omitidos quando as permissões do usuário não autorizam a leitura.
 Produtos e categorias são carregados somente ao abrir o respectivo módulo.
+
+## Caixa nativo
+
+O módulo Caixa consome `GET /api/v1/cash-registers/summary` somente quando o usuário abre
+a tela. Abertura e fechamento usam endpoints transacionais próprios; o servidor serializa
+as operações no escopo da empresa, confere o valor esperado e registra auditoria. O cliente
+preserva o valor digitado quando a conferência falha e nunca acessa o MySQL diretamente.
+
+Usuários com `can_manage_cash_register` podem operar o módulo. Valores iniciais, totais,
+diferenças e formas de pagamento só são enviados quando a identidade também possui
+`can_view_reports`.

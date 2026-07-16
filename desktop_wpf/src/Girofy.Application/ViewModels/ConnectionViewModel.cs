@@ -14,7 +14,7 @@ public sealed class ConnectionViewModel : ObservableObject
     private bool _isBusy;
     private bool _isConnected;
     private bool _hasConnectionError;
-    private bool _isDashboardView = true;
+    private string _activeView = "dashboard";
 
     public ConnectionViewModel(
         IGirofyApiClient apiClient,
@@ -22,7 +22,8 @@ public sealed class ConnectionViewModel : ObservableObject
         Uri serverUri,
         LoginViewModel login,
         CatalogViewModel catalog,
-        DashboardViewModel dashboard)
+        DashboardViewModel dashboard,
+        CashRegisterViewModel cashRegister)
     {
         _apiClient = apiClient;
         _browserService = browserService;
@@ -30,11 +31,13 @@ public sealed class ConnectionViewModel : ObservableObject
         Login = login;
         Catalog = catalog;
         Dashboard = dashboard;
+        CashRegister = cashRegister;
         RetryConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
         OpenWebCommand = new RelayCommand(() => _browserService.Open(_serverUri));
         ShowDashboardCommand = new AsyncRelayCommand(ShowDashboardAsync);
         ShowProductsCommand = new AsyncRelayCommand(ShowProductsAsync);
         ShowCategoriesCommand = new AsyncRelayCommand(ShowCategoriesAsync);
+        ShowCashRegisterCommand = new AsyncRelayCommand(ShowCashRegisterAsync);
     }
 
     public LoginViewModel Login { get; }
@@ -43,19 +46,13 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public DashboardViewModel Dashboard { get; }
 
-    public bool IsDashboardView
-    {
-        get => _isDashboardView;
-        private set
-        {
-            if (SetProperty(ref _isDashboardView, value))
-            {
-                OnPropertyChanged(nameof(IsCatalogView));
-            }
-        }
-    }
+    public CashRegisterViewModel CashRegister { get; }
 
-    public bool IsCatalogView => !IsDashboardView;
+    public bool IsDashboardView => string.Equals(_activeView, "dashboard", StringComparison.Ordinal);
+
+    public bool IsCatalogView => string.Equals(_activeView, "catalog", StringComparison.Ordinal);
+
+    public bool IsCashRegisterView => string.Equals(_activeView, "cash-register", StringComparison.Ordinal);
 
     public string StatusTitle
     {
@@ -105,27 +102,48 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public AsyncRelayCommand ShowCategoriesCommand { get; }
 
+    public AsyncRelayCommand ShowCashRegisterCommand { get; }
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         CheckConnectionAsync(cancellationToken);
 
     private async Task ShowDashboardAsync(CancellationToken cancellationToken)
     {
-        IsDashboardView = true;
+        SetActiveView("dashboard");
         await Dashboard.InitializeAsync(cancellationToken);
     }
 
     private async Task ShowProductsAsync(CancellationToken cancellationToken)
     {
-        IsDashboardView = false;
+        SetActiveView("catalog");
         Catalog.ShowProductsCommand.Execute(null);
         await Catalog.InitializeAsync(cancellationToken);
     }
 
     private async Task ShowCategoriesAsync(CancellationToken cancellationToken)
     {
-        IsDashboardView = false;
+        SetActiveView("catalog");
         Catalog.ShowCategoriesCommand.Execute(null);
         await Catalog.InitializeAsync(cancellationToken);
+    }
+
+    private async Task ShowCashRegisterAsync(CancellationToken cancellationToken)
+    {
+        SetActiveView("cash-register");
+        await CashRegister.InitializeAsync(cancellationToken);
+    }
+
+    private void SetActiveView(string activeView)
+    {
+        if (string.Equals(_activeView, activeView, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _activeView = activeView;
+        OnPropertyChanged(nameof(IsDashboardView));
+        OnPropertyChanged(nameof(IsCatalogView));
+        OnPropertyChanged(nameof(IsCashRegisterView));
     }
 
     private async Task CheckConnectionAsync(CancellationToken cancellationToken)

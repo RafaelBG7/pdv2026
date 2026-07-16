@@ -90,6 +90,24 @@ public sealed class DashboardViewModelTests
         public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken) =>
             Task.FromException<HealthStatus>(new NotSupportedException());
 
+        public Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
+            string accessToken,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+
+        public Task<CashRegisterSnapshot> OpenCashRegisterAsync(
+            string accessToken,
+            decimal openingAmount,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+
+        public Task<CashRegisterSnapshot> CloseCashRegisterAsync(
+            string accessToken,
+            int cashRegisterId,
+            decimal closingAmount,
+            CancellationToken cancellationToken) =>
+            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+
         public Task<AuthSession> LoginAsync(
             string identifier,
             string password,

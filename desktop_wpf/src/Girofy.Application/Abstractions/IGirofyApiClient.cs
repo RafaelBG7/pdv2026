@@ -27,6 +27,21 @@ public interface IGirofyApiClient
         string accessToken,
         CancellationToken cancellationToken);
 
+    Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
+        string accessToken,
+        CancellationToken cancellationToken);
+
+    Task<CashRegisterSnapshot> OpenCashRegisterAsync(
+        string accessToken,
+        decimal openingAmount,
+        CancellationToken cancellationToken);
+
+    Task<CashRegisterSnapshot> CloseCashRegisterAsync(
+        string accessToken,
+        int cashRegisterId,
+        decimal closingAmount,
+        CancellationToken cancellationToken);
+
     Task<CatalogCategoryList> GetCatalogCategoriesAsync(
         string accessToken,
         string search,

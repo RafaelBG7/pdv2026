@@ -1,2 +1,0 @@
-PyInstaller>=6.14,<7.0
-pywebview>=6.0,<7.0

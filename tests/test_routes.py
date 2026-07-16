@@ -6,6 +6,7 @@ import re
 import sys
 import tempfile
 import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -13,7 +14,8 @@ from flask import g
 
 from app import create_app
 from app.extensions import db
-from app.models import ActivationKey, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.models import ActivationKey, ApiRefreshToken, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.services.api_auth_service import clear_api_login_attempts
 from app.services.audit_service import changed_values, record_audit_event
 from sqlalchemy.exc import SQLAlchemyError
 from app import tenant as tenant_module
@@ -28,6 +30,9 @@ class TestConfig:
     WTF_CSRF_ENABLED = False
     MAIL_SUPPRESS_SEND = True
     PUBLIC_BASE_URL = 'http://localhost'
+    API_ALLOW_INSECURE_AUTH = True
+    API_ACCESS_TOKEN_MINUTES = 15
+    API_REFRESH_TOKEN_DAYS = 30
 
 
 def close_test_log_handlers(app):
@@ -74,6 +79,7 @@ class RouteTestCase(unittest.TestCase):
             db.drop_all()
             db.engine.dispose()
         close_test_log_handlers(self.app)
+        clear_api_login_attempts()
         self.temp_dir.cleanup()
 
     def login(self, username='master', password='master123', follow_redirects=False):
@@ -89,6 +95,52 @@ class RouteTestCase(unittest.TestCase):
     def master_company_id(self):
         return User.query.filter_by(username='master').one().company_id
 
+    def create_api_user(
+        self,
+        username='api-operador',
+        password='SenhaApi123',
+        company_name='Adega API',
+        **user_values,
+    ):
+        with self.app.app_context():
+            company = Company(
+                name=company_name,
+                active=True,
+                subscription_started_at=date.today(),
+                subscription_renews_at=date.today() + timedelta(days=30),
+            )
+            db.session.add(company)
+            db.session.flush()
+            user_data = {
+                'username': username,
+                'email': f'{username}@girofy.test',
+                'email_verified': True,
+                'role': 'admin',
+                'company_id': company.id,
+                'is_active': True,
+            }
+            user_data.update(user_values)
+            user = User(**user_data)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+
+            # Return immutable scalar snapshots so callers never depend on a
+            # detached SQLAlchemy instance outside the Flask app context.
+            user_snapshot = SimpleNamespace(id=user.id, username=user.username)
+            company_snapshot = SimpleNamespace(id=company.id)
+            return user_snapshot, company_snapshot
+
+    def api_login(self, identifier, password):
+        return self.client.post(
+            '/api/v1/auth/login',
+            json={'identifier': identifier, 'password': password},
+        )
+
+    @staticmethod
+    def bearer_header(access_token):
+        return {'Authorization': f'Bearer {access_token}'}
+
     def test_login_page_loads(self):
         response = self.client.get('/login')
 
@@ -103,20 +155,6 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('Key de ativação'.encode(), response.data)
         self.assertNotIn('Não tenho key'.encode(), response.data)
 
-    def test_desktop_update_manifest_is_public(self):
-        self.app.config['DESKTOP_UPDATE_VERSION'] = '1.2.3'
-        self.app.config['DESKTOP_UPDATE_INSTALLER_URL'] = 'http://168.75.101.126:18080/downloads/Girofy-Setup.exe'
-        self.app.config['DESKTOP_UPDATE_NOTES'] = 'Atualização de teste.'
-
-        response = self.client.get('/desktop/update.json')
-        data = response.get_json()
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers.get('Cache-Control'), 'no-store')
-        self.assertTrue(data['available'])
-        self.assertEqual(data['version'], '1.2.3')
-        self.assertEqual(data['installer_url'], 'http://168.75.101.126:18080/downloads/Girofy-Setup.exe')
-
     def test_health_check_is_public_and_minimal(self):
         response = self.client.get('/health')
         data = response.get_json()
@@ -124,6 +162,271 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers.get('Cache-Control'), 'no-store')
         self.assertEqual(data, {'status': 'ok', 'service': 'girofy'})
+
+    def test_api_v1_health_check_is_public_and_versioned(self):
+        response = self.client.get('/api/v1/health')
+        data = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get('Cache-Control'), 'no-store')
+        self.assertEqual(data, {
+            'success': True,
+            'data': {
+                'status': 'ok',
+                'service': 'girofy',
+                'api_version': 'v1',
+            },
+            'message': None,
+            'errors': [],
+        })
+
+    def test_api_login_returns_tokens_and_current_tenant_identity(self):
+        user, company = self.create_api_user()
+
+        response = self.api_login(user.username, 'SenhaApi123')
+        data = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(data['success'])
+        self.assertEqual(data['data']['token_type'], 'Bearer')
+        self.assertTrue(data['data']['access_token'])
+        self.assertTrue(data['data']['refresh_token'].startswith('grf1.'))
+        self.assertEqual(data['data']['user']['id'], user.id)
+        self.assertEqual(data['data']['company']['id'], company.id)
+        self.assertTrue(data['data']['user']['permissions']['can_manage_sales'])
+        with self.app.app_context():
+            token_count = ApiRefreshToken.query.filter_by(user_id=user.id).count()
+        self.assertEqual(token_count, 1)
+
+        me_response = self.client.get(
+            '/api/v1/auth/me?company_id=999999',
+            headers=self.bearer_header(data['data']['access_token']),
+        )
+        me_data = me_response.get_json()
+
+        self.assertEqual(me_response.status_code, 200)
+        self.assertEqual(me_data['data']['user']['id'], user.id)
+        self.assertEqual(me_data['data']['company']['id'], company.id)
+
+    def test_api_login_rejects_invalid_credentials_without_user_enumeration(self):
+        self.create_api_user()
+
+        wrong_password = self.api_login('api-operador', 'senha-incorreta')
+        missing_user = self.api_login('usuario-inexistente', 'senha-incorreta')
+
+        self.assertEqual(wrong_password.status_code, 401)
+        self.assertEqual(missing_user.status_code, 401)
+        self.assertEqual(wrong_password.get_json()['message'], missing_user.get_json()['message'])
+        self.assertEqual(wrong_password.get_json()['errors'][0]['code'], 'invalid_credentials')
+
+    def test_api_login_enforces_user_and_subscription_status(self):
+        inactive_user, _ = self.create_api_user(username='api-inativo', is_active=False)
+        expired_user, expired_company = self.create_api_user(
+            username='api-vencido',
+            company_name='Adega vencida',
+        )
+        with self.app.app_context():
+            company = db.session.get(Company, expired_company.id)
+            company.subscription_renews_at = date.today() - timedelta(days=1)
+            db.session.commit()
+
+        inactive_response = self.api_login(inactive_user.username, 'SenhaApi123')
+        expired_response = self.api_login(expired_user.username, 'SenhaApi123')
+
+        self.assertEqual(inactive_response.status_code, 403)
+        self.assertEqual(inactive_response.get_json()['errors'][0]['code'], 'user_inactive')
+        self.assertEqual(expired_response.status_code, 403)
+        self.assertEqual(expired_response.get_json()['errors'][0]['code'], 'subscription_required')
+
+    def test_api_refresh_rotates_token_and_revokes_previous_session(self):
+        user, _ = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        refresh_response = self.client.post(
+            '/api/v1/auth/refresh',
+            json={'refresh_token': login_data['refresh_token']},
+        )
+        refresh_data = refresh_response.get_json()['data']
+
+        self.assertEqual(refresh_response.status_code, 200)
+        self.assertNotEqual(refresh_data['refresh_token'], login_data['refresh_token'])
+        self.assertNotEqual(refresh_data['access_token'], login_data['access_token'])
+
+        old_refresh_response = self.client.post(
+            '/api/v1/auth/refresh',
+            json={'refresh_token': login_data['refresh_token']},
+        )
+        old_access_response = self.client.get(
+            '/api/v1/auth/me',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        new_access_response = self.client.get(
+            '/api/v1/auth/me',
+            headers=self.bearer_header(refresh_data['access_token']),
+        )
+
+        self.assertEqual(old_refresh_response.status_code, 401)
+        self.assertEqual(old_access_response.status_code, 401)
+        self.assertEqual(new_access_response.status_code, 200)
+
+    def test_api_logout_revokes_desktop_session(self):
+        user, _ = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+        headers = self.bearer_header(login_data['access_token'])
+
+        logout_response = self.client.post('/api/v1/auth/logout', headers=headers)
+        me_response = self.client.get('/api/v1/auth/me', headers=headers)
+        refresh_response = self.client.post(
+            '/api/v1/auth/refresh',
+            json={'refresh_token': login_data['refresh_token']},
+        )
+
+        self.assertEqual(logout_response.status_code, 200)
+        self.assertTrue(logout_response.get_json()['data']['logged_out'])
+        self.assertEqual(me_response.status_code, 401)
+        self.assertEqual(refresh_response.status_code, 401)
+
+    def test_api_authentication_requires_https_outside_development(self):
+        user, _ = self.create_api_user()
+        self.app.config['API_ALLOW_INSECURE_AUTH'] = False
+
+        response = self.api_login(user.username, 'SenhaApi123')
+
+        self.assertEqual(response.status_code, 426)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'https_required')
+
+    def test_api_catalog_lists_only_current_company_products_with_pagination(self):
+        user, company = self.create_api_user(
+            role='operator',
+            can_manage_products=False,
+        )
+        _, other_company = self.create_api_user(
+            username='api-outra-adega',
+            company_name='Outra adega',
+        )
+        with self.app.app_context():
+            beverages = Category(name='Bebidas', company_id=company.id)
+            snacks = Category(name='Aperitivos', company_id=company.id)
+            other_category = Category(name='Bebidas', company_id=other_company.id)
+            db.session.add_all([beverages, snacks, other_category])
+            db.session.flush()
+            db.session.add_all([
+                Product(
+                    name='Água mineral',
+                    barcode='7890001',
+                    category_id=beverages.id,
+                    company_id=company.id,
+                    cost_price=2,
+                    sale_price=5,
+                    stock_quantity=12,
+                    min_stock_quantity=3,
+                    active=True,
+                ),
+                Product(
+                    name='Coca Cola 2L',
+                    barcode='7890002',
+                    category_id=beverages.id,
+                    company_id=company.id,
+                    cost_price=8,
+                    sale_price=12,
+                    stock_quantity=7,
+                    min_stock_quantity=2,
+                    active=True,
+                ),
+                Product(
+                    name='Amendoim',
+                    category_id=snacks.id,
+                    company_id=company.id,
+                    cost_price=3,
+                    sale_price=6,
+                    stock_quantity=4,
+                    active=False,
+                ),
+                Product(
+                    name='Produto de outra adega',
+                    category_id=other_category.id,
+                    company_id=other_company.id,
+                    sale_price=99,
+                    stock_quantity=99,
+                    active=True,
+                ),
+            ])
+            db.session.commit()
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(access_token)
+        first_page = self.client.get(
+            '/api/v1/catalog/products?per_page=2&page=1&active=all&sort=name',
+            headers=headers,
+        )
+        search_page = self.client.get(
+            '/api/v1/catalog/products?q=7890002',
+            headers=headers,
+        )
+
+        self.assertEqual(first_page.status_code, 200)
+        first_data = first_page.get_json()['data']
+        self.assertEqual(first_data['pagination'], {
+            'page': 1,
+            'per_page': 2,
+            'total': 3,
+            'total_pages': 2,
+        })
+        self.assertEqual(
+            [product['name'] for product in first_data['items']],
+            ['Amendoim', 'Coca Cola 2L'],
+        )
+        self.assertNotIn('cost_price', first_data['items'][0])
+        self.assertEqual(search_page.get_json()['data']['items'][0]['name'], 'Coca Cola 2L')
+
+    def test_api_catalog_categories_are_alphabetical_and_company_scoped(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            beverages = Category(name='Bebidas', company_id=company.id)
+            snacks = Category(name='Aperitivos', company_id=company.id)
+            db.session.add_all([beverages, snacks])
+            db.session.flush()
+            db.session.add_all([
+                Product(name='Água', category_id=beverages.id, company_id=company.id),
+                Product(name='Refrigerante', category_id=beverages.id, company_id=company.id),
+            ])
+            db.session.commit()
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.get(
+            '/api/v1/catalog/categories',
+            headers=self.bearer_header(access_token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual([category['name'] for category in data['items']], ['Aperitivos', 'Bebidas'])
+        self.assertEqual(data['items'][1]['product_count'], 2)
+
+    def test_api_catalog_includes_cost_only_for_product_managers(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            product = Product(
+                name='Produto com custo',
+                company_id=company.id,
+                cost_price=10,
+                sale_price=15,
+                stock_quantity=5,
+            )
+            db.session.add(product)
+            db.session.commit()
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.get(
+            '/api/v1/catalog/products',
+            headers=self.bearer_header(access_token),
+        )
+        product_data = response.get_json()['data']['items'][0]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(product_data['cost_price'], 10.0)
+        self.assertEqual(product_data['profit_amount'], 5.0)
+        self.assertEqual(product_data['profit_margin_percent'], 33.33)
 
     def test_login_remember_me_sets_persistent_cookie(self):
         response = self.client.post(

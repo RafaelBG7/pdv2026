@@ -40,6 +40,10 @@ def request_csrf_token():
 def validate_csrf_request():
     if request.method not in UNSAFE_METHODS or not csrf_enabled():
         return None
+    # The versioned API authenticates with short-lived Bearer tokens instead of
+    # the browser session. Browser form routes remain protected by CSRF.
+    if request.blueprint == 'api_v1':
+        return None
     expected_token = session.get(CSRF_SESSION_KEY)
     provided_token = request_csrf_token()
     if expected_token and provided_token and hmac.compare_digest(expected_token, provided_token):
@@ -70,4 +74,3 @@ def init_csrf(app):
         if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
             return {'error': error.description}, 400
         return render_template('errors/400.html', message=error.description), 400
-

@@ -1091,254 +1091,74 @@ Para trocar a porta:
 PORT=5002 python app.py
 ```
 
-### 8. Compilar como aplicativo local no macOS
+### 8. Acesso oficial pela OCI
 
-O projeto pode ser empacotado como um aplicativo `.app` com janela própria via WebView nativa do macOS. Ele continua usando MySQL local e lê as configurações pelo arquivo `.env`, sem embutir senhas no executável.
+O Girofy web é usado diretamente pelo navegador. Não é necessário instalar MySQL,
+Python ou um aplicativo no computador do cliente.
 
-Compile com:
-
-```bash
-bash scripts/build_macos_app.sh
-```
-
-O aplicativo será gerado em:
+Endereço atual:
 
 ```text
-dist/Girofy.app
+http://168.75.101.126:18080
 ```
 
-Para abrir pelo terminal:
+Os clientes desktop antigos que apenas exibiam o site dentro de uma janela foram
+removidos. O banco de dados, as credenciais, os backups e as regras de negócio ficam
+centralizados no servidor OCI.
 
-```bash
-open dist/Girofy.app
-```
+### 9. Cliente Windows nativo WPF (desenvolvimento)
 
-Ao abrir, o launcher sobe o servidor local em uma porta livre e mostra o sistema dentro de uma janela de aplicativo. Ele usa `dist/.env` como configuração local. Se o MySQL não estiver rodando ou alguma configuração falhar, o arquivo `dist/launcher-error.log` será criado com o erro detalhado.
+A migração para uma interface realmente nativa do Windows está sendo desenvolvida de
+forma incremental em `desktop_wpf/`, usando C#, .NET 8, WPF e MVVM. Ele possui telas
+nativas e se comunica com o Flask somente pela API REST.
 
-### 9. Builds automáticos no GitHub
+Nesta etapa ele já possui:
 
-O repositório possui o workflow `.github/workflows/build-desktop.yml` para gerar automaticamente os pacotes desktop.
+- solução separada da aplicação web;
+- injeção de dependências e `HttpClientFactory`;
+- tela nativa de conexão com o servidor;
+- consumo de `GET /api/v1/health`;
+- tela nativa de login por usuário ou e-mail;
+- access token curto e refresh token rotativo em `/api/v1/auth`;
+- sessão local criptografada com DPAPI do Windows;
+- restauração automática de sessão e logout revogável;
+- opção para lembrar somente o usuário, nunca a senha;
+- shell nativo autenticado com menu de Produtos e Categorias;
+- catálogo paginado com busca, filtros e ordenação;
+- tabelas virtualizadas para catálogos grandes;
+- proteção de custo e lucro conforme a permissão do usuário;
+- timeout, cancelamento e mensagens seguras de falha;
+- logs locais rotativos em `%LOCALAPPDATA%\Girofy\logs`;
+- testes unitários da camada de apresentação;
+- workflow Windows para teste e publicação `win-x64` autocontida.
 
-Ele gera:
-
-- `Girofy-macOS.zip`, contendo `Girofy.app`;
-- `Girofy-Windows.zip`, contendo `Girofy.exe`;
-- `Girofy-Setup.exe`, instalador Windows com MySQL local embutido;
-- um modelo `.env.example` junto do pacote quando não houver `.env`.
-
-O workflow roda de duas formas:
+O build de prévia pode ser executado em:
 
 ```text
-Actions > Build desktop apps > Run workflow
+GitHub > Actions > Build Windows WPF preview > Run workflow
 ```
 
-Ou ao publicar uma tag iniciada com `v`:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Depois da execução, os arquivos ficam em:
+O artefato gerado se chama:
 
 ```text
-GitHub > Actions > Build desktop apps > Artifacts
+Girofy-Windows-WPF-preview
 ```
 
-Quando a execução vier de uma tag `v*`, o GitHub também cria uma Release automaticamente em:
+Essa prévia não é o canal oficial para os clientes. O catálogo já funciona em modo
+somente leitura; edição, estoque operacional, vendas e caixa serão migrados por módulos,
+mantendo a versão web no ar durante todo o processo.
+O login nativo já está implementado, porém o servidor exige HTTPS para aceitar credenciais;
+o endereço HTTP atual da OCI serve somente para a validação inicial de conectividade.
+
+Documentação técnica:
 
 ```text
-GitHub > Releases
+desktop_wpf/README.md
+docs/DESKTOP_ARCHITECTURE.md
+docs/DESKTOP_MIGRATION_ANALYSIS.md
 ```
 
-Essa Release recebe estes anexos:
-
-- `Girofy-macOS.zip`;
-- `Girofy-Windows.zip`.
-- `Girofy-Setup.exe`.
-
-Observação: por segurança, o GitHub não deve receber o `.env` real. Cada instalação precisa criar/copiar seu próprio `.env` ao lado do app baixado.
-
-### 10. Instalador Windows com MySQL embutido
-
-Para clientes Windows, o arquivo recomendado é:
-
-```text
-Girofy-Setup.exe
-```
-
-Esse instalador faz automaticamente:
-
-- instala o aplicativo em `Arquivos de Programas\Girofy`;
-- instala o MySQL Community Server local em uma pasta interna do Girofy;
-- cria o serviço Windows `GirofyMySQL`;
-- usa a porta local `3307`, evitando conflito com outro MySQL na porta `3306`;
-- cria o banco `adega_central`;
-- cria o usuário `girofy_app` com senha segura gerada automaticamente;
-- gera o arquivo `.env` do aplicativo;
-- cria atalhos no menu iniciar e na área de trabalho.
-
-Os dados do banco ficam em:
-
-```text
-C:\ProgramData\Girofy\mysql-data
-```
-
-As senhas geradas ficam em:
-
-```text
-C:\ProgramData\Girofy\secrets
-```
-
-Na desinstalação, o serviço `GirofyMySQL` é removido, mas os dados em `C:\ProgramData\Girofy` são preservados para evitar perda acidental de vendas, produtos e caixas.
-
-### 11. Cliente Windows cloud Tauri
-
-A versão recomendada para clientes que acessam o Girofy hospedado na OCI é o cliente Windows em **Tauri 2 + WebView2**.
-
-Essa versão é apenas um cliente desktop:
-
-- abre o Girofy hospedado em uma janela nativa;
-- usa WebView2 do Windows;
-- mostra tela local de carregamento/offline;
-- verifica `/health` antes de abrir o sistema;
-- não sobe Flask local;
-- não instala MySQL;
-- não executa Python;
-- não conecta diretamente ao banco;
-- não cria serviço Windows;
-- não inclui `.env`, senhas, backups ou logs do servidor;
-- depende integralmente de internet.
-
-Arquivos principais:
-
-```text
-desktop_tauri/
-scripts/build_windows_tauri.ps1
-.github/workflows/build-windows-tauri-client.yml
-docs/windows-tauri-client.md
-docs/windows-tauri-test-plan.md
-```
-
-Configuração local do cliente:
-
-```text
-C:\ProgramData\Girofy\config\desktop.json
-```
-
-Configuração temporária atual, enquanto você usa o IP da OCI:
-
-```json
-{
-  "app_url": "http://168.75.101.126:18080",
-  "allowed_hosts": ["168.75.101.126"],
-  "allow_http": true,
-  "environment": "development",
-  "timeout_seconds": 4,
-  "auto_update_enabled": false,
-  "update_check_on_start": false,
-  "update_manifest_url": "http://168.75.101.126:18080/desktop/update.json"
-}
-```
-
-Exemplo futuro com domínio e HTTPS:
-
-```json
-{
-  "app_url": "https://app.girofy.com.br",
-  "allowed_hosts": ["app.girofy.com.br", ".girofy.com.br"],
-  "allow_http": false,
-  "environment": "production",
-  "timeout_seconds": 4,
-  "auto_update_enabled": true,
-  "update_check_on_start": true
-}
-```
-
-Build local no Windows:
-
-```powershell
-.\scripts\build_windows_tauri.ps1
-```
-
-Workflow no GitHub:
-
-```text
-Actions > Build Windows Tauri client > Run workflow
-```
-
-Artefato:
-
-```text
-Girofy-Windows-Tauri-Installers
-```
-
-O cliente antigo em Python/pywebview continua preservado em `desktop_cloud/` como legado, mas não é recomendado para novas instalações.
-
-Detalhes completos ficam em:
-
-```text
-docs/windows-tauri-client.md
-docs/windows-tauri-test-plan.md
-```
-
-### 12. Assinatura digital dos instaladores
-
-Windows Smart App Control, Microsoft Defender SmartScreen e Apple Gatekeeper podem bloquear builds sem assinatura. Isso não é resolvido por HTML, Flask ou PyInstaller; é necessário assinar os arquivos com certificados reconhecidos.
-
-O workflow `Build desktop apps` já está preparado para assinar automaticamente quando os secrets existirem.
-
-#### Windows
-
-Compre/obtenha um certificado **Code Signing** para Windows, preferencialmente OV ou EV. Depois gere/exporte um arquivo `.pfx` com chave privada e cadastre estes secrets no GitHub:
-
-```text
-WINDOWS_CODESIGN_PFX_BASE64
-WINDOWS_CODESIGN_PFX_PASSWORD
-```
-
-O valor `WINDOWS_CODESIGN_PFX_BASE64` deve ser o `.pfx` convertido para Base64. Também é possível configurar a variável:
-
-```text
-WINDOWS_CODESIGN_TIMESTAMP_URL
-```
-
-Se não configurar, o workflow usa:
-
-```text
-http://timestamp.digicert.com
-```
-
-Quando configurado, o workflow assina:
-
-- `dist\Girofy\Girofy.exe`;
-- `dist\installer\Girofy-Setup.exe`.
-
-#### macOS
-
-Para o macOS, é necessário uma conta Apple Developer e um certificado **Developer ID Application**. Cadastre estes secrets no GitHub:
-
-```text
-APPLE_DEVELOPER_ID_CERTIFICATE_BASE64
-APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD
-APPLE_DEVELOPER_IDENTITY
-APPLE_ID
-APPLE_TEAM_ID
-APPLE_APP_SPECIFIC_PASSWORD
-APPLE_BUILD_KEYCHAIN_PASSWORD
-```
-
-Quando configurado, o workflow:
-
-- importa o certificado no keychain temporário do runner;
-- assina `Girofy.app`;
-- envia para notarização da Apple;
-- aplica `stapler` no app notarizado;
-- empacota o `.app` assinado em `Girofy-macOS.zip`.
-
-Sem esses certificados, os sistemas operacionais podem continuar exibindo alertas de app não confiável.
-
-### 13. Deploy automatizado na OCI
+### 10. Deploy automatizado na OCI
 
 O repositório possui o workflow `.github/workflows/deploy-oci-self-hosted.yml` para publicar o Girofy na VM da Oracle Cloud. Esse é o fluxo recomendado: o deploy roda dentro da própria VM por um GitHub Actions self-hosted runner, sem depender do IP público do desenvolvedor nem de sessão OCI CLI.
 

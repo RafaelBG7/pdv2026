@@ -71,6 +71,16 @@ class Config:
     TESTING = env_bool('TESTING', False)
     DEBUG = env_bool('FLASK_DEBUG', ENVIRONMENT == 'development')
     SECRET_KEY = os.environ.get('SECRET_KEY', 'adega-jf-secret-key')
+    API_TOKEN_SECRET = os.environ.get('API_TOKEN_SECRET', SECRET_KEY)
+    API_ACCESS_TOKEN_MINUTES = int(os.environ.get('API_ACCESS_TOKEN_MINUTES', '15'))
+    API_REFRESH_TOKEN_DAYS = int(os.environ.get('API_REFRESH_TOKEN_DAYS', '30'))
+    API_LOGIN_ATTEMPT_LIMIT = int(os.environ.get('API_LOGIN_ATTEMPT_LIMIT', '5'))
+    API_LOGIN_BLOCK_SECONDS = int(os.environ.get('API_LOGIN_BLOCK_SECONDS', str(15 * 60)))
+    API_ALLOW_INSECURE_AUTH = env_bool(
+        'API_ALLOW_INSECURE_AUTH',
+        TESTING or ENVIRONMENT == 'development',
+    )
+    TRUST_PROXY_HEADERS = env_bool('TRUST_PROXY_HEADERS', False)
     MASTER_DEFAULT_USERNAME = os.environ.get('MASTER_DEFAULT_USERNAME', 'master')
     MASTER_DEFAULT_PASSWORD = os.environ.get('MASTER_DEFAULT_PASSWORD', 'master123')
     PASSWORD_MIN_LENGTH = int(os.environ.get('PASSWORD_MIN_LENGTH', '8'))
@@ -86,11 +96,6 @@ class Config:
     MAIL_FROM_EMAIL = os.environ.get('MAIL_FROM_EMAIL', os.environ.get('BREVO_FROM_EMAIL', MAIL_SMTP_LOGIN))
     MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', os.environ.get('BREVO_FROM_NAME', 'Girofy'))
     MAIL_SUPPRESS_SEND = env_bool('MAIL_SUPPRESS_SEND', TESTING)
-    DESKTOP_UPDATE_VERSION = os.environ.get('DESKTOP_UPDATE_VERSION', '')
-    DESKTOP_UPDATE_INSTALLER_URL = os.environ.get('DESKTOP_UPDATE_INSTALLER_URL', '')
-    DESKTOP_UPDATE_RELEASE_URL = os.environ.get('DESKTOP_UPDATE_RELEASE_URL', '')
-    DESKTOP_UPDATE_SHA256 = os.environ.get('DESKTOP_UPDATE_SHA256', '')
-    DESKTOP_UPDATE_NOTES = os.environ.get('DESKTOP_UPDATE_NOTES', '')
     PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get('SESSION_LIFETIME_HOURS', '8')))
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')

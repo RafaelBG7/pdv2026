@@ -2,7 +2,7 @@ import csv
 import io
 from datetime import date, datetime, time, timedelta, timezone
 
-from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
@@ -37,23 +37,6 @@ EXPORT_TYPES = ('produtos', 'vendas', 'caixas', 'contas')
 @main_bp.get('/health')
 def health_check():
     response = jsonify({'status': 'ok', 'service': 'girofy'})
-    response.headers['Cache-Control'] = 'no-store'
-    return response
-
-
-@main_bp.get('/desktop/update.json')
-def desktop_update_manifest():
-    version = (current_app.config.get('DESKTOP_UPDATE_VERSION') or '').strip()
-    installer_url = (current_app.config.get('DESKTOP_UPDATE_INSTALLER_URL') or '').strip()
-    payload = {
-        'available': bool(version and installer_url),
-        'version': version,
-        'installer_url': installer_url,
-        'release_url': (current_app.config.get('DESKTOP_UPDATE_RELEASE_URL') or '').strip(),
-        'sha256': (current_app.config.get('DESKTOP_UPDATE_SHA256') or '').strip().lower(),
-        'notes': (current_app.config.get('DESKTOP_UPDATE_NOTES') or '').strip(),
-    }
-    response = jsonify(payload)
     response.headers['Cache-Control'] = 'no-store'
     return response
 

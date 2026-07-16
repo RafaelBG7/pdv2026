@@ -188,62 +188,20 @@ Workflow:
 
 Esse fluxo é manual e usa `scripts/deploy_oci_app.sh` com SSH/rsync. Ele permanece como fallback, mas depende de `OCI_SSH_PRIVATE_KEY` e regras de rede liberando SSH.
 
-## Desktop
+## Acesso dos Clientes
 
-Builds desktop são gerados pelo workflow:
-
-```text
-.github/workflows/build-desktop.yml
-```
-
-Artefatos:
-
-- `Girofy-macOS.zip`;
-- `Girofy-Windows.zip`;
-- `Girofy-Setup.exe`.
-
-Para reduzir bloqueios do Windows SmartScreen e Apple Gatekeeper, configure certificados de assinatura nos secrets do GitHub. Sem assinatura reconhecida, o sistema operacional pode avisar que o app não é confiável.
-
-## Cliente Windows Cloud Tauri
-
-A versão recomendada do desktop Windows cloud é separada do instalador local com MySQL e usa Tauri 2 + WebView2.
-
-Workflow:
+O canal oficial é a aplicação web hospedada na OCI:
 
 ```text
-.github/workflows/build-windows-tauri-client.yml
+http://168.75.101.126:18080
 ```
 
-Artefatos:
+O computador do cliente precisa somente de um navegador e acesso à internet. MySQL,
+Flask, arquivos `.env`, backups e segredos permanecem exclusivamente no servidor.
 
-- `Girofy-Windows-Tauri-Installers`.
-
-Esse build:
-
-- usa `desktop_tauri/`;
-- abre a URL hospedada do Girofy via WebView2;
-- valida `/health` antes de navegar;
-- valida URL, protocolo e host permitido;
-- grava logs locais em `%LOCALAPPDATA%\Girofy\logs\tauri-client.log`;
-- não executa Python;
-- não instala MySQL;
-- não inclui `.env`;
-- não inclui banco, backups, secrets ou backend Flask.
-
-Configuração local:
-
-```text
-C:\ProgramData\Girofy\config\desktop.json
-```
-
-Documentação completa:
-
-```text
-docs/windows-tauri-client.md
-docs/windows-tauri-test-plan.md
-```
-
-O cliente antigo em `desktop_cloud/` usa Python, pywebview e PyInstaller. Ele permanece preservado como legado em `docs/windows-cloud-client.md`, mas não deve ser usado para novas instalações.
+Os antigos executáveis que apenas encapsulavam a aplicação web foram removidos do
+repositório. O projeto `desktop_wpf/` é uma iniciativa nativa independente em
+desenvolvimento e não participa do deploy web.
 
 ## Checklist de Produção
 
@@ -271,4 +229,4 @@ Itens ainda recomendados:
 - backup externo fora da VM;
 - restauração guiada de backup;
 - política real de cobrança Basic/Pro;
-- assinatura digital dos instaladores desktop.
+- HTTPS antes de expor autenticação por API para clientes nativos.

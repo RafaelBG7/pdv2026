@@ -1,0 +1,546 @@
+<Window x:Class="Girofy.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Girofy"
+        Icon="Resources/logo-girofy.png"
+        Width="1180"
+        Height="780"
+        MinWidth="900"
+        MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBackgroundBrush}">
+    <Grid>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <ScrollViewer.Style>
+                <Style TargetType="ScrollViewer">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Login.IsAuthenticated}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ScrollViewer.Style>
+            <Grid Margin="28">
+                <Border MaxWidth="860"
+                        Padding="34"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="20" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="24" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="24" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="76" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="62" Height="62" Background="#FFFFFF" CornerRadius="8">
+                                <Image Margin="5" Source="Resources/logo-girofy.png" Stretch="Uniform" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock FontSize="32" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Text="Girofy" />
+                                <TextBlock Margin="0,3,0,0" FontSize="15"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Aplicativo Windows" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Grid.Row="2" Padding="16" BorderThickness="1" CornerRadius="6">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{StaticResource InfoSurfaceBrush}" />
+                                    <Setter Property="BorderBrush" Value="{StaticResource InfoBorderBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource SuccessSurfaceBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource SuccessBorderBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HasConnectionError}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource ErrorSurfaceBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource ErrorBorderBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse Width="14" Height="14" HorizontalAlignment="Left"
+                                         VerticalAlignment="Top" Margin="0,4,0,0">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="{StaticResource InfoBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                    <Setter Property="Fill" Value="{StaticResource SuccessBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HasConnectionError}" Value="True">
+                                                    <Setter Property="Fill" Value="{StaticResource ErrorBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock FontSize="16" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="{Binding StatusTitle}" />
+                                    <TextBlock Margin="0,4,0,0" FontSize="13"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Text="{Binding StatusDescription}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="4">
+                            <StackPanel MaxWidth="520" HorizontalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasConnectionError}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock FontSize="26" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Text="Entrar" />
+                                <TextBlock Margin="0,6,0,22" FontSize="14"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Use o mesmo acesso da sua conta Girofy." TextWrapping="Wrap" />
+                                <TextBlock Margin="0,0,0,7" FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Text="Usuário ou e-mail" />
+                                <TextBox x:Name="IdentifierInput"
+                                         Text="{Binding Login.Identifier, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource TextInputStyle}" />
+                                <TextBlock Margin="0,18,0,7" FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Text="Senha" />
+                                <Grid>
+                                    <PasswordBox x:Name="PasswordInput" PasswordChanged="HandlePasswordChanged">
+                                        <PasswordBox.Style>
+                                            <Style TargetType="PasswordBox" BasedOn="{StaticResource PasswordInputStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Login.ShowPassword}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </PasswordBox.Style>
+                                    </PasswordBox>
+                                    <TextBox x:Name="VisiblePasswordInput"
+                                             Text="{Binding Login.Password, UpdateSourceTrigger=PropertyChanged}">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource TextInputStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Login.ShowPassword}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                </Grid>
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Foreground="{StaticResource TextSecondaryBrush}"
+                                              IsChecked="{Binding Login.RememberUsername}"
+                                              Content="Lembrar usuário" />
+                                    <CheckBox Grid.Column="1" Foreground="{StaticResource TextSecondaryBrush}"
+                                              IsChecked="{Binding Login.ShowPassword}"
+                                              Checked="HandlePasswordVisibilityChanged"
+                                              Unchecked="HandlePasswordVisibilityChanged"
+                                              Content="Mostrar senha" />
+                                </Grid>
+                                <Border Margin="0,16,0,0" Padding="12"
+                                        Background="{StaticResource ErrorSurfaceBrush}"
+                                        BorderBrush="{StaticResource ErrorBorderBrush}"
+                                        BorderThickness="1" CornerRadius="5">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Login.HasError}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="{Binding Login.ErrorMessage}" TextWrapping="Wrap" />
+                                </Border>
+                                <Button Margin="0,20,0,0" Height="50" IsDefault="True"
+                                        Command="{Binding Login.LoginCommand}"
+                                        Content="{Binding Login.LoginButtonText}"
+                                        Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button Margin="0,12,0,0" HorizontalAlignment="Center"
+                                        Command="{Binding Login.ForgotPasswordCommand}"
+                                        Content="Esqueci minha senha"
+                                        Style="{StaticResource LinkButtonStyle}" />
+                            </StackPanel>
+
+                            <StackPanel MaxWidth="520" HorizontalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasConnectionError}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock FontSize="24" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="Servidor indisponível" TextAlignment="Center" />
+                                <TextBlock Margin="0,8,0,20" FontSize="14"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Verifique sua internet e tente conectar novamente."
+                                           TextAlignment="Center" TextWrapping="Wrap" />
+                                <Button Command="{Binding RetryConnectionCommand}"
+                                        Content="Tentar novamente"
+                                        Style="{StaticResource PrimaryButtonStyle}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Grid.Row="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}" Text="SERVIDOR" />
+                                <TextBlock Margin="0,3,0,0" FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="{Binding ServerAddress}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" MinWidth="150"
+                                    Command="{Binding OpenWebCommand}" Content="Abrir versão web"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <Grid Margin="22">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Login.IsAuthenticated}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="72" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Padding="18,10" Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="46" Height="46" Background="#FFFFFF" CornerRadius="6">
+                            <Image Margin="4" Source="Resources/logo-girofy.png" Stretch="Uniform" />
+                        </Border>
+                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock FontSize="22" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" Text="Girofy" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Aplicativo Windows nativo" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Margin="0,0,18,0" VerticalAlignment="Center">
+                            <TextBlock HorizontalAlignment="Right" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="{Binding Login.AuthenticatedUserName}" />
+                            <TextBlock HorizontalAlignment="Right" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="{Binding Login.AuthenticatedCompanyName}" />
+                        </StackPanel>
+                        <Button MinWidth="92" Command="{Binding Login.LogoutCommand}"
+                                Content="Sair" Style="{StaticResource SecondaryButtonStyle}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="196" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Padding="12" Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="10" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Margin="8" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextMutedBrush}" Text="CATÁLOGO" />
+                        <Button Grid.Row="2" Margin="0,0,0,8" Command="{Binding Catalog.ShowProductsCommand}"
+                                Content="Produtos">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Catalog.IsProductsView}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Grid.Row="3" Command="{Binding Catalog.ShowCategoriesCommand}"
+                                Content="Categorias">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Catalog.IsCategoriesView}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <StackPanel Grid.Row="5" Margin="8">
+                            <TextBlock FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}" Text="SERVIDOR" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="{Binding ServerAddress}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2" Padding="22" Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Catalog.IsProductsView}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="18" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="14" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontSize="27" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Text="Produtos" />
+                                <TextBlock Margin="0,4,0,0" FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Consulta nativa do catálogo da sua adega." />
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding Catalog.RefreshCommand}"
+                                    Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
+                        </Grid>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="1.3*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="1.1*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="1.3*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding Catalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Buscar produto por nome ou código"
+                                     Style="{StaticResource TextInputStyle}" />
+                            <ComboBox Grid.Column="2" Height="48" Padding="10,0"
+                                      ItemsSource="{Binding Catalog.Categories}"
+                                      SelectedItem="{Binding Catalog.SelectedCategory}"
+                                      DisplayMemberPath="Name" />
+                            <ComboBox Grid.Column="4" Height="48" Padding="10,0"
+                                      ItemsSource="{Binding Catalog.ActiveFilters}"
+                                      SelectedItem="{Binding Catalog.SelectedActiveFilter}"
+                                      DisplayMemberPath="Label" />
+                            <ComboBox Grid.Column="6" Height="48" Padding="10,0"
+                                      ItemsSource="{Binding Catalog.SortOptions}"
+                                      SelectedItem="{Binding Catalog.SelectedSort}"
+                                      DisplayMemberPath="Label" />
+                            <Button Grid.Column="8" MinWidth="94" Command="{Binding Catalog.SearchCommand}"
+                                    Content="Buscar" Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+
+                        <Border Grid.Row="4" Padding="12" Background="{StaticResource ErrorSurfaceBrush}"
+                                BorderBrush="{StaticResource ErrorBorderBrush}" BorderThickness="1" CornerRadius="5">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Catalog.HasError}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="{Binding Catalog.ErrorMessage}" TextWrapping="Wrap" />
+                        </Border>
+
+                        <DataGrid Grid.Row="6" ItemsSource="{Binding Catalog.Products}"
+                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                  HeadersVisibility="Column" CanUserAddRows="False"
+                                  CanUserDeleteRows="False" CanUserReorderColumns="False"
+                                  CanUserResizeRows="False" SelectionMode="Single"
+                                  EnableRowVirtualization="True" EnableColumnVirtualization="True"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True"
+                                  Background="{StaticResource SurfaceRaisedBrush}"
+                                  Foreground="{StaticResource TextPrimaryBrush}"
+                                  BorderBrush="{StaticResource BorderBrush}"
+                                  HorizontalGridLinesBrush="{StaticResource BorderBrush}"
+                                  VerticalGridLinesBrush="Transparent"
+                                  RowBackground="{StaticResource SurfaceRaisedBrush}"
+                                  AlternatingRowBackground="#102034"
+                                  RowHeight="50" ColumnHeaderHeight="42">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Produto" Binding="{Binding Name}" Width="2.2*" />
+                                <DataGridTextColumn Header="Categoria" Binding="{Binding CategoryName}" Width="1.4*" />
+                                <DataGridTextColumn Header="Venda" Binding="{Binding SalePriceText}" Width="1*" />
+                                <DataGridTextColumn Header="Estoque" Binding="{Binding StockText}" Width="0.9*" />
+                                <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="0.8*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Grid.Row="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="{Binding Catalog.ProductSummary}" />
+                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="{Binding Catalog.PageSummary}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" MinWidth="92"
+                                    IsEnabled="{Binding Catalog.CanGoPrevious}"
+                                    Command="{Binding Catalog.PreviousPageCommand}"
+                                    Content="Anterior" Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button Grid.Column="3" MinWidth="92"
+                                    IsEnabled="{Binding Catalog.CanGoNext}"
+                                    Command="{Binding Catalog.NextPageCommand}"
+                                    Content="Próxima" Style="{StaticResource SecondaryButtonStyle}" />
+                        </Grid>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Catalog.IsCategoriesView}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="18" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontSize="27" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Text="Categorias" />
+                                <TextBlock Margin="0,4,0,0" FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Organização atual dos produtos da adega." />
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding Catalog.RefreshCommand}"
+                                    Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
+                        </Grid>
+                        <DataGrid Grid.Row="2" ItemsSource="{Binding Catalog.Categories}"
+                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                  CanUserAddRows="False" CanUserDeleteRows="False"
+                                  HeadersVisibility="Column" EnableRowVirtualization="True"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  Background="{StaticResource SurfaceRaisedBrush}"
+                                  Foreground="{StaticResource TextPrimaryBrush}"
+                                  BorderBrush="{StaticResource BorderBrush}"
+                                  HorizontalGridLinesBrush="{StaticResource BorderBrush}"
+                                  VerticalGridLinesBrush="Transparent"
+                                  RowBackground="{StaticResource SurfaceRaisedBrush}"
+                                  AlternatingRowBackground="#102034"
+                                  RowHeight="50" ColumnHeaderHeight="42">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Categoria" Binding="{Binding Name}" Width="*" />
+                                <DataGridTextColumn Header="Produtos" Binding="{Binding ProductCount}" Width="180" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

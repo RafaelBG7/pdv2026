@@ -1,0 +1,61 @@
+name: Build Windows WPF preview
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'desktop_wpf/**'
+      - 'app/models/api_refresh_token.py'
+      - 'app/routes/api/**'
+      - 'app/services/api_auth_service.py'
+      - 'app/security/csrf.py'
+      - 'config.py'
+      - 'tests/test_routes.py'
+      - '.github/workflows/build-windows-wpf.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore solution
+        run: dotnet restore desktop_wpf/Girofy.Desktop.sln
+
+      - name: Run unit tests
+        run: dotnet test desktop_wpf/Girofy.Desktop.sln --configuration Release --no-restore
+
+      - name: Publish self-contained Windows preview
+        run: >-
+          dotnet publish desktop_wpf/src/Girofy.Desktop/Girofy.Desktop.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=None
+          --output desktop_wpf/artifacts/Girofy-Windows-WPF
+
+      - name: Package preview
+        shell: pwsh
+        run: Compress-Archive -Path desktop_wpf/artifacts/Girofy-Windows-WPF/* -DestinationPath desktop_wpf/artifacts/Girofy-Windows-WPF-preview.zip -Force
+
+      - name: Upload preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Girofy-Windows-WPF-preview
+          path: desktop_wpf/artifacts/Girofy-Windows-WPF-preview.zip
+          if-no-files-found: error
+          retention-days: 14

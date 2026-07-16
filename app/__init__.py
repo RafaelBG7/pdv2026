@@ -352,10 +352,12 @@ def create_app(config_class=Config):
     with app.app_context():
         from app.models import Company, User
         from app.routes import auth_bp, catalog_bp, main_bp
+        from app.routes.api import api_v1_bp
         from app.tenant import tenant_database_identifier, tenant_engine
 
         app.register_blueprint(auth_bp)
         app.register_blueprint(catalog_bp)
+        app.register_blueprint(api_v1_bp)
         app.register_blueprint(main_bp)
 
         db.create_all()

@@ -103,4 +103,4 @@ Possibilidades:
 - PWA para operação em tablet.
 - Layout dedicado para celular.
 - Scanner por câmera.
-- Empacotamento com Electron/Tauri.
+- Cliente Windows realmente nativo em WPF, integrado pela API versionada.

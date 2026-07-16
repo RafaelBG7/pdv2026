@@ -15,3 +15,4 @@ from .payment import Payment
 from .payable import Payable
 from .stock_movement import StockMovement
 from .audit_log import AuditLog
+from .api_refresh_token import ApiRefreshToken

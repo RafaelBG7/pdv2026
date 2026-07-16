@@ -38,6 +38,12 @@ class User(db.Model, UserMixin):
     email_verification_codes = db.relationship('EmailVerificationCode', back_populates='user', cascade='all, delete-orphan')
     password_reset_tokens = db.relationship('PasswordResetToken', back_populates='user', cascade='all, delete-orphan')
     email_change_requests = db.relationship('EmailChangeRequest', back_populates='user', cascade='all, delete-orphan')
+    api_refresh_tokens = db.relationship(
+        'ApiRefreshToken',
+        back_populates='user',
+        cascade='all, delete-orphan',
+        passive_deletes=True,
+    )
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='scrypt')

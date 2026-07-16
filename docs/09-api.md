@@ -2,9 +2,251 @@
 
 ## Nota Importante
 
-O projeto não implementa API REST/JSON pública. As rotas atuais são rotas web HTML, com renderização Jinja2 e submissão de formulários.
+O projeto ainda opera principalmente com rotas web HTML, renderização Jinja2 e submissão de formulários. A partir da preparação para o cliente desktop nativo, existe também uma fundação de API JSON versionada em `/api/v1`.
 
-Esta documentação descreve os endpoints HTTP atuais.
+Esta documentação descreve os endpoints HTTP atuais. A API JSON usa sempre o envelope:
+
+```json
+{
+  "success": true,
+  "data": {},
+  "message": null,
+  "errors": []
+}
+```
+
+Em falhas, `success` é `false`, `data` é `null` e `errors` contém `field`, `code` e `message`.
+Todas as respostas da API recebem `Cache-Control: no-store`.
+
+## API JSON Versionada
+
+### `GET /api/v1/health`
+
+Descrição: verifica se a API versionada está disponível.
+
+Permissão: pública.
+
+Resposta:
+
+```json
+{
+  "success": true,
+  "data": {
+    "status": "ok",
+    "service": "girofy",
+    "api_version": "v1"
+  },
+  "message": null,
+  "errors": []
+}
+```
+
+Cabeçalhos:
+
+- `Cache-Control: no-store`
+
+Observação: o endpoint legado `GET /health` continua existindo para compatibilidade com deploy, health checks e clientes desktop já empacotados.
+
+### Transporte seguro
+
+Os endpoints em `/api/v1/auth/*` exigem HTTPS. Em produção, `API_ALLOW_INSECURE_AUTH`
+deve permanecer `0`. Quando o Flask estiver atrás de um proxy reverso HTTPS confiável,
+configure `TRUST_PROXY_HEADERS=1` para aceitar `X-Forwarded-Proto: https`.
+
+O IP OCI atual em `http://168.75.101.126:18080` pode responder ao health check, mas a
+autenticação retorna HTTP `426` por padrão. `API_ALLOW_INSECURE_AUTH=1` existe somente
+para testes controlados e transmite credenciais sem criptografia.
+
+## Autenticação da API
+
+### `POST /api/v1/auth/login`
+
+Descrição: autentica o aplicativo Windows e cria uma sessão revogável.
+
+Permissão: pública, limitada por IP + identificador.
+
+Payload:
+
+```json
+{
+  "identifier": "operador-ou-email@example.com",
+  "password": "SenhaForte123"
+}
+```
+
+Sucesso: HTTP `200`, com access token de curta duração, refresh token rotativo,
+identidade, empresa e permissões.
+
+```json
+{
+  "success": true,
+  "data": {
+    "access_token": "token-assinado",
+    "refresh_token": "grf1.sessao.segredo",
+    "token_type": "Bearer",
+    "expires_in": 900,
+    "refresh_expires_at": "2026-08-14T12:00:00Z",
+    "user": {
+      "id": 10,
+      "username": "operador",
+      "full_name": "Operador Girofy",
+      "role": "operator",
+      "role_label": "Funcionário",
+      "permissions": {}
+    },
+    "company": {
+      "id": 4,
+      "name": "Adega JF",
+      "active": true,
+      "subscription_valid": true
+    }
+  },
+  "message": null,
+  "errors": []
+}
+```
+
+Validações aplicadas:
+
+- senha verificada pelo hash existente do usuário;
+- e-mail confirmado;
+- usuário e empresa ativos;
+- assinatura válida, exceto para o master do sistema;
+- no máximo `API_LOGIN_ATTEMPT_LIMIT` falhas antes do bloqueio temporário;
+- auditoria de login bem-sucedido e tentativa inválida.
+
+Erros principais: `invalid_credentials`, `email_not_verified`, `user_inactive`,
+`company_inactive`, `subscription_required`, `login_rate_limited` e `https_required`.
+
+### `POST /api/v1/auth/refresh`
+
+Descrição: troca um refresh token válido por um novo par de tokens. O token anterior é
+revogado no mesmo processo e não pode ser reutilizado.
+
+Payload:
+
+```json
+{
+  "refresh_token": "grf1.sessao.segredo"
+}
+```
+
+Sucesso: HTTP `200`, com a mesma estrutura de `data` do login.
+
+Erros principais: `invalid_refresh_token`, `credentials_changed`,
+`subscription_required` e `https_required`.
+
+### `GET /api/v1/auth/me`
+
+Descrição: retorna a identidade, a empresa e as permissões atuais. O servidor revalida
+status do usuário, empresa, assinatura e alteração de senha.
+
+Permissão: Bearer access token.
+
+Cabeçalho:
+
+```text
+Authorization: Bearer ACCESS_TOKEN
+```
+
+### `POST /api/v1/auth/logout`
+
+Descrição: revoga a sessão correspondente ao access token.
+
+Permissão: Bearer access token.
+
+Resposta:
+
+```json
+{
+  "success": true,
+  "data": {
+    "logged_out": true
+  },
+  "message": null,
+  "errors": []
+}
+```
+
+### Ciclo de vida dos tokens
+
+- access token: assinado com `API_TOKEN_SECRET`, padrão de 15 minutos;
+- refresh token: segredo aleatório, padrão de 30 dias;
+- somente o hash do refresh token é salvo no MySQL;
+- refresh tokens são rotacionados a cada renovação;
+- logout, alteração de senha, inativação ou vencimento podem invalidar o acesso;
+- o cliente WPF protege a sessão com DPAPI no perfil do usuário Windows;
+- senhas nunca são persistidas pelo cliente.
+
+## Catálogo da API
+
+Todos os endpoints de catálogo exigem Bearer access token, transporte seguro e a
+permissão `can_view_products`. A empresa é obtida exclusivamente da identidade do token;
+parâmetros enviados pelo cliente não podem trocar a adega consultada.
+
+### `GET /api/v1/catalog/categories`
+
+Descrição: lista as categorias da adega em ordem alfabética com a quantidade de produtos.
+
+Query params:
+
+- `q`: busca opcional por nome, limitada a 120 caracteres.
+
+Resposta em `data`:
+
+```json
+{
+  "items": [
+    {
+      "id": 7,
+      "name": "Refrigerantes",
+      "product_count": 12
+    }
+  ],
+  "total": 1
+}
+```
+
+### `GET /api/v1/catalog/products`
+
+Descrição: consulta paginada e somente leitura dos produtos da adega.
+
+Query params:
+
+- `q`: nome ou código de barras;
+- `category_id`: categoria da própria adega;
+- `active`: `all`, `active` ou `inactive`;
+- `sort`: `name`, `name_desc`, `price`, `price_desc`, `stock` ou `stock_desc`;
+- `page`: página positiva, padrão `1`;
+- `per_page`: itens por página, padrão `30` e máximo `100`.
+
+A resposta contém nome, código, categoria, preço de venda, estoque efetivo, estoque
+mínimo, status e indicação de kit. Custo e lucro só são incluídos quando o usuário possui
+`can_manage_products`.
+
+```json
+{
+  "items": [
+    {
+      "id": 15,
+      "name": "Coca Cola 2L",
+      "barcode": "7890002",
+      "category": {"id": 7, "name": "Refrigerantes"},
+      "sale_price": 12.0,
+      "stock_quantity": 8,
+      "min_stock_quantity": 2,
+      "active": true,
+      "is_kit": false
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 30,
+    "total": 1,
+    "total_pages": 1
+  }
+}
+```
 
 ## Autenticação
 

@@ -354,6 +354,7 @@
                 <Border Grid.Column="2" Padding="22" Background="{StaticResource SurfaceBrush}"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
                     <Grid>
+                    <Grid>
                         <Grid.Style>
                             <Style TargetType="Grid">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -538,6 +539,7 @@
                                 <DataGridTextColumn Header="Produtos" Binding="{Binding ProductCount}" Width="180" />
                             </DataGrid.Columns>
                         </DataGrid>
+                    </Grid>
                     </Grid>
                 </Border>
             </Grid>

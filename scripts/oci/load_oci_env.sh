@@ -25,7 +25,9 @@ load_env_file() {
     value="${value#\"}"
     value="${value%\'}"
     value="${value#\'}"
-    if [[ -n "$key" ]]; then
+    # Variáveis informadas no terminal ou pela pipeline têm precedência sobre
+    # os arquivos locais, seguindo o comportamento esperado em deploys.
+    if [[ -n "$key" && -z "${!key+x}" ]]; then
       export "$key=$value"
     fi
   done < "$env_file"

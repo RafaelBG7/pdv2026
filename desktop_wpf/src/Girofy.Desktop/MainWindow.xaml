@@ -467,6 +467,8 @@
                             <RowDefinition Height="12" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="12" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="14" />
                             <RowDefinition Height="Auto" />
@@ -483,8 +485,16 @@
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            Text="Consulta nativa do catálogo da sua adega." />
                             </StackPanel>
-                            <Button Grid.Column="1" Command="{Binding Catalog.RefreshCommand}"
-                                    Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button MinWidth="128" Margin="0,0,10,0"
+                                        Command="{Binding Catalog.OpenNewProductCommand}"
+                                        Content="Novo produto" Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button MinWidth="142" Margin="0,0,10,0"
+                                        Command="{Binding Catalog.OpenEditProductCommand}"
+                                        Content="Editar selecionado" Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Command="{Binding Catalog.RefreshCommand}"
+                                        Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
+                            </StackPanel>
                         </Grid>
 
                         <Grid Grid.Row="2">
@@ -534,11 +544,125 @@
                                        Text="{Binding Catalog.ErrorMessage}" TextWrapping="Wrap" />
                         </Border>
 
-                        <DataGrid Grid.Row="6" ItemsSource="{Binding Catalog.Products}"
+                        <Border Grid.Row="6" Padding="16" CornerRadius="8"
+                                Background="{StaticResource SurfaceRaisedBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Catalog.IsProductEditorOpen}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock FontSize="18" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="{Binding Catalog.EditorTitle}" />
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="1.2*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="1.2*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="1.2*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="10" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Text="Nome" />
+                                        <TextBox Text="{Binding Catalog.EditorName, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Text="Código" />
+                                        <TextBox Text="{Binding Catalog.EditorBarcode, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Text="Categoria" />
+                                        <ComboBox Height="48" Padding="10,0"
+                                                  ItemsSource="{Binding Catalog.Categories}"
+                                                  SelectedItem="{Binding Catalog.EditorCategory}"
+                                                  DisplayMemberPath="Name" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="6">
+                                        <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Text="Ativo" />
+                                        <CheckBox Margin="4,13,0,0"
+                                                  IsChecked="{Binding Catalog.EditorActive}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2">
+                                        <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Text="Custo" />
+                                        <TextBox Text="{Binding Catalog.EditorCostPrice, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2">
+                                        <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Text="Venda" />
+                                        <TextBox Text="{Binding Catalog.EditorSalePrice, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="4">
+                                        <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Text="Estoque" />
+                                        <TextBox Text="{Binding Catalog.EditorStockQuantity, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="6">
+                                        <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Text="Estoque mínimo" />
+                                        <TextBox Text="{Binding Catalog.EditorMinStockQuantity, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Grid.Row="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding Catalog.EditorStockReason, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Motivo do ajuste de estoque"
+                                             Style="{StaticResource TextInputStyle}" />
+                                    <Button Grid.Column="2" MinWidth="100"
+                                            Command="{Binding Catalog.CloseProductEditorCommand}"
+                                            Content="Cancelar" Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Grid.Column="4" MinWidth="120"
+                                            Command="{Binding Catalog.SaveProductCommand}"
+                                            Content="Salvar" Style="{StaticResource PrimaryButtonStyle}" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <DataGrid Grid.Row="8" ItemsSource="{Binding Catalog.Products}"
                                   AutoGenerateColumns="False" IsReadOnly="True"
                                   HeadersVisibility="Column" CanUserAddRows="False"
                                   CanUserDeleteRows="False" CanUserReorderColumns="False"
                                   CanUserResizeRows="False" SelectionMode="Single"
+                                  SelectedItem="{Binding Catalog.SelectedProduct, Mode=TwoWay}"
                                   EnableRowVirtualization="True" EnableColumnVirtualization="True"
                                   VirtualizingPanel.IsVirtualizing="True"
                                   VirtualizingPanel.VirtualizationMode="Recycling"
@@ -560,7 +684,7 @@
                             </DataGrid.Columns>
                         </DataGrid>
 
-                        <Grid Grid.Row="8">
+                        <Grid Grid.Row="10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />

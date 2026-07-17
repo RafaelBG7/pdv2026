@@ -41,5 +41,5 @@ public sealed class AsyncRelayCommand(
 
     public void Cancel() => _cancellationTokenSource?.Cancel();
 
-    private void NotifyCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    public void NotifyCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }

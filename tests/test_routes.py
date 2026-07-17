@@ -428,6 +428,165 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(product_data['profit_amount'], 5.0)
         self.assertEqual(product_data['profit_margin_percent'], 33.33)
 
+    def test_api_catalog_product_manager_creates_product_with_stock_movement(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            category = Category(name='Refrigerantes', company_id=company.id)
+            db.session.add(category)
+            db.session.commit()
+            category_id = category.id
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.post(
+            '/api/v1/catalog/products',
+            headers=self.bearer_header(access_token),
+            json={
+                'name': 'Coca Cola 1L',
+                'barcode': '789111',
+                'category_id': category_id,
+                'cost_price': '6,50',
+                'sale_price': '11,00',
+                'stock_quantity': 12,
+                'min_stock_quantity': 3,
+                'active': True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        product_data = response.get_json()['data']
+        self.assertEqual(product_data['name'], 'Coca Cola 1L')
+        self.assertEqual(product_data['category']['name'], 'Refrigerantes')
+        self.assertEqual(product_data['stock_quantity'], 12)
+        with self.app.app_context():
+            product = Product.query.filter_by(company_id=company.id, barcode='789111').one()
+            self.assertEqual(product.stock_quantity, 12)
+            self.assertEqual(StockMovement.query.filter_by(product_id=product.id).count(), 1)
+            self.assertEqual(AuditLog.query.filter_by(action='product_created').count(), 1)
+
+    def test_api_catalog_product_update_adjusts_stock_and_rejects_foreign_category(self):
+        user, company = self.create_api_user()
+        _, other_company = self.create_api_user(
+            username='api-produto-outra-adega',
+            company_name='Outra adega produto',
+        )
+        with self.app.app_context():
+            category = Category(name='Cervejas', company_id=company.id)
+            other_category = Category(name='Cervejas', company_id=other_company.id)
+            db.session.add_all([category, other_category])
+            db.session.flush()
+            product = Product(
+                name='Skol',
+                barcode='111',
+                category_id=category.id,
+                company_id=company.id,
+                cost_price=3,
+                sale_price=5,
+                stock_quantity=10,
+                min_stock_quantity=2,
+                active=True,
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+            category_id = category.id
+            other_category_id = other_category.id
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        invalid_response = self.client.put(
+            f'/api/v1/catalog/products/{product_id}',
+            headers=self.bearer_header(access_token),
+            json={
+                'name': 'Skol 269ml',
+                'barcode': '111',
+                'category_id': other_category_id,
+                'cost_price': 3,
+                'sale_price': 6,
+                'stock_quantity': 7,
+                'min_stock_quantity': 2,
+                'active': True,
+            },
+        )
+        valid_response = self.client.put(
+            f'/api/v1/catalog/products/{product_id}',
+            headers=self.bearer_header(access_token),
+            json={
+                'name': 'Skol 269ml',
+                'barcode': '111',
+                'category_id': category_id,
+                'cost_price': 3,
+                'sale_price': 6,
+                'stock_quantity': 7,
+                'min_stock_quantity': 1,
+                'active': False,
+            },
+        )
+
+        self.assertEqual(invalid_response.status_code, 422)
+        self.assertEqual(invalid_response.get_json()['errors'][0]['code'], 'category_not_found')
+        self.assertEqual(valid_response.status_code, 200)
+        data = valid_response.get_json()['data']
+        self.assertEqual(data['name'], 'Skol 269ml')
+        self.assertEqual(data['stock_quantity'], 7)
+        self.assertFalse(data['active'])
+        with self.app.app_context():
+            product = db.session.get(Product, product_id)
+            self.assertEqual(product.stock_quantity, 7)
+            self.assertEqual(product.min_stock_quantity, 1)
+            self.assertEqual(StockMovement.query.filter_by(product_id=product_id).count(), 1)
+            self.assertEqual(AuditLog.query.filter_by(action='product_updated').count(), 1)
+
+    def test_api_catalog_product_mutation_requires_manager_permission_and_unique_barcode(self):
+        manager, company = self.create_api_user()
+        operator, _ = self.create_api_user(
+            username='api-catalogo-sem-editar',
+            company_name='Adega API Operador',
+            role='operator',
+            can_view_products=True,
+            can_manage_products=False,
+        )
+        with self.app.app_context():
+            existing = Product(
+                name='Produto existente',
+                barcode='789dup',
+                company_id=company.id,
+                cost_price=1,
+                sale_price=2,
+            )
+            db.session.add(existing)
+            db.session.commit()
+
+        manager_token = self.api_login(manager.username, 'SenhaApi123').get_json()['data']['access_token']
+        operator_token = self.api_login(operator.username, 'SenhaApi123').get_json()['data']['access_token']
+        duplicate_response = self.client.post(
+            '/api/v1/catalog/products',
+            headers=self.bearer_header(manager_token),
+            json={
+                'name': 'Duplicado',
+                'barcode': '789dup',
+                'cost_price': 1,
+                'sale_price': 3,
+                'stock_quantity': 0,
+                'min_stock_quantity': 0,
+                'active': True,
+            },
+        )
+        forbidden_response = self.client.post(
+            '/api/v1/catalog/products',
+            headers=self.bearer_header(operator_token),
+            json={
+                'name': 'Produto operador',
+                'cost_price': 1,
+                'sale_price': 3,
+                'stock_quantity': 0,
+                'min_stock_quantity': 0,
+                'active': True,
+            },
+        )
+
+        self.assertEqual(duplicate_response.status_code, 409)
+        self.assertEqual(duplicate_response.get_json()['errors'][0]['code'], 'barcode_already_exists')
+        self.assertEqual(forbidden_response.status_code, 403)
+
     def test_api_dashboard_summary_is_aggregated_and_company_scoped(self):
         user, company = self.create_api_user()
         _, other_company = self.create_api_user(

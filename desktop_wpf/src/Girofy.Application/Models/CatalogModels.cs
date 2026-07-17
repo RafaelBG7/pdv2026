@@ -104,3 +104,14 @@ public sealed class CatalogPagination
 }
 
 public sealed record CatalogFilterOption(string Value, string Label);
+
+public sealed record CatalogProductMutationRequest(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("barcode")] string Barcode,
+    [property: JsonPropertyName("category_id")] int? CategoryId,
+    [property: JsonPropertyName("cost_price")] decimal CostPrice,
+    [property: JsonPropertyName("sale_price")] decimal SalePrice,
+    [property: JsonPropertyName("stock_quantity")] int StockQuantity,
+    [property: JsonPropertyName("min_stock_quantity")] int MinStockQuantity,
+    [property: JsonPropertyName("active")] bool Active,
+    [property: JsonPropertyName("stock_reason")] string StockReason);

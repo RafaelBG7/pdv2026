@@ -383,6 +383,59 @@ mínimo, status e indicação de kit. Custo e lucro só são incluídos quando o
 }
 ```
 
+### `POST /api/v1/catalog/products`
+
+Descrição: cria um produto na adega do usuário autenticado.
+
+Permissão exigida: `can_manage_products`.
+
+Corpo JSON:
+
+```json
+{
+  "name": "Coca Cola 2L",
+  "barcode": "7890002",
+  "category_id": 7,
+  "cost_price": 7.5,
+  "sale_price": 12.0,
+  "stock_quantity": 8,
+  "min_stock_quantity": 2,
+  "active": true,
+  "stock_reason": "Cadastro inicial"
+}
+```
+
+Regras:
+
+- `name` é obrigatório;
+- `category_id`, quando informado, precisa pertencer à adega do token;
+- `barcode` não pode duplicar outro produto da mesma adega;
+- custo e venda não podem ser negativos;
+- estoque mínimo não pode ser negativo;
+- o estoque inicial é registrado como movimentação quando diferente de zero;
+- a criação gera evento de auditoria `product_created`.
+
+Resposta em `data`: objeto de produto no mesmo formato de `GET /api/v1/catalog/products`,
+incluindo custo e lucro.
+
+### `PUT /api/v1/catalog/products/<product_id>`
+
+Descrição: atualiza um produto existente da adega do usuário autenticado.
+
+Permissão exigida: `can_manage_products`.
+
+Corpo JSON: mesmo formato de `POST /api/v1/catalog/products`.
+
+Regras:
+
+- o produto precisa pertencer à adega do token;
+- `category_id`, quando informado, precisa pertencer à mesma adega;
+- `barcode` não pode duplicar outro produto da mesma adega;
+- alteração de estoque cria movimentação com origem `product_edit`;
+- a edição gera evento de auditoria `product_updated`, com valores alterados.
+
+Resposta em `data`: produto atualizado no mesmo formato de catálogo.
+
 ## Autenticação
 
 ### `GET /login`

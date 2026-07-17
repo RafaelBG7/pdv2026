@@ -31,6 +31,9 @@ Já existem no cliente WPF:
 - API de catálogo paginada, filtrada pela empresa do token;
 - busca, filtros, ordenação e tabelas WPF virtualizadas;
 - carregamento do catálogo sob demanda, sem consulta automática após o login;
+- cadastro e edição básica de produtos no cliente nativo;
+- endpoints versionados para criar e atualizar produtos, com validação de permissão,
+  duplicidade, categoria da adega, ajuste de estoque e auditoria;
 - consulta sob demanda do caixa atual e dos dez caixas fechados mais recentes;
 - abertura e fechamento transacionais de caixa com conferência exata, proteção de
   permissão, auditoria e valores financeiros redigidos quando necessário;
@@ -59,21 +62,22 @@ fonte de verdade. O cliente nunca acessa o MySQL diretamente.
 ## Ordem Recomendada
 
 1. Publicar a OCI atrás de domínio e HTTPS.
-2. Implementar detalhes e edição de produtos conforme as permissões.
-3. Migrar estoque com trilha de auditoria e controle de concorrência.
+2. Ampliar detalhes de produtos e migrar manutenção de categorias.
+3. Migrar estoque operacional com telas próprias de entrada, ajuste e histórico.
 4. Migrar relatórios, contas a pagar, auditoria e configurações.
 5. Preparar assinatura digital, instalador e atualização apenas quando o cliente nativo
    alcançar paridade suficiente com o fluxo web.
 
 ## Progresso Funcional
 
-Estimativa atual: **52% da migração Windows planejada**.
+Estimativa atual: **58% da migração Windows planejada**.
 
 - concluído: fundação nativa, conexão, autenticação/sessão, shell, dashboard, consulta de
-  produtos/categorias, abertura/fechamento de caixa e registro de vendas;
-- parcial: catálogo ainda somente leitura e histórico detalhado de caixa/vendas ainda
-  depende da versão web;
-- pendente: manutenção de produtos/categorias, estoque operacional, relatórios, contas a
+  produtos/categorias, cadastro e edição básica de produtos, abertura/fechamento de caixa
+  e registro de vendas;
+- parcial: histórico detalhado de caixa/vendas e manutenção avançada de catálogo ainda
+  dependem da versão web;
+- pendente: manutenção de categorias, estoque operacional, relatórios, contas a
   pagar, auditoria, configurações/equipe, assinatura, instalador assinado, atualização e
   HTTPS público.
 

@@ -197,6 +197,32 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<CatalogProductList>(response, cancellationToken);
     }
 
+    public async Task<CatalogProduct> CreateCatalogProductAsync(
+        string accessToken,
+        CatalogProductMutationRequest product,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Post, "api/v1/catalog/products", accessToken);
+        request.Content = JsonContent.Create(product);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<CatalogProduct>(response, cancellationToken);
+    }
+
+    public async Task<CatalogProduct> UpdateCatalogProductAsync(
+        string accessToken,
+        int productId,
+        CatalogProductMutationRequest product,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Put,
+            $"api/v1/catalog/products/{productId}",
+            accessToken);
+        request.Content = JsonContent.Create(product);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<CatalogProduct>(response, cancellationToken);
+    }
+
     public async Task<SaleReceipt> CreateSaleAsync(
         string accessToken,
         string idempotencyKey,

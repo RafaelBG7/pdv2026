@@ -29,6 +29,12 @@ from app.services.cash_register_service import (
     open_cash_register,
 )
 from app.services.dashboard_service import build_dashboard_snapshot
+from app.services.product_service import (
+    ProductInput,
+    ProductOperationError,
+    create_product,
+    update_product,
+)
 from app.services.sale_service import (
     SaleLineInput,
     SaleOperationError,
@@ -247,6 +253,123 @@ def json_optional_money(payload, name, default='0.00'):
     if name not in payload or payload.get(name) in {None, ''}:
         return Decimal(default).quantize(Decimal('0.01'))
     return json_money(payload, name)
+
+
+def json_text(payload, name, required=False, max_length=255):
+    raw_value = payload.get(name)
+    if raw_value is None:
+        text = ''
+    elif isinstance(raw_value, str):
+        text = raw_value.strip()
+    else:
+        text = str(raw_value).strip()
+
+    if required and not text:
+        raise ApiAuthError(
+            f'Informe o campo {name}.',
+            'text_required',
+            422,
+            name,
+        )
+    if len(text) > max_length:
+        raise ApiAuthError(
+            f'O campo {name} excede o tamanho permitido.',
+            'text_too_long',
+            422,
+            name,
+        )
+    return text
+
+
+def json_optional_positive_integer(payload, name):
+    raw_value = payload.get(name)
+    if raw_value in {None, '', 0, '0'}:
+        return None
+    return json_positive_integer(payload, name)
+
+
+def json_non_negative_integer(payload, name, default=0, maximum=100000000):
+    raw_value = payload.get(name, default)
+    if raw_value in {None, ''}:
+        raw_value = default
+    if isinstance(raw_value, bool):
+        raw_value = None
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError) as error:
+        raise ApiAuthError(
+            f'O campo {name} precisa ser um número inteiro.',
+            'invalid_integer',
+            422,
+            name,
+        ) from error
+    if value < 0 or value > maximum:
+        raise ApiAuthError(
+            f'O campo {name} está fora do intervalo permitido.',
+            'invalid_integer',
+            422,
+            name,
+        )
+    return value
+
+
+def json_integer(payload, name, default=0, minimum=-100000000, maximum=100000000):
+    raw_value = payload.get(name, default)
+    if raw_value in {None, ''}:
+        raw_value = default
+    if isinstance(raw_value, bool):
+        raw_value = None
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError) as error:
+        raise ApiAuthError(
+            f'O campo {name} precisa ser um número inteiro.',
+            'invalid_integer',
+            422,
+            name,
+        ) from error
+    if value < minimum or value > maximum:
+        raise ApiAuthError(
+            f'O campo {name} está fora do intervalo permitido.',
+            'invalid_integer',
+            422,
+            name,
+        )
+    return value
+
+
+def json_bool(payload, name, default=True):
+    raw_value = payload.get(name, default)
+    if isinstance(raw_value, bool):
+        return raw_value
+    if isinstance(raw_value, str):
+        normalized = raw_value.strip().casefold()
+        if normalized in {'1', 'true', 'sim', 'yes', 'ativo', 'active'}:
+            return True
+        if normalized in {'0', 'false', 'nao', 'não', 'no', 'inativo', 'inactive'}:
+            return False
+    if raw_value in {0, 1}:
+        return bool(raw_value)
+    raise ApiAuthError(
+        f'O campo {name} precisa ser verdadeiro ou falso.',
+        'invalid_boolean',
+        422,
+        name,
+    )
+
+
+def product_input_from_payload(payload):
+    return ProductInput(
+        name=json_text(payload, 'name', required=True, max_length=180),
+        barcode=json_text(payload, 'barcode', required=False, max_length=80),
+        category_id=json_optional_positive_integer(payload, 'category_id'),
+        cost_price=json_optional_money(payload, 'cost_price'),
+        sale_price=json_money(payload, 'sale_price'),
+        stock_quantity=json_integer(payload, 'stock_quantity'),
+        min_stock_quantity=json_non_negative_integer(payload, 'min_stock_quantity'),
+        active=json_bool(payload, 'active', default=True),
+        stock_reason=json_text(payload, 'stock_reason', required=False, max_length=240),
+    )
 
 
 def sale_idempotency_key(payload):
@@ -817,3 +940,80 @@ def api_catalog_products():
         })
     except ApiAuthError as error:
         return api_auth_error_response(error)
+
+
+@api_v1_bp.post('/catalog/products')
+@api_permission_required('can_manage_products')
+def api_create_catalog_product():
+    try:
+        payload = json_object_body()
+        product_input = product_input_from_payload(payload)
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                product = create_product(
+                    tenant_db,
+                    g.api_user.company,
+                    g.api_user,
+                    product_input,
+                )
+                tenant_db.commit()
+                response_data = catalog_product_data(product, include_cost=True)
+            except IntegrityError:
+                tenant_db.rollback()
+                raise ProductOperationError(
+                    'Não foi possível cadastrar o produto por conflito de dados.',
+                    'product_conflict',
+                    409,
+                )
+            except Exception:
+                tenant_db.rollback()
+                raise
+        return api_success(response_data, 201)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except ProductOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )
+
+
+@api_v1_bp.put('/catalog/products/<int:product_id>')
+@api_permission_required('can_manage_products')
+def api_update_catalog_product(product_id):
+    try:
+        payload = json_object_body()
+        product_input = product_input_from_payload(payload)
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                product = update_product(
+                    tenant_db,
+                    g.api_user.company,
+                    g.api_user,
+                    product_id,
+                    product_input,
+                )
+                tenant_db.commit()
+                response_data = catalog_product_data(product, include_cost=True)
+            except IntegrityError:
+                tenant_db.rollback()
+                raise ProductOperationError(
+                    'Não foi possível atualizar o produto por conflito de dados.',
+                    'product_conflict',
+                    409,
+                )
+            except Exception:
+                tenant_db.rollback()
+                raise
+        return api_success(response_data)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except ProductOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )

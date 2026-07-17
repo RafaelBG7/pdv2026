@@ -57,6 +57,19 @@ public interface IGirofyApiClient
         int perPage,
         CancellationToken cancellationToken);
 
+    Task<CatalogProduct> CreateCatalogProductAsync(
+        string accessToken,
+        CatalogProductMutationRequest product,
+        CancellationToken cancellationToken) =>
+        Task.FromException<CatalogProduct>(new NotSupportedException());
+
+    Task<CatalogProduct> UpdateCatalogProductAsync(
+        string accessToken,
+        int productId,
+        CatalogProductMutationRequest product,
+        CancellationToken cancellationToken) =>
+        Task.FromException<CatalogProduct>(new NotSupportedException());
+
     Task<SaleReceipt> CreateSaleAsync(
         string accessToken,
         string idempotencyKey,

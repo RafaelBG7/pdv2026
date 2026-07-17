@@ -4,7 +4,7 @@ Esta pasta contém a aplicação Windows nativa experimental do Girofy. Ela é i
 
 ## Estado atual
 
-Quinto corte vertical implementado:
+Sexto corte vertical implementado:
 
 - solução C# em .NET 8 LTS;
 - telas nativas em WPF;
@@ -31,6 +31,13 @@ Quinto corte vertical implementado:
 - consulta de categorias com quantidade de produtos;
 - tabelas WPF virtualizadas para reduzir consumo com catálogos grandes;
 - custo e lucro omitidos pelo servidor quando o perfil não pode gerenciar produtos;
+- cadastro e edição nativos de produtos para usuários com `can_manage_products`;
+- formulário de produto com nome, código de barras, categoria, custo, venda, estoque,
+  estoque mínimo e status;
+- criação e edição integradas aos endpoints `POST /api/v1/catalog/products` e
+  `PUT /api/v1/catalog/products/{id}`;
+- ajustes de estoque feitos no servidor com trava, movimentação e auditoria;
+- validação por adega para categoria, código de barras duplicado e permissões;
 - tela nativa de Caixa com consulta do caixa atual e dos dez caixas fechados mais
   recentes;
 - abertura de caixa com valor inicial e proteção contra dois caixas simultâneos;
@@ -58,10 +65,11 @@ Quinto corte vertical implementado:
   caixa e vendas;
 - workflow separado para build Windows self-contained.
 
-O dashboard, o catálogo, o caixa e o registro de vendas já funcionam de forma nativa.
-Ainda não existem edição de produtos, movimentação manual de estoque, relatórios completos,
-contas a pagar, auditoria e configurações no WPF. Esses módulos serão adicionados por API
-sem remover nem substituir a versão web durante a migração.
+O dashboard, o catálogo, a manutenção básica de produtos, o caixa e o registro de vendas
+já funcionam de forma nativa. Ainda não existem manutenção de categorias, movimentação
+manual de estoque, relatórios completos, contas a pagar, auditoria e configurações no WPF.
+Esses módulos serão adicionados por API sem remover nem substituir a versão web durante a
+migração.
 
 ## Configuração
 
@@ -112,6 +120,6 @@ GitHub > Actions > Build Windows WPF preview > Run workflow
 O artefato `Girofy-Windows-WPF-preview` é self-contained. O cliente final não precisa instalar .NET, Python, MySQL ou ferramentas de desenvolvimento.
 
 Esta prévia valida a base nativa, o ciclo completo de autenticação, o dashboard operacional,
-a consulta real do catálogo, o fluxo de abertura/fechamento de caixa e o registro completo
-de vendas. Ela ainda não substitui a versão web em produção porque os módulos administrativos
-e o HTTPS público ainda não atingiram o critério de liberação.
+a consulta e manutenção básica do catálogo, o fluxo de abertura/fechamento de caixa e o
+registro completo de vendas. Ela ainda não substitui a versão web em produção porque os
+módulos administrativos e o HTTPS público ainda não atingiram o critério de liberação.

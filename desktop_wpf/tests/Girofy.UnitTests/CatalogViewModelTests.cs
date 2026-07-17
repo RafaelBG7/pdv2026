@@ -64,6 +64,82 @@ public sealed class CatalogViewModelTests
         Assert.Equal(0, viewModel.TotalProducts);
     }
 
+    [Fact]
+    public async Task Save_new_product_sends_create_request_and_reloads_catalog()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorName = "Água Mineral";
+        viewModel.EditorBarcode = "789";
+        viewModel.EditorCategory = viewModel.Categories[1];
+        viewModel.EditorCostPrice = "2,50";
+        viewModel.EditorSalePrice = "5,00";
+        viewModel.EditorStockQuantity = "12";
+        viewModel.EditorMinStockQuantity = "3";
+        viewModel.EditorStockReason = "Carga inicial";
+
+        await viewModel.SaveProductCommand.ExecuteAsync();
+
+        Assert.NotNull(apiClient.CreatedProductRequest);
+        Assert.Equal("Água Mineral", apiClient.CreatedProductRequest.Name);
+        Assert.Equal(7, apiClient.CreatedProductRequest.CategoryId);
+        Assert.Equal(2.50m, apiClient.CreatedProductRequest.CostPrice);
+        Assert.Equal(5.00m, apiClient.CreatedProductRequest.SalePrice);
+        Assert.Equal(12, apiClient.CreatedProductRequest.StockQuantity);
+        Assert.False(viewModel.IsProductEditorOpen);
+    }
+
+    [Fact]
+    public async Task Save_existing_product_sends_update_request()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedProduct = viewModel.Products[0];
+        viewModel.OpenEditProductCommand.Execute(null);
+        viewModel.EditorName = "Coca Cola 2L Retornavel";
+        viewModel.EditorSalePrice = "13,50";
+        viewModel.EditorStockQuantity = "6";
+        viewModel.EditorActive = false;
+
+        await viewModel.SaveProductCommand.ExecuteAsync();
+
+        Assert.Equal(9, apiClient.UpdatedProductId);
+        Assert.NotNull(apiClient.UpdatedProductRequest);
+        Assert.Equal("Coca Cola 2L Retornavel", apiClient.UpdatedProductRequest.Name);
+        Assert.Equal(13.50m, apiClient.UpdatedProductRequest.SalePrice);
+        Assert.Equal(6, apiClient.UpdatedProductRequest.StockQuantity);
+        Assert.False(apiClient.UpdatedProductRequest.Active);
+    }
+
+    [Fact]
+    public async Task Save_product_rejects_invalid_values_before_calling_api()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorName = "Produto inválido";
+        viewModel.EditorSalePrice = "abc";
+
+        await viewModel.SaveProductCommand.ExecuteAsync();
+
+        Assert.Null(apiClient.CreatedProductRequest);
+        Assert.True(viewModel.HasError);
+        Assert.Equal("Informe um valor de venda válido.", viewModel.ErrorMessage);
+    }
+
     private static AuthSession CreateSession() => new()
     {
         AccessToken = "access-token",
@@ -72,7 +148,11 @@ public sealed class CatalogViewModelTests
         {
             Id = 4,
             Username = "operador",
-            Permissions = new Dictionary<string, bool> { ["can_view_products"] = true },
+            Permissions = new Dictionary<string, bool>
+            {
+                ["can_view_products"] = true,
+                ["can_manage_products"] = true,
+            },
         },
         Company = new CompanyIdentity { Id = 2, Name = "Adega JF" },
     };
@@ -90,6 +170,12 @@ public sealed class CatalogViewModelTests
         public string LastSort { get; private set; } = string.Empty;
 
         public int LastPage { get; private set; }
+
+        public CatalogProductMutationRequest? CreatedProductRequest { get; private set; }
+
+        public CatalogProductMutationRequest? UpdatedProductRequest { get; private set; }
+
+        public int? UpdatedProductId { get; private set; }
 
         public Task<CatalogCategoryList> GetCatalogCategoriesAsync(
             string accessToken,
@@ -144,6 +230,52 @@ public sealed class CatalogViewModelTests
                     Total = 1,
                     TotalPages = 1,
                 },
+            });
+        }
+
+        public Task<CatalogProduct> CreateCatalogProductAsync(
+            string accessToken,
+            CatalogProductMutationRequest product,
+            CancellationToken cancellationToken)
+        {
+            LastAccessToken = accessToken;
+            CreatedProductRequest = product;
+            return Task.FromResult(new CatalogProduct
+            {
+                Id = 20,
+                Name = product.Name,
+                Category = product.CategoryId is > 0
+                    ? new CatalogCategoryReference { Id = product.CategoryId.Value, Name = "Refrigerantes" }
+                    : null,
+                SalePrice = product.SalePrice,
+                StockQuantity = product.StockQuantity,
+                MinStockQuantity = product.MinStockQuantity,
+                Active = product.Active,
+                CostPrice = product.CostPrice,
+            });
+        }
+
+        public Task<CatalogProduct> UpdateCatalogProductAsync(
+            string accessToken,
+            int productId,
+            CatalogProductMutationRequest product,
+            CancellationToken cancellationToken)
+        {
+            LastAccessToken = accessToken;
+            UpdatedProductId = productId;
+            UpdatedProductRequest = product;
+            return Task.FromResult(new CatalogProduct
+            {
+                Id = productId,
+                Name = product.Name,
+                Category = product.CategoryId is > 0
+                    ? new CatalogCategoryReference { Id = product.CategoryId.Value, Name = "Refrigerantes" }
+                    : null,
+                SalePrice = product.SalePrice,
+                StockQuantity = product.StockQuantity,
+                MinStockQuantity = product.MinStockQuantity,
+                Active = product.Active,
+                CostPrice = product.CostPrice,
             });
         }
 

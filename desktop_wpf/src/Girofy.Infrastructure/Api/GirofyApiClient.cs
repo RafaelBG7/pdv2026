@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Exceptions;
 using Girofy.Application.Models;
@@ -160,6 +161,45 @@ public sealed class GirofyApiClient(
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
         return await ReadEnvelopeAsync<CatalogCategoryList>(response, cancellationToken);
+    }
+
+    public async Task<CatalogCategory> CreateCatalogCategoryAsync(
+        string accessToken,
+        CatalogCategoryMutationRequest category,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Post, "api/v1/catalog/categories", accessToken);
+        request.Content = JsonContent.Create(category);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<CatalogCategory>(response, cancellationToken);
+    }
+
+    public async Task<CatalogCategory> UpdateCatalogCategoryAsync(
+        string accessToken,
+        int categoryId,
+        CatalogCategoryMutationRequest category,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Put,
+            $"api/v1/catalog/categories/{categoryId}",
+            accessToken);
+        request.Content = JsonContent.Create(category);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<CatalogCategory>(response, cancellationToken);
+    }
+
+    public async Task DeleteCatalogCategoryAsync(
+        string accessToken,
+        int categoryId,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Delete,
+            $"api/v1/catalog/categories/{categoryId}",
+            accessToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await ReadEnvelopeAsync<JsonElement>(response, cancellationToken);
     }
 
     public async Task<CatalogProductList> GetCatalogProductsAsync(

@@ -115,3 +115,6 @@ public sealed record CatalogProductMutationRequest(
     [property: JsonPropertyName("min_stock_quantity")] int MinStockQuantity,
     [property: JsonPropertyName("active")] bool Active,
     [property: JsonPropertyName("stock_reason")] string StockReason);
+
+public sealed record CatalogCategoryMutationRequest(
+    [property: JsonPropertyName("name")] string Name);

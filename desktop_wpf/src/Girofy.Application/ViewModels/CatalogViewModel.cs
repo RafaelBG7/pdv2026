@@ -35,6 +35,11 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private string _editorStockQuantity = "0";
     private string _editorMinStockQuantity = "0";
     private string _editorStockReason = string.Empty;
+    private CatalogCategory? _selectedCategoryRow;
+    private bool _isCategoryEditorOpen;
+    private bool _isEditingCategory;
+    private string _categoryEditorTitle = "Nova categoria";
+    private string _categoryEditorName = string.Empty;
 
     public CatalogViewModel(
         IGirofyApiClient apiClient,
@@ -69,12 +74,19 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         OpenEditProductCommand = new RelayCommand(OpenSelectedProduct, () => CanManageProducts && SelectedProduct is not null && !IsBusy);
         CloseProductEditorCommand = new RelayCommand(CloseProductEditor);
         SaveProductCommand = new AsyncRelayCommand(SaveProductAsync, () => CanManageProducts && IsProductEditorOpen && !IsBusy);
+        OpenNewCategoryCommand = new RelayCommand(OpenNewCategory, () => CanManageCategories && !IsBusy);
+        OpenEditCategoryCommand = new RelayCommand(OpenSelectedCategory, () => CanManageCategories && SelectedCategoryRow is not null && !IsBusy);
+        CloseCategoryEditorCommand = new RelayCommand(CloseCategoryEditor);
+        SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => CanManageCategories && IsCategoryEditorOpen && !IsBusy);
+        DeleteCategoryCommand = new AsyncRelayCommand(DeleteCategoryAsync, () => CanManageCategories && SelectedCategoryRow is not null && !IsBusy);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
     public ObservableCollection<CatalogProduct> Products { get; } = [];
 
     public ObservableCollection<CatalogCategory> Categories { get; } = [];
+
+    public ObservableCollection<CatalogCategory> CategoryRows { get; } = [];
 
     public IReadOnlyList<CatalogFilterOption> ActiveFilters { get; }
 
@@ -199,6 +211,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         "can_manage_products",
         out var canManageProducts) == true && canManageProducts;
 
+    public bool CanManageCategories => _sessionContext.Current?.User.Permissions.TryGetValue(
+        "can_manage_categories",
+        out var canManageCategories) == true && canManageCategories;
+
     public CatalogProduct? SelectedProduct
     {
         get => _selectedProduct;
@@ -289,6 +305,49 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         set => SetProperty(ref _editorActive, value);
     }
 
+    public CatalogCategory? SelectedCategoryRow
+    {
+        get => _selectedCategoryRow;
+        set
+        {
+            if (SetProperty(ref _selectedCategoryRow, value))
+            {
+                OpenEditCategoryCommand.NotifyCanExecuteChanged();
+                DeleteCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsCategoryEditorOpen
+    {
+        get => _isCategoryEditorOpen;
+        private set
+        {
+            if (SetProperty(ref _isCategoryEditorOpen, value))
+            {
+                SaveCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsEditingCategory
+    {
+        get => _isEditingCategory;
+        private set => SetProperty(ref _isEditingCategory, value);
+    }
+
+    public string CategoryEditorTitle
+    {
+        get => _categoryEditorTitle;
+        private set => SetProperty(ref _categoryEditorTitle, value);
+    }
+
+    public string CategoryEditorName
+    {
+        get => _categoryEditorName;
+        set => SetProperty(ref _categoryEditorName, value);
+    }
+
     public AsyncRelayCommand SearchCommand { get; }
 
     public AsyncRelayCommand RefreshCommand { get; }
@@ -308,6 +367,16 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     public RelayCommand CloseProductEditorCommand { get; }
 
     public AsyncRelayCommand SaveProductCommand { get; }
+
+    public RelayCommand OpenNewCategoryCommand { get; }
+
+    public RelayCommand OpenEditCategoryCommand { get; }
+
+    public RelayCommand CloseCategoryEditorCommand { get; }
+
+    public AsyncRelayCommand SaveCategoryCommand { get; }
+
+    public AsyncRelayCommand DeleteCategoryCommand { get; }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -457,6 +526,114 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OpenNewCategory()
+    {
+        if (!CanManageCategories)
+        {
+            return;
+        }
+
+        CategoryEditorTitle = "Nova categoria";
+        IsEditingCategory = false;
+        SelectedCategoryRow = null;
+        CategoryEditorName = string.Empty;
+        ErrorMessage = string.Empty;
+        IsCategoryEditorOpen = true;
+    }
+
+    private void OpenSelectedCategory()
+    {
+        if (!CanManageCategories || SelectedCategoryRow is null)
+        {
+            return;
+        }
+
+        CategoryEditorTitle = $"Editar {SelectedCategoryRow.Name}";
+        IsEditingCategory = true;
+        CategoryEditorName = SelectedCategoryRow.Name;
+        ErrorMessage = string.Empty;
+        IsCategoryEditorOpen = true;
+    }
+
+    private void CloseCategoryEditor()
+    {
+        IsCategoryEditorOpen = false;
+        ErrorMessage = string.Empty;
+    }
+
+    private async Task SaveCategoryAsync(CancellationToken cancellationToken)
+    {
+        if (!TryBuildCategoryRequest(out var request))
+        {
+            return;
+        }
+
+        var session = RequireSession();
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
+        {
+            var savedCategory = IsEditingCategory && SelectedCategoryRow is not null
+                ? await _apiClient.UpdateCatalogCategoryAsync(
+                    session.AccessToken,
+                    SelectedCategoryRow.Id,
+                    request,
+                    cancellationToken)
+                : await _apiClient.CreateCatalogCategoryAsync(
+                    session.AccessToken,
+                    request,
+                    cancellationToken);
+
+            await LoadCatalogAsync(cancellationToken);
+            SelectedCategoryRow = CategoryRows.FirstOrDefault(category => category.Id == savedCategory.Id);
+            IsCategoryEditorOpen = false;
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception);
+        }
+        finally
+        {
+            IsBusy = false;
+            NotifyNavigationState();
+        }
+    }
+
+    private async Task DeleteCategoryAsync(CancellationToken cancellationToken)
+    {
+        if (!CanManageCategories || SelectedCategoryRow is null)
+        {
+            return;
+        }
+
+        var session = RequireSession();
+        var deletedCategoryId = SelectedCategoryRow.Id;
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
+        {
+            await _apiClient.DeleteCatalogCategoryAsync(
+                session.AccessToken,
+                deletedCategoryId,
+                cancellationToken);
+            if (SelectedCategory?.Id == deletedCategoryId)
+            {
+                SelectedCategory = Categories.FirstOrDefault();
+            }
+            await LoadCatalogAsync(cancellationToken);
+            IsCategoryEditorOpen = false;
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception);
+        }
+        finally
+        {
+            IsBusy = false;
+            NotifyNavigationState();
+        }
+    }
+
     private async Task LoadCatalogAsync(CancellationToken cancellationToken)
     {
         IsBusy = true;
@@ -501,19 +678,23 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     {
         var session = RequireSession();
         var selectedCategoryId = SelectedCategory?.Id ?? 0;
+        var selectedCategoryRowId = SelectedCategoryRow?.Id ?? 0;
         var result = await _apiClient.GetCatalogCategoriesAsync(
             session.AccessToken,
             string.Empty,
             cancellationToken);
 
         Categories.Clear();
+        CategoryRows.Clear();
         Categories.Add(new CatalogCategory { Id = 0, Name = "Todas", ProductCount = result.Total });
         foreach (var category in result.Items)
         {
             Categories.Add(category);
+            CategoryRows.Add(category);
         }
         SelectedCategory = Categories.FirstOrDefault(category => category.Id == selectedCategoryId)
             ?? Categories.FirstOrDefault();
+        SelectedCategoryRow = CategoryRows.FirstOrDefault(category => category.Id == selectedCategoryRowId);
     }
 
     private async Task LoadProductsCoreAsync(CancellationToken cancellationToken)
@@ -599,6 +780,20 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         return true;
     }
 
+    private bool TryBuildCategoryRequest(out CatalogCategoryMutationRequest request)
+    {
+        request = new CatalogCategoryMutationRequest(string.Empty);
+        var name = CategoryEditorName.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            ErrorMessage = "Informe o nome da categoria.";
+            return false;
+        }
+
+        request = new CatalogCategoryMutationRequest(name);
+        return true;
+    }
+
     private static string FormatMoney(decimal value) =>
         value.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"));
 
@@ -632,7 +827,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             GirofyApiException apiException => apiException.Message,
             TaskCanceledException => "O servidor demorou para responder. Tente novamente.",
             HttpRequestException => "Não foi possível consultar o catálogo agora.",
-            _ => "Não foi possível carregar os produtos. Tente novamente.",
+            _ => "Não foi possível carregar o catálogo. Tente novamente.",
         };
     }
 
@@ -641,23 +836,33 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanGoPrevious));
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(CanManageProducts));
+        OnPropertyChanged(nameof(CanManageCategories));
         OpenNewProductCommand.NotifyCanExecuteChanged();
         OpenEditProductCommand.NotifyCanExecuteChanged();
         SaveProductCommand.NotifyCanExecuteChanged();
+        OpenNewCategoryCommand.NotifyCanExecuteChanged();
+        OpenEditCategoryCommand.NotifyCanExecuteChanged();
+        SaveCategoryCommand.NotifyCanExecuteChanged();
+        DeleteCategoryCommand.NotifyCanExecuteChanged();
     }
 
     private void Reset()
     {
         Products.Clear();
         Categories.Clear();
+        CategoryRows.Clear();
         SearchText = string.Empty;
         ErrorMessage = string.Empty;
         Page = 1;
         TotalPages = 0;
         TotalProducts = 0;
         SelectedProduct = null;
+        SelectedCategory = null;
+        SelectedCategoryRow = null;
         IsProductEditorOpen = false;
         IsEditingProduct = false;
+        IsCategoryEditorOpen = false;
+        IsEditingCategory = false;
         _isInitialized = false;
         NotifyNavigationState();
     }

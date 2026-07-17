@@ -19,6 +19,8 @@ public sealed class CatalogViewModelTests
 
         Assert.Equal(2, viewModel.Categories.Count);
         Assert.Equal("Todas", viewModel.Categories[0].Name);
+        Assert.Single(viewModel.CategoryRows);
+        Assert.Equal("Refrigerantes", viewModel.CategoryRows[0].Name);
         Assert.Single(viewModel.Products);
         Assert.Equal("Coca Cola 2L", viewModel.Products[0].Name);
         Assert.Equal("R$ 12,00", viewModel.Products[0].SalePriceText);
@@ -121,6 +123,62 @@ public sealed class CatalogViewModelTests
     }
 
     [Fact]
+    public async Task Save_new_category_sends_create_request_and_reloads_catalog()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.OpenNewCategoryCommand.Execute(null);
+        viewModel.CategoryEditorName = "Destilados";
+
+        await viewModel.SaveCategoryCommand.ExecuteAsync();
+
+        Assert.NotNull(apiClient.CreatedCategoryRequest);
+        Assert.Equal("Destilados", apiClient.CreatedCategoryRequest.Name);
+        Assert.False(viewModel.IsCategoryEditorOpen);
+    }
+
+    [Fact]
+    public async Task Save_existing_category_sends_update_request()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedCategoryRow = viewModel.CategoryRows[0];
+        viewModel.OpenEditCategoryCommand.Execute(null);
+        viewModel.CategoryEditorName = "Refrigerantes Gelados";
+
+        await viewModel.SaveCategoryCommand.ExecuteAsync();
+
+        Assert.Equal(7, apiClient.UpdatedCategoryId);
+        Assert.NotNull(apiClient.UpdatedCategoryRequest);
+        Assert.Equal("Refrigerantes Gelados", apiClient.UpdatedCategoryRequest.Name);
+        Assert.False(viewModel.IsCategoryEditorOpen);
+    }
+
+    [Fact]
+    public async Task Delete_category_calls_api_and_reloads_catalog()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedCategoryRow = viewModel.CategoryRows[0];
+
+        await viewModel.DeleteCategoryCommand.ExecuteAsync();
+
+        Assert.Equal(7, apiClient.DeletedCategoryId);
+    }
+
+    [Fact]
     public async Task Save_product_rejects_invalid_values_before_calling_api()
     {
         var sessionContext = new AppSessionContext();
@@ -152,6 +210,7 @@ public sealed class CatalogViewModelTests
             {
                 ["can_view_products"] = true,
                 ["can_manage_products"] = true,
+                ["can_manage_categories"] = true,
             },
         },
         Company = new CompanyIdentity { Id = 2, Name = "Adega JF" },
@@ -177,6 +236,14 @@ public sealed class CatalogViewModelTests
 
         public int? UpdatedProductId { get; private set; }
 
+        public CatalogCategoryMutationRequest? CreatedCategoryRequest { get; private set; }
+
+        public CatalogCategoryMutationRequest? UpdatedCategoryRequest { get; private set; }
+
+        public int? UpdatedCategoryId { get; private set; }
+
+        public int? DeletedCategoryId { get; private set; }
+
         public Task<CatalogCategoryList> GetCatalogCategoriesAsync(
             string accessToken,
             string search,
@@ -191,6 +258,48 @@ public sealed class CatalogViewModelTests
                     new CatalogCategory { Id = 7, Name = "Refrigerantes", ProductCount = 1 },
                 ],
             });
+        }
+
+        public Task<CatalogCategory> CreateCatalogCategoryAsync(
+            string accessToken,
+            CatalogCategoryMutationRequest category,
+            CancellationToken cancellationToken)
+        {
+            LastAccessToken = accessToken;
+            CreatedCategoryRequest = category;
+            return Task.FromResult(new CatalogCategory
+            {
+                Id = 31,
+                Name = category.Name,
+                ProductCount = 0,
+            });
+        }
+
+        public Task<CatalogCategory> UpdateCatalogCategoryAsync(
+            string accessToken,
+            int categoryId,
+            CatalogCategoryMutationRequest category,
+            CancellationToken cancellationToken)
+        {
+            LastAccessToken = accessToken;
+            UpdatedCategoryId = categoryId;
+            UpdatedCategoryRequest = category;
+            return Task.FromResult(new CatalogCategory
+            {
+                Id = categoryId,
+                Name = category.Name,
+                ProductCount = 1,
+            });
+        }
+
+        public Task DeleteCatalogCategoryAsync(
+            string accessToken,
+            int categoryId,
+            CancellationToken cancellationToken)
+        {
+            LastAccessToken = accessToken;
+            DeletedCategoryId = categoryId;
+            return Task.CompletedTask;
         }
 
         public Task<CatalogProductList> GetCatalogProductsAsync(

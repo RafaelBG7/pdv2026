@@ -403,6 +403,110 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual([category['name'] for category in data['items']], ['Aperitivos', 'Bebidas'])
         self.assertEqual(data['items'][1]['product_count'], 2)
 
+    def test_api_catalog_category_manager_creates_updates_and_deletes_category(self):
+        user, company = self.create_api_user()
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(access_token)
+
+        create_response = self.client.post(
+            '/api/v1/catalog/categories',
+            headers=headers,
+            json={'name': 'Destilados'},
+        )
+
+        self.assertEqual(create_response.status_code, 201)
+        created = create_response.get_json()['data']
+        self.assertEqual(created['name'], 'Destilados')
+        self.assertEqual(created['product_count'], 0)
+        category_id = created['id']
+        with self.app.app_context():
+            category = db.session.get(Category, category_id)
+            self.assertIsNotNone(category)
+            self.assertEqual(category.company_id, company.id)
+            self.assertEqual(AuditLog.query.filter_by(action='category_created').count(), 1)
+
+        update_response = self.client.put(
+            f'/api/v1/catalog/categories/{category_id}',
+            headers=headers,
+            json={'name': 'Whisky'},
+        )
+
+        self.assertEqual(update_response.status_code, 200)
+        updated = update_response.get_json()['data']
+        self.assertEqual(updated['name'], 'Whisky')
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Category, category_id).name, 'Whisky')
+            self.assertEqual(AuditLog.query.filter_by(action='category_updated').count(), 1)
+
+        delete_response = self.client.delete(
+            f'/api/v1/catalog/categories/{category_id}',
+            headers=headers,
+        )
+
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertTrue(delete_response.get_json()['data']['deleted'])
+        with self.app.app_context():
+            self.assertIsNone(db.session.get(Category, category_id))
+            self.assertEqual(AuditLog.query.filter_by(action='category_deleted').count(), 1)
+
+    def test_api_catalog_category_mutation_requires_permission_and_unique_name(self):
+        manager, company = self.create_api_user()
+        operator, _ = self.create_api_user(
+            username='api-categoria-sem-editar',
+            company_name='Adega API categoria operador',
+            role='operator',
+            can_manage_categories=False,
+        )
+        with self.app.app_context():
+            db.session.add(Category(name='Cerveja', company_id=company.id))
+            db.session.commit()
+
+        manager_token = self.api_login(manager.username, 'SenhaApi123').get_json()['data']['access_token']
+        operator_token = self.api_login(operator.username, 'SenhaApi123').get_json()['data']['access_token']
+        duplicate_response = self.client.post(
+            '/api/v1/catalog/categories',
+            headers=self.bearer_header(manager_token),
+            json={'name': 'cerveja'},
+        )
+        blocked_response = self.client.post(
+            '/api/v1/catalog/categories',
+            headers=self.bearer_header(operator_token),
+            json={'name': 'Sem permissão'},
+        )
+
+        self.assertEqual(duplicate_response.status_code, 409)
+        self.assertEqual(duplicate_response.get_json()['errors'][0]['code'], 'category_already_exists')
+        self.assertEqual(blocked_response.status_code, 403)
+        self.assertEqual(blocked_response.get_json()['errors'][0]['code'], 'permission_denied')
+
+    def test_api_catalog_category_delete_rejects_category_with_products(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            category = Category(name='Refrigerantes', company_id=company.id)
+            db.session.add(category)
+            db.session.flush()
+            db.session.add(Product(
+                name='Coca Cola 2L',
+                category_id=category.id,
+                company_id=company.id,
+                sale_price=12,
+                stock_quantity=5,
+                active=True,
+            ))
+            db.session.commit()
+            category_id = category.id
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.delete(
+            f'/api/v1/catalog/categories/{category_id}',
+            headers=self.bearer_header(access_token),
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'category_has_products')
+        with self.app.app_context():
+            self.assertIsNotNone(db.session.get(Category, category_id))
+
     def test_api_catalog_includes_cost_only_for_product_managers(self):
         user, company = self.create_api_user()
         with self.app.app_context():

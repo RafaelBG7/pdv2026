@@ -726,6 +726,8 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="18" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="18" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Grid>
@@ -740,12 +742,60 @@
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            Text="Organização atual dos produtos da adega." />
                             </StackPanel>
-                            <Button Grid.Column="1" Command="{Binding Catalog.RefreshCommand}"
-                                    Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button MinWidth="132" Command="{Binding Catalog.OpenNewCategoryCommand}"
+                                        Content="Nova categoria" Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button Margin="10,0,0,0" MinWidth="126"
+                                        Command="{Binding Catalog.OpenEditCategoryCommand}"
+                                        Content="Editar" Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Margin="10,0,0,0" MinWidth="126"
+                                        Command="{Binding Catalog.DeleteCategoryCommand}"
+                                        Content="Excluir" Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Margin="10,0,0,0" MinWidth="112" Command="{Binding Catalog.RefreshCommand}"
+                                        Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
+                            </StackPanel>
                         </Grid>
-                        <DataGrid Grid.Row="2" ItemsSource="{Binding Catalog.Categories}"
+                        <Border Grid.Row="2" Padding="16" CornerRadius="8"
+                                Background="{StaticResource SurfaceRaisedBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Catalog.IsCategoryEditorOpen}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Text="{Binding Catalog.CategoryEditorTitle}" />
+                                    <TextBox Text="{Binding Catalog.CategoryEditorName, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource TextInputStyle}" />
+                                </StackPanel>
+                                <Button Grid.Column="2" MinWidth="100" VerticalAlignment="Bottom"
+                                        Command="{Binding Catalog.CloseCategoryEditorCommand}"
+                                        Content="Cancelar" Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Grid.Column="4" MinWidth="120" VerticalAlignment="Bottom"
+                                        Command="{Binding Catalog.SaveCategoryCommand}"
+                                        Content="Salvar" Style="{StaticResource PrimaryButtonStyle}" />
+                            </Grid>
+                        </Border>
+                        <DataGrid Grid.Row="4" ItemsSource="{Binding Catalog.CategoryRows}"
+                                  SelectedItem="{Binding Catalog.SelectedCategoryRow, Mode=TwoWay}"
                                   AutoGenerateColumns="False" IsReadOnly="True"
                                   CanUserAddRows="False" CanUserDeleteRows="False"
+                                  SelectionMode="Single"
                                   HeadersVisibility="Column" EnableRowVirtualization="True"
                                   VirtualizingPanel.IsVirtualizing="True"
                                   VirtualizingPanel.VirtualizationMode="Recycling"

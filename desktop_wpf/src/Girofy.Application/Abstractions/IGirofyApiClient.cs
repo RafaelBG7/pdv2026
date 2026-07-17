@@ -47,6 +47,25 @@ public interface IGirofyApiClient
         string search,
         CancellationToken cancellationToken);
 
+    Task<CatalogCategory> CreateCatalogCategoryAsync(
+        string accessToken,
+        CatalogCategoryMutationRequest category,
+        CancellationToken cancellationToken) =>
+        Task.FromException<CatalogCategory>(new NotSupportedException());
+
+    Task<CatalogCategory> UpdateCatalogCategoryAsync(
+        string accessToken,
+        int categoryId,
+        CatalogCategoryMutationRequest category,
+        CancellationToken cancellationToken) =>
+        Task.FromException<CatalogCategory>(new NotSupportedException());
+
+    Task DeleteCatalogCategoryAsync(
+        string accessToken,
+        int categoryId,
+        CancellationToken cancellationToken) =>
+        Task.FromException(new NotSupportedException());
+
     Task<CatalogProductList> GetCatalogProductsAsync(
         string accessToken,
         string search,

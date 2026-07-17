@@ -28,6 +28,14 @@ from app.services.cash_register_service import (
     close_cash_register,
     open_cash_register,
 )
+from app.services.category_service import (
+    CategoryInput,
+    CategoryOperationError,
+    category_product_count,
+    create_category,
+    delete_category,
+    update_category,
+)
 from app.services.dashboard_service import build_dashboard_snapshot
 from app.services.product_service import (
     ProductInput,
@@ -369,6 +377,12 @@ def product_input_from_payload(payload):
         min_stock_quantity=json_non_negative_integer(payload, 'min_stock_quantity'),
         active=json_bool(payload, 'active', default=True),
         stock_reason=json_text(payload, 'stock_reason', required=False, max_length=240),
+    )
+
+
+def category_input_from_payload(payload):
+    return CategoryInput(
+        name=json_text(payload, 'name', required=True, max_length=120),
     )
 
 
@@ -848,6 +862,122 @@ def api_catalog_categories():
         })
     except ApiAuthError as error:
         return api_auth_error_response(error)
+
+
+@api_v1_bp.post('/catalog/categories')
+@api_permission_required('can_manage_categories')
+def api_create_catalog_category():
+    try:
+        payload = json_object_body()
+        category_input = category_input_from_payload(payload)
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                category = create_category(
+                    tenant_db,
+                    g.api_user.company,
+                    g.api_user,
+                    category_input,
+                )
+                tenant_db.commit()
+                response_data = catalog_category_data(category, 0)
+            except Exception:
+                tenant_db.rollback()
+                raise
+
+        return api_success(response_data, 201)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except CategoryOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )
+    except IntegrityError:
+        return api_failure(
+            'Já existe uma categoria com este nome nesta adega.',
+            'category_already_exists',
+            409,
+            'name',
+        )
+
+
+@api_v1_bp.put('/catalog/categories/<int:category_id>')
+@api_permission_required('can_manage_categories')
+def api_update_catalog_category(category_id):
+    try:
+        payload = json_object_body()
+        category_input = category_input_from_payload(payload)
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                category = update_category(
+                    tenant_db,
+                    g.api_user.company,
+                    g.api_user,
+                    category_id,
+                    category_input,
+                )
+                product_count = category_product_count(
+                    tenant_db,
+                    g.api_user.company_id,
+                    category.id,
+                )
+                tenant_db.commit()
+                response_data = catalog_category_data(category, product_count)
+            except Exception:
+                tenant_db.rollback()
+                raise
+
+        return api_success(response_data)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except CategoryOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )
+    except IntegrityError:
+        return api_failure(
+            'Já existe uma categoria com este nome nesta adega.',
+            'category_already_exists',
+            409,
+            'name',
+        )
+
+
+@api_v1_bp.delete('/catalog/categories/<int:category_id>')
+@api_permission_required('can_manage_categories')
+def api_delete_catalog_category(category_id):
+    try:
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                deleted_category_id = delete_category(
+                    tenant_db,
+                    g.api_user.company,
+                    g.api_user,
+                    category_id,
+                )
+                tenant_db.commit()
+            except Exception:
+                tenant_db.rollback()
+                raise
+
+        return api_success({
+            'id': deleted_category_id,
+            'deleted': True,
+        })
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except CategoryOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )
 
 
 @api_v1_bp.get('/catalog/products')

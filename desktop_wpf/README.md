@@ -4,7 +4,7 @@ Esta pasta contém a aplicação Windows nativa experimental do Girofy. Ela é i
 
 ## Estado atual
 
-Sexto corte vertical implementado:
+Sétimo corte vertical implementado:
 
 - solução C# em .NET 8 LTS;
 - telas nativas em WPF;
@@ -29,6 +29,10 @@ Sexto corte vertical implementado:
 - consulta paginada de produtos por nome ou código de barras;
 - filtro por categoria e status, com ordenação por nome, preço ou estoque;
 - consulta de categorias com quantidade de produtos;
+- cadastro, edição e exclusão nativos de categorias para usuários com
+  `can_manage_categories`;
+- categorias integradas aos endpoints `POST`, `PUT` e `DELETE /api/v1/catalog/categories`;
+- exclusão protegida contra categorias com produtos vinculados;
 - tabelas WPF virtualizadas para reduzir consumo com catálogos grandes;
 - custo e lucro omitidos pelo servidor quando o perfil não pode gerenciar produtos;
 - cadastro e edição nativos de produtos para usuários com `can_manage_products`;
@@ -65,9 +69,9 @@ Sexto corte vertical implementado:
   caixa e vendas;
 - workflow separado para build Windows self-contained.
 
-O dashboard, o catálogo, a manutenção básica de produtos, o caixa e o registro de vendas
-já funcionam de forma nativa. Ainda não existem manutenção de categorias, movimentação
-manual de estoque, relatórios completos, contas a pagar, auditoria e configurações no WPF.
+O dashboard, o catálogo, a manutenção básica de produtos e categorias, o caixa e o registro
+de vendas já funcionam de forma nativa. Ainda não existem movimentação manual de estoque,
+relatórios completos, contas a pagar, auditoria e configurações no WPF.
 Esses módulos serão adicionados por API sem remover nem substituir a versão web durante a
 migração.
 

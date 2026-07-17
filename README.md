@@ -1132,6 +1132,8 @@ Nesta etapa ele já possui:
 - proteção de custo e lucro conforme a permissão do usuário;
 - cadastro e edição básica de produtos com nome, código de barras, categoria, custo,
   venda, estoque, estoque mínimo e status;
+- cadastro, edição e exclusão nativos de categorias, com bloqueio para categoria que
+  ainda possui produtos vinculados;
 - ajustes de estoque de produto feitos pelo servidor com movimentação e auditoria;
 - consulta do caixa atual e dos dez caixas fechados mais recentes;
 - abertura nativa de caixa com valor inicial e bloqueio de abertura duplicada;
@@ -1163,7 +1165,7 @@ Girofy-Windows-WPF-preview
 ```
 
 Essa prévia não é o canal oficial para os clientes. Dashboard, catálogo, manutenção básica
-de produtos, caixa e registro de vendas já funcionam de forma nativa; categorias, estoque
+de produtos e categorias, caixa e registro de vendas já funcionam de forma nativa; estoque
 operacional, relatórios e módulos administrativos serão migrados por etapas, mantendo a
 versão web no ar durante todo o processo.
 O login nativo já está implementado. No ambiente OCI atual, a autenticação por HTTP está

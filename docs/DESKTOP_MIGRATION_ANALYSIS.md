@@ -32,8 +32,11 @@ Já existem no cliente WPF:
 - busca, filtros, ordenação e tabelas WPF virtualizadas;
 - carregamento do catálogo sob demanda, sem consulta automática após o login;
 - cadastro e edição básica de produtos no cliente nativo;
+- cadastro, edição e exclusão de categorias no cliente nativo;
 - endpoints versionados para criar e atualizar produtos, com validação de permissão,
   duplicidade, categoria da adega, ajuste de estoque e auditoria;
+- endpoints versionados para criar, atualizar e excluir categorias, com validação por
+  adega, bloqueio de exclusão com produtos vinculados e auditoria;
 - consulta sob demanda do caixa atual e dos dez caixas fechados mais recentes;
 - abertura e fechamento transacionais de caixa com conferência exata, proteção de
   permissão, auditoria e valores financeiros redigidos quando necessário;
@@ -62,7 +65,7 @@ fonte de verdade. O cliente nunca acessa o MySQL diretamente.
 ## Ordem Recomendada
 
 1. Publicar a OCI atrás de domínio e HTTPS.
-2. Ampliar detalhes de produtos e migrar manutenção de categorias.
+2. Ampliar detalhes de produtos e finalizar manutenção avançada de catálogo.
 3. Migrar estoque operacional com telas próprias de entrada, ajuste e histórico.
 4. Migrar relatórios, contas a pagar, auditoria e configurações.
 5. Preparar assinatura digital, instalador e atualização apenas quando o cliente nativo
@@ -70,15 +73,15 @@ fonte de verdade. O cliente nunca acessa o MySQL diretamente.
 
 ## Progresso Funcional
 
-Estimativa atual: **58% da migração Windows planejada**.
+Estimativa atual: **62% da migração Windows planejada**.
 
 - concluído: fundação nativa, conexão, autenticação/sessão, shell, dashboard, consulta de
-  produtos/categorias, cadastro e edição básica de produtos, abertura/fechamento de caixa
-  e registro de vendas;
+  produtos/categorias, cadastro e edição básica de produtos, manutenção de categorias,
+  abertura/fechamento de caixa e registro de vendas;
 - parcial: histórico detalhado de caixa/vendas e manutenção avançada de catálogo ainda
   dependem da versão web;
-- pendente: manutenção de categorias, estoque operacional, relatórios, contas a
-  pagar, auditoria, configurações/equipe, assinatura, instalador assinado, atualização e
+- pendente: estoque operacional, relatórios, contas a pagar, auditoria,
+  configurações/equipe, assinatura, instalador assinado, atualização e
   HTTPS público.
 
 O percentual mede módulos funcionais necessários para paridade operacional e pode mudar

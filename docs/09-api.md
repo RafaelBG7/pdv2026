@@ -342,6 +342,72 @@ Resposta em `data`:
 }
 ```
 
+### `POST /api/v1/catalog/categories`
+
+Descrição: cria uma categoria na adega do usuário autenticado.
+
+Permissão exigida: `can_manage_categories`.
+
+Corpo JSON:
+
+```json
+{
+  "name": "Refrigerantes"
+}
+```
+
+Regras:
+
+- `name` é obrigatório;
+- o nome não pode duplicar outra categoria da mesma adega;
+- adegas diferentes podem usar o mesmo nome;
+- a criação gera evento de auditoria `category_created`.
+
+Resposta em `data`: objeto de categoria com `id`, `name` e `product_count`.
+
+### `PUT /api/v1/catalog/categories/<category_id>`
+
+Descrição: atualiza o nome de uma categoria da adega do usuário autenticado.
+
+Permissão exigida: `can_manage_categories`.
+
+Corpo JSON:
+
+```json
+{
+  "name": "Cervejas"
+}
+```
+
+Regras:
+
+- a categoria precisa pertencer à adega do token;
+- o nome não pode duplicar outra categoria da mesma adega;
+- a edição gera evento de auditoria `category_updated` quando houver alteração.
+
+Resposta em `data`: categoria atualizada com a contagem atual de produtos.
+
+### `DELETE /api/v1/catalog/categories/<category_id>`
+
+Descrição: exclui uma categoria vazia da adega do usuário autenticado.
+
+Permissão exigida: `can_manage_categories`.
+
+Regras:
+
+- a categoria precisa pertencer à adega do token;
+- categorias com produtos vinculados retornam `409 category_has_products`;
+- a exclusão gera evento de auditoria `category_deleted`.
+
+Resposta em `data`:
+
+```json
+{
+  "id": 7,
+  "deleted": true
+}
+```
+
 ### `GET /api/v1/catalog/products`
 
 Descrição: consulta paginada e somente leitura dos produtos da adega.

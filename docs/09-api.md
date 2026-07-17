@@ -264,6 +264,55 @@ Erros principais:
 - `409 cash_register_not_open`: não existe caixa aberto;
 - `409 cash_register_changed`: o caixa aberto não corresponde ao identificador enviado.
 
+## Vendas da API
+
+### `POST /api/v1/sales`
+
+Descrição: registra uma venda completa para a adega autenticada. Exige Bearer access
+token, transporte seguro e a permissão `can_manage_sales`. A empresa e o usuário são
+obtidos exclusivamente do token; o cliente não informa `company_id`.
+
+O cabeçalho `Idempotency-Key` é obrigatório e precisa conter de 8 a 128 caracteres
+alfanuméricos seguros. A mesma chave pode ser reenviada depois de timeout ou queda de
+conexão: o servidor retorna a venda já gravada sem baixar o estoque novamente.
+
+Payload:
+
+```json
+{
+  "idempotency_key": "windows-7ea3b491a6e04ab3b822b1f9d6813790",
+  "discount_amount": "2,00",
+  "items": [
+    {"product_id": 15, "quantity": 2}
+  ],
+  "payments": [
+    {"method": "money", "amount": "10,00"},
+    {"method": "pix", "amount": "12,00"}
+  ]
+}
+```
+
+Formas aceitas: `money`, `pix`, `debit` e `credit`. O servidor agrega itens repetidos,
+valida produtos ativos, caixa aberto, kits, estoque, desconto e pagamentos. Em uma única
+transação ele cria venda, itens e pagamentos, baixa o estoque, calcula lucro/taxas, grava
+auditoria e associa a chave de idempotência.
+
+A resposta usa HTTP `201` na primeira gravação e HTTP `200` ao recuperar uma tentativa
+já processada. O campo `already_processed` informa qual caso ocorreu. O comprovante em
+`data` inclui venda, caixa, subtotal, desconto, total, pago, troco, itens, pagamentos e
+eventuais avisos de estoque negativo permitido.
+
+Erros principais:
+
+- `409 cash_register_required`: não existe caixa aberto;
+- `404 product_not_found`: produto não pertence à adega autenticada;
+- `409 product_inactive`: produto inativo;
+- `409 kit_not_configured`: kit sem componente válido;
+- `409 insufficient_stock`: estoque negativo bloqueado pela configuração da adega;
+- `422 discount_exceeds_subtotal`: desconto maior que o subtotal;
+- `422 payment_insufficient`: pagamentos não completam o total;
+- `409 sale_request_conflict`: outra tentativa com a mesma chave ainda está em processamento.
+
 ## Catálogo da API
 
 Todos os endpoints de catálogo exigem Bearer access token, transporte seguro e a

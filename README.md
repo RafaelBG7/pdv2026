@@ -1123,7 +1123,7 @@ Nesta etapa ele já possui:
 - sessão local criptografada com DPAPI do Windows;
 - restauração automática de sessão e logout revogável;
 - opção para lembrar somente o usuário, nunca a senha;
-- shell nativo autenticado com Dashboard, Produtos, Categorias e Caixa;
+- shell nativo autenticado com Dashboard, Produtos, Categorias, Caixa e Vendas;
 - dashboard agregado com caixa atual, vendas de hoje, ticket médio, lucro conforme
   permissão, formas de pagamento, estoque baixo, produtos mais vendidos e vendas recentes;
 - catálogo paginado com busca, filtros e ordenação;
@@ -1135,6 +1135,13 @@ Nesta etapa ele já possui:
 - fechamento nativo com conferência exata, totais por forma de pagamento e auditoria;
 - ocultação de valores financeiros do caixa quando o usuário não possui permissão de
   relatórios;
+- venda nativa com pesquisa de produtos, carrinho, quantidades, desconto e múltiplas
+  formas de pagamento;
+- caixa obrigatório, baixa de estoque, kits, taxas, auditoria e isolamento por adega
+  processados transacionalmente pelo servidor;
+- idempotência para repetir uma tentativa sem duplicar a venda e preservação do pedido
+  quando ocorre uma falha;
+- comprovante de venda nativo com total, pagamentos, troco e avisos de estoque;
 - timeout, cancelamento e mensagens seguras de falha;
 - logs locais rotativos em `%LOCALAPPDATA%\Girofy\logs`;
 - testes unitários da camada de apresentação;
@@ -1152,9 +1159,10 @@ O artefato gerado se chama:
 Girofy-Windows-WPF-preview
 ```
 
-Essa prévia não é o canal oficial para os clientes. Dashboard, catálogo e caixa já
-funcionam de forma nativa; edição, estoque operacional e vendas serão migrados por
-módulos, mantendo a versão web no ar durante todo o processo.
+Essa prévia não é o canal oficial para os clientes. Dashboard, catálogo, caixa e registro
+de vendas já funcionam de forma nativa; edição, estoque operacional, relatórios e módulos
+administrativos serão migrados por etapas, mantendo a versão web no ar durante todo o
+processo.
 O login nativo já está implementado. No ambiente OCI atual, a autenticação por HTTP está
 liberada temporariamente para os testes controlados da prévia; antes da distribuição
 comercial será obrigatório publicar domínio e HTTPS e remover essa exceção.

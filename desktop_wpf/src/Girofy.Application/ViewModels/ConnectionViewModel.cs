@@ -23,7 +23,8 @@ public sealed class ConnectionViewModel : ObservableObject
         LoginViewModel login,
         CatalogViewModel catalog,
         DashboardViewModel dashboard,
-        CashRegisterViewModel cashRegister)
+        CashRegisterViewModel cashRegister,
+        SalesViewModel sales)
     {
         _apiClient = apiClient;
         _browserService = browserService;
@@ -32,12 +33,14 @@ public sealed class ConnectionViewModel : ObservableObject
         Catalog = catalog;
         Dashboard = dashboard;
         CashRegister = cashRegister;
+        Sales = sales;
         RetryConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
         OpenWebCommand = new RelayCommand(() => _browserService.Open(_serverUri));
         ShowDashboardCommand = new AsyncRelayCommand(ShowDashboardAsync);
         ShowProductsCommand = new AsyncRelayCommand(ShowProductsAsync);
         ShowCategoriesCommand = new AsyncRelayCommand(ShowCategoriesAsync);
         ShowCashRegisterCommand = new AsyncRelayCommand(ShowCashRegisterAsync);
+        ShowSalesCommand = new AsyncRelayCommand(ShowSalesAsync);
     }
 
     public LoginViewModel Login { get; }
@@ -48,11 +51,15 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public CashRegisterViewModel CashRegister { get; }
 
+    public SalesViewModel Sales { get; }
+
     public bool IsDashboardView => string.Equals(_activeView, "dashboard", StringComparison.Ordinal);
 
     public bool IsCatalogView => string.Equals(_activeView, "catalog", StringComparison.Ordinal);
 
     public bool IsCashRegisterView => string.Equals(_activeView, "cash-register", StringComparison.Ordinal);
+
+    public bool IsSalesView => string.Equals(_activeView, "sales", StringComparison.Ordinal);
 
     public string StatusTitle
     {
@@ -104,6 +111,8 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public AsyncRelayCommand ShowCashRegisterCommand { get; }
 
+    public AsyncRelayCommand ShowSalesCommand { get; }
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         CheckConnectionAsync(cancellationToken);
 
@@ -133,6 +142,12 @@ public sealed class ConnectionViewModel : ObservableObject
         await CashRegister.InitializeAsync(cancellationToken);
     }
 
+    private async Task ShowSalesAsync(CancellationToken cancellationToken)
+    {
+        SetActiveView("sales");
+        await Sales.InitializeAsync(cancellationToken);
+    }
+
     private void SetActiveView(string activeView)
     {
         if (string.Equals(_activeView, activeView, StringComparison.Ordinal))
@@ -144,6 +159,7 @@ public sealed class ConnectionViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDashboardView));
         OnPropertyChanged(nameof(IsCatalogView));
         OnPropertyChanged(nameof(IsCashRegisterView));
+        OnPropertyChanged(nameof(IsSalesView));
     }
 
     private async Task CheckConnectionAsync(CancellationToken cancellationToken)

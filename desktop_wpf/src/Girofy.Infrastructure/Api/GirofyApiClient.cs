@@ -197,6 +197,25 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<CatalogProductList>(response, cancellationToken);
     }
 
+    public async Task<SaleReceipt> CreateSaleAsync(
+        string accessToken,
+        string idempotencyKey,
+        IReadOnlyList<SaleLineRequest> items,
+        decimal discountAmount,
+        IReadOnlyList<SalePaymentRequest> payments,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Post, "api/v1/sales", accessToken);
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+        request.Content = JsonContent.Create(new CreateSaleRequest(
+            idempotencyKey,
+            items,
+            discountAmount,
+            payments));
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<SaleReceipt>(response, cancellationToken);
+    }
+
     private static HttpRequestMessage CreateAuthenticatedRequest(
         HttpMethod method,
         string path,
@@ -255,6 +274,12 @@ public sealed class GirofyApiClient(
     private sealed record CloseCashRegisterRequest(
         [property: global::System.Text.Json.Serialization.JsonPropertyName("cash_register_id")] int CashRegisterId,
         [property: global::System.Text.Json.Serialization.JsonPropertyName("closing_amount")] decimal ClosingAmount);
+
+    private sealed record CreateSaleRequest(
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("idempotency_key")] string IdempotencyKey,
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("items")] IReadOnlyList<SaleLineRequest> Items,
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("discount_amount")] decimal DiscountAmount,
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("payments")] IReadOnlyList<SalePaymentRequest> Payments);
 
     private sealed class LogoutResult
     {

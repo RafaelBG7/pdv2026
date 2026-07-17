@@ -56,4 +56,12 @@ public interface IGirofyApiClient
         int page,
         int perPage,
         CancellationToken cancellationToken);
+
+    Task<SaleReceipt> CreateSaleAsync(
+        string accessToken,
+        string idempotencyKey,
+        IReadOnlyList<SaleLineRequest> items,
+        decimal discountAmount,
+        IReadOnlyList<SalePaymentRequest> payments,
+        CancellationToken cancellationToken);
 }

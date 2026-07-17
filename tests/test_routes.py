@@ -14,7 +14,7 @@ from flask import g
 
 from app import create_app
 from app.extensions import db
-from app.models import ActivationKey, ApiRefreshToken, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.services.api_auth_service import clear_api_login_attempts
 from app.services.audit_service import changed_values, record_audit_event
 from sqlalchemy.exc import SQLAlchemyError
@@ -798,6 +798,186 @@ class RouteTestCase(unittest.TestCase):
                 CashRegister.query.filter_by(company_id=allowed_company.id).count(),
                 0,
             )
+
+    def test_api_sale_is_atomic_and_idempotent(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            product = Product(
+                name='Refrigerante lata',
+                company_id=company.id,
+                cost_price=3,
+                sale_price=5,
+                stock_quantity=10,
+                active=True,
+            )
+            cash_register = CashRegister(
+                company_id=company.id,
+                user_id=user.id,
+                status='open',
+                opening_amount=100,
+            )
+            db.session.add_all([product, cash_register])
+            db.session.commit()
+            product_id = product.id
+            cash_register_id = cash_register.id
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        idempotency_key = 'sale-api-test-0001'
+        headers = {
+            **self.bearer_header(token),
+            'Idempotency-Key': idempotency_key,
+        }
+        payload = {
+            'idempotency_key': idempotency_key,
+            'items': [
+                {'product_id': product_id, 'quantity': 1},
+                {'product_id': product_id, 'quantity': 2},
+            ],
+            'discount_amount': '1,00',
+            'payments': [
+                {'method': 'money', 'amount': '10,00'},
+                {'method': 'pix', 'amount': '5,00'},
+            ],
+        }
+
+        created_response = self.client.post('/api/v1/sales', headers=headers, json=payload)
+        repeated_response = self.client.post('/api/v1/sales', headers=headers, json=payload)
+
+        self.assertEqual(created_response.status_code, 201)
+        created = created_response.get_json()['data']
+        self.assertFalse(created['already_processed'])
+        self.assertEqual(created['cash_register_id'], cash_register_id)
+        self.assertEqual(created['subtotal'], 15.0)
+        self.assertEqual(created['discount_amount'], 1.0)
+        self.assertEqual(created['final_amount'], 14.0)
+        self.assertEqual(created['paid_amount'], 15.0)
+        self.assertEqual(created['change_amount'], 1.0)
+        self.assertEqual(created['items'][0]['quantity'], 3)
+        self.assertEqual(
+            {payment['method']: payment['amount'] for payment in created['payments']},
+            {'money': 10.0, 'pix': 5.0},
+        )
+
+        self.assertEqual(repeated_response.status_code, 200)
+        repeated = repeated_response.get_json()['data']
+        self.assertTrue(repeated['already_processed'])
+        self.assertEqual(repeated['id'], created['id'])
+        with self.app.app_context():
+            self.assertEqual(Sale.query.filter_by(company_id=company.id).count(), 1)
+            self.assertEqual(SaleItem.query.filter_by(sale_id=created['id']).count(), 1)
+            self.assertEqual(Payment.query.filter_by(sale_id=created['id']).count(), 2)
+            self.assertEqual(ApiSaleRequest.query.filter_by(company_id=company.id).count(), 1)
+            self.assertEqual(db.session.get(Product, product_id).stock_quantity, 7)
+            self.assertEqual(
+                StockMovement.query.filter_by(
+                    company_id=company.id,
+                    source_type='sale',
+                    source_id=created['id'],
+                ).count(),
+                1,
+            )
+
+    def test_api_sale_failure_rolls_back_and_allows_safe_retry(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            product = Product(
+                name='Água mineral',
+                company_id=company.id,
+                cost_price=2,
+                sale_price=6,
+                stock_quantity=4,
+                active=True,
+            )
+            cash_register = CashRegister(
+                company_id=company.id,
+                user_id=user.id,
+                status='open',
+                opening_amount=50,
+            )
+            db.session.add_all([product, cash_register])
+            db.session.commit()
+            product_id = product.id
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        idempotency_key = 'sale-api-test-retry'
+        headers = {
+            **self.bearer_header(token),
+            'Idempotency-Key': idempotency_key,
+        }
+        payload = {
+            'items': [{'product_id': product_id, 'quantity': 2}],
+            'discount_amount': 0,
+            'payments': [{'method': 'pix', 'amount': 10}],
+        }
+
+        rejected_response = self.client.post('/api/v1/sales', headers=headers, json=payload)
+        payload['payments'][0]['amount'] = 12
+        retried_response = self.client.post('/api/v1/sales', headers=headers, json=payload)
+
+        self.assertEqual(rejected_response.status_code, 422)
+        self.assertEqual(
+            rejected_response.get_json()['errors'][0]['code'],
+            'payment_insufficient',
+        )
+        self.assertEqual(retried_response.status_code, 201)
+        with self.app.app_context():
+            self.assertEqual(Sale.query.filter_by(company_id=company.id).count(), 1)
+            self.assertEqual(ApiSaleRequest.query.filter_by(company_id=company.id).count(), 1)
+            self.assertEqual(db.session.get(Product, product_id).stock_quantity, 2)
+
+    def test_api_sale_requires_open_cash_register(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            product = Product(
+                name='Produto sem caixa',
+                company_id=company.id,
+                sale_price=9,
+                stock_quantity=3,
+                active=True,
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.post(
+            '/api/v1/sales',
+            headers={
+                **self.bearer_header(token),
+                'Idempotency-Key': 'sale-api-no-cash',
+            },
+            json={
+                'items': [{'product_id': product_id, 'quantity': 1}],
+                'payments': [{'method': 'money', 'amount': 9}],
+            },
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'cash_register_required')
+        with self.app.app_context():
+            self.assertEqual(Sale.query.filter_by(company_id=company.id).count(), 0)
+            self.assertEqual(ApiSaleRequest.query.filter_by(company_id=company.id).count(), 0)
+            self.assertEqual(db.session.get(Product, product_id).stock_quantity, 3)
+
+    def test_api_sale_requires_sales_permission(self):
+        user, _ = self.create_api_user(
+            username='api-venda-bloqueada',
+            role='operator',
+            can_manage_sales=False,
+        )
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+
+        response = self.client.post(
+            '/api/v1/sales',
+            headers={
+                **self.bearer_header(token),
+                'Idempotency-Key': 'sale-api-permission',
+            },
+            json={'items': [], 'payments': []},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'permission_denied')
 
     def test_login_remember_me_sets_persistent_cookie(self):
         response = self.client.post(

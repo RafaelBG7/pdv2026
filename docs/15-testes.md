@@ -137,10 +137,10 @@ Auditoria:
 
 ## Última Validação Conhecida
 
-Validação feita em 16/07/2026:
+Validação feita em 17/07/2026:
 
 ```text
-Ran 142 tests in 19.963s
+Ran 146 tests in 19.742s
 OK
 ```
 
@@ -150,9 +150,13 @@ Também foram validados:
 - contrato agregado do dashboard nativo, incluindo isolamento por adega e ocultação por permissão;
 - contratos de abertura, consulta e fechamento de caixa pela API, incluindo concorrência,
   conferência de valores, permissões e isolamento por adega;
-- sintaxe XML das telas WPF de dashboard, catálogo e caixa;
+- contrato de criação de venda pela API, incluindo atomicidade, idempotência, rollback,
+  caixa obrigatório, permissão e baixa de estoque;
+- sintaxe XML das telas WPF de dashboard, catálogo, caixa e vendas;
 - ViewModel nativa de caixa, incluindo abertura, fechamento, preservação do valor após
   erro e limpeza ao encerrar a sessão;
+- ViewModel nativa de vendas, incluindo busca alfabética, carrinho, desconto, pagamentos,
+  preservação do pedido e reutilização da chave de idempotência;
 - sintaxe dos scripts OCI e deploy;
 - workflow YAML de build desktop;
 - workflow YAML de deploy OCI;

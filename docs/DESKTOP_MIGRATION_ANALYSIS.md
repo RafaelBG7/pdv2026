@@ -24,7 +24,7 @@ Já existem no cliente WPF:
 - sessão local protegida pelo DPAPI do Windows;
 - restauração de sessão, logout e revogação de token;
 - opção de lembrar apenas o identificador do usuário;
-- shell autenticado com navegação entre Dashboard, Produtos, Categorias e Caixa;
+- shell autenticado com navegação entre Dashboard, Produtos, Categorias, Caixa e Vendas;
 - dashboard operacional agregado e isolado por adega;
 - caixa atual, vendas do dia, ticket, lucro conforme permissão, pagamentos, estoque baixo,
   produtos mais vendidos e vendas recentes;
@@ -34,6 +34,12 @@ Já existem no cliente WPF:
 - consulta sob demanda do caixa atual e dos dez caixas fechados mais recentes;
 - abertura e fechamento transacionais de caixa com conferência exata, proteção de
   permissão, auditoria e valores financeiros redigidos quando necessário;
+- venda nativa com pesquisa, carrinho, quantidades, desconto, pagamentos combinados,
+  troco e comprovante;
+- criação transacional da venda no banco da adega, com baixa de estoque, suporte a kits,
+  taxas da maquininha, auditoria e caixa obrigatório;
+- idempotência para recuperação segura após falhas de conexão, sem venda duplicada;
+- preservação do pedido após erros de validação ou comunicação;
 - logs locais rotativos sem senha ou token completo;
 - workflow Windows para testes e build de prévia.
 
@@ -53,11 +59,26 @@ fonte de verdade. O cliente nunca acessa o MySQL diretamente.
 ## Ordem Recomendada
 
 1. Publicar a OCI atrás de domínio e HTTPS.
-2. Implementar registro de vendas com idempotência e transação no servidor.
-3. Implementar detalhes e edição de produtos conforme as permissões.
-4. Migrar estoque com trilha de auditoria e controle de concorrência.
+2. Implementar detalhes e edição de produtos conforme as permissões.
+3. Migrar estoque com trilha de auditoria e controle de concorrência.
+4. Migrar relatórios, contas a pagar, auditoria e configurações.
 5. Preparar assinatura digital, instalador e atualização apenas quando o cliente nativo
    alcançar paridade suficiente com o fluxo web.
+
+## Progresso Funcional
+
+Estimativa atual: **52% da migração Windows planejada**.
+
+- concluído: fundação nativa, conexão, autenticação/sessão, shell, dashboard, consulta de
+  produtos/categorias, abertura/fechamento de caixa e registro de vendas;
+- parcial: catálogo ainda somente leitura e histórico detalhado de caixa/vendas ainda
+  depende da versão web;
+- pendente: manutenção de produtos/categorias, estoque operacional, relatórios, contas a
+  pagar, auditoria, configurações/equipe, assinatura, instalador assinado, atualização e
+  HTTPS público.
+
+O percentual mede módulos funcionais necessários para paridade operacional e pode mudar
+quando o escopo de produção for refinado. A versão web permanece integralmente disponível.
 
 ## Critério de Liberação
 

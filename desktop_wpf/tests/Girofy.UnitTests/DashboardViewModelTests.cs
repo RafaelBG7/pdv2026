@@ -143,5 +143,14 @@ public sealed class DashboardViewModelTests
             int perPage,
             CancellationToken cancellationToken) =>
             Task.FromException<CatalogProductList>(new NotSupportedException());
+
+        public Task<SaleReceipt> CreateSaleAsync(
+            string accessToken,
+            string idempotencyKey,
+            IReadOnlyList<SaleLineRequest> items,
+            decimal discountAmount,
+            IReadOnlyList<SalePaymentRequest> payments,
+            CancellationToken cancellationToken) =>
+            Task.FromException<SaleReceipt>(new NotSupportedException());
     }
 }

@@ -2,9 +2,11 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
+import re
 
 from flask import Blueprint, current_app, g, jsonify, request
 from sqlalchemy import and_, func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload, sessionmaker
 
 from app.extensions import db
@@ -27,10 +29,19 @@ from app.services.cash_register_service import (
     open_cash_register,
 )
 from app.services.dashboard_service import build_dashboard_snapshot
+from app.services.sale_service import (
+    SaleLineInput,
+    SaleOperationError,
+    SalePaymentInput,
+    create_sale,
+    find_completed_sale_request,
+    serialize_sale_result,
+)
 from app.tenant import tenant_engine
 
 
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
+IDEMPOTENCY_KEY_PATTERN = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$')
 
 
 def api_success(data, status_code=200):
@@ -230,6 +241,117 @@ def json_money(payload, name):
             name,
         )
     return value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def json_optional_money(payload, name, default='0.00'):
+    if name not in payload or payload.get(name) in {None, ''}:
+        return Decimal(default).quantize(Decimal('0.01'))
+    return json_money(payload, name)
+
+
+def sale_idempotency_key(payload):
+    header_value = (request.headers.get('Idempotency-Key') or '').strip()
+    body_value = str(payload.get('idempotency_key') or '').strip()
+    if header_value and body_value and header_value != body_value:
+        raise ApiAuthError(
+            'A chave de idempotência do cabeçalho difere da chave enviada no corpo.',
+            'idempotency_key_mismatch',
+            422,
+            'idempotency_key',
+        )
+
+    key = header_value or body_value
+    if not key:
+        raise ApiAuthError(
+            'Informe uma chave de idempotência para registrar a venda.',
+            'idempotency_key_required',
+            422,
+            'idempotency_key',
+        )
+    if not IDEMPOTENCY_KEY_PATTERN.fullmatch(key):
+        raise ApiAuthError(
+            'A chave de idempotência precisa ter de 8 a 128 caracteres seguros.',
+            'invalid_idempotency_key',
+            422,
+            'idempotency_key',
+        )
+    return key
+
+
+def sale_line_inputs(payload):
+    raw_items = payload.get('items')
+    if not isinstance(raw_items, list) or not raw_items:
+        raise ApiAuthError(
+            'Adicione pelo menos um produto à venda.',
+            'sale_items_required',
+            422,
+            'items',
+        )
+    if len(raw_items) > 200:
+        raise ApiAuthError(
+            'Uma venda pode conter no máximo 200 linhas de produtos.',
+            'too_many_sale_items',
+            422,
+            'items',
+        )
+
+    items = []
+    for index, raw_item in enumerate(raw_items):
+        if not isinstance(raw_item, dict):
+            raise ApiAuthError(
+                f'O item {index + 1} precisa ser um objeto JSON.',
+                'invalid_sale_item',
+                422,
+                'items',
+            )
+        product_id = json_positive_integer(raw_item, 'product_id')
+        quantity = json_positive_integer(raw_item, 'quantity')
+        if quantity > 100000:
+            raise ApiAuthError(
+                'A quantidade de um produto excede o limite permitido.',
+                'invalid_quantity',
+                422,
+                'items',
+            )
+        items.append(SaleLineInput(product_id=product_id, quantity=quantity))
+    return items
+
+
+def sale_payment_inputs(payload):
+    raw_payments = payload.get('payments')
+    if not isinstance(raw_payments, list):
+        raise ApiAuthError(
+            'Informe as formas de pagamento da venda.',
+            'payments_required',
+            422,
+            'payments',
+        )
+    if len(raw_payments) > 12:
+        raise ApiAuthError(
+            'A quantidade de formas de pagamento excede o limite permitido.',
+            'too_many_payments',
+            422,
+            'payments',
+        )
+
+    aggregated = {}
+    for index, raw_payment in enumerate(raw_payments):
+        if not isinstance(raw_payment, dict):
+            raise ApiAuthError(
+                f'O pagamento {index + 1} precisa ser um objeto JSON.',
+                'invalid_payment',
+                422,
+                'payments',
+            )
+        method = str(raw_payment.get('method') or '').strip().casefold()
+        amount = json_money(raw_payment, 'amount')
+        aggregated[method] = aggregated.get(method, Decimal('0.00')) + amount
+
+    return [
+        SalePaymentInput(method=method, amount=amount)
+        for method, amount in aggregated.items()
+        if amount > 0
+    ]
 
 
 def catalog_category_data(category, product_count):
@@ -481,6 +603,76 @@ def api_close_cash_register():
     except ApiAuthError as error:
         return api_auth_error_response(error)
     except CashRegisterOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )
+
+
+@api_v1_bp.post('/sales')
+@api_permission_required('can_manage_sales')
+def api_create_sale():
+    try:
+        payload = json_object_body()
+        idempotency_key = sale_idempotency_key(payload)
+        item_inputs = sale_line_inputs(payload)
+        payment_inputs = sale_payment_inputs(payload)
+        discount_amount = json_optional_money(payload, 'discount_amount')
+
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                result = create_sale(
+                    tenant_db,
+                    g.api_user.company,
+                    g.api_user,
+                    item_inputs,
+                    payment_inputs,
+                    discount_amount,
+                    idempotency_key,
+                )
+                was_already_processed = result.already_processed
+                stock_warnings = result.stock_warnings
+                tenant_db.commit()
+            except IntegrityError:
+                tenant_db.rollback()
+                result = find_completed_sale_request(
+                    tenant_db,
+                    g.api_user.company_id,
+                    idempotency_key,
+                )
+                if result is None:
+                    raise SaleOperationError(
+                        'Outra tentativa desta venda ainda está sendo processada. Tente novamente.',
+                        'sale_request_conflict',
+                        409,
+                    )
+                was_already_processed = True
+                stock_warnings = result.stock_warnings
+            except Exception:
+                tenant_db.rollback()
+                raise
+
+            persisted_result = find_completed_sale_request(
+                tenant_db,
+                g.api_user.company_id,
+                idempotency_key,
+            )
+            if persisted_result is None:
+                raise SaleOperationError(
+                    'A venda não pôde ser confirmada após a gravação.',
+                    'sale_confirmation_failed',
+                    500,
+                )
+            persisted_result.already_processed = was_already_processed
+            persisted_result.stock_warnings = stock_warnings
+            response_data = serialize_sale_result(persisted_result)
+
+        return api_success(response_data, 200 if was_already_processed else 201)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except SaleOperationError as error:
         return api_failure(
             error.message,
             error.code,

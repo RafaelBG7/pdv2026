@@ -59,6 +59,7 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<CatalogViewModel>();
                 services.AddSingleton<DashboardViewModel>();
                 services.AddSingleton<CashRegisterViewModel>();
+                services.AddSingleton<SalesViewModel>();
                 services.AddSingleton(provider => new ConnectionViewModel(
                     provider.GetRequiredService<IGirofyApiClient>(),
                     provider.GetRequiredService<IExternalBrowserService>(),
@@ -66,7 +67,8 @@ public partial class App : System.Windows.Application
                     provider.GetRequiredService<LoginViewModel>(),
                     provider.GetRequiredService<CatalogViewModel>(),
                     provider.GetRequiredService<DashboardViewModel>(),
-                    provider.GetRequiredService<CashRegisterViewModel>()));
+                    provider.GetRequiredService<CashRegisterViewModel>(),
+                    provider.GetRequiredService<SalesViewModel>()));
                 services.AddSingleton<MainWindow>();
             })
             .Build();

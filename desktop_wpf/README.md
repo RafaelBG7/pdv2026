@@ -4,7 +4,7 @@ Esta pasta contém a aplicação Windows nativa experimental do Girofy. Ela é i
 
 ## Estado atual
 
-Quarto corte vertical implementado:
+Quinto corte vertical implementado:
 
 - solução C# em .NET 8 LTS;
 - telas nativas em WPF;
@@ -39,17 +39,29 @@ Quarto corte vertical implementado:
 - totais por forma de pagamento e valores do caixa exibidos apenas para usuários com
   permissão de relatórios;
 - abertura e fechamento registrados na auditoria da adega;
+- tela nativa de Vendas com busca por nome ou código de barras em ordem alfabética;
+- carrinho com múltiplos produtos, quantidades ajustáveis, desconto em reais e remoção
+  de itens;
+- pagamentos combinados em Dinheiro, Pix, Débito e Crédito, com preenchimento do valor
+  restante, cálculo de falta e troco;
+- registro transacional em `POST /api/v1/sales`, com caixa obrigatório, baixa de estoque,
+  kits, taxas da maquininha, auditoria e isolamento pela adega do token;
+- chave de idempotência preservada nas tentativas para impedir vendas duplicadas quando
+  a conexão falha depois da gravação;
+- pedido preservado no cliente quando o servidor rejeita ou não confirma a venda;
+- comprovante nativo após a conclusão e início imediato de uma nova venda;
 - abertura opcional da versão web no navegador externo;
 - logs locais em `%LOCALAPPDATA%\Girofy\logs`;
 - catálogo carregado somente quando Produtos ou Categorias é aberto, evitando consultas
   e uso de memória desnecessários na inicialização;
-- testes unitários de conexão, login, restauração de sessão, logout, dashboard, catálogo
-  e caixa;
+- testes unitários de conexão, login, restauração de sessão, logout, dashboard, catálogo,
+  caixa e vendas;
 - workflow separado para build Windows self-contained.
 
-O dashboard, o catálogo e o caixa já funcionam de forma nativa. Ainda não existem edição
-de produtos, vendas ou estoque operacional no WPF. Esses módulos serão adicionados por
-API sem remover nem substituir a versão web durante a migração.
+O dashboard, o catálogo, o caixa e o registro de vendas já funcionam de forma nativa.
+Ainda não existem edição de produtos, movimentação manual de estoque, relatórios completos,
+contas a pagar, auditoria e configurações no WPF. Esses módulos serão adicionados por API
+sem remover nem substituir a versão web durante a migração.
 
 ## Configuração
 
@@ -100,5 +112,6 @@ GitHub > Actions > Build Windows WPF preview > Run workflow
 O artefato `Girofy-Windows-WPF-preview` é self-contained. O cliente final não precisa instalar .NET, Python, MySQL ou ferramentas de desenvolvimento.
 
 Esta prévia valida a base nativa, o ciclo completo de autenticação, o dashboard operacional,
-a consulta real do catálogo e o fluxo de abertura/fechamento de caixa. Ela ainda não
-substitui a versão web em produção porque o registro de vendas não foi migrado.
+a consulta real do catálogo, o fluxo de abertura/fechamento de caixa e o registro completo
+de vendas. Ela ainda não substitui a versão web em produção porque os módulos administrativos
+e o HTTPS público ainda não atingiram o critério de liberação.

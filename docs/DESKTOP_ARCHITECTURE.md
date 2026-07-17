@@ -62,9 +62,9 @@ Configurações do servidor:
 ## Próximas etapas
 
 1. Publicar o backend atrás de domínio e HTTPS.
-2. Migrar o fluxo de venda com idempotência, baixa de estoque e pagamentos no servidor.
-3. Implementar detalhes e edição de produtos conforme as permissões.
-4. Migrar movimentações de estoque com controle de concorrência.
+2. Implementar detalhes e edição de produtos conforme as permissões.
+3. Migrar movimentações de estoque com controle de concorrência.
+4. Migrar relatórios e módulos administrativos por consultas agregadas.
 
 ## Dashboard nativo
 
@@ -87,3 +87,18 @@ preserva o valor digitado quando a conferência falha e nunca acessa o MySQL dir
 Usuários com `can_manage_cash_register` podem operar o módulo. Valores iniciais, totais,
 diferenças e formas de pagamento só são enviados quando a identidade também possui
 `can_view_reports`.
+
+## Venda nativa
+
+O módulo Vendas pesquisa o catálogo existente, mantém o pedido em memória no WPF e envia
+somente a confirmação final para `POST /api/v1/sales`. O endpoint exige caixa aberto e
+executa venda, itens, pagamentos, estoque e auditoria na mesma transação do banco da adega.
+
+Cada rascunho recebe uma chave de idempotência. Se houver timeout depois de o servidor
+confirmar a transação, o cliente reutiliza a mesma chave e recupera o comprovante, sem
+duplicar venda ou movimentação de estoque. Um erro validável preserva produtos, desconto
+e pagamentos para correção e nova tentativa.
+
+As regras de produto ativo, kit, estoque negativo, desconto, taxas de Pix/débito/crédito,
+pagamento mínimo e permissão continuam centralizadas no Flask. O WPF calcula uma prévia
+para agilizar a operação, mas a resposta do servidor é sempre a fonte de verdade.

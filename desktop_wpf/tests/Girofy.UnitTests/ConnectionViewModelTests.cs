@@ -23,7 +23,8 @@ public sealed class ConnectionViewModelTests
             CreateLoginViewModel(apiClient),
             CreateCatalogViewModel(apiClient),
             CreateDashboardViewModel(apiClient),
-            CreateCashRegisterViewModel(apiClient));
+            CreateCashRegisterViewModel(apiClient),
+            CreateSalesViewModel(apiClient));
 
         await viewModel.InitializeAsync();
 
@@ -42,7 +43,8 @@ public sealed class ConnectionViewModelTests
             CreateLoginViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
             CreateCatalogViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
             CreateDashboardViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
-            CreateCashRegisterViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
+            CreateCashRegisterViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreateSalesViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
 
         await viewModel.InitializeAsync();
 
@@ -68,6 +70,9 @@ public sealed class ConnectionViewModelTests
         new(apiClient, new AppSessionContext());
 
     private static CashRegisterViewModel CreateCashRegisterViewModel(IGirofyApiClient apiClient) =>
+        new(apiClient, new AppSessionContext());
+
+    private static SalesViewModel CreateSalesViewModel(IGirofyApiClient apiClient) =>
         new(apiClient, new AppSessionContext());
 
     private sealed class StubApiClient : IGirofyApiClient
@@ -149,6 +154,15 @@ public sealed class ConnectionViewModelTests
             int perPage,
             CancellationToken cancellationToken) =>
             Task.FromException<CatalogProductList>(new NotSupportedException());
+
+        public Task<SaleReceipt> CreateSaleAsync(
+            string accessToken,
+            string idempotencyKey,
+            IReadOnlyList<SaleLineRequest> items,
+            decimal discountAmount,
+            IReadOnlyList<SalePaymentRequest> payments,
+            CancellationToken cancellationToken) =>
+            Task.FromException<SaleReceipt>(new NotSupportedException());
     }
 
     private sealed class StubBrowserService : IExternalBrowserService

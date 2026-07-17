@@ -398,7 +398,11 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         NotifyCartChanged();
     }
 
-    private void HandleCartQuantityChanged(object? sender, EventArgs e) => NotifyTotalsChanged();
+    private void HandleCartQuantityChanged(object? sender, EventArgs e)
+    {
+        DecreaseQuantityCommand.NotifyCanExecuteChanged();
+        NotifyTotalsChanged();
+    }
 
     private void FillRemaining(string method)
     {

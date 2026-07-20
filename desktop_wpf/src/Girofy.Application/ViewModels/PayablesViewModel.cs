@@ -326,8 +326,13 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
 
     private async Task LoadCoreAfterMutationAsync(CancellationToken cancellationToken)
     {
+        var successMessage = SuccessMessage;
         _isInitialized = false;
         await LoadAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(successMessage))
+        {
+            SuccessMessage = successMessage;
+        }
     }
 
     private void SyncStatusOptions(IReadOnlyList<CatalogFilterOption> source)

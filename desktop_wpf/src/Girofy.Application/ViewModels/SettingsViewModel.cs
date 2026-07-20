@@ -1196,8 +1196,15 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         }
 
         var normalized = text.Replace("%", string.Empty).Trim();
-        if (!decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.GetCultureInfo("pt-BR"), out var parsed) &&
-            !decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.InvariantCulture, out parsed))
+        var firstCulture = normalized.Contains('.') && !normalized.Contains(',')
+            ? CultureInfo.InvariantCulture
+            : CultureInfo.GetCultureInfo("pt-BR");
+        var fallbackCulture = firstCulture.Equals(CultureInfo.InvariantCulture)
+            ? CultureInfo.GetCultureInfo("pt-BR")
+            : CultureInfo.InvariantCulture;
+
+        if (!decimal.TryParse(normalized, NumberStyles.Number, firstCulture, out var parsed) &&
+            !decimal.TryParse(normalized, NumberStyles.Number, fallbackCulture, out parsed))
         {
             throw new FormatException($"Informe uma {label} válida.");
         }

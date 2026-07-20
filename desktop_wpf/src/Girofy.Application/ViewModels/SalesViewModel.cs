@@ -70,6 +70,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private string _errorMessage = string.Empty;
     private string _successMessage = string.Empty;
     private bool _isBusy;
+    private bool _isSaleEditorOpen;
+    private bool _isPaymentStepOpen;
     private string? _idempotencyKey;
     private SaleReceipt? _receipt;
 
@@ -92,6 +94,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         FillDebitCommand = new RelayCommand(() => FillRemaining("debit"));
         FillCreditCommand = new RelayCommand(() => FillRemaining("credit"));
         FinalizeCommand = new AsyncRelayCommand(FinalizeAsync);
+        OpenSaleEditorCommand = new RelayCommand(OpenSaleEditor);
+        CloseSaleEditorCommand = new RelayCommand(CloseSaleEditor);
+        OpenPaymentStepCommand = new RelayCommand(OpenPaymentStep, () => HasCart && !IsBusy);
+        BackToProductsCommand = new RelayCommand(BackToProducts);
         NewSaleCommand = new RelayCommand(StartNewSale);
         _sessionContext.Changed += HandleSessionChanged;
     }
@@ -211,6 +217,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(HasNoReceipt));
                 OnPropertyChanged(nameof(ReceiptPaymentsText));
                 OnPropertyChanged(nameof(ReceiptStockWarningsText));
+                NotifySaleEditorStateChanged();
             }
         }
     }
@@ -269,8 +276,45 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public bool IsBusy
     {
         get => _isBusy;
-        private set => SetProperty(ref _isBusy, value);
+        private set
+        {
+            if (SetProperty(ref _isBusy, value))
+            {
+                OnPropertyChanged(nameof(CanProceedToPayment));
+                OpenPaymentStepCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
+
+    public bool IsSaleEditorOpen
+    {
+        get => _isSaleEditorOpen;
+        private set
+        {
+            if (SetProperty(ref _isSaleEditorOpen, value))
+            {
+                NotifySaleEditorStateChanged();
+            }
+        }
+    }
+
+    public bool IsPaymentStepOpen
+    {
+        get => _isPaymentStepOpen;
+        private set
+        {
+            if (SetProperty(ref _isPaymentStepOpen, value))
+            {
+                NotifySaleEditorStateChanged();
+            }
+        }
+    }
+
+    public bool IsProductStepOpen => IsSaleEditorOpen && !IsPaymentStepOpen && !HasReceipt;
+
+    public bool IsPaymentStepVisible => IsSaleEditorOpen && IsPaymentStepOpen && !HasReceipt;
+
+    public bool CanProceedToPayment => HasCart && !IsBusy;
 
     public AsyncRelayCommand SearchCommand { get; }
 
@@ -291,6 +335,14 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public RelayCommand FillCreditCommand { get; }
 
     public AsyncRelayCommand FinalizeCommand { get; }
+
+    public RelayCommand OpenSaleEditorCommand { get; }
+
+    public RelayCommand CloseSaleEditorCommand { get; }
+
+    public RelayCommand OpenPaymentStepCommand { get; }
+
+    public RelayCommand BackToProductsCommand { get; }
 
     public RelayCommand NewSaleCommand { get; }
 
@@ -473,6 +525,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 ? $"{receipt.SaleNumberText} já estava registrada e foi recuperada sem duplicação."
                 : $"{receipt.SaleNumberText} finalizada com sucesso.";
             ResetDraftAfterSuccess();
+            IsPaymentStepOpen = false;
+            IsSaleEditorOpen = false;
         }
         catch (Exception exception)
         {
@@ -517,6 +571,50 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         SuccessMessage = string.Empty;
         ErrorMessage = string.Empty;
         ResetDraftAfterSuccess();
+        IsSaleEditorOpen = true;
+        IsPaymentStepOpen = false;
+    }
+
+    private void OpenSaleEditor()
+    {
+        if (HasReceipt)
+        {
+            StartNewSale();
+            return;
+        }
+
+        ClearMessages();
+        IsSaleEditorOpen = true;
+        IsPaymentStepOpen = false;
+    }
+
+    private void CloseSaleEditor()
+    {
+        ClearMessages();
+        IsPaymentStepOpen = false;
+        IsSaleEditorOpen = false;
+    }
+
+    private void OpenPaymentStep()
+    {
+        if (!HasCart)
+        {
+            ErrorMessage = "Adicione pelo menos um produto antes de finalizar.";
+            return;
+        }
+
+        ClearMessages();
+        IsPaymentStepOpen = true;
+        if (PaidAmount == 0 && Total > 0)
+        {
+            FillRemaining("money");
+        }
+    }
+
+    private void BackToProducts()
+    {
+        ClearMessages();
+        IsPaymentStepOpen = false;
     }
 
     private void SetPaymentText(ref string field, string value, string propertyName)
@@ -531,6 +629,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(HasCart));
         OnPropertyChanged(nameof(CartSummary));
+        OnPropertyChanged(nameof(CanProceedToPayment));
+        OpenPaymentStepCommand.NotifyCanExecuteChanged();
         NotifyTotalsChanged();
     }
 
@@ -548,6 +648,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(PaidAmountText));
         OnPropertyChanged(nameof(MissingAmountText));
         OnPropertyChanged(nameof(ChangeAmountText));
+    }
+
+    private void NotifySaleEditorStateChanged()
+    {
+        OnPropertyChanged(nameof(IsProductStepOpen));
+        OnPropertyChanged(nameof(IsPaymentStepVisible));
     }
 
     private void ClearSearchResults()

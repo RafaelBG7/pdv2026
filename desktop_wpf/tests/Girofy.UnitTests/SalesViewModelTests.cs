@@ -95,6 +95,41 @@ public sealed class SalesViewModelTests
         Assert.Single(viewModel.CartItems);
     }
 
+    [Fact]
+    public async Task Sale_popup_moves_between_product_and_payment_steps()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, sessionContext)
+        {
+            SearchText = "coca",
+        };
+
+        viewModel.OpenSaleEditorCommand.Execute(null);
+
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.True(viewModel.IsProductStepOpen);
+        Assert.False(viewModel.IsPaymentStepVisible);
+
+        await viewModel.SearchCommand.ExecuteAsync();
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.OpenPaymentStepCommand.Execute(null);
+
+        Assert.True(viewModel.IsPaymentStepVisible);
+        Assert.Equal("12,00", viewModel.MoneyText);
+
+        viewModel.BackToProductsCommand.Execute(null);
+
+        Assert.True(viewModel.IsProductStepOpen);
+
+        viewModel.OpenPaymentStepCommand.Execute(null);
+        await viewModel.FinalizeCommand.ExecuteAsync();
+
+        Assert.True(viewModel.HasReceipt);
+        Assert.False(viewModel.IsSaleEditorOpen);
+        Assert.False(viewModel.IsPaymentStepVisible);
+    }
+
     private static AppSessionContext SessionContext()
     {
         var context = new AppSessionContext();

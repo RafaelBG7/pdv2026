@@ -118,6 +118,16 @@ public sealed class SalesViewModelTests
         Assert.True(viewModel.IsPaymentStepVisible);
         Assert.Equal("12,00", viewModel.MoneyText);
 
+        viewModel.MoneyText = "5,00";
+        viewModel.AutoCompletePaymentIfEmpty("pix");
+
+        Assert.Equal("5,00", viewModel.MoneyText);
+        Assert.Equal("7,00", viewModel.PixText);
+
+        viewModel.AutoCompletePaymentIfEmpty("money");
+
+        Assert.Equal("5,00", viewModel.MoneyText);
+
         viewModel.BackToProductsCommand.Execute(null);
 
         Assert.True(viewModel.IsProductStepOpen);

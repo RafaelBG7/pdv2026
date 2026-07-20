@@ -485,7 +485,10 @@
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Dinheiro" />
-                                                <TextBox Text="{Binding MoneyText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" />
+                                                <TextBox Tag="money"
+                                                         GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                         Text="{Binding MoneyText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{StaticResource TextInputStyle}" />
                                             </StackPanel>
                                         </Grid>
                                         <Grid Grid.Row="2">
@@ -496,16 +499,25 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Pix" />
-                                                <TextBox Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" />
+                                                <TextBox Tag="pix"
+                                                         GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                         Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{StaticResource TextInputStyle}" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Débito" />
-                                                <TextBox Text="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" />
+                                                <TextBox Tag="debit"
+                                                         GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                         Text="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{StaticResource TextInputStyle}" />
                                             </StackPanel>
                                         </Grid>
                                         <StackPanel Grid.Row="4">
                                             <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Crédito" />
-                                            <TextBox Text="{Binding CreditText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" />
+                                            <TextBox Tag="credit"
+                                                     GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                     Text="{Binding CreditText, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         <WrapPanel Grid.Row="6">
                                             <Button MinWidth="132" Margin="0,0,8,8" Command="{Binding FillMoneyCommand}"

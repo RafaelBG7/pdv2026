@@ -456,6 +456,28 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         NotifyTotalsChanged();
     }
 
+    public void AutoCompletePaymentIfEmpty(string method)
+    {
+        if (!IsPaymentStepVisible || Total <= 0)
+        {
+            return;
+        }
+
+        var currentValue = method switch
+        {
+            "money" => ParsedMoneyOrZero(MoneyText),
+            "pix" => ParsedMoneyOrZero(PixText),
+            "debit" => ParsedMoneyOrZero(DebitText),
+            "credit" => ParsedMoneyOrZero(CreditText),
+            _ => 0,
+        };
+
+        if (currentValue == 0 && MissingAmount > 0)
+        {
+            FillRemaining(method);
+        }
+    }
+
     private void FillRemaining(string method)
     {
         var paidWithoutTarget = method switch

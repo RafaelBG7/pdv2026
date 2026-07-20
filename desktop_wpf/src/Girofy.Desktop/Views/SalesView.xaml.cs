@@ -28,7 +28,11 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.F2)
         {
-            if (viewModel.IsPaymentStepVisible)
+            if (viewModel.IsDiscountPopupVisible)
+            {
+                ExecuteIfAllowed(viewModel.ApplyDiscountCommand);
+            }
+            else if (viewModel.IsPaymentStepVisible)
             {
                 ExecuteIfAllowed(viewModel.FinalizeCommand);
             }
@@ -128,6 +132,35 @@ public partial class SalesView : UserControl
         }
     }
 
+    private void DiscountPopupInput_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (DataContext is not SalesViewModel viewModel)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            ExecuteIfAllowed(viewModel.ApplyDiscountCommand);
+            if (!viewModel.IsDiscountPopupVisible)
+            {
+                FocusPaymentMethod();
+            }
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            ExecuteIfAllowed(viewModel.CloseDiscountPopupCommand);
+            FocusPaymentMethod();
+            e.Handled = true;
+        }
+    }
+
+    private void OpenDiscountPopupButton_Click(object sender, System.Windows.RoutedEventArgs e) =>
+        FocusDiscountInput();
+
     private void AddSelectedProductAndFocusSearch(SalesViewModel viewModel)
     {
         ExecuteIfAllowed(viewModel.AddProductCommand);
@@ -146,6 +179,13 @@ public partial class SalesView : UserControl
         {
             MoneyInput.Focus();
             MoneyInput.SelectAll();
+        }));
+
+    private void FocusDiscountInput() =>
+        Dispatcher.BeginInvoke((Action)(() =>
+        {
+            DiscountPopupInput.Focus();
+            DiscountPopupInput.SelectAll();
         }));
 
     private void FocusSearchResults()
@@ -172,7 +212,7 @@ public partial class SalesView : UserControl
 
     private void FocusPaymentField(TextBox current, bool forward)
     {
-        var fields = new[] { DiscountInput, MoneyInput, PixInput, DebitInput, CreditInput };
+        var fields = new[] { MoneyInput, PixInput, DebitInput, CreditInput };
         var currentIndex = Array.IndexOf(fields, current);
         if (currentIndex < 0)
         {

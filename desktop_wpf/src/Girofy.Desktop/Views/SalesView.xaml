@@ -488,10 +488,16 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Desconto" />
-                                                <TextBox x:Name="DiscountInput"
-                                                         Text="{Binding DiscountText, UpdateSourceTrigger=PropertyChanged}"
-                                                         PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
-                                                         Style="{StaticResource TextInputStyle}" />
+                                                <Button Height="42"
+                                                        Command="{Binding OpenDiscountPopupCommand}"
+                                                        Click="OpenDiscountPopupButton_Click"
+                                                        Content="Aplicar desconto"
+                                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                                <TextBlock Margin="0,6,0,0" FontSize="12"
+                                                           Foreground="{StaticResource TextMutedBrush}">
+                                                    <Run Text="Atual: " />
+                                                    <Run Text="{Binding DiscountPercentText}" />
+                                                </TextBlock>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Dinheiro" />
@@ -580,7 +586,12 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="Desconto" />
-                                            <TextBlock Grid.Column="1" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding DiscountAmountText}" />
+                                            <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                <TextBlock FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding DiscountAmountText}" />
+                                                <TextBlock Margin="0,2,0,0" HorizontalAlignment="Right" FontSize="12"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           Text="{Binding DiscountPercentText}" />
+                                            </StackPanel>
                                         </Grid>
                                         <Grid Grid.Row="4">
                                             <Grid.ColumnDefinitions>
@@ -623,6 +634,104 @@
                         </Grid>
                     </Grid>
                 </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid Background="#CC000914">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsDiscountPopupVisible}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
+            <Border Margin="24" Padding="24" MaxWidth="560"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource InfoBorderBrush}" BorderThickness="1" CornerRadius="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock FontSize="24" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Aplicar desconto" />
+                        <TextBlock Margin="0,4,0,0" FontSize="13"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Informe o desconto em reais. A porcentagem é calculada automaticamente." />
+                    </StackPanel>
+
+                    <Border Grid.Row="2" Padding="16" Background="{StaticResource InfoSurfaceBrush}"
+                            BorderBrush="{StaticResource InfoBorderBrush}" BorderThickness="1" CornerRadius="7">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="12" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="Subtotal" />
+                                <TextBlock Grid.Column="1" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding SubtotalText}" />
+                            </Grid>
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Text="Total com desconto" />
+                                <TextBlock Grid.Column="1" FontSize="20" FontWeight="Bold"
+                                           Foreground="{StaticResource SuccessBrush}"
+                                           Text="{Binding DraftTotalAfterDiscountText}" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Row="4">
+                        <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Valor do desconto" />
+                        <TextBox x:Name="DiscountPopupInput"
+                                 Text="{Binding DraftDiscountText, UpdateSourceTrigger=PropertyChanged}"
+                                 PreviewKeyDown="DiscountPopupInput_PreviewKeyDown"
+                                 Style="{StaticResource TextInputStyle}" />
+                        <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}">
+                            <Run Text="Percentual aplicado: " />
+                            <Run FontWeight="Bold" Text="{Binding DraftDiscountPercentText}" />
+                        </TextBlock>
+                    </StackPanel>
+
+                    <Grid Grid.Row="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Height="46"
+                                Command="{Binding CloseDiscountPopupCommand}"
+                                Content="Cancelar"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button Grid.Column="2" Height="46"
+                                Command="{Binding ApplyDiscountCommand}"
+                                Content="Aplicar desconto"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
             </Border>
         </Grid>
     </Grid>

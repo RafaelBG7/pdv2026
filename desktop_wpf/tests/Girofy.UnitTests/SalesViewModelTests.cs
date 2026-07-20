@@ -96,6 +96,60 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Discount_popup_applies_value_and_shows_percentage()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, sessionContext)
+        {
+            SearchText = "789",
+        };
+
+        await viewModel.SearchCommand.ExecuteAsync();
+        viewModel.AddProductCommand.Execute(null);
+
+        viewModel.OpenDiscountPopupCommand.Execute(null);
+        Assert.True(viewModel.IsDiscountPopupVisible);
+
+        viewModel.DraftDiscountText = "3,00";
+
+        Assert.Equal(3m, viewModel.DraftDiscountAmount);
+        Assert.Equal("25,00%", viewModel.DraftDiscountPercentText);
+        Assert.Equal("R$ 9,00", viewModel.DraftTotalAfterDiscountText);
+
+        viewModel.ApplyDiscountCommand.Execute(null);
+
+        Assert.False(viewModel.IsDiscountPopupVisible);
+        Assert.Equal("3,00", viewModel.DiscountText);
+        Assert.Equal(3m, viewModel.DiscountAmount);
+        Assert.Equal("25,00%", viewModel.DiscountPercentText);
+        Assert.Equal("R$ 9,00", viewModel.TotalText);
+    }
+
+    [Fact]
+    public async Task Discount_popup_rejects_value_above_subtotal_without_closing()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, sessionContext)
+        {
+            SearchText = "789",
+        };
+
+        await viewModel.SearchCommand.ExecuteAsync();
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.OpenDiscountPopupCommand.Execute(null);
+        viewModel.DraftDiscountText = "20,00";
+
+        viewModel.ApplyDiscountCommand.Execute(null);
+
+        Assert.True(viewModel.HasError);
+        Assert.True(viewModel.IsDiscountPopupVisible);
+        Assert.Equal("0,00", viewModel.DiscountText);
+        Assert.Equal("R$ 12,00", viewModel.TotalText);
+    }
+
+    [Fact]
     public async Task Sale_popup_moves_between_product_and_payment_steps()
     {
         var sessionContext = SessionContext();

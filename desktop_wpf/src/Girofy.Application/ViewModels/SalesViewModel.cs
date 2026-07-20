@@ -63,6 +63,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private CatalogProduct? _selectedSearchProduct;
     private string _quantityText = "1";
     private string _discountText = "0,00";
+    private string _draftDiscountText = "0,00";
     private string _moneyText = "0,00";
     private string _pixText = "0,00";
     private string _debitText = "0,00";
@@ -72,6 +73,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private bool _isBusy;
     private bool _isSaleEditorOpen;
     private bool _isPaymentStepOpen;
+    private bool _isDiscountPopupOpen;
     private string? _idempotencyKey;
     private SaleReceipt? _receipt;
 
@@ -98,6 +100,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         CloseSaleEditorCommand = new RelayCommand(CloseSaleEditor);
         OpenPaymentStepCommand = new RelayCommand(OpenPaymentStep, () => HasCart && !IsBusy);
         BackToProductsCommand = new RelayCommand(BackToProducts);
+        OpenDiscountPopupCommand = new RelayCommand(OpenDiscountPopup, () => HasCart && !IsBusy);
+        CloseDiscountPopupCommand = new RelayCommand(CloseDiscountPopup);
+        ApplyDiscountCommand = new RelayCommand(ApplyDiscount);
         NewSaleCommand = new RelayCommand(StartNewSale);
         _sessionContext.Changed += HandleSessionChanged;
     }
@@ -146,6 +151,18 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
     }
 
+    public string DraftDiscountText
+    {
+        get => _draftDiscountText;
+        set
+        {
+            if (SetProperty(ref _draftDiscountText, value))
+            {
+                NotifyDraftDiscountChanged();
+            }
+        }
+    }
+
     public string MoneyText
     {
         get => _moneyText;
@@ -176,6 +193,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public decimal Total => Math.Max(0, Subtotal - DiscountAmount);
 
+    public decimal DraftDiscountAmount => ParsedMoneyOrZero(DraftDiscountText);
+
+    public decimal DraftTotalAfterDiscount => Math.Max(0, Subtotal - DraftDiscountAmount);
+
     public decimal PaidAmount =>
         ParsedMoneyOrZero(MoneyText) +
         ParsedMoneyOrZero(PixText) +
@@ -191,6 +212,14 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public string DiscountAmountText => FormatMoney(DiscountAmount);
 
     public string TotalText => FormatMoney(Total);
+
+    public string DiscountPercentText => FormatPercent(DiscountAmount, Subtotal);
+
+    public string DraftDiscountAmountText => FormatMoney(DraftDiscountAmount);
+
+    public string DraftDiscountPercentText => FormatPercent(DraftDiscountAmount, Subtotal);
+
+    public string DraftTotalAfterDiscountText => FormatMoney(DraftTotalAfterDiscount);
 
     public string PaidAmountText => FormatMoney(PaidAmount);
 
@@ -282,6 +311,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(CanProceedToPayment));
                 OpenPaymentStepCommand.NotifyCanExecuteChanged();
+                OpenDiscountPopupCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -314,6 +344,20 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public bool IsPaymentStepVisible => IsSaleEditorOpen && IsPaymentStepOpen && !HasReceipt;
 
+    public bool IsDiscountPopupOpen
+    {
+        get => _isDiscountPopupOpen;
+        private set
+        {
+            if (SetProperty(ref _isDiscountPopupOpen, value))
+            {
+                OnPropertyChanged(nameof(IsDiscountPopupVisible));
+            }
+        }
+    }
+
+    public bool IsDiscountPopupVisible => IsSaleEditorOpen && IsDiscountPopupOpen && !HasReceipt;
+
     public bool CanProceedToPayment => HasCart && !IsBusy;
 
     public AsyncRelayCommand SearchCommand { get; }
@@ -343,6 +387,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public RelayCommand OpenPaymentStepCommand { get; }
 
     public RelayCommand BackToProductsCommand { get; }
+
+    public RelayCommand OpenDiscountPopupCommand { get; }
+
+    public RelayCommand CloseDiscountPopupCommand { get; }
+
+    public RelayCommand ApplyDiscountCommand { get; }
 
     public RelayCommand NewSaleCommand { get; }
 
@@ -613,6 +663,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private void CloseSaleEditor()
     {
         ClearMessages();
+        IsDiscountPopupOpen = false;
         IsPaymentStepOpen = false;
         IsSaleEditorOpen = false;
     }
@@ -626,6 +677,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
 
         ClearMessages();
+        IsDiscountPopupOpen = false;
         IsPaymentStepOpen = true;
         if (PaidAmount == 0 && Total > 0)
         {
@@ -636,7 +688,40 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private void BackToProducts()
     {
         ClearMessages();
+        IsDiscountPopupOpen = false;
         IsPaymentStepOpen = false;
+    }
+
+    private void OpenDiscountPopup()
+    {
+        if (!HasCart)
+        {
+            ErrorMessage = "Adicione pelo menos um produto antes de aplicar desconto.";
+            return;
+        }
+
+        ClearMessages();
+        DraftDiscountText = DiscountText;
+        IsDiscountPopupOpen = true;
+    }
+
+    private void CloseDiscountPopup()
+    {
+        ClearMessages();
+        IsDiscountPopupOpen = false;
+    }
+
+    private void ApplyDiscount()
+    {
+        if (!TryParseMoney(DraftDiscountText, out var discount) || discount > Subtotal)
+        {
+            ErrorMessage = "Informe um desconto válido e menor que o subtotal.";
+            return;
+        }
+
+        DiscountText = discount.ToString("N2", BrazilianCulture);
+        ClearMessages();
+        IsDiscountPopupOpen = false;
     }
 
     private void SetPaymentText(ref string field, string value, string propertyName)
@@ -653,6 +738,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CartSummary));
         OnPropertyChanged(nameof(CanProceedToPayment));
         OpenPaymentStepCommand.NotifyCanExecuteChanged();
+        OpenDiscountPopupCommand.NotifyCanExecuteChanged();
         NotifyTotalsChanged();
     }
 
@@ -666,16 +752,28 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ChangeAmount));
         OnPropertyChanged(nameof(SubtotalText));
         OnPropertyChanged(nameof(DiscountAmountText));
+        OnPropertyChanged(nameof(DiscountPercentText));
         OnPropertyChanged(nameof(TotalText));
         OnPropertyChanged(nameof(PaidAmountText));
         OnPropertyChanged(nameof(MissingAmountText));
         OnPropertyChanged(nameof(ChangeAmountText));
+        NotifyDraftDiscountChanged();
+    }
+
+    private void NotifyDraftDiscountChanged()
+    {
+        OnPropertyChanged(nameof(DraftDiscountAmount));
+        OnPropertyChanged(nameof(DraftTotalAfterDiscount));
+        OnPropertyChanged(nameof(DraftDiscountAmountText));
+        OnPropertyChanged(nameof(DraftDiscountPercentText));
+        OnPropertyChanged(nameof(DraftTotalAfterDiscountText));
     }
 
     private void NotifySaleEditorStateChanged()
     {
         OnPropertyChanged(nameof(IsProductStepOpen));
         OnPropertyChanged(nameof(IsPaymentStepVisible));
+        OnPropertyChanged(nameof(IsDiscountPopupVisible));
     }
 
     private void ClearSearchResults()
@@ -695,10 +793,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         SearchText = string.Empty;
         QuantityText = "1";
         DiscountText = "0,00";
+        DraftDiscountText = "0,00";
         MoneyText = "0,00";
         PixText = "0,00";
         DebitText = "0,00";
         CreditText = "0,00";
+        IsDiscountPopupOpen = false;
         _idempotencyKey = null;
         ClearSearchResults();
         NotifyCartChanged();
@@ -761,6 +861,17 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private static string FormatMoney(decimal value) =>
         $"R$ {value.ToString("N2", BrazilianCulture)}";
+
+    private static string FormatPercent(decimal value, decimal total)
+    {
+        if (total <= 0)
+        {
+            return "0,00%";
+        }
+
+        var percent = value / total * 100;
+        return $"{percent.ToString("N2", BrazilianCulture)}%";
+    }
 
     public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;
 }

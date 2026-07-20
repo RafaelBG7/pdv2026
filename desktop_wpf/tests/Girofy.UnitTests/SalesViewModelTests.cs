@@ -105,6 +105,7 @@ public sealed class SalesViewModelTests
             SearchText = "789",
         };
 
+        viewModel.OpenSaleEditorCommand.Execute(null);
         await viewModel.SearchCommand.ExecuteAsync();
         viewModel.AddProductCommand.Execute(null);
 
@@ -136,6 +137,7 @@ public sealed class SalesViewModelTests
             SearchText = "789",
         };
 
+        viewModel.OpenSaleEditorCommand.Execute(null);
         await viewModel.SearchCommand.ExecuteAsync();
         viewModel.AddProductCommand.Execute(null);
         viewModel.OpenDiscountPopupCommand.Execute(null);

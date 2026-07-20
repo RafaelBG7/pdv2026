@@ -1,3 +1,4 @@
+using System.IO;
 using Girofy.Application.Abstractions;
 using Microsoft.Win32;
 

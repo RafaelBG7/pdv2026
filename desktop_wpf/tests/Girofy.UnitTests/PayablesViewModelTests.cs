@@ -1,5 +1,6 @@
 using Girofy.Application.Abstractions;
 using Girofy.Application.Models;
+using Girofy.Application.Services;
 using Girofy.Application.ViewModels;
 
 namespace Girofy.UnitTests;

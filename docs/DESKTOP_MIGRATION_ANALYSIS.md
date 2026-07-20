@@ -20,11 +20,13 @@ Já existem no cliente WPF:
 - configuração segura do endereço da API;
 - verificação de conectividade em `GET /api/v1/health`;
 - login por usuário ou e-mail;
+- ativação de assinatura vencida por key diretamente no cliente Windows;
 - access token curto e refresh token rotativo;
 - sessão local protegida pelo DPAPI do Windows;
 - restauração de sessão, logout e revogação de token;
 - opção de lembrar apenas o identificador do usuário;
-- shell autenticado com navegação entre Dashboard, Produtos, Categorias, Caixa e Vendas;
+- shell autenticado com navegação entre Dashboard, Produtos, Categorias, Caixa, Vendas,
+  Estoque, Relatórios, Contas a pagar, Auditoria e Configurações;
 - dashboard operacional agregado e isolado por adega;
 - caixa atual, vendas do dia, ticket, lucro conforme permissão, pagamentos, estoque baixo,
   produtos mais vendidos e vendas recentes;
@@ -46,6 +48,28 @@ Já existem no cliente WPF:
   taxas da maquininha, auditoria e caixa obrigatório;
 - idempotência para recuperação segura após falhas de conexão, sem venda duplicada;
 - preservação do pedido após erros de validação ou comunicação;
+- estoque operacional nativo com histórico paginado, filtros, resumo de entradas/saídas e
+  produtos movimentados;
+- entrada manual e ajuste manual de estoque pelo cliente WPF, sempre executados pelos
+  endpoints versionados e pelo `stock_service` do servidor;
+- API de estoque protegida por `can_view_stock_movements` e `can_manage_stock`, com
+  auditoria e isolamento por adega;
+- relatórios nativos com períodos diário, semanal, mensal, anual e personalizado;
+- resumo de vendas, itens, subtotal, desconto, total final, lucro, ticket médio, formas de
+  pagamento, gráfico agregado e produtos mais vendidos;
+- API de relatórios em `GET /api/v1/reports/summary`, protegida por `can_view_reports` e
+  agregada no backend para manter o cliente leve;
+- relatório nativo por produto em `GET /api/v1/reports/products`, com paginação,
+  busca, ordenação, quantidade vendida, faturamento, custo, lucro, ticket médio e estoque;
+- contas a pagar nativas com listagem, filtros, cadastro, pagamento e reabertura;
+- auditoria nativa com filtros, paginação e detalhes expansíveis;
+- configurações nativas para perfil, senha, regras operacionais da adega, taxas de
+  Pix/débito/crédito, backup, importação de produtos, exportação e gestão básica de
+  equipe;
+- frequência de backup e geração manual integradas aos endpoints versionados, sempre
+  usando a adega presente no token;
+- endpoint versionado para ativar assinatura em `POST /api/v1/subscription/activate`,
+  validando usuário, senha e key antes de emitir a sessão;
 - logs locais rotativos sem senha ou token completo;
 - workflow Windows para testes e build de prévia.
 
@@ -66,23 +90,24 @@ fonte de verdade. O cliente nunca acessa o MySQL diretamente.
 
 1. Publicar a OCI atrás de domínio e HTTPS.
 2. Ampliar detalhes de produtos e finalizar manutenção avançada de catálogo.
-3. Migrar estoque operacional com telas próprias de entrada, ajuste e histórico.
-4. Migrar relatórios, contas a pagar, auditoria e configurações.
+3. Aprofundar relatórios de caixa e comparativos.
+4. Migrar importação e permissões administrativas avançadas restantes.
 5. Preparar assinatura digital, instalador e atualização apenas quando o cliente nativo
    alcançar paridade suficiente com o fluxo web.
 
 ## Progresso Funcional
 
-Estimativa atual: **62% da migração Windows planejada**.
+Estimativa atual: **91% da migração Windows planejada**.
 
 - concluído: fundação nativa, conexão, autenticação/sessão, shell, dashboard, consulta de
   produtos/categorias, cadastro e edição básica de produtos, manutenção de categorias,
-  abertura/fechamento de caixa e registro de vendas;
-- parcial: histórico detalhado de caixa/vendas e manutenção avançada de catálogo ainda
-  dependem da versão web;
-- pendente: estoque operacional, relatórios, contas a pagar, auditoria,
-  configurações/equipe, assinatura, instalador assinado, atualização e
-  HTTPS público.
+  abertura/fechamento de caixa, registro de vendas, estoque operacional e resumo de
+  relatórios, relatório por produto, contas a pagar, auditoria, configurações pessoais,
+  regras operacionais da adega, taxas de Pix/débito/crédito, backup, importação de
+  produtos, exportação CSV, gestão básica de equipe e ativação por key;
+- parcial: histórico detalhado de caixa/vendas, manutenção avançada de catálogo e
+  algumas configurações financeiras avançadas ainda dependem da versão web;
+- pendente: instalador assinado, atualização e HTTPS público.
 
 O percentual mede módulos funcionais necessários para paridade operacional e pode mudar
 quando o escopo de produção for refinado. A versão web permanece integralmente disponível.

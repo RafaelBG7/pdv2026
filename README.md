@@ -1123,7 +1123,8 @@ Nesta etapa ele já possui:
 - sessão local criptografada com DPAPI do Windows;
 - restauração automática de sessão e logout revogável;
 - opção para lembrar somente o usuário, nunca a senha;
-- shell nativo autenticado com Dashboard, Produtos, Categorias, Caixa e Vendas;
+- shell nativo autenticado com Dashboard, Produtos, Categorias, Caixa, Vendas, Estoque e
+  Relatórios;
 - dashboard agregado com caixa atual, vendas de hoje, ticket médio, lucro conforme
   permissão, formas de pagamento, estoque baixo, produtos mais vendidos e vendas recentes;
 - catálogo paginado com busca, filtros e ordenação;
@@ -1136,14 +1137,34 @@ Nesta etapa ele já possui:
   ainda possui produtos vinculados;
 - ajustes de estoque de produto feitos pelo servidor com movimentação e auditoria;
 - consulta do caixa atual e dos dez caixas fechados mais recentes;
+- detalhe nativo de caixa selecionado com linha do tempo das vendas, produtos vendidos e
+  pagamentos por venda;
 - abertura nativa de caixa com valor inicial e bloqueio de abertura duplicada;
 - fechamento nativo com conferência exata, totais por forma de pagamento e auditoria;
 - ocultação de valores financeiros do caixa quando o usuário não possui permissão de
   relatórios;
 - venda nativa com pesquisa de produtos, carrinho, quantidades, desconto e múltiplas
   formas de pagamento;
-- caixa obrigatório, baixa de estoque, kits, taxas, auditoria e isolamento por adega
+- caixa obrigatório, baixa de estoque, kits, taxas, auditoria e isolamento por adega,
   processados transacionalmente pelo servidor;
+- estoque operacional nativo com histórico paginado, filtros, entrada manual e ajuste
+  manual, sempre via API e `stock_service`;
+- relatórios nativos com períodos diário, semanal, mensal, anual e personalizado;
+- resumo de vendas, itens, subtotal, desconto, total final, lucro, ticket médio, formas
+  de pagamento, gráfico agregado e produtos mais vendidos;
+- relatório servido por `GET /api/v1/reports/summary`, com agregação no backend e
+  permissão `can_view_reports`;
+- contas a pagar, auditoria, configurações pessoais, regras da adega, taxas de
+  Pix/débito/crédito, backup manual, frequência de backup, importação de produtos,
+  exportação CSV e gestão básica de equipe já migrados para telas nativas;
+- configurações operacionais nativas em `PUT /api/v1/settings/company`, permitindo
+  ativar/desativar venda com estoque negativo e ajustar as taxas usadas no cálculo de
+  lucro;
+- importação nativa de produtos por CSV/XLSX em `POST /api/v1/settings/import/products`,
+  criando categorias quando necessário, criando ou atualizando produtos, ajustando estoque
+  e registrando auditoria dentro da adega autenticada;
+- exportação CSV nativa para administradores em `GET /api/v1/settings/export/{tipo}`,
+  com opções de produtos, vendas, caixas e contas a pagar;
 - idempotência para repetir uma tentativa sem duplicar a venda e preservação do pedido
   quando ocorre uma falha;
 - comprovante de venda nativo com total, pagamentos, troco e avisos de estoque;
@@ -1165,9 +1186,10 @@ Girofy-Windows-WPF-preview
 ```
 
 Essa prévia não é o canal oficial para os clientes. Dashboard, catálogo, manutenção básica
-de produtos e categorias, caixa e registro de vendas já funcionam de forma nativa; estoque
-operacional, relatórios e módulos administrativos serão migrados por etapas, mantendo a
-versão web no ar durante todo o processo.
+de produtos e categorias, caixa, registro de vendas, estoque operacional, relatórios,
+contas a pagar, auditoria, backup, importação de produtos, exportação CSV e gestão básica
+de equipe já funcionam de forma nativa; módulos administrativos avançados serão migrados
+por etapas, mantendo a versão web no ar durante todo o processo.
 O login nativo já está implementado. No ambiente OCI atual, a autenticação por HTTP está
 liberada temporariamente para os testes controlados da prévia; antes da distribuição
 comercial será obrigatório publicar domínio e HTTPS e remover essa exceção.

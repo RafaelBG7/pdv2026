@@ -3,6 +3,7 @@ using System.Windows.Threading;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Services;
 using Girofy.Application.ViewModels;
+using Girofy.Desktop.System;
 using Girofy.Infrastructure.Api;
 using Girofy.Infrastructure.Logging;
 using Girofy.Infrastructure.Storage;
@@ -40,6 +41,8 @@ public partial class App : System.Windows.Application
 
                 services.AddSingleton(apiOptions);
                 services.AddSingleton<IExternalBrowserService, SystemBrowserService>();
+                services.AddSingleton<IFileSaveService, WindowsFileSaveService>();
+                services.AddSingleton<IFilePickerService, WindowsFilePickerService>();
                 services.AddSingleton<ISecureSessionStore, DpapiSessionStore>();
                 services.AddSingleton<IUserPreferencesStore, JsonUserPreferencesStore>();
                 services.AddSingleton<IAppSessionContext, AppSessionContext>();
@@ -60,6 +63,17 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<DashboardViewModel>();
                 services.AddSingleton<CashRegisterViewModel>();
                 services.AddSingleton<SalesViewModel>();
+                services.AddSingleton<StockViewModel>();
+                services.AddSingleton<PayablesViewModel>();
+                services.AddSingleton<ReportsViewModel>();
+                services.AddSingleton<AuditViewModel>();
+                services.AddSingleton(provider => new SettingsViewModel(
+                    provider.GetRequiredService<IGirofyApiClient>(),
+                    provider.GetRequiredService<IAppSessionContext>(),
+                    provider.GetRequiredService<IExternalBrowserService>(),
+                    provider.GetRequiredService<IFileSaveService>(),
+                    provider.GetRequiredService<IFilePickerService>(),
+                    new Uri(serverUri, "configuracoes")));
                 services.AddSingleton(provider => new ConnectionViewModel(
                     provider.GetRequiredService<IGirofyApiClient>(),
                     provider.GetRequiredService<IExternalBrowserService>(),
@@ -68,7 +82,12 @@ public partial class App : System.Windows.Application
                     provider.GetRequiredService<CatalogViewModel>(),
                     provider.GetRequiredService<DashboardViewModel>(),
                     provider.GetRequiredService<CashRegisterViewModel>(),
-                    provider.GetRequiredService<SalesViewModel>()));
+                    provider.GetRequiredService<SalesViewModel>(),
+                    provider.GetRequiredService<StockViewModel>(),
+                    provider.GetRequiredService<PayablesViewModel>(),
+                    provider.GetRequiredService<ReportsViewModel>(),
+                    provider.GetRequiredService<AuditViewModel>(),
+                    provider.GetRequiredService<SettingsViewModel>()));
                 services.AddSingleton<MainWindow>();
             })
             .Build();

@@ -137,10 +137,10 @@ Auditoria:
 
 ## Última Validação Conhecida
 
-Validação feita em 17/07/2026:
+Validação feita em 19/07/2026:
 
 ```text
-Ran 146 tests in 19.742s
+Ran 171 tests in 24.107s
 OK
 ```
 
@@ -152,7 +152,11 @@ Também foram validados:
   conferência de valores, permissões e isolamento por adega;
 - contrato de criação de venda pela API, incluindo atomicidade, idempotência, rollback,
   caixa obrigatório, permissão e baixa de estoque;
-- sintaxe XML das telas WPF de dashboard, catálogo, caixa e vendas;
+- contrato de relatório resumido pela API, incluindo isolamento por adega, formas de
+  pagamento, ranking de produtos, gráfico agregado e permissão `can_view_reports`;
+- contrato de exportação CSV pela API, incluindo permissão administrativa, tipo inválido,
+  isolamento por adega e auditoria `data_exported`;
+- sintaxe XML das telas WPF de dashboard, catálogo, caixa, vendas, estoque e relatórios;
 - ViewModel nativa de caixa, incluindo abertura, fechamento, preservação do valor após
   erro e limpeza ao encerrar a sessão;
 - ViewModel nativa de vendas, incluindo busca alfabética, carrinho, desconto, pagamentos,

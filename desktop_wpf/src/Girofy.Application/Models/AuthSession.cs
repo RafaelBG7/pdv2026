@@ -35,6 +35,11 @@ public sealed class AuthIdentity
     public CompanyIdentity? Company { get; init; }
 }
 
+public sealed record SubscriptionActivationRequest(
+    [property: JsonPropertyName("identifier")] string Identifier,
+    [property: JsonPropertyName("password")] string Password,
+    [property: JsonPropertyName("activation_key")] string ActivationKey);
+
 public sealed class UserIdentity
 {
     [JsonPropertyName("id")]
@@ -54,6 +59,9 @@ public sealed class UserIdentity
 
     [JsonPropertyName("email")]
     public string Email { get; init; } = string.Empty;
+
+    [JsonPropertyName("phone")]
+    public string Phone { get; init; } = string.Empty;
 
     [JsonPropertyName("role")]
     public string Role { get; init; } = string.Empty;

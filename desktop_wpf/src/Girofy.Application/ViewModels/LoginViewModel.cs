@@ -17,10 +17,12 @@ public sealed class LoginViewModel : ObservableObject
     private string _identifier = string.Empty;
     private string _password = string.Empty;
     private string _errorMessage = string.Empty;
+    private string _activationKey = string.Empty;
     private bool _rememberUsername;
     private bool _showPassword;
     private bool _isBusy;
     private bool _isAuthenticated;
+    private bool _requiresSubscriptionActivation;
     private string _authenticatedUserName = string.Empty;
     private string _authenticatedCompanyName = string.Empty;
     private string _authenticatedRoleLabel = string.Empty;
@@ -40,6 +42,7 @@ public sealed class LoginViewModel : ObservableObject
         _sessionContext = sessionContext;
         _forgotPasswordUri = forgotPasswordUri;
         LoginCommand = new AsyncRelayCommand(LoginAsync);
+        ActivateSubscriptionCommand = new AsyncRelayCommand(ActivateSubscriptionAsync);
         LogoutCommand = new AsyncRelayCommand(LogoutAsync);
         ForgotPasswordCommand = new RelayCommand(() => _browserService.Open(_forgotPasswordUri));
     }
@@ -70,6 +73,26 @@ public sealed class LoginViewModel : ObservableObject
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
+    public string ActivationKey
+    {
+        get => _activationKey;
+        set => SetProperty(ref _activationKey, value);
+    }
+
+    public bool RequiresSubscriptionActivation
+    {
+        get => _requiresSubscriptionActivation;
+        private set
+        {
+            if (SetProperty(ref _requiresSubscriptionActivation, value))
+            {
+                OnPropertyChanged(nameof(ShowLoginButton));
+            }
+        }
+    }
+
+    public bool ShowLoginButton => !RequiresSubscriptionActivation;
+
     public bool RememberUsername
     {
         get => _rememberUsername;
@@ -90,11 +113,14 @@ public sealed class LoginViewModel : ObservableObject
             if (SetProperty(ref _isBusy, value))
             {
                 OnPropertyChanged(nameof(LoginButtonText));
+                OnPropertyChanged(nameof(ActivationButtonText));
             }
         }
     }
 
     public string LoginButtonText => IsBusy ? "Entrando..." : "Entrar";
+
+    public string ActivationButtonText => IsBusy ? "Ativando..." : "Ativar assinatura";
 
     public bool IsAuthenticated
     {
@@ -121,6 +147,8 @@ public sealed class LoginViewModel : ObservableObject
     }
 
     public AsyncRelayCommand LoginCommand { get; }
+
+    public AsyncRelayCommand ActivateSubscriptionCommand { get; }
 
     public AsyncRelayCommand LogoutCommand { get; }
 
@@ -172,6 +200,8 @@ public sealed class LoginViewModel : ObservableObject
     private async Task LoginAsync(CancellationToken cancellationToken)
     {
         ErrorMessage = string.Empty;
+        RequiresSubscriptionActivation = false;
+        ActivationKey = string.Empty;
         var normalizedIdentifier = Identifier.Trim();
         if (string.IsNullOrWhiteSpace(normalizedIdentifier))
         {
@@ -186,6 +216,7 @@ public sealed class LoginViewModel : ObservableObject
         }
 
         IsBusy = true;
+        var keepPasswordForActivation = false;
         try
         {
             var session = await _apiClient.LoginAsync(
@@ -208,6 +239,14 @@ public sealed class LoginViewModel : ObservableObject
         }
         catch (GirofyApiException exception)
         {
+            if (string.Equals(exception.Code, "subscription_required", StringComparison.Ordinal))
+            {
+                RequiresSubscriptionActivation = true;
+                keepPasswordForActivation = true;
+                ErrorMessage = "Sua assinatura precisa de ativação. Informe a key para continuar.";
+                return;
+            }
+
             ErrorMessage = exception.Message;
         }
         catch (TaskCanceledException)
@@ -224,7 +263,83 @@ public sealed class LoginViewModel : ObservableObject
         }
         finally
         {
+            if (!keepPasswordForActivation)
+            {
+                Password = string.Empty;
+            }
+            IsBusy = false;
+        }
+    }
+
+    private async Task ActivateSubscriptionAsync(CancellationToken cancellationToken)
+    {
+        ErrorMessage = string.Empty;
+        var normalizedIdentifier = Identifier.Trim();
+        var normalizedActivationKey = ActivationKey.Trim();
+
+        if (string.IsNullOrWhiteSpace(normalizedIdentifier))
+        {
+            ErrorMessage = "Informe seu usuário ou e-mail.";
+            RequiresSubscriptionActivation = false;
+            return;
+        }
+
+        if (string.IsNullOrEmpty(Password))
+        {
+            ErrorMessage = "Informe sua senha novamente para ativar a assinatura.";
+            RequiresSubscriptionActivation = false;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedActivationKey))
+        {
+            ErrorMessage = "Informe a key de ativação.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var session = await _apiClient.ActivateSubscriptionAsync(
+                normalizedIdentifier,
+                Password,
+                normalizedActivationKey,
+                cancellationToken);
+            await _sessionStore.SaveAsync(session, cancellationToken);
+            await _preferencesStore.SaveAsync(
+                new UserPreferences
+                {
+                    RememberUsername = RememberUsername,
+                    RememberedIdentifier = RememberUsername ? normalizedIdentifier : string.Empty,
+                },
+                cancellationToken);
+            RequiresSubscriptionActivation = false;
+            ActivationKey = string.Empty;
             Password = string.Empty;
+            ApplySession(session);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (GirofyApiException exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+        catch (TaskCanceledException)
+        {
+            ErrorMessage = "O servidor demorou para responder. Tente novamente.";
+        }
+        catch (HttpRequestException)
+        {
+            ErrorMessage = "Não foi possível acessar o servidor Girofy.";
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Não foi possível ativar a assinatura agora. Tente novamente.";
+        }
+        finally
+        {
             IsBusy = false;
         }
     }
@@ -260,6 +375,8 @@ public sealed class LoginViewModel : ObservableObject
             : session.User.FullName;
         AuthenticatedCompanyName = session.Company?.Name ?? "Painel master";
         AuthenticatedRoleLabel = session.User.RoleLabel;
+        RequiresSubscriptionActivation = false;
+        ActivationKey = string.Empty;
         ErrorMessage = string.Empty;
         IsAuthenticated = true;
     }
@@ -271,6 +388,8 @@ public sealed class LoginViewModel : ObservableObject
         AuthenticatedUserName = string.Empty;
         AuthenticatedCompanyName = string.Empty;
         AuthenticatedRoleLabel = string.Empty;
+        RequiresSubscriptionActivation = false;
+        ActivationKey = string.Empty;
         IsAuthenticated = false;
     }
 }

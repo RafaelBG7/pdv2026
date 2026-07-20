@@ -12,6 +12,8 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
     private CashRegisterSnapshot? _snapshot;
+    private CashRegisterRecord? _selectedRegister;
+    private CashRegisterDetailSnapshot? _detailSnapshot;
     private string _openingAmountText = "0,00";
     private string _closingAmountText = string.Empty;
     private string _errorMessage = string.Empty;
@@ -27,6 +29,10 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         RefreshCommand = new AsyncRelayCommand(LoadAsync);
         OpenCommand = new AsyncRelayCommand(OpenAsync);
         CloseCommand = new AsyncRelayCommand(CloseAsync);
+        LoadRegisterDetailCommand = new AsyncRelayCommand(
+            LoadSelectedRegisterDetailAsync,
+            () => SelectedRegister is not null);
+        ClearRegisterDetailCommand = new AsyncRelayCommand(ClearRegisterDetailAsync);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -44,12 +50,57 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(HasOpenRegister));
             OnPropertyChanged(nameof(HasNoOpenRegister));
             OnPropertyChanged(nameof(CanViewFinancials));
+            if (SelectedRegister is not null &&
+                RecentRegisters.All(item => item.Id != SelectedRegister.Id) &&
+                CurrentRegister?.Id != SelectedRegister.Id)
+            {
+                SelectedRegister = null;
+            }
         }
     }
 
     public CashRegisterRecord? CurrentRegister => Snapshot?.CurrentRegister;
 
     public IReadOnlyList<CashRegisterRecord> RecentRegisters => Snapshot?.RecentRegisters ?? [];
+
+    public CashRegisterRecord? SelectedRegister
+    {
+        get => _selectedRegister;
+        set
+        {
+            if (SetProperty(ref _selectedRegister, value))
+            {
+                LoadRegisterDetailCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public CashRegisterDetailSnapshot? DetailSnapshot
+    {
+        get => _detailSnapshot;
+        private set
+        {
+            if (!SetProperty(ref _detailSnapshot, value))
+            {
+                return;
+            }
+            OnPropertyChanged(nameof(DetailRegister));
+            OnPropertyChanged(nameof(Timeline));
+            OnPropertyChanged(nameof(HasDetail));
+            OnPropertyChanged(nameof(HasTimeline));
+            OnPropertyChanged(nameof(HasNoTimeline));
+        }
+    }
+
+    public CashRegisterRecord? DetailRegister => DetailSnapshot?.CashRegister;
+
+    public IReadOnlyList<CashRegisterTimelineSale> Timeline => DetailSnapshot?.Timeline ?? [];
+
+    public bool HasDetail => DetailSnapshot?.CashRegister is not null;
+
+    public bool HasTimeline => Timeline.Count > 0;
+
+    public bool HasNoTimeline => HasDetail && !HasTimeline;
 
     public bool HasOpenRegister => CurrentRegister is not null;
 
@@ -120,6 +171,10 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand CloseCommand { get; }
 
+    public AsyncRelayCommand LoadRegisterDetailCommand { get; }
+
+    public AsyncRelayCommand ClearRegisterDetailCommand { get; }
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         LoadAsync(cancellationToken);
 
@@ -146,6 +201,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
                 session.AccessToken,
                 cancellationToken);
             ApplySnapshotIfCurrent(session, snapshot);
+            DetailSnapshot = null;
         }
         catch (Exception exception)
         {
@@ -234,6 +290,50 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task LoadSelectedRegisterDetailAsync(CancellationToken cancellationToken)
+    {
+        var selected = SelectedRegister;
+        if (selected is null)
+        {
+            ErrorMessage = "Selecione um caixa para ver os detalhes.";
+            return;
+        }
+
+        var session = RequireSession();
+        IsBusy = true;
+        ClearMessages();
+        try
+        {
+            var detail = await _apiClient.GetCashRegisterDetailAsync(
+                session.AccessToken,
+                selected.Id,
+                cancellationToken);
+            if (string.Equals(
+                _sessionContext.Current?.AccessToken,
+                session.AccessToken,
+                StringComparison.Ordinal))
+            {
+                DetailSnapshot = detail;
+                SuccessMessage = $"Detalhes do caixa #{selected.Id} carregados.";
+            }
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private Task ClearRegisterDetailAsync(CancellationToken cancellationToken)
+    {
+        DetailSnapshot = null;
+        SuccessMessage = string.Empty;
+        return Task.CompletedTask;
+    }
+
     private AuthSession RequireSession() => _sessionContext.Current
         ?? throw new GirofyApiException(
             "Sua sessão terminou. Entre novamente para continuar.",
@@ -288,6 +388,8 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     private void Reset()
     {
         Snapshot = null;
+        SelectedRegister = null;
+        DetailSnapshot = null;
         OpeningAmountText = "0,00";
         ClosingAmountText = string.Empty;
         ErrorMessage = string.Empty;

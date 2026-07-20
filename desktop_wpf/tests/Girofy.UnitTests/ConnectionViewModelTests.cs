@@ -24,7 +24,12 @@ public sealed class ConnectionViewModelTests
             CreateCatalogViewModel(apiClient),
             CreateDashboardViewModel(apiClient),
             CreateCashRegisterViewModel(apiClient),
-            CreateSalesViewModel(apiClient));
+            CreateSalesViewModel(apiClient),
+            CreateStockViewModel(apiClient),
+            CreatePayablesViewModel(apiClient),
+            CreateReportsViewModel(apiClient),
+            CreateAuditViewModel(apiClient),
+            CreateSettingsViewModel(apiClient));
 
         await viewModel.InitializeAsync();
 
@@ -44,7 +49,12 @@ public sealed class ConnectionViewModelTests
             CreateCatalogViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
             CreateDashboardViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
             CreateCashRegisterViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
-            CreateSalesViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
+            CreateSalesViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreateStockViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreatePayablesViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreateReportsViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreateAuditViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreateSettingsViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
 
         await viewModel.InitializeAsync();
 
@@ -74,6 +84,45 @@ public sealed class ConnectionViewModelTests
 
     private static SalesViewModel CreateSalesViewModel(IGirofyApiClient apiClient) =>
         new(apiClient, new AppSessionContext());
+
+    private static StockViewModel CreateStockViewModel(IGirofyApiClient apiClient) =>
+        new(apiClient, new AppSessionContext());
+
+    private static PayablesViewModel CreatePayablesViewModel(IGirofyApiClient apiClient) =>
+        new(apiClient, new AppSessionContext());
+
+    private static ReportsViewModel CreateReportsViewModel(IGirofyApiClient apiClient) =>
+        new(apiClient, new AppSessionContext());
+
+    private static AuditViewModel CreateAuditViewModel(IGirofyApiClient apiClient) =>
+        new(apiClient, new AppSessionContext());
+
+    private static SettingsViewModel CreateSettingsViewModel(IGirofyApiClient apiClient) =>
+        new(
+            apiClient,
+            new AppSessionContext(),
+            new StubBrowserService(),
+            new StubFileSaveService(),
+            new StubFilePickerService(),
+            new Uri("https://girofy.example/configuracoes"));
+
+    private sealed class StubFileSaveService : IFileSaveService
+    {
+        public Task<string?> SaveFileAsync(
+            string suggestedFileName,
+            string filter,
+            byte[] content,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<string?>(null);
+    }
+
+    private sealed class StubFilePickerService : IFilePickerService
+    {
+        public Task<PickedFile?> PickFileAsync(
+            string filter,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<PickedFile?>(null);
+    }
 
     private sealed class StubApiClient : IGirofyApiClient
     {

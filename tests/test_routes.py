@@ -238,6 +238,50 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(expired_response.status_code, 403)
         self.assertEqual(expired_response.get_json()['errors'][0]['code'], 'subscription_required')
 
+    def test_api_subscription_activation_applies_key_and_returns_session(self):
+        expired_user, expired_company = self.create_api_user(
+            username='api-ativacao',
+            company_name='Adega ativacao',
+        )
+        with self.app.app_context():
+            company = db.session.get(Company, expired_company.id)
+            company.subscription_renews_at = date.today() - timedelta(days=1)
+            db.session.add(ActivationKey(
+                key='WIN-KEY1-WIN-KEY2',
+                plan='Pro',
+                renews_at=date.today() + timedelta(days=45),
+                active=True,
+            ))
+            db.session.commit()
+
+        blocked_response = self.api_login(expired_user.username, 'SenhaApi123')
+        activation_response = self.client.post(
+            '/api/v1/subscription/activate',
+            json={
+                'identifier': expired_user.username,
+                'password': 'SenhaApi123',
+                'activation_key': 'win-key1-win-key2',
+            },
+        )
+        activation_data = activation_response.get_json()
+
+        self.assertEqual(blocked_response.status_code, 403)
+        self.assertEqual(blocked_response.get_json()['errors'][0]['code'], 'subscription_required')
+        self.assertEqual(activation_response.status_code, 200)
+        self.assertTrue(activation_data['success'])
+        self.assertTrue(activation_data['data']['access_token'])
+        self.assertEqual(activation_data['data']['company']['subscription_plan'], 'Pro')
+        self.assertTrue(activation_data['data']['company']['subscription_valid'])
+
+        with self.app.app_context():
+            company = db.session.get(Company, expired_company.id)
+            activation_key = ActivationKey.query.filter_by(key='WIN-KEY1-WIN-KEY2').one()
+            self.assertTrue(company.subscription_valid)
+            self.assertEqual(company.subscription_plan, 'Pro')
+            self.assertEqual(activation_key.used_by_company_id, company.id)
+            self.assertIsNotNone(activation_key.used_at)
+            self.assertEqual(ApiRefreshToken.query.filter_by(user_id=expired_user.id).count(), 1)
+
     def test_api_refresh_rotates_token_and_revokes_previous_session(self):
         user, _ = self.create_api_user()
         login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
@@ -294,6 +338,627 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 426)
         self.assertEqual(response.get_json()['errors'][0]['code'], 'https_required')
+
+    def test_api_settings_account_returns_profile_and_company_settings(self):
+        user, company = self.create_api_user(
+            first_name='Ana',
+            last_name='Silva',
+            phone='11999999999',
+        )
+        with self.app.app_context():
+            company_record = db.session.get(Company, company.id)
+            company_record.allow_negative_stock = True
+            company_record.backup_frequency = 'daily'
+            company_record.pix_fee_enabled = True
+            company_record.pix_fee_percent = 1.25
+            company_record.debit_fee_enabled = True
+            company_record.debit_fee_percent = 2.5
+            company_record.credit_fee_enabled = False
+            company_record.credit_fee_percent = 0
+            db.session.commit()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.get(
+            '/api/v1/settings/account',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['user']['id'], user.id)
+        self.assertEqual(data['company']['id'], company.id)
+        self.assertEqual(data['profile']['first_name'], 'Ana')
+        self.assertEqual(data['profile']['last_name'], 'Silva')
+        self.assertEqual(data['profile']['phone'], '11999999999')
+        self.assertEqual(data['profile']['role_label'], 'Admin')
+        self.assertTrue(data['company_settings']['allow_negative_stock'])
+        self.assertEqual(data['company_settings']['backup_frequency'], 'daily')
+        self.assertTrue(data['company_settings']['pix_fee_enabled'])
+        self.assertEqual(data['company_settings']['pix_fee_percent'], 1.25)
+        self.assertTrue(data['company_settings']['debit_fee_enabled'])
+        self.assertEqual(data['company_settings']['debit_fee_percent'], 2.5)
+        self.assertFalse(data['company_settings']['credit_fee_enabled'])
+
+    def test_api_settings_company_updates_stock_and_fee_rules_and_audits(self):
+        user, company = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.put(
+            '/api/v1/settings/company',
+            json={
+                'allow_negative_stock': True,
+                'pix_fee_enabled': True,
+                'pix_fee_percent': '1,25',
+                'debit_fee_enabled': True,
+                'debit_fee_percent': '2.50',
+                'credit_fee_enabled': False,
+                'credit_fee_percent': '0',
+            },
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(data['company_settings']['allow_negative_stock'])
+        self.assertTrue(data['company_settings']['pix_fee_enabled'])
+        self.assertEqual(data['company_settings']['pix_fee_percent'], 1.25)
+        self.assertTrue(data['company_settings']['debit_fee_enabled'])
+        self.assertEqual(data['company_settings']['debit_fee_percent'], 2.5)
+        self.assertFalse(data['company_settings']['credit_fee_enabled'])
+        self.assertEqual(data['company_settings']['credit_fee_percent'], 0)
+        with self.app.app_context():
+            updated_company = db.session.get(Company, company.id)
+            audit_log = AuditLog.query.filter_by(
+                action='company_settings_updated',
+                entity_type='company',
+                entity_id=str(company.id),
+            ).one()
+        self.assertTrue(updated_company.allow_negative_stock)
+        self.assertTrue(updated_company.card_fee_enabled)
+        self.assertEqual(updated_company.pix_fee_percent, 1.25)
+        self.assertEqual(updated_company.debit_fee_percent, 2.5)
+        self.assertIn('aplicativo Windows', audit_log.description)
+        self.assertIn('"client": "windows_native"', audit_log.new_values)
+
+    def test_api_settings_company_rejects_operator_user(self):
+        user, _ = self.create_api_user(
+            role='operator',
+            can_manage_settings=False,
+        )
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.put(
+            '/api/v1/settings/company',
+            json={
+                'allow_negative_stock': True,
+                'pix_fee_enabled': False,
+                'pix_fee_percent': '0',
+                'debit_fee_enabled': False,
+                'debit_fee_percent': '0',
+                'credit_fee_enabled': False,
+                'credit_fee_percent': '0',
+            },
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        error = response.get_json()['errors'][0]
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(error['code'], 'permission_denied')
+
+    def test_api_settings_company_rejects_invalid_fee_percent(self):
+        user, _ = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.put(
+            '/api/v1/settings/company',
+            json={
+                'allow_negative_stock': True,
+                'pix_fee_enabled': True,
+                'pix_fee_percent': '101',
+                'debit_fee_enabled': False,
+                'debit_fee_percent': '0',
+                'credit_fee_enabled': False,
+                'credit_fee_percent': '0',
+            },
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        error = response.get_json()['errors'][0]
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(error['code'], 'invalid_percent')
+        self.assertEqual(error['field'], 'pix_fee_percent')
+
+    def test_api_settings_backup_updates_frequency_and_audits(self):
+        user, company = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.put(
+            '/api/v1/settings/backup',
+            json={'backup_frequency': 'weekly'},
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['company_settings']['backup_frequency'], 'weekly')
+        with self.app.app_context():
+            updated_company = db.session.get(Company, company.id)
+            audit_log = AuditLog.query.filter_by(
+                action='backup_settings_updated',
+                entity_type='company',
+                entity_id=str(company.id),
+            ).one()
+        self.assertEqual(updated_company.backup_frequency, 'weekly')
+        self.assertIn('aplicativo Windows', audit_log.description)
+
+    def test_api_settings_backup_rejects_invalid_frequency(self):
+        user, _ = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.put(
+            '/api/v1/settings/backup',
+            json={'backup_frequency': 'hourly'},
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        error = response.get_json()['errors'][0]
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(error['code'], 'invalid_backup_frequency')
+        self.assertEqual(error['field'], 'backup_frequency')
+
+    def test_api_settings_backup_runs_manual_backup(self):
+        user, company = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.post(
+            '/api/v1/settings/backup/run',
+            json={},
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['backup']['status'], 'success')
+        self.assertTrue(data['backup']['file_name'].endswith('_windows_manual.sql'))
+        self.assertEqual(data['company_settings']['backup_last_status'], 'success')
+        with self.app.app_context():
+            updated_company = db.session.get(Company, company.id)
+            audit_log = AuditLog.query.filter_by(
+                action='backup_created',
+                entity_type='company',
+                entity_id=str(company.id),
+            ).one()
+            backup_path = Path(updated_company.backup_last_path)
+        self.assertEqual(updated_company.backup_last_status, 'success')
+        self.assertTrue(backup_path.exists())
+        self.assertIn('Backup Girofy', backup_path.read_text(encoding='utf-8'))
+        self.assertIn(data['backup']['file_name'], audit_log.description)
+
+    def test_api_settings_export_products_returns_tenant_csv_for_admin(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            category = Category(name='Cerveja', company_id=company.id)
+            db.session.add(category)
+            db.session.flush()
+            product = Product(
+                name='Skol 269ml unidade',
+                barcode='789000000001',
+                category_id=category.id,
+                company_id=company.id,
+                cost_price=2.5,
+                sale_price=4.0,
+                stock_quantity=12,
+                min_stock_quantity=3,
+                active=True,
+            )
+            db.session.add(product)
+            db.session.commit()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.get(
+            '/api/v1/settings/export/produtos',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        csv_text = response.data.decode('utf-8-sig')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('text/csv', response.content_type)
+        self.assertIn('attachment;', response.headers.get('Content-Disposition', ''))
+        self.assertIn('girofy_produtos_', response.headers.get('Content-Disposition', ''))
+        self.assertIn('Nome;Código de barras;Categoria', csv_text)
+        self.assertIn('Skol 269ml unidade;789000000001;Cerveja', csv_text)
+        self.assertIn('2,50;4,00;12;3;Sim;Não', csv_text)
+        with self.app.app_context():
+            audit_log = AuditLog.query.filter_by(
+                action='data_exported',
+                entity_type='export',
+                company_id=company.id,
+            ).one()
+        self.assertIn('Exportação de Produtos', audit_log.description)
+        self.assertIn('"export_type": "produtos"', audit_log.new_values)
+
+    def test_api_settings_export_rejects_non_admin_user(self):
+        user, _ = self.create_api_user(
+            role='operator',
+            can_manage_settings=True,
+        )
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.get(
+            '/api/v1/settings/export/vendas',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        error = response.get_json()['errors'][0]
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(error['code'], 'permission_denied')
+
+    def test_api_settings_export_rejects_invalid_type(self):
+        user, _ = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.get(
+            '/api/v1/settings/export/desconhecido',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        error = response.get_json()['errors'][0]
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(error['code'], 'invalid_export_type')
+        self.assertEqual(error['field'], 'export_type')
+
+    def test_api_settings_import_products_creates_product_category_stock_and_audit(self):
+        user, company = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+        csv_bytes = (
+            'produto;categoria;valor de custo;valor de venda;estoque atual;estoque minimo;codigo de barras\n'
+            'Skol 269ml unidade;Cerveja;2,50;4,00;12;3;789000000001\n'
+            ';Sem nome;1,00;2,00;5;1;\n'
+        ).encode('utf-8')
+
+        response = self.client.post(
+            '/api/v1/settings/import/products',
+            data={'spreadsheet': (io.BytesIO(csv_bytes), 'produtos.csv')},
+            content_type='multipart/form-data',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['created'], 1)
+        self.assertEqual(data['updated'], 0)
+        self.assertEqual(data['skipped'], 1)
+        self.assertEqual(data['movements'], 1)
+        self.assertEqual(data['total_rows'], 2)
+        with self.app.app_context():
+            product = Product.query.filter_by(
+                company_id=company.id,
+                name='Skol 269ml unidade',
+            ).one()
+            category = Category.query.filter_by(company_id=company.id, name='Cerveja').one()
+            movement = StockMovement.query.filter_by(
+                product_id=product.id,
+                source_type='spreadsheet_import',
+            ).one()
+            product_audit = AuditLog.query.filter_by(
+                action='product_created',
+                entity_type='product',
+                entity_id=str(product.id),
+            ).one()
+            import_audit = AuditLog.query.filter_by(
+                action='products_imported',
+                entity_type='product',
+                company_id=company.id,
+            ).one()
+
+        self.assertEqual(product.category_id, category.id)
+        self.assertEqual(product.barcode, '789000000001')
+        self.assertEqual(float(product.cost_price), 2.5)
+        self.assertEqual(float(product.sale_price), 4.0)
+        self.assertEqual(product.stock_quantity, 12)
+        self.assertEqual(product.min_stock_quantity, 3)
+        self.assertEqual(movement.movement_type, 'import')
+        self.assertEqual(movement.quantity, 12)
+        self.assertIn('aplicativo Windows', product_audit.description)
+        self.assertIn('"created": 1', import_audit.new_values)
+
+    def test_api_settings_import_products_updates_existing_product_and_stock(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            category = Category(name='Cerveja', company_id=company.id)
+            db.session.add(category)
+            db.session.flush()
+            product = Product(
+                name='Skol antiga',
+                barcode='789000000001',
+                category_id=category.id,
+                company_id=company.id,
+                cost_price=1,
+                sale_price=2,
+                stock_quantity=3,
+                min_stock_quantity=0,
+                active=True,
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+        csv_bytes = (
+            'produto;categoria;custo;venda;estoque;estoque_minimo;barcode\n'
+            'Skol 269ml unidade;Cerveja;2,50;4,00;9;2;789000000001\n'
+        ).encode('utf-8')
+
+        response = self.client.post(
+            '/api/v1/settings/import/products',
+            data={'spreadsheet': (io.BytesIO(csv_bytes), 'produtos.csv')},
+            content_type='multipart/form-data',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['created'], 0)
+        self.assertEqual(data['updated'], 1)
+        self.assertEqual(data['movements'], 1)
+        with self.app.app_context():
+            product = db.session.get(Product, product_id)
+            movement = StockMovement.query.filter_by(
+                product_id=product.id,
+                source_type='spreadsheet_import',
+            ).one()
+            audit_log = AuditLog.query.filter_by(
+                action='product_updated',
+                entity_type='product',
+                entity_id=str(product.id),
+            ).one()
+
+        self.assertEqual(product.name, 'Skol 269ml unidade')
+        self.assertEqual(float(product.cost_price), 2.5)
+        self.assertEqual(float(product.sale_price), 4.0)
+        self.assertEqual(product.stock_quantity, 9)
+        self.assertEqual(product.min_stock_quantity, 2)
+        self.assertEqual(movement.previous_stock, 3)
+        self.assertEqual(movement.new_stock, 9)
+        self.assertIn('atualizado por importação', audit_log.description)
+
+    def test_api_settings_import_products_rejects_operator_user(self):
+        user, _ = self.create_api_user(
+            role='operator',
+            can_manage_settings=True,
+            can_manage_products=True,
+        )
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+        csv_bytes = (
+            'produto;categoria;valor de custo;valor de venda;estoque atual\n'
+            'Skol 269ml unidade;Cerveja;2,50;4,00;12\n'
+        ).encode('utf-8')
+
+        response = self.client.post(
+            '/api/v1/settings/import/products',
+            data={'spreadsheet': (io.BytesIO(csv_bytes), 'produtos.csv')},
+            content_type='multipart/form-data',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        error = response.get_json()['errors'][0]
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(error['code'], 'permission_denied')
+
+    def test_api_settings_profile_updates_current_user_and_audits(self):
+        user, _ = self.create_api_user(first_name='Nome antigo', phone='1111')
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.put(
+            '/api/v1/settings/profile',
+            json={
+                'first_name': 'Rafael',
+                'last_name': 'Borges',
+                'phone': '32999990000',
+            },
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['profile']['first_name'], 'Rafael')
+        self.assertEqual(data['profile']['last_name'], 'Borges')
+        self.assertEqual(data['profile']['phone'], '32999990000')
+        with self.app.app_context():
+            updated_user = db.session.get(User, user.id)
+            audit_log = AuditLog.query.filter_by(
+                action='profile_updated',
+                entity_type='user',
+                entity_id=str(user.id),
+            ).one()
+        self.assertEqual(updated_user.first_name, 'Rafael')
+        self.assertEqual(updated_user.last_name, 'Borges')
+        self.assertEqual(updated_user.phone, '32999990000')
+        self.assertIn('aplicativo Windows', audit_log.description)
+
+    def test_api_settings_password_changes_password_and_revokes_desktop_sessions(self):
+        user, _ = self.create_api_user()
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.put(
+            '/api/v1/settings/password',
+            json={
+                'current_password': 'SenhaApi123',
+                'new_password': 'NovaSenha123',
+                'confirm_password': 'NovaSenha123',
+            },
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+        old_access_response = self.client.get(
+            '/api/v1/auth/me',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        old_password_response = self.api_login(user.username, 'SenhaApi123')
+        new_password_response = self.api_login(user.username, 'NovaSenha123')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(data['password_changed'])
+        self.assertTrue(data['requires_login'])
+        self.assertEqual(old_access_response.status_code, 401)
+        self.assertEqual(old_password_response.status_code, 401)
+        self.assertEqual(new_password_response.status_code, 200)
+        with self.app.app_context():
+            revoked_count = ApiRefreshToken.query.filter(
+                ApiRefreshToken.user_id == user.id,
+                ApiRefreshToken.revoked_at.isnot(None),
+            ).count()
+            audit_log = AuditLog.query.filter_by(
+                action='password_changed',
+                entity_type='user',
+                entity_id=str(user.id),
+            ).one()
+        self.assertGreaterEqual(revoked_count, 1)
+        self.assertIn('aplicativo Windows', audit_log.description)
+
+    def test_api_settings_team_requires_management_permission(self):
+        user, _ = self.create_api_user(
+            role='operator',
+            can_manage_settings=False,
+        )
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.get(
+            '/api/v1/settings/team',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'permission_denied')
+
+    def test_api_settings_team_creates_employee_with_role_defaults(self):
+        admin, company = self.create_api_user()
+        login_data = self.api_login(admin.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.post(
+            '/api/v1/settings/team',
+            json={
+                'username': 'pedro-operador',
+                'password': 'Senha123',
+                'first_name': 'Pedro',
+                'last_name': 'Souza',
+                'cpf': '123.456.789-00',
+                'email': 'pedro@example.com',
+                'phone': '32999990000',
+                'role': 'operator',
+            },
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = response.get_json()['data']
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(data['username'], 'pedro-operador')
+        self.assertEqual(data['role'], 'operator')
+        self.assertEqual(data['role_label'], 'Funcionário')
+        self.assertTrue(data['permissions']['can_view_products'])
+        self.assertTrue(data['permissions']['can_manage_sales'])
+        self.assertTrue(data['permissions']['can_manage_cash_register'])
+        self.assertFalse(data['permissions']['can_manage_products'])
+        self.assertFalse(data['permissions']['can_view_reports'])
+        with self.app.app_context():
+            employee = User.query.filter_by(username='pedro-operador').one()
+            audit_log = AuditLog.query.filter_by(
+                action='employee_created',
+                entity_type='user',
+                entity_id=str(employee.id),
+            ).one()
+        self.assertEqual(employee.company_id, company.id)
+        self.assertTrue(employee.email_verified)
+        self.assertTrue(employee.check_password('Senha123'))
+        self.assertIn('contratado pelo aplicativo Windows', audit_log.description)
+
+    def test_api_settings_team_lists_and_updates_employee(self):
+        admin, company = self.create_api_user()
+        with self.app.app_context():
+            employee = User(
+                username='maria-operadora',
+                first_name='Maria',
+                cpf='111.222.333-44',
+                email='maria@example.com',
+                role='operator',
+                company_id=company.id,
+                is_active=True,
+            )
+            employee.set_password('Senha123')
+            db.session.add(employee)
+            db.session.commit()
+            employee_id = employee.id
+        login_data = self.api_login(admin.username, 'SenhaApi123').get_json()['data']
+
+        list_response = self.client.get(
+            '/api/v1/settings/team?search=maria',
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        update_response = self.client.put(
+            f'/api/v1/settings/team/{employee_id}',
+            json={
+                'first_name': 'Maria Clara',
+                'last_name': 'Oliveira',
+                'cpf': '555.666.777-88',
+                'email': 'mariaclara@example.com',
+                'phone': '32988887777',
+                'role': 'manager',
+                'is_active': False,
+            },
+            headers=self.bearer_header(login_data['access_token']),
+        )
+        data = update_response.get_json()['data']
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(len(list_response.get_json()['data']['employees']), 1)
+        self.assertEqual(update_response.status_code, 200)
+        self.assertEqual(data['first_name'], 'Maria Clara')
+        self.assertEqual(data['last_name'], 'Oliveira')
+        self.assertEqual(data['cpf'], '555.666.777-88')
+        self.assertEqual(data['role'], 'manager')
+        self.assertFalse(data['is_active'])
+        self.assertTrue(data['permissions']['can_manage_products'])
+        self.assertTrue(data['permissions']['can_view_reports'])
+        self.assertTrue(data['permissions']['can_view_audit_logs'])
+        with self.app.app_context():
+            updated = db.session.get(User, employee_id)
+            audit_log = AuditLog.query.filter_by(
+                action='employee_updated',
+                entity_type='user',
+                entity_id=str(employee_id),
+            ).one()
+        self.assertEqual(updated.first_name, 'Maria Clara')
+        self.assertEqual(updated.phone, '32988887777')
+        self.assertEqual(updated.role, 'manager')
+        self.assertIn('atualizado pelo aplicativo Windows', audit_log.description)
+
+    def test_api_settings_team_rejects_duplicate_company_cpf(self):
+        admin, company = self.create_api_user()
+        with self.app.app_context():
+            existing = User(
+                username='cpf-existente',
+                cpf='123.456.789-00',
+                role='operator',
+                company_id=company.id,
+                is_active=True,
+            )
+            existing.set_password('Senha123')
+            db.session.add(existing)
+            db.session.commit()
+        login_data = self.api_login(admin.username, 'SenhaApi123').get_json()['data']
+
+        response = self.client.post(
+            '/api/v1/settings/team',
+            json={
+                'username': 'novo-cpf-duplicado',
+                'password': 'Senha123',
+                'cpf': '12345678900',
+                'role': 'operator',
+            },
+            headers=self.bearer_header(login_data['access_token']),
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'cpf_exists')
 
     def test_api_catalog_lists_only_current_company_products_with_pagination(self):
         user, company = self.create_api_user(
@@ -691,6 +1356,130 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(duplicate_response.get_json()['errors'][0]['code'], 'barcode_already_exists')
         self.assertEqual(forbidden_response.status_code, 403)
 
+    def test_api_stock_movements_filters_and_summarizes_company_scope(self):
+        user, company = self.create_api_user()
+        _, other_company = self.create_api_user(
+            username='api-estoque-outra-adega',
+            company_name='Outra adega estoque',
+        )
+        with self.app.app_context():
+            category = Category(name='Bebidas', company_id=company.id)
+            product = Product(
+                name='Coca Cola 1L',
+                category=category,
+                company_id=company.id,
+                cost_price=5,
+                sale_price=11,
+                stock_quantity=5,
+                active=True,
+            )
+            other_product = Product(
+                name='Produto externo',
+                company_id=other_company.id,
+                cost_price=1,
+                sale_price=2,
+                stock_quantity=99,
+                active=True,
+            )
+            db.session.add_all([category, product, other_product])
+            db.session.flush()
+            movement = StockMovement(
+                company_id=company.id,
+                product_id=product.id,
+                user_id=user.id,
+                movement_type='entry',
+                source_type='manual',
+                quantity=5,
+                previous_stock=0,
+                new_stock=5,
+                unit_cost=5,
+                total_cost=25,
+                reason='Compra fornecedor',
+            )
+            other_movement = StockMovement(
+                company_id=other_company.id,
+                product_id=other_product.id,
+                movement_type='entry',
+                source_type='manual',
+                quantity=99,
+                previous_stock=0,
+                new_stock=99,
+                unit_cost=1,
+                total_cost=99,
+                reason='Outra adega',
+            )
+            db.session.add_all([movement, other_movement])
+            db.session.commit()
+            category_id = category.id
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.get(
+            f'/api/v1/stock/movements?q=fornecedor&category_id={category_id}&movement_type=entry&source_type=manual',
+            headers=self.bearer_header(access_token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(len(data['items']), 1)
+        self.assertEqual(data['items'][0]['product']['name'], 'Coca Cola 1L')
+        self.assertEqual(data['summary']['entries_quantity'], 5)
+        self.assertEqual(data['summary']['movement_count'], 1)
+        self.assertEqual(data['summary']['product_count'], 1)
+        self.assertIn({'value': 'entry', 'label': 'Entrada manual'}, data['movement_types'])
+
+    def test_api_stock_entry_and_adjustment_mutate_product_stock(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            product = Product(
+                name='Skol 269ml',
+                company_id=company.id,
+                cost_price=3,
+                sale_price=6,
+                stock_quantity=2,
+                active=True,
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        entry_response = self.client.post(
+            '/api/v1/stock/entries',
+            headers=self.bearer_header(access_token),
+            json={
+                'product_id': product_id,
+                'quantity': 3,
+                'unit_cost': '4,50',
+                'reason': 'Compra de reposição',
+                'notes': 'Nota 123',
+                'update_cost': True,
+            },
+        )
+        adjustment_response = self.client.post(
+            '/api/v1/stock/adjustments',
+            headers=self.bearer_header(access_token),
+            json={
+                'product_id': product_id,
+                'adjustment_mode': 'delta',
+                'direction': 'out',
+                'quantity': 2,
+                'reason': 'Quebra',
+            },
+        )
+
+        self.assertEqual(entry_response.status_code, 201)
+        self.assertEqual(entry_response.get_json()['data']['new_stock'], 5)
+        self.assertEqual(adjustment_response.status_code, 201)
+        adjustment_data = adjustment_response.get_json()['data']
+        self.assertTrue(adjustment_data['changed'])
+        self.assertEqual(adjustment_data['movement']['movement_type'], 'adjustment_out')
+        self.assertEqual(adjustment_data['movement']['new_stock'], 3)
+        with self.app.app_context():
+            product = db.session.get(Product, product_id)
+            self.assertEqual(product.stock_quantity, 3)
+            self.assertEqual(float(product.cost_price), 4.5)
+            self.assertEqual(StockMovement.query.filter_by(product_id=product_id).count(), 2)
+
     def test_api_dashboard_summary_is_aggregated_and_company_scoped(self):
         user, company = self.create_api_user()
         _, other_company = self.create_api_user(
@@ -880,6 +1669,266 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(data['payment_totals'], [])
         self.assertEqual(data['upcoming_payables'], [])
 
+    def test_api_reports_summary_aggregates_sales_and_chart_by_company(self):
+        user, company = self.create_api_user(username='api-relatorio')
+        _, other_company = self.create_api_user(
+            username='api-relatorio-outra',
+            company_name='Outra adega relatório',
+        )
+        report_day = date(2026, 7, 10)
+        morning = datetime.combine(report_day, datetime.min.time()).replace(hour=9, minute=30)
+        evening = datetime.combine(report_day, datetime.min.time()).replace(hour=18, minute=15)
+        with self.app.app_context():
+            category = Category(name='Bebidas', company_id=company.id)
+            product = Product(
+                name='Coca Cola 2L',
+                category=category,
+                company_id=company.id,
+                cost_price=7,
+                sale_price=12,
+                stock_quantity=10,
+                active=True,
+            )
+            snack = Product(
+                name='Amendoim',
+                company_id=company.id,
+                cost_price=3,
+                sale_price=6,
+                stock_quantity=5,
+                active=True,
+            )
+            other_product = Product(
+                name='Produto outra adega',
+                company_id=other_company.id,
+                cost_price=1,
+                sale_price=999,
+                stock_quantity=1,
+                active=True,
+            )
+            db.session.add_all([category, product, snack, other_product])
+            db.session.flush()
+            first_sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                created_at=morning,
+                total_amount=24,
+                discount_amount=0,
+                final_amount=24,
+                payment_status='paid',
+            )
+            second_sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                created_at=evening,
+                total_amount=18,
+                discount_amount=2,
+                final_amount=16,
+                payment_status='paid',
+            )
+            other_sale = Sale(
+                company_id=other_company.id,
+                created_at=morning,
+                total_amount=999,
+                discount_amount=0,
+                final_amount=999,
+                payment_status='paid',
+            )
+            db.session.add_all([first_sale, second_sale, other_sale])
+            db.session.flush()
+            db.session.add_all([
+                SaleItem(
+                    sale_id=first_sale.id,
+                    product_id=product.id,
+                    quantity=2,
+                    unit_price=12,
+                    unit_cost_price=7,
+                    total_price=24,
+                    profit_amount=10,
+                ),
+                SaleItem(
+                    sale_id=second_sale.id,
+                    product_id=product.id,
+                    quantity=1,
+                    unit_price=12,
+                    unit_cost_price=7,
+                    total_price=12,
+                    profit_amount=5,
+                ),
+                SaleItem(
+                    sale_id=second_sale.id,
+                    product_id=snack.id,
+                    quantity=1,
+                    unit_price=6,
+                    unit_cost_price=3,
+                    total_price=6,
+                    profit_amount=3,
+                ),
+                SaleItem(
+                    sale_id=other_sale.id,
+                    product_id=other_product.id,
+                    quantity=1,
+                    unit_price=999,
+                    unit_cost_price=1,
+                    total_price=999,
+                    profit_amount=998,
+                ),
+                Payment(sale_id=first_sale.id, method='money', amount=24),
+                Payment(sale_id=second_sale.id, method='pix', amount=16),
+                Payment(sale_id=other_sale.id, method='credit', amount=999),
+            ])
+            db.session.commit()
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.get(
+            '/api/v1/reports/summary?period=custom&start_date=2026-07-10&end_date=2026-07-10&chart_metric=quantity',
+            headers=self.bearer_header(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['period'], 'custom')
+        self.assertEqual(data['summary']['sales_count'], 2)
+        self.assertEqual(data['summary']['items_count'], 4)
+        self.assertEqual(data['summary']['subtotal'], 42.0)
+        self.assertEqual(data['summary']['discount'], 2.0)
+        self.assertEqual(data['summary']['final'], 40.0)
+        self.assertEqual(data['summary']['profit'], 18.0)
+        self.assertEqual(data['summary']['average_ticket'], 20.0)
+        self.assertEqual(
+            {payment['method']: payment['amount'] for payment in data['payment_totals']},
+            {'money': 24.0, 'pix': 16.0, 'debit': 0.0, 'credit': 0.0},
+        )
+        self.assertEqual(data['top_products'][0]['name'], 'Coca Cola 2L')
+        self.assertEqual(data['top_products'][0]['quantity'], 3)
+        self.assertEqual(data['chart']['metric'], 'quantity')
+        self.assertEqual(data['chart']['buckets'][0]['sales_count'], 2)
+        self.assertEqual(data['chart']['buckets'][0]['total'], 40.0)
+        self.assertTrue(data['chart']['buckets'][0]['is_peak'])
+        self.assertNotIn('Produto outra adega', str(data))
+
+    def test_api_reports_summary_requires_reports_permission(self):
+        user, _ = self.create_api_user(
+            username='api-relatorio-bloqueado',
+            role='operator',
+            can_view_reports=False,
+        )
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+
+        response = self.client.get(
+            '/api/v1/reports/summary',
+            headers=self.bearer_header(token),
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'permission_denied')
+
+    def test_api_reports_products_calculates_product_performance(self):
+        user, company = self.create_api_user(username='api-relatorio-produto')
+        _, other_company = self.create_api_user(
+            username='api-relatorio-produto-outra',
+            company_name='Outra adega relatório produto',
+        )
+        report_day = date(2026, 7, 11)
+        sale_time = datetime.combine(report_day, datetime.min.time()).replace(hour=14)
+        with self.app.app_context():
+            category = Category(name='Cervejas', company_id=company.id)
+            product = Product(
+                name='Heineken 269ml',
+                category=category,
+                company_id=company.id,
+                cost_price=4,
+                sale_price=8,
+                stock_quantity=12,
+                active=True,
+            )
+            unsold = Product(
+                name='Produto parado',
+                category=category,
+                company_id=company.id,
+                cost_price=2,
+                sale_price=5,
+                stock_quantity=3,
+                active=True,
+            )
+            other_product = Product(
+                name='Produto de outra adega',
+                company_id=other_company.id,
+                cost_price=1,
+                sale_price=99,
+                stock_quantity=1,
+                active=True,
+            )
+            db.session.add_all([category, product, unsold, other_product])
+            db.session.flush()
+            sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                created_at=sale_time,
+                total_amount=24,
+                discount_amount=0,
+                final_amount=24,
+                payment_status='paid',
+            )
+            other_sale = Sale(
+                company_id=other_company.id,
+                created_at=sale_time,
+                total_amount=99,
+                discount_amount=0,
+                final_amount=99,
+                payment_status='paid',
+            )
+            db.session.add_all([sale, other_sale])
+            db.session.flush()
+            db.session.add_all([
+                SaleItem(
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    quantity=3,
+                    unit_price=8,
+                    unit_cost_price=4,
+                    total_price=24,
+                    profit_amount=12,
+                ),
+                SaleItem(
+                    sale_id=other_sale.id,
+                    product_id=other_product.id,
+                    quantity=1,
+                    unit_price=99,
+                    unit_cost_price=1,
+                    total_price=99,
+                    profit_amount=98,
+                ),
+            ])
+            db.session.commit()
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.get(
+            '/api/v1/reports/products?period=custom&start_date=2026-07-11&end_date=2026-07-11&sort=quantity_desc',
+            headers=self.bearer_header(token),
+        )
+        no_sales_response = self.client.get(
+            '/api/v1/reports/products?period=custom&start_date=2026-07-11&end_date=2026-07-11&sort=no_sales',
+            headers=self.bearer_header(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['summary']['products'], 2)
+        self.assertEqual(data['summary']['quantity'], 3)
+        self.assertEqual(data['summary']['revenue'], 24.0)
+        self.assertEqual(data['summary']['cost'], 12.0)
+        self.assertEqual(data['summary']['profit'], 12.0)
+        self.assertEqual(data['items'][0]['product_name'], 'Heineken 269ml')
+        self.assertEqual(data['items'][0]['quantity'], 3)
+        self.assertEqual(data['items'][0]['average_ticket'], 8.0)
+        self.assertEqual(data['items'][0]['stock'], 12)
+        self.assertNotIn('Produto de outra adega', str(data))
+
+        self.assertEqual(no_sales_response.status_code, 200)
+        no_sales_data = no_sales_response.get_json()['data']
+        self.assertEqual(no_sales_data['summary']['products'], 1)
+        self.assertEqual(no_sales_data['items'][0]['product_name'], 'Produto parado')
+
     def test_api_cash_register_opens_once_and_returns_current_snapshot(self):
         user, company = self.create_api_user()
         token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
@@ -1011,6 +2060,143 @@ class RouteTestCase(unittest.TestCase):
         self.assertIsNone(data['current_register']['sales_total'])
         self.assertIsNone(data['current_register']['expected_amount'])
         self.assertEqual(data['current_register']['payment_totals'], [])
+
+    def test_api_cash_register_detail_returns_sale_timeline(self):
+        user, company = self.create_api_user(username='api-caixa-timeline')
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+
+        with self.app.app_context():
+            product = Product(
+                name='Heineken unidade',
+                company_id=company.id,
+                cost_price=4,
+                sale_price=8,
+                stock_quantity=10,
+                active=True,
+            )
+            cash_register = CashRegister(
+                company_id=company.id,
+                user_id=user.id,
+                status='closed',
+                opening_amount=100,
+                closing_amount=116,
+                opened_at=datetime(2026, 7, 12, 15, 0),
+                closed_at=datetime(2026, 7, 12, 18, 0),
+            )
+            db.session.add_all([product, cash_register])
+            db.session.flush()
+            sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                cash_register_id=cash_register.id,
+                created_at=datetime(2026, 7, 12, 16, 15),
+                total_amount=16,
+                discount_amount=1,
+                final_amount=15,
+                payment_status='paid',
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add_all([
+                SaleItem(
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    quantity=2,
+                    unit_price=8,
+                    total_price=16,
+                ),
+                Payment(sale_id=sale.id, method='money', amount=10),
+                Payment(sale_id=sale.id, method='pix', amount=5),
+            ])
+            db.session.commit()
+            cash_register_id = cash_register.id
+            sale_id = sale.id
+
+        response = self.client.get(
+            f'/api/v1/cash-registers/{cash_register_id}',
+            headers=headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertTrue(data['permissions']['can_view_financials'])
+        self.assertEqual(data['cash_register']['id'], cash_register_id)
+        self.assertEqual(data['cash_register']['sales_total'], 15.0)
+        self.assertEqual(data['cash_register']['payment_totals'][0]['method'], 'money')
+        self.assertEqual(len(data['timeline']), 1)
+        sale_data = data['timeline'][0]
+        self.assertEqual(sale_data['id'], sale_id)
+        self.assertEqual(sale_data['time'], '16:15')
+        self.assertEqual(sale_data['seller'], user.username)
+        self.assertEqual(sale_data['payments_text'], 'Dinheiro, Pix')
+        self.assertEqual(sale_data['final_amount'], 15.0)
+        self.assertEqual(sale_data['payments'][0]['amount'], 10.0)
+        self.assertEqual(sale_data['items'][0]['product_name'], 'Heineken unidade')
+        self.assertEqual(sale_data['items'][0]['quantity'], 2)
+
+    def test_api_cash_register_detail_redacts_financials_without_reports_permission(self):
+        user, company = self.create_api_user(
+            username='api-caixa-detalhe-operador',
+            role='operator',
+            can_manage_cash_register=True,
+            can_view_reports=False,
+        )
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+
+        with self.app.app_context():
+            product = Product(
+                name='Produto operador',
+                company_id=company.id,
+                cost_price=2,
+                sale_price=5,
+                stock_quantity=4,
+                active=True,
+            )
+            cash_register = CashRegister(
+                company_id=company.id,
+                user_id=user.id,
+                status='open',
+                opening_amount=50,
+            )
+            db.session.add_all([product, cash_register])
+            db.session.flush()
+            sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                cash_register_id=cash_register.id,
+                total_amount=5,
+                final_amount=5,
+                payment_status='paid',
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add_all([
+                SaleItem(
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    quantity=1,
+                    unit_price=5,
+                    total_price=5,
+                ),
+                Payment(sale_id=sale.id, method='credit', amount=5),
+            ])
+            db.session.commit()
+            cash_register_id = cash_register.id
+
+        response = self.client.get(
+            f'/api/v1/cash-registers/{cash_register_id}',
+            headers=self.bearer_header(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertFalse(data['permissions']['can_view_financials'])
+        self.assertIsNone(data['cash_register']['opening_amount'])
+        self.assertEqual(data['cash_register']['payment_totals'], [])
+        self.assertIsNone(data['timeline'][0]['final_amount'])
+        self.assertIsNone(data['timeline'][0]['payments'][0]['amount'])
+        self.assertIsNone(data['timeline'][0]['items'][0]['unit_price'])
 
     def test_api_cash_register_requires_permission_and_is_company_scoped(self):
         blocked_user, _ = self.create_api_user(

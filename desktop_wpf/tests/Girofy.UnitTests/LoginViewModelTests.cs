@@ -100,6 +100,46 @@ public sealed class LoginViewModelTests
     }
 
     [Fact]
+    public async Task Login_with_expired_subscription_prompts_activation_and_saves_session_after_key()
+    {
+        var activatedSession = CreateSession();
+        var apiClient = new StubApiClient
+        {
+            LoginException = new GirofyApiException(
+                "A assinatura desta adega precisa ser regularizada.",
+                "subscription_required",
+                403),
+            ActivationResult = activatedSession,
+        };
+        var sessionStore = new StubSessionStore();
+        var preferencesStore = new StubPreferencesStore();
+        var viewModel = CreateViewModel(apiClient, sessionStore, preferencesStore);
+        viewModel.Identifier = "adegajf";
+        viewModel.Password = "senha-segura";
+        viewModel.RememberUsername = true;
+
+        await viewModel.LoginCommand.ExecuteAsync();
+
+        Assert.False(viewModel.IsAuthenticated);
+        Assert.True(viewModel.RequiresSubscriptionActivation);
+        Assert.Equal("senha-segura", viewModel.Password);
+        Assert.Contains("assinatura", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+
+        viewModel.ActivationKey = "girofy-key";
+        await viewModel.ActivateSubscriptionCommand.ExecuteAsync();
+
+        Assert.True(viewModel.IsAuthenticated);
+        Assert.False(viewModel.RequiresSubscriptionActivation);
+        Assert.Equal(string.Empty, viewModel.Password);
+        Assert.Equal(string.Empty, viewModel.ActivationKey);
+        Assert.Same(activatedSession, sessionStore.SavedSession);
+        Assert.Equal("adegajf", apiClient.LastActivationIdentifier);
+        Assert.Equal("senha-segura", apiClient.LastActivationPassword);
+        Assert.Equal("girofy-key", apiClient.LastActivationKey);
+        Assert.Equal("adegajf", preferencesStore.SavedPreferences!.RememberedIdentifier);
+    }
+
+    [Fact]
     public async Task Logout_clears_the_local_session_even_when_server_is_unavailable()
     {
         var apiClient = new StubApiClient
@@ -160,13 +200,23 @@ public sealed class LoginViewModelTests
     {
         public AuthSession? LoginResult { get; init; }
 
+        public AuthSession? ActivationResult { get; init; }
+
         public AuthSession? RefreshResult { get; init; }
 
         public Exception? LoginException { get; init; }
 
+        public Exception? ActivationException { get; init; }
+
         public Exception? LogoutException { get; init; }
 
         public string LastLoginIdentifier { get; private set; } = string.Empty;
+
+        public string LastActivationIdentifier { get; private set; } = string.Empty;
+
+        public string LastActivationPassword { get; private set; } = string.Empty;
+
+        public string LastActivationKey { get; private set; } = string.Empty;
 
         public string LastRefreshToken { get; private set; } = string.Empty;
 
@@ -182,6 +232,20 @@ public sealed class LoginViewModelTests
             return LoginException is null
                 ? Task.FromResult(LoginResult!)
                 : Task.FromException<AuthSession>(LoginException);
+        }
+
+        public Task<AuthSession> ActivateSubscriptionAsync(
+            string identifier,
+            string password,
+            string activationKey,
+            CancellationToken cancellationToken)
+        {
+            LastActivationIdentifier = identifier;
+            LastActivationPassword = password;
+            LastActivationKey = activationKey;
+            return ActivationException is null
+                ? Task.FromResult(ActivationResult!)
+                : Task.FromException<AuthSession>(ActivationException);
         }
 
         public Task<AuthSession> RefreshSessionAsync(

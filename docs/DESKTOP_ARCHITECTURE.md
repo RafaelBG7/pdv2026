@@ -35,13 +35,19 @@ Login WPF -> POST /api/v1/auth/login -> access token + refresh token
    |                                           +-> hash no MySQL central
    +-> DPAPI CurrentUser em %LOCALAPPDATA%\Girofy\auth.dat
 
+Assinatura vencida -> POST /api/v1/subscription/activate -> key aplicada à adega
+                 +-> nova sessão emitida somente após senha + key válidas
+
 Inicialização -> refresh rotativo -> sessão anterior revogada -> novo par protegido
 Logout -> revogação no servidor + remoção local obrigatória
 ```
 
 O cliente não salva senha. A opção “Lembrar usuário” persiste apenas o identificador em
 JSON. Alteração de senha, usuário/empresa inativos ou assinatura vencida são revalidados
-no servidor e bloqueiam a sessão.
+no servidor e bloqueiam a sessão. Quando a assinatura estiver vencida, o login normal
+retorna `subscription_required` e o WPF mostra a tela de ativação. A ativação usa usuário,
+senha e key; o servidor aplica a key apenas na própria adega do usuário autenticado e já
+retorna um novo par de tokens.
 
 Configurações reconhecidas:
 
@@ -62,9 +68,9 @@ Configurações do servidor:
 ## Próximas etapas
 
 1. Publicar o backend atrás de domínio e HTTPS.
-2. Implementar detalhes e edição de produtos conforme as permissões.
-3. Migrar movimentações de estoque com controle de concorrência.
-4. Migrar relatórios e módulos administrativos por consultas agregadas.
+2. Ampliar detalhes e manutenção avançada de catálogo conforme as permissões.
+3. Aprofundar relatórios com detalhamento por produto, caixa e comparativos avançados.
+4. Migrar fluxos administrativos avançados restantes, como ajustes de plano.
 
 ## Dashboard nativo
 
@@ -102,3 +108,51 @@ e pagamentos para correção e nova tentativa.
 As regras de produto ativo, kit, estoque negativo, desconto, taxas de Pix/débito/crédito,
 pagamento mínimo e permissão continuam centralizadas no Flask. O WPF calcula uma prévia
 para agilizar a operação, mas a resposta do servidor é sempre a fonte de verdade.
+
+## Estoque nativo
+
+O módulo Estoque consome `GET /api/v1/stock/movements`, `POST /api/v1/stock/entries` e
+`POST /api/v1/stock/adjustments`. O cliente exibe histórico paginado, filtros, resumo de
+entradas/saídas e formulários de entrada e ajuste manual, mas a alteração real do saldo é
+sempre executada no backend.
+
+O Flask usa o `stock_service` para aplicar bloqueios por empresa/produto, validar estoque
+negativo conforme a configuração da adega, gravar `stock_movements` e registrar auditoria.
+Usuários sem `can_view_stock_movements` não acessam o histórico; usuários sem
+`can_manage_stock` visualizam o histórico autorizado, mas não conseguem enviar entrada ou
+ajuste.
+
+## Relatórios nativos
+
+O módulo Relatórios consome `GET /api/v1/reports/summary` e
+`GET /api/v1/reports/products`. A consulta aceita períodos diário, semanal, mensal, anual
+e personalizado, além da alternância do gráfico entre faturamento e quantidade de vendas.
+
+O backend calcula os cartões principais, totais por forma de pagamento, ranking de
+produtos, buckets do gráfico e performance paginada por produto dentro do banco da adega
+autenticada. O WPF não recebe listas completas de vendas para recalcular localmente, o que
+mantém a tela mais leve em máquinas simples e reduz tráfego.
+
+O relatório por produto traz quantidade vendida, faturamento, custo, lucro, ticket médio e
+estoque atual, com busca e ordenação feitas por endpoint para evitar processamento pesado
+no cliente Windows.
+
+O acesso depende de `can_view_reports`. Usuários sem essa permissão continuam autenticados,
+mas a navegação de relatórios fica indisponível no cliente e o servidor retorna
+`permission_denied` se o endpoint for chamado diretamente.
+
+## Configurações e importação
+
+O módulo Configurações consome endpoints versionados para perfil, senha, backup,
+exportação, importação e gestão básica de equipe. A importação de produtos usa
+`POST /api/v1/settings/import/products` com `multipart/form-data` e arquivo `.csv` ou
+`.xlsx` escolhido pela janela nativa do Windows.
+
+O backend interpreta os cabeçalhos conhecidos, cria categorias ausentes dentro da própria
+adega, cria ou atualiza produtos por código de barras ou nome, ajusta o estoque quando a
+planilha informa quantidade e registra movimentação e auditoria. O cliente Windows não
+processa regra de negócio nem acessa o MySQL: ele apenas seleciona o arquivo, envia os
+bytes para a API e mostra o resumo de criados, atualizados, ignorados e movimentações.
+
+Usuários `admin`, `manager` e `master` podem importar. Funcionários comuns recebem
+`permission_denied`, mesmo que tentem chamar o endpoint diretamente.

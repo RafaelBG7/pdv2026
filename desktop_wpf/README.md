@@ -4,7 +4,7 @@ Esta pasta contém a aplicação Windows nativa experimental do Girofy. Ela é i
 
 ## Estado atual
 
-Sétimo corte vertical implementado:
+Décimo sétimo corte vertical implementado:
 
 - solução C# em .NET 8 LTS;
 - telas nativas em WPF;
@@ -12,9 +12,11 @@ Sétimo corte vertical implementado:
 - injeção de dependência e `HttpClientFactory`;
 - consulta real a `GET /api/v1/health`;
 - login nativo por usuário ou e-mail em `POST /api/v1/auth/login`;
+- ativação nativa de assinatura vencida por key em `POST /api/v1/subscription/activate`;
 - renovação automática da sessão por refresh token rotativo;
 - consulta da identidade autenticada e logout revogável;
-- bloqueios de usuário, adega e assinatura aplicados no servidor;
+- bloqueios de usuário e adega aplicados no servidor, com regularização de assinatura
+  diretamente no cliente Windows quando uma key válida é informada;
 - opção `Lembrar usuário`, sem armazenar a senha;
 - sessão criptografada com DPAPI para o usuário atual do Windows;
 - timeout e cancelamento;
@@ -44,6 +46,8 @@ Sétimo corte vertical implementado:
 - validação por adega para categoria, código de barras duplicado e permissões;
 - tela nativa de Caixa com consulta do caixa atual e dos dez caixas fechados mais
   recentes;
+- detalhe nativo de caixa selecionado em `GET /api/v1/cash-registers/{id}`, com linha
+  do tempo cronológica das vendas, itens vendidos e pagamentos;
 - abertura de caixa com valor inicial e proteção contra dois caixas simultâneos;
 - fechamento com conferência exata do valor esperado, sem perder o valor digitado em
   caso de divergência;
@@ -61,19 +65,83 @@ Sétimo corte vertical implementado:
   a conexão falha depois da gravação;
 - pedido preservado no cliente quando o servidor rejeita ou não confirma a venda;
 - comprovante nativo após a conclusão e início imediato de uma nova venda;
+- tela nativa de Estoque com histórico paginado de movimentações;
+- filtros de estoque por busca, categoria, tipo de movimentação e origem;
+- resumo de entradas, saídas, total de movimentações e produtos movimentados;
+- entrada manual de mercadoria integrada a `POST /api/v1/stock/entries`;
+- ajuste manual de estoque integrado a `POST /api/v1/stock/adjustments`;
+- histórico integrado a `GET /api/v1/stock/movements`, sempre limitado à adega do token;
+- permissões `can_view_stock_movements` e `can_manage_stock` respeitadas no cliente e
+  no servidor;
+- tela nativa de Relatórios com período diário, semanal, mensal, anual e personalizado;
+- alternância do gráfico entre faturamento e quantidade de vendas;
+- cards de vendas, itens, subtotal, desconto, total final, lucro e ticket médio;
+- totais por forma de pagamento e ranking dos dez produtos mais vendidos;
+- relatório integrado a `GET /api/v1/reports/summary`, com agregação no backend e
+  isolamento pela adega do token;
+- relatório por produto integrado a `GET /api/v1/reports/products`;
+- consulta paginada de performance por produto com quantidade vendida, faturamento,
+  custo, lucro, ticket médio e estoque atual;
+- filtros do relatório por produto por busca e ordenação por mais vendidos, maior
+  faturamento, maior lucro, menor estoque ou produtos sem venda;
+- acesso ao relatório bloqueado para perfis sem `can_view_reports`;
+- tela nativa de Contas a pagar com resumo de abertas, vencidas, próximas e pagas;
+- filtros por busca, status, categoria e período de vencimento;
+- cadastro de contas com descrição, categoria, valor, vencimento e observações;
+- marcação de conta como paga e reabertura de conta paga;
+- integração com `GET /api/v1/payables`, `POST /api/v1/payables`,
+  `POST /api/v1/payables/{id}/pay` e `POST /api/v1/payables/{id}/reopen`;
+- acesso ao módulo de contas bloqueado para perfis sem `can_manage_payables`;
+- tela nativa de Auditoria com consulta paginada de eventos críticos;
+- filtros de auditoria por busca, usuário, ação, módulo, método e período;
+- resumo de eventos, usuários envolvidos e ações diferentes;
+- detalhes expansíveis com valores antes/depois, rota, método, request id e IP;
+- integração com `GET /api/v1/audit/logs`, sempre restrita à adega presente no token;
+- acesso à auditoria bloqueado para perfis sem `can_view_audit_logs`;
+- tela nativa de Configurações com resumo da conta, adega, assinatura e regras da empresa;
+- edição nativa de nome, sobrenome e telefone em `PUT /api/v1/settings/profile`;
+- troca de senha nativa em `PUT /api/v1/settings/password`, com revogação das sessões do
+  usuário e retorno automático para login;
+- edição nativa das regras da adega em `PUT /api/v1/settings/company`, incluindo venda
+  com estoque negativo e taxas de Pix, débito e crédito usadas no lucro;
+- configuração nativa de frequência de backup em `PUT /api/v1/settings/backup`;
+- geração de backup manual em `POST /api/v1/settings/backup/run`, reutilizando o mesmo
+  motor de backup da versão web;
+- exportação nativa em CSV para administradores em `GET /api/v1/settings/export/{tipo}`;
+- tipos de exportação disponíveis no cliente Windows: produtos, vendas, caixas e contas a
+  pagar;
+- o arquivo exportado é salvo pelo usuário com a janela nativa do Windows, sem guardar dados
+  sensíveis no cliente;
+- importação nativa de produtos por CSV/XLSX em `POST /api/v1/settings/import/products`;
+- a importação cria categorias quando necessário, cria ou atualiza produtos, ajusta estoque
+  e registra auditoria sempre dentro da adega autenticada;
+- gestão nativa de equipe para administradores, gerentes e usuários com permissão de
+  configurações;
+- busca de funcionários por nome, usuário ou CPF em `GET /api/v1/settings/team`;
+- cadastro nativo de funcionário comum, gerente ou admin em `POST /api/v1/settings/team`;
+- edição nativa de nome, sobrenome, CPF, e-mail, telefone, perfil e status em
+  `PUT /api/v1/settings/team/{id}`;
+- regras de equipe aplicadas no servidor: isolamento por adega, CPF único dentro da adega,
+  username global único, perfis padronizados e proteção contra autodesativação;
+- resumo e edição das taxas de Pix, débito e crédito e da regra de venda sem estoque;
+- integração com `GET /api/v1/settings/account`, sempre restrita ao usuário autenticado e
+  à adega presente no token;
 - abertura opcional da versão web no navegador externo;
 - logs locais em `%LOCALAPPDATA%\Girofy\logs`;
 - catálogo carregado somente quando Produtos ou Categorias é aberto, evitando consultas
   e uso de memória desnecessários na inicialização;
 - testes unitários de conexão, login, restauração de sessão, logout, dashboard, catálogo,
-  caixa e vendas;
+  caixa, vendas, estoque, relatórios, contas a pagar e exportação de configurações;
 - workflow separado para build Windows self-contained.
 
-O dashboard, o catálogo, a manutenção básica de produtos e categorias, o caixa e o registro
-de vendas já funcionam de forma nativa. Ainda não existem movimentação manual de estoque,
-relatórios completos, contas a pagar, auditoria e configurações no WPF.
-Esses módulos serão adicionados por API sem remover nem substituir a versão web durante a
-migração.
+O dashboard, o catálogo, a manutenção básica de produtos e categorias, o caixa, o registro
+de vendas, o estoque operacional, os relatórios resumidos e por produto, contas a pagar,
+auditoria, configurações pessoais, regras operacionais da adega, taxas de maquininha,
+backup manual/frequência, importação de produtos, exportação CSV, gestão básica de equipe
+e ativação por key já funcionam de forma nativa.
+As demais configurações administrativas avançadas continuam disponíveis pela versão web
+enquanto são migradas por etapas, sem remover nem substituir a versão web durante a
+transição.
 
 ## Configuração
 
@@ -124,6 +192,9 @@ GitHub > Actions > Build Windows WPF preview > Run workflow
 O artefato `Girofy-Windows-WPF-preview` é self-contained. O cliente final não precisa instalar .NET, Python, MySQL ou ferramentas de desenvolvimento.
 
 Esta prévia valida a base nativa, o ciclo completo de autenticação, o dashboard operacional,
-a consulta e manutenção básica do catálogo, o fluxo de abertura/fechamento de caixa e o
-registro completo de vendas. Ela ainda não substitui a versão web em produção porque os
-módulos administrativos e o HTTPS público ainda não atingiram o critério de liberação.
+a consulta e manutenção básica do catálogo, o fluxo de abertura/fechamento de caixa, o
+registro completo de vendas, o estoque operacional, os relatórios resumidos e por produto,
+contas a pagar, auditoria, configurações pessoais, backup, importação de produtos,
+exportação CSV, gestão básica de equipe e ativação por key de assinatura. Ela ainda não substitui a versão web em produção porque as
+configurações administrativas avançadas restantes e o HTTPS público ainda não atingiram o
+critério de liberação.

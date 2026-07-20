@@ -24,7 +24,12 @@ public sealed class ConnectionViewModel : ObservableObject
         CatalogViewModel catalog,
         DashboardViewModel dashboard,
         CashRegisterViewModel cashRegister,
-        SalesViewModel sales)
+        SalesViewModel sales,
+        StockViewModel stock,
+        PayablesViewModel payables,
+        ReportsViewModel reports,
+        AuditViewModel audit,
+        SettingsViewModel settings)
     {
         _apiClient = apiClient;
         _browserService = browserService;
@@ -34,6 +39,11 @@ public sealed class ConnectionViewModel : ObservableObject
         Dashboard = dashboard;
         CashRegister = cashRegister;
         Sales = sales;
+        Stock = stock;
+        Payables = payables;
+        Reports = reports;
+        Audit = audit;
+        Settings = settings;
         RetryConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
         OpenWebCommand = new RelayCommand(() => _browserService.Open(_serverUri));
         ShowDashboardCommand = new AsyncRelayCommand(ShowDashboardAsync);
@@ -41,6 +51,11 @@ public sealed class ConnectionViewModel : ObservableObject
         ShowCategoriesCommand = new AsyncRelayCommand(ShowCategoriesAsync);
         ShowCashRegisterCommand = new AsyncRelayCommand(ShowCashRegisterAsync);
         ShowSalesCommand = new AsyncRelayCommand(ShowSalesAsync);
+        ShowStockCommand = new AsyncRelayCommand(ShowStockAsync);
+        ShowPayablesCommand = new AsyncRelayCommand(ShowPayablesAsync);
+        ShowReportsCommand = new AsyncRelayCommand(ShowReportsAsync);
+        ShowAuditCommand = new AsyncRelayCommand(ShowAuditAsync);
+        ShowSettingsCommand = new AsyncRelayCommand(ShowSettingsAsync);
     }
 
     public LoginViewModel Login { get; }
@@ -53,6 +68,16 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public SalesViewModel Sales { get; }
 
+    public StockViewModel Stock { get; }
+
+    public PayablesViewModel Payables { get; }
+
+    public ReportsViewModel Reports { get; }
+
+    public AuditViewModel Audit { get; }
+
+    public SettingsViewModel Settings { get; }
+
     public bool IsDashboardView => string.Equals(_activeView, "dashboard", StringComparison.Ordinal);
 
     public bool IsCatalogView => string.Equals(_activeView, "catalog", StringComparison.Ordinal);
@@ -60,6 +85,16 @@ public sealed class ConnectionViewModel : ObservableObject
     public bool IsCashRegisterView => string.Equals(_activeView, "cash-register", StringComparison.Ordinal);
 
     public bool IsSalesView => string.Equals(_activeView, "sales", StringComparison.Ordinal);
+
+    public bool IsStockView => string.Equals(_activeView, "stock", StringComparison.Ordinal);
+
+    public bool IsPayablesView => string.Equals(_activeView, "payables", StringComparison.Ordinal);
+
+    public bool IsReportsView => string.Equals(_activeView, "reports", StringComparison.Ordinal);
+
+    public bool IsAuditView => string.Equals(_activeView, "audit", StringComparison.Ordinal);
+
+    public bool IsSettingsView => string.Equals(_activeView, "settings", StringComparison.Ordinal);
 
     public string StatusTitle
     {
@@ -113,6 +148,16 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public AsyncRelayCommand ShowSalesCommand { get; }
 
+    public AsyncRelayCommand ShowStockCommand { get; }
+
+    public AsyncRelayCommand ShowPayablesCommand { get; }
+
+    public AsyncRelayCommand ShowReportsCommand { get; }
+
+    public AsyncRelayCommand ShowAuditCommand { get; }
+
+    public AsyncRelayCommand ShowSettingsCommand { get; }
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         CheckConnectionAsync(cancellationToken);
 
@@ -148,6 +193,36 @@ public sealed class ConnectionViewModel : ObservableObject
         await Sales.InitializeAsync(cancellationToken);
     }
 
+    private async Task ShowStockAsync(CancellationToken cancellationToken)
+    {
+        SetActiveView("stock");
+        await Stock.InitializeAsync(cancellationToken);
+    }
+
+    private async Task ShowPayablesAsync(CancellationToken cancellationToken)
+    {
+        SetActiveView("payables");
+        await Payables.InitializeAsync(cancellationToken);
+    }
+
+    private async Task ShowReportsAsync(CancellationToken cancellationToken)
+    {
+        SetActiveView("reports");
+        await Reports.InitializeAsync(cancellationToken);
+    }
+
+    private async Task ShowAuditAsync(CancellationToken cancellationToken)
+    {
+        SetActiveView("audit");
+        await Audit.InitializeAsync(cancellationToken);
+    }
+
+    private async Task ShowSettingsAsync(CancellationToken cancellationToken)
+    {
+        SetActiveView("settings");
+        await Settings.InitializeAsync(cancellationToken);
+    }
+
     private void SetActiveView(string activeView)
     {
         if (string.Equals(_activeView, activeView, StringComparison.Ordinal))
@@ -160,6 +235,11 @@ public sealed class ConnectionViewModel : ObservableObject
         OnPropertyChanged(nameof(IsCatalogView));
         OnPropertyChanged(nameof(IsCashRegisterView));
         OnPropertyChanged(nameof(IsSalesView));
+        OnPropertyChanged(nameof(IsStockView));
+        OnPropertyChanged(nameof(IsPayablesView));
+        OnPropertyChanged(nameof(IsReportsView));
+        OnPropertyChanged(nameof(IsAuditView));
+        OnPropertyChanged(nameof(IsSettingsView));
     }
 
     private async Task CheckConnectionAsync(CancellationToken cancellationToken)

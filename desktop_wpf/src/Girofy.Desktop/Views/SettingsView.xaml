@@ -1,0 +1,893 @@
+<UserControl x:Class="Girofy.Desktop.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <Grid Margin="0,0,8,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="14" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock FontSize="27" FontWeight="Bold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="Configurações" />
+                    <TextBlock Margin="0,4,0,0" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Text="Gerencie seu perfil e segurança do acesso." />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        MinWidth="112"
+                        Command="{Binding RefreshCommand}"
+                        Content="Atualizar"
+                        Style="{StaticResource SecondaryButtonStyle}" />
+            </Grid>
+
+            <StackPanel Grid.Row="2">
+                <Border Padding="12" Margin="0,0,0,8"
+                        Background="{StaticResource ErrorSurfaceBrush}"
+                        BorderBrush="{StaticResource ErrorBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="5">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="{Binding ErrorMessage}"
+                               TextWrapping="Wrap" />
+                </Border>
+                <Border Padding="12"
+                        Background="{StaticResource SuccessSurfaceBrush}"
+                        BorderBrush="{StaticResource SuccessBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="5">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasSuccess}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="{Binding SuccessMessage}"
+                               TextWrapping="Wrap" />
+                </Border>
+            </StackPanel>
+
+            <UniformGrid Grid.Row="4" Columns="3">
+                <Border Margin="0,0,10,0" Padding="16"
+                        Background="{StaticResource SurfaceRaisedBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="7">
+                    <StackPanel>
+                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Text="USUÁRIO" />
+                        <TextBlock Margin="0,6,0,0" FontSize="21" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="{Binding UsernameText}" />
+                        <TextBlock Margin="0,4,0,0" FontSize="13"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="{Binding EmailText}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="5,0" Padding="16"
+                        Background="{StaticResource SurfaceRaisedBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="7">
+                    <StackPanel>
+                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Text="ADEGA" />
+                        <TextBlock Margin="0,6,0,0" FontSize="21" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="{Binding CompanyName}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Margin="0,4,0,0" FontSize="13"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="{Binding RoleText}" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="10,0,0,0" Padding="16"
+                        Background="{StaticResource SurfaceRaisedBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="7">
+                    <StackPanel>
+                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Text="ASSINATURA" />
+                        <TextBlock Margin="0,6,0,0" FontSize="21" FontWeight="Bold"
+                                   Foreground="{StaticResource InfoBrush}"
+                                   Text="{Binding PlanText}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Margin="0,4,0,0" FontSize="13"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="{Binding SubscriptionText}" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Border Grid.Row="6" Padding="18"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock FontSize="19" FontWeight="Bold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="Dados do perfil" />
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Nome" />
+                            <TextBox Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource TextInputStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Sobrenome" />
+                            <TextBox Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource TextInputStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Telefone" />
+                            <TextBox Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource TextInputStyle}" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Text="REGRAS DA ADEGA" />
+                            <TextBlock Margin="0,5,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="{Binding NegativeStockText}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="{Binding FeeText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button Grid.Column="2"
+                                MinWidth="142"
+                                Command="{Binding SaveProfileCommand}"
+                                Content="Salvar perfil"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="8" Padding="18"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock FontSize="19" FontWeight="Bold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="Segurança" />
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Senha atual" />
+                            <PasswordBox x:Name="CurrentPasswordInput"
+                                         PasswordChanged="HandleCurrentPasswordChanged"
+                                         Style="{StaticResource PasswordInputStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Nova senha" />
+                            <PasswordBox x:Name="NewPasswordInput"
+                                         PasswordChanged="HandleNewPasswordChanged"
+                                         Style="{StaticResource PasswordInputStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Confirmar senha" />
+                            <PasswordBox x:Name="ConfirmPasswordInput"
+                                         PasswordChanged="HandleConfirmPasswordChanged"
+                                         Style="{StaticResource PasswordInputStyle}" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Ao alterar a senha, a sessão atual será encerrada." />
+                        <Button Grid.Column="2"
+                                MinWidth="166"
+                                Command="{Binding ChangePasswordCommand}"
+                                Content="Alterar senha"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                        <Button Grid.Column="4"
+                                MinWidth="178"
+                                Command="{Binding OpenWebSettingsCommand}"
+                                Content="Abrir configurações web"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="10" Padding="18"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="{Binding CompanySettingsVisibility}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock FontSize="19" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Regras da adega" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Ajuste a venda sem estoque e as taxas usadas no cálculo de lucro." />
+                    </StackPanel>
+
+                    <UniformGrid Grid.Row="2" Columns="2">
+                        <Border Margin="0,0,8,0" Padding="14"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7">
+                            <StackPanel>
+                                <TextBlock FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="ESTOQUE" />
+                                <TextBlock Margin="0,6,0,0" FontSize="18" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="{Binding NegativeStockText}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="8,0,0,0" Padding="14"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7">
+                            <StackPanel>
+                                <TextBlock FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="TAXAS" />
+                                <TextBlock Margin="0,6,0,0" FontSize="18" FontWeight="Bold"
+                                           Foreground="{StaticResource InfoBrush}"
+                                           Text="{Binding FeeText}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,8" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Estoque" />
+                            <CheckBox Foreground="{StaticResource TextSecondaryBrush}"
+                                      IsChecked="{Binding AllowNegativeStock, UpdateSourceTrigger=PropertyChanged}"
+                                      Content="Permitir negativo" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <CheckBox Margin="0,0,0,6"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      IsChecked="{Binding PixFeeEnabled, UpdateSourceTrigger=PropertyChanged}"
+                                      Content="Pix" />
+                            <TextBox Text="{Binding PixFeePercent, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource TextInputStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <CheckBox Margin="0,0,0,6"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      IsChecked="{Binding DebitFeeEnabled, UpdateSourceTrigger=PropertyChanged}"
+                                      Content="Débito" />
+                            <TextBox Text="{Binding DebitFeePercent, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource TextInputStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="6">
+                            <CheckBox Margin="0,0,0,6"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      IsChecked="{Binding CreditFeeEnabled, UpdateSourceTrigger=PropertyChanged}"
+                                      Content="Crédito" />
+                            <TextBox Text="{Binding CreditFeePercent, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource TextInputStyle}" />
+                        </StackPanel>
+                        <Button Grid.Column="8"
+                                MinWidth="148"
+                                VerticalAlignment="Bottom"
+                                Command="{Binding SaveCompanySettingsCommand}"
+                                Content="Salvar regras"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="12" Padding="18"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CanManageTeam}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock FontSize="19" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Backup" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Configure a frequência de segurança e gere uma cópia manual quando necessário." />
+                    </StackPanel>
+
+                    <UniformGrid Grid.Row="2" Columns="3">
+                        <Border Margin="0,0,8,0" Padding="14"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7">
+                            <StackPanel>
+                                <TextBlock FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="FREQUÊNCIA" />
+                                <TextBlock Margin="0,6,0,0" FontSize="18" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="{Binding BackupFrequencyText}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="4,0" Padding="14"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7">
+                            <StackPanel>
+                                <TextBlock FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="ÚLTIMO BACKUP" />
+                                <TextBlock Margin="0,6,0,0" FontSize="18" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="{Binding BackupLastAtText}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="8,0,0,0" Padding="14"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7">
+                            <StackPanel>
+                                <TextBlock FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="STATUS" />
+                                <TextBlock Margin="0,6,0,0" FontSize="18" FontWeight="Bold"
+                                           Foreground="{StaticResource InfoBrush}"
+                                           Text="{Binding BackupStatusText}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Frequência automática" />
+                            <ComboBox ItemsSource="{Binding BackupFrequencyOptions}"
+                                      DisplayMemberPath="Label"
+                                      SelectedValuePath="Value"
+                                      SelectedValue="{Binding BackupFrequency, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <Button Grid.Column="2"
+                                MinWidth="150"
+                                VerticalAlignment="Bottom"
+                                Command="{Binding SaveBackupSettingsCommand}"
+                                Content="Salvar frequência"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button Grid.Column="4"
+                                MinWidth="168"
+                                VerticalAlignment="Bottom"
+                                Command="{Binding RunManualBackupCommand}"
+                                Content="Gerar backup agora"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="14" Padding="18"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="{Binding ImportVisibility}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock FontSize="19" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Importação" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Envie uma planilha CSV ou XLSX para criar ou atualizar produtos da adega atual." />
+                    </StackPanel>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Colunas aceitas: produto, categoria, valor de custo, valor de venda, estoque e estoque mínimo."
+                                   TextWrapping="Wrap" />
+                        <Button Grid.Column="2"
+                                MinWidth="176"
+                                VerticalAlignment="Center"
+                                Command="{Binding ImportProductsCommand}"
+                                Content="Importar planilha"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="16" Padding="18"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CanExportData}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock FontSize="19" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Exportação" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Gere uma planilha CSV com dados da adega atual para conferência ou análise externa." />
+                    </StackPanel>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Tipo de exportação" />
+                            <ComboBox ItemsSource="{Binding ExportTypeOptions}"
+                                      DisplayMemberPath="Label"
+                                      SelectedValuePath="Value"
+                                      SelectedValue="{Binding SelectedExportType, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <Button Grid.Column="2"
+                                MinWidth="164"
+                                VerticalAlignment="Bottom"
+                                Command="{Binding ExportDataCommand}"
+                                Content="Exportar CSV"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="18" Padding="18"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CanManageTeam}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock FontSize="19" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Equipe" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Cadastre funcionários e ajuste o perfil de acesso da adega." />
+                        </StackPanel>
+                        <Button Grid.Column="2"
+                                MinWidth="132"
+                                Command="{Binding RefreshTeamCommand}"
+                                Content="Atualizar equipe"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                    </Grid>
+
+                    <Border Grid.Row="2" Padding="14"
+                            Background="{StaticResource SurfaceBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="7">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="12" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="12" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Novo funcionário" />
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.1*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="Usuário" />
+                                    <TextBox Text="{Binding NewEmployeeUsername, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource TextInputStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="Senha" />
+                                    <PasswordBox x:Name="NewEmployeePasswordInput"
+                                                 PasswordChanged="HandleNewEmployeePasswordChanged"
+                                                 Style="{StaticResource PasswordInputStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="Nome" />
+                                    <TextBox Text="{Binding NewEmployeeFirstName, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource TextInputStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="6">
+                                    <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="Perfil" />
+                                    <ComboBox ItemsSource="{Binding RoleOptions}"
+                                              DisplayMemberPath="Label"
+                                              SelectedValuePath="Value"
+                                              SelectedValue="{Binding NewEmployeeRole, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Grid.Row="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding NewEmployeeLastName, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource TextInputStyle}"
+                                         ToolTip="Sobrenome" />
+                                <TextBox Grid.Column="2"
+                                         Text="{Binding NewEmployeeCpf, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource TextInputStyle}"
+                                         ToolTip="CPF" />
+                                <TextBox Grid.Column="4"
+                                         Text="{Binding NewEmployeeEmail, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource TextInputStyle}"
+                                         ToolTip="E-mail" />
+                                <Button Grid.Column="6"
+                                        MinWidth="112"
+                                        Command="{Binding ClearNewEmployeeCommand}"
+                                        Content="Limpar"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Grid.Column="8"
+                                        MinWidth="136"
+                                        Command="{Binding CreateEmployeeCommand}"
+                                        Content="Cadastrar"
+                                        Style="{StaticResource PrimaryButtonStyle}" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.1*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="1.4*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Padding="14"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="10" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="10" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="Buscar funcionário" />
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding TeamSearch, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource TextInputStyle}"
+                                             ToolTip="Buscar por nome, usuário ou CPF" />
+                                    <Button Grid.Column="2"
+                                            MinWidth="92"
+                                            Command="{Binding RefreshTeamCommand}"
+                                            Content="Buscar"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                </Grid>
+                                <DataGrid Grid.Row="4"
+                                          MinHeight="210"
+                                          ItemsSource="{Binding Employees}"
+                                          SelectedItem="{Binding SelectedEmployee, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          HeadersVisibility="Column"
+                                          SelectionMode="Single">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Funcionário" Binding="{Binding DisplayName}" Width="*" />
+                                        <DataGridTextColumn Header="Perfil" Binding="{Binding RoleLabel}" Width="110" />
+                                        <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="80" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Column="2" Padding="14"
+                                Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="Editar funcionário" />
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Text="Nome" />
+                                        <TextBox Text="{Binding EmployeeFirstName, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Text="Sobrenome" />
+                                        <TextBox Text="{Binding EmployeeLastName, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Text="CPF" />
+                                        <TextBox Text="{Binding EmployeeCpf, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Grid.Row="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding EmployeeEmail, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource TextInputStyle}"
+                                             ToolTip="E-mail" />
+                                    <TextBox Grid.Column="2"
+                                             Text="{Binding EmployeePhone, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource TextInputStyle}"
+                                             ToolTip="Telefone" />
+                                    <ComboBox Grid.Column="4"
+                                              ItemsSource="{Binding RoleOptions}"
+                                              DisplayMemberPath="Label"
+                                              SelectedValuePath="Value"
+                                              SelectedValue="{Binding EmployeeRole, UpdateSourceTrigger=PropertyChanged}" />
+                                    <CheckBox Grid.Column="6"
+                                              VerticalAlignment="Center"
+                                              Content="Ativo"
+                                              Foreground="{StaticResource TextPrimaryBrush}"
+                                              IsChecked="{Binding EmployeeIsActive}" />
+                                    <Button Grid.Column="8"
+                                            MinWidth="122"
+                                            Command="{Binding SaveEmployeeCommand}"
+                                            Content="Salvar"
+                                            Style="{StaticResource PrimaryButtonStyle}" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

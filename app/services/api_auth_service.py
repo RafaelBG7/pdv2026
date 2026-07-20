@@ -216,6 +216,64 @@ def authenticate_credentials(identifier, password):
     return user
 
 
+def authenticate_credentials_for_activation(identifier, password):
+    """Validate credentials for subscription activation without bypassing login rules.
+
+    Normal API login intentionally blocks expired subscriptions. The Windows
+    client uses this narrower path only to validate the user's password before
+    applying an activation key to that same user's company.
+    """
+    if _login_is_blocked(identifier):
+        raise ApiAuthError(
+            'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.',
+            'login_rate_limited',
+            429,
+        )
+
+    user = _find_user(identifier)
+    password_matches = (
+        user.check_password(password)
+        if user is not None
+        else check_password_hash(_DUMMY_PASSWORD_HASH, password or '')
+    )
+    if not password_matches:
+        _register_login_failure(identifier)
+        raise ApiAuthError(
+            'Usuário, e-mail ou senha inválidos.',
+            'invalid_credentials',
+            401,
+            'password',
+        )
+
+    _clear_login_failures(identifier)
+    if not user.is_active:
+        raise ApiAuthError(
+            'Este usuário está inativo. Fale com o administrador da adega.',
+            'user_inactive',
+            403,
+        )
+    if not user.email_verified:
+        raise ApiAuthError(
+            'Seu e-mail ainda não foi confirmado.',
+            'email_not_verified',
+            403,
+        )
+    if user.role == 'master':
+        raise ApiAuthError(
+            'O painel master não precisa de ativação por key.',
+            'company_context_required',
+            403,
+        )
+    company = user.company
+    if not company or not company.active:
+        raise ApiAuthError(
+            'Esta adega está inativa. Fale com o administrador do sistema.',
+            'company_inactive',
+            403,
+        )
+    return user
+
+
 def _credential_hash(user):
     return hashlib.sha256((user.password_hash or '').encode('utf-8')).hexdigest()
 
@@ -384,6 +442,7 @@ def user_identity_data(user):
             'last_name': user.last_name or '',
             'full_name': user.full_name or user.username,
             'email': user.email or '',
+            'phone': user.phone or '',
             'role': user.role,
             'role_label': user.role_label,
             'permissions': user_permissions(user),

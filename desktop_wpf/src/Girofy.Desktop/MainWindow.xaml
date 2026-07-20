@@ -28,10 +28,10 @@
                         Padding="34"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Background="{StaticResource SurfaceBrush}"
-                        BorderBrush="{StaticResource BorderBrush}"
+                        Background="{StaticResource HeroGradientBrush}"
+                        BorderBrush="{StaticResource InfoBorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="8">
+                        CornerRadius="14">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -193,10 +193,54 @@
                                     <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
                                                Text="{Binding Login.ErrorMessage}" TextWrapping="Wrap" />
                                 </Border>
+                                <Border Margin="0,16,0,0" Padding="14"
+                                        Background="{StaticResource InfoSurfaceBrush}"
+                                        BorderBrush="{StaticResource InfoBorderBrush}"
+                                        BorderThickness="1" CornerRadius="6">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Login.RequiresSubscriptionActivation}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <TextBlock FontSize="16" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Text="Ativar assinatura" />
+                                        <TextBlock Margin="0,4,0,12"
+                                                   FontSize="13"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Text="Informe a key gerada no painel master para liberar esta adega."
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,0,0,7" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}" Text="Key de ativação" />
+                                        <TextBox Text="{Binding Login.ActivationKey, UpdateSourceTrigger=PropertyChanged}"
+                                                 CharacterCasing="Upper"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                        <Button Margin="0,12,0,0" Height="46"
+                                                Command="{Binding Login.ActivateSubscriptionCommand}"
+                                                Content="{Binding Login.ActivationButtonText}"
+                                                Style="{StaticResource PrimaryButtonStyle}" />
+                                    </StackPanel>
+                                </Border>
                                 <Button Margin="0,20,0,0" Height="50" IsDefault="True"
                                         Command="{Binding Login.LoginCommand}"
-                                        Content="{Binding Login.LoginButtonText}"
-                                        Style="{StaticResource PrimaryButtonStyle}" />
+                                        Content="{Binding Login.LoginButtonText}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Login.ShowLoginButton}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                                 <Button Margin="0,12,0,0" HorizontalAlignment="Center"
                                         Command="{Binding Login.ForgotPasswordCommand}"
                                         Content="Esqueci minha senha"
@@ -265,8 +309,8 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Padding="18,10" Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+            <Border Grid.Row="0" Padding="18,10" Background="{StaticResource HeroGradientBrush}"
+                    BorderBrush="{StaticResource InfoBorderBrush}" BorderThickness="1" CornerRadius="12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -300,17 +344,22 @@
 
             <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="196" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="216" />
+                    <ColumnDefinition Width="18" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Padding="12" Background="{StaticResource SurfaceBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                <Border Padding="12" Background="{StaticResource SidebarGradientBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="10" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -322,44 +371,50 @@
                         <TextBlock Margin="8" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextMutedBrush}" Text="MENU" />
                         <Button Grid.Row="2" Margin="0,0,0,8" Command="{Binding ShowDashboardCommand}"
-                                Content="Dashboard">
+                                Content="📊  Dashboard">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsDashboardView}" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
                         </Button>
                         <Button Grid.Row="3" Margin="0,0,0,8" Command="{Binding ShowProductsCommand}"
-                                Content="Produtos">
+                                Content="🏷️  Produtos">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
                                         <MultiDataTrigger>
                                             <MultiDataTrigger.Conditions>
                                                 <Condition Binding="{Binding IsCatalogView}" Value="True" />
                                                 <Condition Binding="{Binding Catalog.IsProductsView}" Value="True" />
                                             </MultiDataTrigger.Conditions>
-                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                                         </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
                         </Button>
                         <Button Grid.Row="4" Command="{Binding ShowCategoriesCommand}"
-                                Content="Categorias">
+                                Content="🗂️  Categorias">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
                                         <MultiDataTrigger>
                                             <MultiDataTrigger.Conditions>
                                                 <Condition Binding="{Binding IsCatalogView}" Value="True" />
                                                 <Condition Binding="{Binding Catalog.IsCategoriesView}" Value="True" />
                                             </MultiDataTrigger.Conditions>
-                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                                         </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -368,12 +423,14 @@
                         <Button Grid.Row="5" Margin="0,8,0,0"
                                 IsEnabled="{Binding Sales.IsAvailable}"
                                 Command="{Binding ShowSalesCommand}"
-                                Content="Vendas">
+                                Content="🛒  Vendas">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSalesView}" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -382,18 +439,99 @@
                         <Button Grid.Row="6" Margin="0,8,0,0"
                                 IsEnabled="{Binding CashRegister.IsAvailable}"
                                 Command="{Binding ShowCashRegisterCommand}"
-                                Content="Caixa">
+                                Content="💵  Caixa">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsCashRegisterView}" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <StackPanel Grid.Row="8" Margin="8">
+                        <Button Grid.Row="7" Margin="0,8,0,0"
+                                IsEnabled="{Binding Stock.CanViewStock}"
+                                Command="{Binding ShowStockCommand}"
+                                Content="📦  Estoque">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsStockView}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Grid.Row="8" Margin="0,8,0,0"
+                                IsEnabled="{Binding Payables.IsAvailable}"
+                                Command="{Binding ShowPayablesCommand}"
+                                Content="🧾  Contas">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPayablesView}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Grid.Row="9" Margin="0,8,0,0"
+                                IsEnabled="{Binding Reports.IsAvailable}"
+                                Command="{Binding ShowReportsCommand}"
+                                Content="📈  Relatórios">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsReportsView}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Grid.Row="10" Margin="0,8,0,0"
+                                IsEnabled="{Binding Audit.IsAvailable}"
+                                Command="{Binding ShowAuditCommand}"
+                                Content="🛡️  Auditoria">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAuditView}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Grid.Row="11" Margin="0,8,0,0"
+                                Command="{Binding ShowSettingsCommand}"
+                                Content="⚙️  Ajustes">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSettingsView}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource SidebarRaisedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <StackPanel Grid.Row="13" Margin="8">
                             <TextBlock FontSize="11" FontWeight="SemiBold"
                                        Foreground="{StaticResource TextMutedBrush}" Text="SERVIDOR" />
                             <TextBlock Margin="0,4,0,0" FontSize="12"
@@ -403,8 +541,8 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Column="2" Padding="22" Background="{StaticResource SurfaceBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                <Border Grid.Column="2" Padding="24" Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12">
                     <Grid>
                     <Grid>
                         <Grid.Style>
@@ -444,6 +582,71 @@
                             </Style>
                         </Grid.Style>
                         <views:SalesView DataContext="{Binding Sales}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsStockView}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <views:StockView DataContext="{Binding Stock}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsReportsView}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <views:ReportsView DataContext="{Binding Reports}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAuditView}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <views:AuditView DataContext="{Binding Audit}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSettingsView}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <views:SettingsView DataContext="{Binding Settings}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPayablesView}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <views:PayablesView DataContext="{Binding Payables}" />
                     </Grid>
                     <Grid>
                         <Grid.Style>

@@ -1,6 +1,9 @@
 <UserControl x:Class="Girofy.Desktop.Views.SalesView"
+             x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="True"
+             PreviewKeyDown="SalesView_PreviewKeyDown">
     <Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
@@ -271,18 +274,22 @@
                                             <ColumnDefinition Width="12" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox x:Name="ProductSearchInput"
+                                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                                  ToolTip="Buscar produto por nome ou código de barras"
+                                                 PreviewKeyDown="ProductSearchInput_PreviewKeyDown"
                                                  Style="{StaticResource TextInputStyle}" />
                                         <Button Grid.Column="2" MinWidth="112" Command="{Binding SearchCommand}"
                                                 Content="Pesquisar" Style="{StaticResource PrimaryButtonStyle}" />
                                     </Grid>
-                                    <DataGrid Grid.Row="4" MaxHeight="165"
+                                    <DataGrid x:Name="SearchResultsGrid"
+                                              Grid.Row="4" MaxHeight="165"
                                               ItemsSource="{Binding SearchResults}"
                                               SelectedItem="{Binding SelectedSearchProduct}"
                                               AutoGenerateColumns="False" IsReadOnly="True"
                                               CanUserAddRows="False" CanUserDeleteRows="False"
                                               HeadersVisibility="Column" SelectionMode="Single"
+                                              PreviewKeyDown="SearchResultsGrid_PreviewKeyDown"
                                               EnableRowVirtualization="True"
                                               Background="{StaticResource SurfaceBrush}"
                                               Foreground="{StaticResource TextPrimaryBrush}"
@@ -323,7 +330,8 @@
                                                        Foreground="{StaticResource TextPrimaryBrush}"
                                                        Text="{Binding SelectedSearchProduct.Name, TargetNullValue='Selecione um resultado'}" />
                                         </StackPanel>
-                                        <TextBox Grid.Column="2" Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox x:Name="QuantityInput"
+                                                 Grid.Column="2" Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}"
                                                  ToolTip="Quantidade" Style="{StaticResource TextInputStyle}" />
                                         <Button Grid.Column="4" MinWidth="112" Command="{Binding AddProductCommand}"
                                                 Content="Adicionar" Style="{StaticResource PrimaryButtonStyle}" />
@@ -480,13 +488,17 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Desconto" />
-                                                <TextBox Text="{Binding DiscountText, UpdateSourceTrigger=PropertyChanged}"
+                                                <TextBox x:Name="DiscountInput"
+                                                         Text="{Binding DiscountText, UpdateSourceTrigger=PropertyChanged}"
+                                                         PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
                                                          Style="{StaticResource TextInputStyle}" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Dinheiro" />
-                                                <TextBox Tag="money"
+                                                <TextBox x:Name="MoneyInput"
+                                                         Tag="money"
                                                          GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                         PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
                                                          Text="{Binding MoneyText, UpdateSourceTrigger=PropertyChanged}"
                                                          Style="{StaticResource TextInputStyle}" />
                                             </StackPanel>
@@ -499,23 +511,29 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Pix" />
-                                                <TextBox Tag="pix"
+                                                <TextBox x:Name="PixInput"
+                                                         Tag="pix"
                                                          GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                         PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
                                                          Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}"
                                                          Style="{StaticResource TextInputStyle}" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Débito" />
-                                                <TextBox Tag="debit"
+                                                <TextBox x:Name="DebitInput"
+                                                         Tag="debit"
                                                          GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                         PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
                                                          Text="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}"
                                                          Style="{StaticResource TextInputStyle}" />
                                             </StackPanel>
                                         </Grid>
                                         <StackPanel Grid.Row="4">
                                             <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Crédito" />
-                                            <TextBox Tag="credit"
+                                            <TextBox x:Name="CreditInput"
+                                                     Tag="credit"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                     PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
                                                      Text="{Binding CreditText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>

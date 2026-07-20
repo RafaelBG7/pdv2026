@@ -1,7 +1,7 @@
 using Girofy.Application.Abstractions;
 using Microsoft.Win32;
 
-namespace Girofy.Desktop.System;
+namespace Girofy.Desktop.Platform;
 
 public sealed class WindowsFileSaveService : IFileSaveService
 {

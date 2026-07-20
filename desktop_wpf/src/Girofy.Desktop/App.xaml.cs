@@ -3,7 +3,7 @@ using System.Windows.Threading;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Services;
 using Girofy.Application.ViewModels;
-using Girofy.Desktop.System;
+using Girofy.Desktop.Platform;
 using Girofy.Infrastructure.Api;
 using Girofy.Infrastructure.Logging;
 using Girofy.Infrastructure.Storage;

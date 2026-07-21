@@ -489,6 +489,9 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[data-settings-tabs]').forEach(function (tabs) {
     const buttons = Array.from(tabs.querySelectorAll('[data-settings-tab]'));
     const panels = Array.from(tabs.querySelectorAll('[data-settings-panel]'));
+    const shouldPersistTabs = tabs.dataset.settingsTabsPersist !== 'false';
+    const storageKey = tabs.dataset.settingsTabsStorage || 'adega-jf-settings-tab';
+    const defaultTab = tabs.dataset.settingsTabsDefault || '';
 
     function activateTab(tabName) {
       buttons.forEach(function (button) {
@@ -499,7 +502,9 @@ document.addEventListener('DOMContentLoaded', function () {
       panels.forEach(function (panel) {
         panel.classList.toggle('is-active', panel.dataset.settingsPanel === tabName);
       });
-      localStorage.setItem('adega-jf-settings-tab', tabName);
+      if (shouldPersistTabs) {
+        localStorage.setItem(storageKey, tabName);
+      }
     }
 
     buttons.forEach(function (button) {
@@ -509,11 +514,13 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const hashTab = window.location.hash === '#accessibility' ? 'accessibility' : '';
-    const storedTab = localStorage.getItem('adega-jf-settings-tab');
+    const storedTab = shouldPersistTabs ? localStorage.getItem(storageKey) : '';
     if (hashTab && buttons.some(function (button) { return button.dataset.settingsTab === hashTab; })) {
       activateTab(hashTab);
     } else if (storedTab && buttons.some(function (button) { return button.dataset.settingsTab === storedTab; })) {
       activateTab(storedTab);
+    } else if (defaultTab && buttons.some(function (button) { return button.dataset.settingsTab === defaultTab; })) {
+      activateTab(defaultTab);
     }
   });
 

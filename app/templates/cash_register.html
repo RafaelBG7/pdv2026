@@ -9,7 +9,7 @@
   <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}" data-global-new-sale>Realizar Venda - F3</a>
 </div>
 
-<div class="settings-tabs" data-settings-tabs>
+<div class="settings-tabs" data-settings-tabs data-settings-tabs-default="current-cash" data-settings-tabs-persist="false">
   <div class="settings-tab-nav" role="tablist" aria-label="Caixa">
     <button class="settings-tab-button is-active" type="button" data-settings-tab="current-cash" role="tab" aria-selected="true">Caixa atual</button>
     <button class="settings-tab-button" type="button" data-settings-tab="previous-cash" role="tab" aria-selected="false">Caixas anteriores</button>
@@ -62,7 +62,7 @@
         </div>
         {% endif %}
 
-        <form class="cash-action-form" method="post" action="{{ url_for('main.close_cash_register_route') }}" {% if needs_permission_override('can_manage_cash_register') %}data-permission-override="true"{% endif %}>
+        <form class="cash-action-form cash-close-form" method="post" action="{{ url_for('main.close_cash_register_route') }}" {% if needs_permission_override('can_manage_cash_register') %}data-permission-override="true"{% endif %}>
           <div>
             <label class="form-label" for="closing_amount">Valor final em caixa</label>
             <input class="form-control" id="closing_amount" name="closing_amount" inputmode="numeric" placeholder="0,00" data-currency-input required>

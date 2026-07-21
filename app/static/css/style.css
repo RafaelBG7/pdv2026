@@ -7264,3 +7264,33 @@ html[data-text-scale='extra'] .sale-payment-summary [data-payment-step-total] {
     grid-template-columns: 1fr;
   }
 }
+
+.cash-close-form {
+  grid-template-columns: minmax(150px, 220px) max-content;
+  justify-content: start;
+  align-items: end;
+}
+
+.cash-close-form > div,
+.cash-close-form .form-control {
+  width: 100%;
+  max-width: 220px;
+}
+
+.cash-close-form .btn {
+  width: auto;
+  min-width: 128px;
+}
+
+@media (max-width: 640px) {
+  .cash-close-form {
+    grid-template-columns: 1fr;
+  }
+
+  .cash-close-form > div,
+  .cash-close-form .form-control,
+  .cash-close-form .btn {
+    width: 100%;
+    max-width: none;
+  }
+}

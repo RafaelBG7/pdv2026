@@ -7,14 +7,17 @@ public sealed class LocalFileLoggerProvider : ILoggerProvider
     private readonly string _logPath;
     private readonly object _writeLock = new();
 
+    public static string LogDirectoryPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Girofy",
+        "logs");
+
+    public static string LogFilePath => Path.Combine(LogDirectoryPath, "desktop.log");
+
     public LocalFileLoggerProvider()
     {
-        var logDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Girofy",
-            "logs");
-        Directory.CreateDirectory(logDirectory);
-        _logPath = Path.Combine(logDirectory, "desktop.log");
+        Directory.CreateDirectory(LogDirectoryPath);
+        _logPath = LogFilePath;
     }
 
     public ILogger CreateLogger(string categoryName) => new LocalFileLogger(categoryName, WriteLine);
@@ -66,6 +69,11 @@ public sealed class LocalFileLoggerProvider : ILoggerProvider
             var message = formatter(state, exception);
             var exceptionName = exception is null ? string.Empty : $" | {exception.GetType().Name}";
             writeLine($"{DateTimeOffset.Now:O} [{logLevel}] {categoryName}: {message}{exceptionName}");
+
+            if (exception is not null)
+            {
+                writeLine(exception.ToString());
+            }
         }
     }
 

@@ -100,10 +100,25 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        await _host.StartAsync();
-        _logger = _host.Services.GetRequiredService<ILogger<App>>();
-        _logger.LogInformation("Girofy Windows started.");
-        _host.Services.GetRequiredService<MainWindow>().Show();
+
+        try
+        {
+            await _host.StartAsync();
+            _logger = _host.Services.GetRequiredService<ILogger<App>>();
+            _logger.LogInformation("Girofy Windows started.");
+            _host.Services.GetRequiredService<MainWindow>().Show();
+        }
+        catch (Exception exception)
+        {
+            WriteEmergencyLog(exception, "Falha ao iniciar o Girofy Windows.");
+            _logger?.LogCritical(exception, "Desktop startup failed.");
+            MessageBox.Show(
+                BuildUnexpectedErrorMessage(),
+                "Girofy",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown(1);
+        }
     }
 
     protected override async void OnExit(ExitEventArgs e)
@@ -117,9 +132,10 @@ public partial class App : System.Windows.Application
 
     private void HandleDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
+        WriteEmergencyLog(e.Exception, "Falha inesperada na interface do Girofy Windows.");
         _logger?.LogError(e.Exception, "Unhandled desktop UI error.");
         MessageBox.Show(
-            "O Girofy encontrou uma falha inesperada. Tente novamente.",
+            BuildUnexpectedErrorMessage(),
             "Girofy",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
@@ -128,12 +144,38 @@ public partial class App : System.Windows.Application
 
     private void HandleDomainException(object? sender, UnhandledExceptionEventArgs e)
     {
-        _logger?.LogCritical(e.ExceptionObject as Exception, "Unhandled desktop process error.");
+        var exception = e.ExceptionObject as Exception;
+        WriteEmergencyLog(exception, "Falha inesperada no processo do Girofy Windows.");
+        _logger?.LogCritical(exception, "Unhandled desktop process error.");
     }
 
     private void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
     {
+        WriteEmergencyLog(e.Exception, "Falha inesperada em tarefa assíncrona do Girofy Windows.");
         _logger?.LogError(e.Exception, "Unobserved desktop task error.");
         e.SetObserved();
+    }
+
+    private static string BuildUnexpectedErrorMessage() =>
+        "O Girofy encontrou uma falha inesperada. Tente novamente." +
+        Environment.NewLine +
+        Environment.NewLine +
+        "Detalhes técnicos foram salvos em:" +
+        Environment.NewLine +
+        LocalFileLoggerProvider.LogFilePath;
+
+    private static void WriteEmergencyLog(Exception? exception, string message)
+    {
+        try
+        {
+            Directory.CreateDirectory(LocalFileLoggerProvider.LogDirectoryPath);
+            File.AppendAllText(
+                LocalFileLoggerProvider.LogFilePath,
+                $"{DateTimeOffset.Now:O} [Critical] {message}{Environment.NewLine}{exception}{Environment.NewLine}");
+        }
+        catch
+        {
+            // O app nao pode quebrar novamente tentando registrar a propria falha.
+        }
     }
 }

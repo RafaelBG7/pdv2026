@@ -134,12 +134,30 @@ public partial class App : System.Windows.Application
     {
         WriteEmergencyLog(e.Exception, "Falha inesperada na interface do Girofy Windows.");
         _logger?.LogError(e.Exception, "Unhandled desktop UI error.");
-        MessageBox.Show(
-            BuildUnexpectedErrorMessage(),
-            "Girofy",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error);
+
+        if (!HasVisibleWindow())
+        {
+            MessageBox.Show(
+                BuildUnexpectedErrorMessage(),
+                "Girofy",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+
         e.Handled = true;
+    }
+
+    private bool HasVisibleWindow()
+    {
+        foreach (Window window in Windows)
+        {
+            if (window.IsVisible)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void HandleDomainException(object? sender, UnhandledExceptionEventArgs e)

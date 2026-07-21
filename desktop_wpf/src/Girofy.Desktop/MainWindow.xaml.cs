@@ -1,20 +1,24 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using Girofy.Application.ViewModels;
+using Microsoft.Extensions.Logging;
 
 namespace Girofy.Desktop;
 
 public partial class MainWindow : Window
 {
     private readonly ConnectionViewModel _viewModel;
+    private readonly ILogger<MainWindow> _logger;
     private bool _initialized;
     private bool _syncingPassword;
 
-    public MainWindow(ConnectionViewModel viewModel)
+    public MainWindow(ConnectionViewModel viewModel, ILogger<MainWindow> logger)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _logger = logger;
         DataContext = viewModel;
         Loaded += HandleLoaded;
         _viewModel.Login.PropertyChanged += HandleLoginPropertyChanged;
@@ -27,21 +31,62 @@ public partial class MainWindow : Window
             return;
         }
 
-        _initialized = true;
-        await _viewModel.InitializeAsync();
+        try
+        {
+            _initialized = true;
+            await _viewModel.InitializeAsync();
+            QueueLoginFocus();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Main window initialization failed.");
+            _initialized = false;
+        }
+    }
 
+    private void QueueLoginFocus()
+    {
         if (_viewModel.Login.IsAuthenticated)
         {
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_viewModel.Login.Identifier))
+        Dispatcher.InvokeAsync(
+            () =>
+            {
+                try
+                {
+                    if (_viewModel.Login.IsAuthenticated)
+                    {
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(_viewModel.Login.Identifier))
+                    {
+                        TryFocus(IdentifierInput);
+                    }
+                    else if (_viewModel.Login.ShowPassword)
+                    {
+                        TryFocus(VisiblePasswordInput);
+                    }
+                    else
+                    {
+                        TryFocus(PasswordInput);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Initial login focus failed.");
+                }
+            },
+            DispatcherPriority.Background);
+    }
+
+    private static void TryFocus(Control control)
+    {
+        if (control.IsVisible && control.IsEnabled)
         {
-            IdentifierInput.Focus();
-        }
-        else
-        {
-            PasswordInput.Focus();
+            control.Focus();
         }
     }
 
@@ -57,27 +102,34 @@ public partial class MainWindow : Window
 
     private void HandlePasswordVisibilityChanged(object sender, RoutedEventArgs e)
     {
-        var showPassword = sender is CheckBox { IsChecked: true };
-        _viewModel.Login.ShowPassword = showPassword;
-
-        _syncingPassword = true;
         try
         {
-            if (showPassword)
+            var showPassword = sender is CheckBox { IsChecked: true };
+            _viewModel.Login.ShowPassword = showPassword;
+
+            _syncingPassword = true;
+            try
             {
-                VisiblePasswordInput.Text = PasswordInput.Password;
-                VisiblePasswordInput.CaretIndex = VisiblePasswordInput.Text.Length;
-                VisiblePasswordInput.Focus();
+                if (showPassword)
+                {
+                    VisiblePasswordInput.Text = PasswordInput.Password;
+                    VisiblePasswordInput.CaretIndex = VisiblePasswordInput.Text.Length;
+                    TryFocus(VisiblePasswordInput);
+                }
+                else
+                {
+                    PasswordInput.Password = VisiblePasswordInput.Text;
+                    TryFocus(PasswordInput);
+                }
             }
-            else
+            finally
             {
-                PasswordInput.Password = VisiblePasswordInput.Text;
-                PasswordInput.Focus();
+                _syncingPassword = false;
             }
         }
-        finally
+        catch (Exception exception)
         {
-            _syncingPassword = false;
+            _logger.LogWarning(exception, "Password visibility change failed.");
         }
     }
 
@@ -88,9 +140,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        _syncingPassword = true;
         try
         {
+            _syncingPassword = true;
             var password = _viewModel.Login.Password;
             if (!string.Equals(PasswordInput.Password, password, StringComparison.Ordinal))
             {
@@ -101,6 +153,10 @@ public partial class MainWindow : Window
             {
                 VisiblePasswordInput.Text = password;
             }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Password field synchronization failed.");
         }
         finally
         {

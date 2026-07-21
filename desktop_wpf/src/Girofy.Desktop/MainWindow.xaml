@@ -372,7 +372,8 @@
                                    Foreground="{StaticResource TextMutedBrush}" Text="MENU" />
                         <Button Grid.Row="2" Margin="0,0,0,8" Command="{Binding ShowDashboardCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M3,3 L10,3 L10,10 L3,10 Z M14,3 L21,3 L21,7 L14,7 Z M14,11 L21,11 L21,21 L14,21 Z M3,14 L10,14 L10,21 L3,21 Z" />
@@ -380,6 +381,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Dashboard" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -394,7 +396,8 @@
                         </Button>
                         <Button Grid.Row="3" Margin="0,0,0,8" Command="{Binding ShowProductsCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M4,5 L12,5 L20,13 L12,21 L4,13 Z M8,9 L8.01,9" />
@@ -402,6 +405,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Produtos" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -420,7 +424,8 @@
                         </Button>
                         <Button Grid.Row="4" Command="{Binding ShowCategoriesCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M3,6 L9,6 L11,8 L21,8 L21,19 L3,19 Z M3,10 L21,10" />
@@ -428,6 +433,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Categorias" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -448,7 +454,8 @@
                                 IsEnabled="{Binding Sales.IsAvailable}"
                                 Command="{Binding ShowSalesCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M4,5 L6,5 L8.5,15 L18,15 L21,8 L7,8 M10,20 L10.01,20 M17,20 L17.01,20" />
@@ -456,6 +463,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Vendas" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -472,7 +480,8 @@
                                 IsEnabled="{Binding CashRegister.IsAvailable}"
                                 Command="{Binding ShowCashRegisterCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M3,7 L21,7 L21,17 L3,17 Z M7,12 L7.01,12 M17,12 L17.01,12 M12,9 C13.7,9 15,10.3 15,12 C15,13.7 13.7,15 12,15 C10.3,15 9,13.7 9,12 C9,10.3 10.3,9 12,9 Z" />
@@ -480,6 +489,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Caixa" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -496,7 +506,8 @@
                                 IsEnabled="{Binding Stock.CanViewStock}"
                                 Command="{Binding ShowStockCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M4,8 L12,4 L20,8 L20,18 L12,22 L4,18 Z M4,8 L12,12 L20,8 M12,12 L12,22" />
@@ -504,6 +515,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Estoque" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -520,7 +532,8 @@
                                 IsEnabled="{Binding Payables.IsAvailable}"
                                 Command="{Binding ShowPayablesCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M6,3 L18,3 L18,21 L15,19 L12,21 L9,19 L6,21 Z M9,8 L15,8 M9,12 L15,12 M9,16 L13,16" />
@@ -528,6 +541,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Contas" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -544,7 +558,8 @@
                                 IsEnabled="{Binding Reports.IsAvailable}"
                                 Command="{Binding ShowReportsCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M4,20 L20,20 M7,17 L7,11 M12,17 L12,7 M17,17 L17,4" />
@@ -552,6 +567,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Relatórios" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -568,7 +584,8 @@
                                 IsEnabled="{Binding Audit.IsAvailable}"
                                 Command="{Binding ShowAuditCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M12,3 L20,6 L19,12 C18,16 15,19 12,21 C9,19 6,16 5,12 L4,6 Z M9,12 L11,14 L15,10" />
@@ -576,6 +593,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Auditoria" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -591,7 +609,8 @@
                         <Button Grid.Row="11" Margin="0,8,0,0"
                                 Command="{Binding ShowSettingsCommand}"
                                 HorizontalContentAlignment="Left">
-                            <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
+                            <Button.Content>
+                                <StackPanel Style="{StaticResource NavMenuItemContentStyle}">
                                 <Viewbox Style="{StaticResource NavMenuIconViewboxStyle}">
                                     <Grid Width="24" Height="24">
                                         <Path Style="{StaticResource NavMenuIconPathStyle}" Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L12,5 M12,19 L12,22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M2,12 L5,12 M19,12 L22,12 M4.9,19.1 L7,17 M17,7 L19.1,4.9" />
@@ -599,6 +618,7 @@
                                 </Viewbox>
                                 <TextBlock Style="{StaticResource NavMenuTextStyle}" Text="Ajustes" />
                             </StackPanel>
+                            </Button.Content>
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>

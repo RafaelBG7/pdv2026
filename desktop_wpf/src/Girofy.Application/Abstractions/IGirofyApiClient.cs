@@ -101,6 +101,11 @@ public interface IGirofyApiClient
         string accessToken,
         CancellationToken cancellationToken);
 
+    Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
+        string accessToken,
+        CancellationToken cancellationToken) =>
+        Task.FromException<SalesHistorySnapshot>(new NotSupportedException());
+
     Task<ReportsSnapshot> GetReportsSummaryAsync(
         string accessToken,
         ReportsQuery query,

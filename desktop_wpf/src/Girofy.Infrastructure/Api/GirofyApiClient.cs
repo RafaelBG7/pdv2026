@@ -270,6 +270,21 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<DashboardSnapshot>(response, cancellationToken);
     }
 
+    public async Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "api/v1/sales/today",
+            accessToken);
+        using var response = await httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        return await ReadEnvelopeAsync<SalesHistorySnapshot>(response, cancellationToken);
+    }
+
     public async Task<ReportsSnapshot> GetReportsSummaryAsync(
         string accessToken,
         ReportsQuery query,

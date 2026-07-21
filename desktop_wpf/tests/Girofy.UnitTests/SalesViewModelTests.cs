@@ -34,6 +34,58 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Typing_searches_products_live_and_orders_suggestions()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, sessionContext);
+
+        viewModel.SearchText = "coca";
+
+        await WaitUntilAsync(() => viewModel.SearchResults.Count == 2);
+
+        Assert.Equal(["Coca Cola 2L", "Coca Zero 2L"], viewModel.SearchResults.Select(item => item.Name));
+        Assert.Equal("Coca Cola 2L", viewModel.SelectedSearchProduct?.Name);
+        Assert.False(viewModel.HasError);
+    }
+
+    [Fact]
+    public async Task Initialize_loads_today_sales_history()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient
+        {
+            DashboardRecentSales =
+            [
+                new DashboardRecentSale
+                {
+                    Id = 18,
+                    CreatedAt = "2026-07-21T09:15:00-03:00",
+                    FinalAmount = 11m,
+                    UserName = "operador",
+                    PaymentMethods = ["Dinheiro"],
+                },
+                new DashboardRecentSale
+                {
+                    Id = 19,
+                    CreatedAt = "2026-07-21T10:30:00-03:00",
+                    FinalAmount = 22m,
+                    UserName = "operador",
+                    PaymentMethods = ["Pix", "Débito"],
+                },
+            ],
+        };
+        using var viewModel = new SalesViewModel(apiClient, sessionContext);
+
+        await viewModel.InitializeAsync();
+
+        Assert.True(viewModel.HasTodaySales);
+        Assert.False(viewModel.HasNoTodaySales);
+        Assert.Equal([18, 19], viewModel.TodaySales.Select(sale => sale.Id));
+        Assert.Equal("Pix + Débito", viewModel.TodaySales[1].PaymentText);
+    }
+
+    [Fact]
     public async Task Failure_preserves_the_order_and_retry_reuses_the_idempotency_key()
     {
         var sessionContext = SessionContext();
@@ -196,6 +248,55 @@ public sealed class SalesViewModelTests
         Assert.False(viewModel.IsPaymentStepVisible);
     }
 
+    [Fact]
+    public async Task Payment_autocomplete_moves_untouched_value_and_keeps_manual_amounts()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, sessionContext)
+        {
+            SearchText = "789",
+        };
+
+        viewModel.OpenSaleEditorCommand.Execute(null);
+        await viewModel.SearchCommand.ExecuteAsync();
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.OpenPaymentStepCommand.Execute(null);
+
+        Assert.Equal("12,00", viewModel.MoneyText);
+
+        viewModel.AutoCompletePaymentIfEmpty("debit");
+
+        Assert.Equal("0,00", viewModel.MoneyText);
+        Assert.Equal("12,00", viewModel.DebitText);
+
+        viewModel.DebitText = "3,00";
+        viewModel.AutoCompletePaymentIfEmpty("pix");
+
+        Assert.Equal("3,00", viewModel.DebitText);
+        Assert.Equal("9,00", viewModel.PixText);
+        Assert.Equal("0,00", viewModel.MoneyText);
+
+        viewModel.AutoCompletePaymentIfEmpty("credit");
+
+        Assert.Equal("3,00", viewModel.DebitText);
+        Assert.Equal("0,00", viewModel.PixText);
+        Assert.Equal("9,00", viewModel.CreditText);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> predicate)
+    {
+        for (var attempt = 0; attempt < 30; attempt++)
+        {
+            if (predicate())
+            {
+                return;
+            }
+
+            await Task.Delay(50);
+        }
+    }
+
     private static AppSessionContext SessionContext()
     {
         var context = new AppSessionContext();
@@ -225,6 +326,8 @@ public sealed class SalesViewModelTests
         public decimal LastDiscountAmount { get; private set; }
 
         public IReadOnlyList<SalePaymentRequest> LastPayments { get; private set; } = [];
+
+        public IReadOnlyList<DashboardRecentSale> DashboardRecentSales { get; init; } = [];
 
         public Task<CatalogProductList> GetCatalogProductsAsync(
             string accessToken,
@@ -326,7 +429,18 @@ public sealed class SalesViewModelTests
         public Task<DashboardSnapshot> GetDashboardSummaryAsync(
             string accessToken,
             CancellationToken cancellationToken) =>
-            Task.FromException<DashboardSnapshot>(new NotSupportedException());
+            Task.FromResult(new DashboardSnapshot
+            {
+                RecentSales = DashboardRecentSales,
+            });
+
+        public Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
+            string accessToken,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new SalesHistorySnapshot
+            {
+                Sales = DashboardRecentSales,
+            });
 
         public Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
             string accessToken,

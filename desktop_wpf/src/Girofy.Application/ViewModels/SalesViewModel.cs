@@ -71,11 +71,16 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private string _errorMessage = string.Empty;
     private string _successMessage = string.Empty;
     private bool _isBusy;
+    private bool _isSearching;
     private bool _isSaleEditorOpen;
     private bool _isPaymentStepOpen;
     private bool _isDiscountPopupOpen;
+    private bool _updatingPaymentText;
+    private CancellationTokenSource? _searchDebounceCts;
     private string? _idempotencyKey;
     private SaleReceipt? _receipt;
+    private readonly HashSet<string> _manualPaymentMethods = [];
+    private readonly HashSet<string> _autoPaymentMethods = [];
 
     public SalesViewModel(
         IGirofyApiClient apiClient,
@@ -91,10 +96,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         DecreaseQuantityCommand = new RelayCommand<SaleCartItemViewModel>(
             item => item.Quantity--,
             item => item.Quantity > 1);
-        FillMoneyCommand = new RelayCommand(() => FillRemaining("money"));
-        FillPixCommand = new RelayCommand(() => FillRemaining("pix"));
-        FillDebitCommand = new RelayCommand(() => FillRemaining("debit"));
-        FillCreditCommand = new RelayCommand(() => FillRemaining("credit"));
+        FillMoneyCommand = new RelayCommand(() => FillRemaining("money", markAsManual: true));
+        FillPixCommand = new RelayCommand(() => FillRemaining("pix", markAsManual: true));
+        FillDebitCommand = new RelayCommand(() => FillRemaining("debit", markAsManual: true));
+        FillCreditCommand = new RelayCommand(() => FillRemaining("credit", markAsManual: true));
         FinalizeCommand = new AsyncRelayCommand(FinalizeAsync);
         OpenSaleEditorCommand = new RelayCommand(OpenSaleEditor);
         CloseSaleEditorCommand = new RelayCommand(CloseSaleEditor);
@@ -111,6 +116,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<SaleCartItemViewModel> CartItems { get; } = [];
 
+    public ObservableCollection<DashboardRecentSale> TodaySales { get; } = [];
+
     public string SearchText
     {
         get => _searchText;
@@ -122,8 +129,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             }
             if (string.IsNullOrWhiteSpace(value))
             {
+                CancelPendingSearch();
                 ClearSearchResults();
+                return;
             }
+
+            QueueSearch();
         }
     }
 
@@ -235,6 +246,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public bool HasCart => CartItems.Count > 0;
 
+    public bool HasTodaySales => TodaySales.Count > 0;
+
+    public bool HasNoTodaySales => !HasTodaySales;
+
     public SaleReceipt? Receipt
     {
         get => _receipt;
@@ -314,6 +329,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 OpenDiscountPopupCommand.NotifyCanExecuteChanged();
             }
         }
+    }
+
+    public bool IsSearching
+    {
+        get => _isSearching;
+        private set => SetProperty(ref _isSearching, value);
     }
 
     public bool IsSaleEditorOpen
@@ -396,28 +417,39 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public RelayCommand NewSaleCommand { get; }
 
-    public Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_sessionContext.Current is null || !IsAvailable)
         {
             ResetAll();
+            return;
         }
-        return Task.CompletedTask;
+
+        await LoadTodaySalesAsync(cancellationToken);
     }
 
-    private async Task SearchAsync(CancellationToken cancellationToken)
+    private Task SearchAsync(CancellationToken cancellationToken) =>
+        SearchProductsAsync(showMessages: true, cancellationToken);
+
+    private async Task SearchProductsAsync(bool showMessages, CancellationToken cancellationToken)
     {
         var term = SearchText.Trim();
         if (term.Length < 1)
         {
-            ErrorMessage = "Digite o nome ou código do produto.";
+            if (showMessages)
+            {
+                ErrorMessage = "Digite o nome ou código do produto.";
+            }
             ClearSearchResults();
             return;
         }
 
         var session = RequireSession();
-        IsBusy = true;
-        ClearMessages();
+        IsSearching = true;
+        if (showMessages)
+        {
+            ClearMessages();
+        }
         try
         {
             var result = await _apiClient.GetCatalogProductsAsync(
@@ -445,19 +477,60 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 string.Equals(product.Barcode, term, StringComparison.OrdinalIgnoreCase))
                 ?? SearchResults.FirstOrDefault();
             OnPropertyChanged(nameof(HasSearchResults));
-            if (SearchResults.Count == 0)
+            if (SearchResults.Count == 0 && showMessages)
             {
                 ErrorMessage = "Nenhum produto ativo foi encontrado.";
             }
         }
         catch (Exception exception)
         {
-            SetSafeError(exception, "Não foi possível pesquisar os produtos agora.");
+            if (showMessages)
+            {
+                SetSafeError(exception, "Não foi possível pesquisar os produtos agora.");
+            }
+            else
+            {
+                ClearSearchResults();
+            }
         }
         finally
         {
-            IsBusy = false;
+            IsSearching = false;
         }
+    }
+
+    private void QueueSearch()
+    {
+        CancelPendingSearch();
+        var cts = new CancellationTokenSource();
+        _searchDebounceCts = cts;
+        _ = SearchAfterDelayAsync(cts);
+    }
+
+    private async Task SearchAfterDelayAsync(CancellationTokenSource cts)
+    {
+        try
+        {
+            await Task.Delay(220, cts.Token);
+            await SearchProductsAsync(showMessages: false, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_searchDebounceCts, cts))
+            {
+                _searchDebounceCts = null;
+            }
+            cts.Dispose();
+        }
+    }
+
+    private void CancelPendingSearch()
+    {
+        _searchDebounceCts?.Cancel();
+        _searchDebounceCts = null;
     }
 
     private void AddSelectedProduct()
@@ -512,23 +585,19 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         {
             return;
         }
-
-        var currentValue = method switch
+        if (_manualPaymentMethods.Contains(method))
         {
-            "money" => ParsedMoneyOrZero(MoneyText),
-            "pix" => ParsedMoneyOrZero(PixText),
-            "debit" => ParsedMoneyOrZero(DebitText),
-            "credit" => ParsedMoneyOrZero(CreditText),
-            _ => 0,
-        };
+            return;
+        }
 
-        if (currentValue == 0 && MissingAmount > 0)
+        ClearAutoFilledPaymentsExcept(method);
+        if (MissingAmount > 0 || PaymentAmount(method) > 0)
         {
             FillRemaining(method);
         }
     }
 
-    private void FillRemaining(string method)
+    private void FillRemaining(string method, bool markAsManual = false)
     {
         var paidWithoutTarget = method switch
         {
@@ -539,12 +608,64 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             _ => PaidAmount,
         };
         var value = Math.Max(0, Total - paidWithoutTarget).ToString("N2", BrazilianCulture);
-        switch (method)
+        SetPaymentAmount(method, value, markAsManual);
+    }
+
+    private void ClearAutoFilledPaymentsExcept(string method)
+    {
+        foreach (var autoMethod in _autoPaymentMethods.ToArray())
         {
-            case "money": MoneyText = value; break;
-            case "pix": PixText = value; break;
-            case "debit": DebitText = value; break;
-            case "credit": CreditText = value; break;
+            if (string.Equals(autoMethod, method, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            SetPaymentAmount(autoMethod, "0,00");
+        }
+    }
+
+    private decimal PaymentAmount(string method) => method switch
+    {
+        "money" => ParsedMoneyOrZero(MoneyText),
+        "pix" => ParsedMoneyOrZero(PixText),
+        "debit" => ParsedMoneyOrZero(DebitText),
+        "credit" => ParsedMoneyOrZero(CreditText),
+        _ => 0,
+    };
+
+    private void SetPaymentAmount(string method, string value, bool markAsManual = false)
+    {
+        _updatingPaymentText = true;
+        try
+        {
+            switch (method)
+            {
+                case "money": MoneyText = value; break;
+                case "pix": PixText = value; break;
+                case "debit": DebitText = value; break;
+                case "credit": CreditText = value; break;
+            }
+        }
+        finally
+        {
+            _updatingPaymentText = false;
+        }
+
+        if (markAsManual)
+        {
+            _manualPaymentMethods.Add(method);
+            _autoPaymentMethods.Remove(method);
+            return;
+        }
+
+        _manualPaymentMethods.Remove(method);
+        if (ParsedMoneyOrZero(value) > 0)
+        {
+            _autoPaymentMethods.Add(method);
+        }
+        else
+        {
+            _autoPaymentMethods.Remove(method);
         }
     }
 
@@ -596,6 +717,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             SuccessMessage = receipt.AlreadyProcessed
                 ? $"{receipt.SaleNumberText} já estava registrada e foi recuperada sem duplicação."
                 : $"{receipt.SaleNumberText} finalizada com sucesso.";
+            await LoadTodaySalesAsync(cancellationToken);
             ResetDraftAfterSuccess();
             IsPaymentStepOpen = false;
             IsSaleEditorOpen = false;
@@ -728,6 +850,15 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     {
         if (SetProperty(ref field, value, propertyName))
         {
+            if (!_updatingPaymentText)
+            {
+                var method = PaymentMethodFromProperty(propertyName);
+                if (method is not null)
+                {
+                    _manualPaymentMethods.Add(method);
+                    _autoPaymentMethods.Remove(method);
+                }
+            }
             NotifyTotalsChanged();
         }
     }
@@ -800,6 +931,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         CreditText = "0,00";
         IsDiscountPopupOpen = false;
         _idempotencyKey = null;
+        _manualPaymentMethods.Clear();
+        _autoPaymentMethods.Clear();
         ClearSearchResults();
         NotifyCartChanged();
     }
@@ -811,6 +944,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
         IsBusy = false;
+        TodaySales.Clear();
+        OnPropertyChanged(nameof(HasTodaySales));
+        OnPropertyChanged(nameof(HasNoTodaySales));
         OnPropertyChanged(nameof(IsAvailable));
     }
 
@@ -873,5 +1009,53 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         return $"{percent.ToString("N2", BrazilianCulture)}%";
     }
 
-    public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;
+    private async Task LoadTodaySalesAsync(CancellationToken cancellationToken)
+    {
+        var session = _sessionContext.Current;
+        if (session is null || !IsAvailable)
+        {
+            TodaySales.Clear();
+            OnPropertyChanged(nameof(HasTodaySales));
+            OnPropertyChanged(nameof(HasNoTodaySales));
+            return;
+        }
+
+        try
+        {
+            var snapshot = await _apiClient.GetTodaySalesHistoryAsync(session.AccessToken, cancellationToken);
+            if (!IsSameSession(session))
+            {
+                return;
+            }
+
+            TodaySales.Clear();
+            foreach (var sale in snapshot.Sales)
+            {
+                TodaySales.Add(sale);
+            }
+            OnPropertyChanged(nameof(HasTodaySales));
+            OnPropertyChanged(nameof(HasNoTodaySales));
+        }
+        catch
+        {
+            TodaySales.Clear();
+            OnPropertyChanged(nameof(HasTodaySales));
+            OnPropertyChanged(nameof(HasNoTodaySales));
+        }
+    }
+
+    private static string? PaymentMethodFromProperty(string propertyName) => propertyName switch
+    {
+        nameof(MoneyText) => "money",
+        nameof(PixText) => "pix",
+        nameof(DebitText) => "debit",
+        nameof(CreditText) => "credit",
+        _ => null,
+    };
+
+    public void Dispose()
+    {
+        CancelPendingSearch();
+        _sessionContext.Changed -= HandleSessionChanged;
+    }
 }

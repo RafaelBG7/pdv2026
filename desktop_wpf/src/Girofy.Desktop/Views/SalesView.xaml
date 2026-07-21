@@ -31,9 +31,9 @@
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    Text="Abra uma nova venda em janela separada e finalize o pagamento em outra etapa." />
                     </StackPanel>
-                    <Button Grid.Column="1" MinWidth="150" Height="46"
+                    <Button Grid.Column="1" MinWidth="170" Height="46"
                             Command="{Binding OpenSaleEditorCommand}"
-                            Content="Nova venda" Style="{StaticResource PrimaryButtonStyle}" />
+                            Content="Nova venda - F3" Style="{StaticResource PrimaryButtonStyle}" />
                 </Grid>
 
                 <Border Grid.Row="2" Padding="12" Background="{StaticResource ErrorSurfaceBrush}"
@@ -80,7 +80,8 @@
                             </Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <Grid>
+                    <StackPanel>
+                        <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -96,11 +97,84 @@
                                        Foreground="{StaticResource TextMutedBrush}"
                                        Text="{Binding CartSummary}" />
                         </StackPanel>
-                        <Button Grid.Column="1" MinWidth="170" Height="50"
+                        <Button Grid.Column="1" MinWidth="180" Height="50"
                                 VerticalAlignment="Center"
                                 Command="{Binding OpenSaleEditorCommand}"
-                                Content="Iniciar venda" Style="{StaticResource PrimaryButtonStyle}" />
-                    </Grid>
+                                Content="Iniciar venda - F3" Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+
+                        <Border Margin="0,22,0,0" Padding="18" Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="10" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock FontSize="18" FontWeight="Bold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="Vendas do dia/caixa" />
+                                    <TextBlock Grid.Column="1" FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               Text="Histórico registrado" />
+                                </Grid>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding TodaySales}"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          CanUserAddRows="False" CanUserDeleteRows="False"
+                                          HeadersVisibility="Column" SelectionMode="Single"
+                                          EnableRowVirtualization="True"
+                                          Background="{StaticResource SurfaceBrush}"
+                                          Foreground="{StaticResource TextPrimaryBrush}"
+                                          BorderBrush="{StaticResource BorderBrush}"
+                                          HorizontalGridLinesBrush="{StaticResource BorderBrush}"
+                                          VerticalGridLinesBrush="Transparent"
+                                          RowBackground="{StaticResource SurfaceBrush}"
+                                          AlternatingRowBackground="#102034"
+                                          RowHeight="44" ColumnHeaderHeight="36">
+                                    <DataGrid.Style>
+                                        <Style TargetType="DataGrid">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasTodaySales}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGrid.Style>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Venda" Binding="{Binding NumberText}" Width="0.65*" />
+                                        <DataGridTextColumn Header="Data" Binding="{Binding DateText}" Width="1.35*" />
+                                        <DataGridTextColumn Header="Vendedor" Binding="{Binding UserName}" Width="1*" />
+                                        <DataGridTextColumn Header="Total" Binding="{Binding FinalAmountText}" Width="0.9*" />
+                                        <DataGridTextColumn Header="Pagamento" Binding="{Binding PaymentText}" Width="1.2*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <TextBlock Grid.Row="2" HorizontalAlignment="Center" Padding="0,18"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Nenhuma venda registrada hoje.">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasNoTodaySales}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
                 </Border>
 
                 <Border Grid.Row="6" Padding="28" Background="{StaticResource SuccessSurfaceBrush}"
@@ -190,7 +264,7 @@
                                        Text="{Binding ReceiptStockWarningsText}" TextWrapping="Wrap" />
                         </Border>
                         <Button Margin="0,22,0,0" Height="52" Command="{Binding NewSaleCommand}"
-                                Content="Nova venda" Style="{StaticResource PrimaryButtonStyle}" />
+                                Content="Nova venda - F3" Style="{StaticResource PrimaryButtonStyle}" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -275,12 +349,14 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBox x:Name="ProductSearchInput"
+                                                 Grid.ColumnSpan="3"
                                                  Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                                  ToolTip="Buscar produto por nome ou código de barras"
                                                  PreviewKeyDown="ProductSearchInput_PreviewKeyDown"
                                                  Style="{StaticResource TextInputStyle}" />
                                         <Button Grid.Column="2" MinWidth="112" Command="{Binding SearchCommand}"
-                                                Content="Pesquisar" Style="{StaticResource PrimaryButtonStyle}" />
+                                                Content="Pesquisar" Visibility="Collapsed"
+                                                Style="{StaticResource PrimaryButtonStyle}" />
                                     </Grid>
                                     <DataGrid x:Name="SearchResultsGrid"
                                               Grid.Row="4" MaxHeight="165"
@@ -290,6 +366,7 @@
                                               CanUserAddRows="False" CanUserDeleteRows="False"
                                               HeadersVisibility="Column" SelectionMode="Single"
                                               PreviewKeyDown="SearchResultsGrid_PreviewKeyDown"
+                                              MouseDoubleClick="SearchResultsGrid_MouseDoubleClick"
                                               EnableRowVirtualization="True"
                                               Background="{StaticResource SurfaceBrush}"
                                               Foreground="{StaticResource TextPrimaryBrush}"
@@ -451,7 +528,7 @@
                                                Text="Finalizar venda" />
                                     <TextBlock Margin="0,4,0,0" FontSize="13"
                                                Foreground="{StaticResource TextSecondaryBrush}"
-                                               Text="Informe uma ou mais formas de pagamento e confirme o pedido." />
+                                               Text="Informe uma ou mais formas de pagamento. F2 finaliza o pedido." />
                                 </StackPanel>
                                 <Button Grid.Column="1" MinWidth="150" Height="42"
                                         Command="{Binding BackToProductsCommand}"
@@ -463,9 +540,9 @@
 
                             <Grid Grid.Row="2">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.3*" />
+                                    <ColumnDefinition Width="1.05*" />
                                     <ColumnDefinition Width="18" />
-                                    <ColumnDefinition Width="0.9*" />
+                                    <ColumnDefinition Width="0.95*" />
                                 </Grid.ColumnDefinitions>
 
                                 <Border Padding="18" Background="{StaticResource SurfaceBrush}"
@@ -475,66 +552,46 @@
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="12" />
                                             <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="14" />
+                                            <RowDefinition Height="10" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="10" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="10" />
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="14" />
                                             <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="12" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Desconto" />
-                                                <Button Height="42"
-                                                        Command="{Binding OpenDiscountPopupCommand}"
-                                                        Click="OpenDiscountPopupButton_Click"
-                                                        Content="Aplicar desconto"
-                                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                                <TextBlock Margin="0,6,0,0" FontSize="12"
-                                                           Foreground="{StaticResource TextMutedBrush}">
-                                                    <Run Text="Atual: " />
-                                                    <Run Text="{Binding DiscountPercentText, Mode=OneWay}" />
-                                                </TextBlock>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Dinheiro" />
-                                                <TextBox x:Name="MoneyInput"
-                                                         Tag="money"
-                                                         GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
-                                                         PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
-                                                         Text="{Binding MoneyText, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{StaticResource TextInputStyle}" />
-                                            </StackPanel>
-                                        </Grid>
-                                        <Grid Grid.Row="2">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="12" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Pix" />
-                                                <TextBox x:Name="PixInput"
-                                                         Tag="pix"
-                                                         GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
-                                                         PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
-                                                         Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{StaticResource TextInputStyle}" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Débito" />
-                                                <TextBox x:Name="DebitInput"
-                                                         Tag="debit"
-                                                         GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
-                                                         PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
-                                                         Text="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{StaticResource TextInputStyle}" />
-                                            </StackPanel>
-                                        </Grid>
+                                        <TextBlock FontSize="17" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Text="Formas de pagamento" />
+                                        <StackPanel Grid.Row="2">
+                                            <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Dinheiro" />
+                                            <TextBox x:Name="MoneyInput"
+                                                     Tag="money"
+                                                     GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                     PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
+                                                     Text="{Binding MoneyText, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource TextInputStyle}" />
+                                        </StackPanel>
                                         <StackPanel Grid.Row="4">
+                                            <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Pix" />
+                                            <TextBox x:Name="PixInput"
+                                                     Tag="pix"
+                                                     GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                     PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
+                                                     Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource TextInputStyle}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="6">
+                                            <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Débito" />
+                                            <TextBox x:Name="DebitInput"
+                                                     Tag="debit"
+                                                     GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                     PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
+                                                     Text="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource TextInputStyle}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="8">
                                             <TextBlock Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}" Text="Crédito" />
                                             <TextBox x:Name="CreditInput"
                                                      Tag="credit"
@@ -543,16 +600,11 @@
                                                      Text="{Binding CreditText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
-                                        <WrapPanel Grid.Row="6">
-                                            <Button MinWidth="132" Margin="0,0,8,8" Command="{Binding FillMoneyCommand}"
-                                                    Content="Completar dinheiro" Style="{StaticResource SecondaryButtonStyle}" />
-                                            <Button MinWidth="112" Margin="0,0,8,8" Command="{Binding FillPixCommand}"
-                                                    Content="Completar Pix" Style="{StaticResource SecondaryButtonStyle}" />
-                                            <Button MinWidth="132" Margin="0,0,8,8" Command="{Binding FillDebitCommand}"
-                                                    Content="Completar débito" Style="{StaticResource SecondaryButtonStyle}" />
-                                            <Button MinWidth="132" Margin="0,0,8,8" Command="{Binding FillCreditCommand}"
-                                                    Content="Completar crédito" Style="{StaticResource SecondaryButtonStyle}" />
-                                        </WrapPanel>
+                                        <Button Grid.Row="10" Height="42"
+                                                Command="{Binding OpenDiscountPopupCommand}"
+                                                Click="OpenDiscountPopupButton_Click"
+                                                Content="Aplicar desconto"
+                                                Style="{StaticResource SecondaryButtonStyle}" />
                                     </Grid>
                                 </Border>
 
@@ -630,7 +682,7 @@
                             </Grid>
 
                             <Button Grid.Row="4" Height="54" Command="{Binding FinalizeCommand}"
-                                    Content="Finalizar pedido" Style="{StaticResource PrimaryButtonStyle}" />
+                                    Content="Finalizar venda - F2" Style="{StaticResource PrimaryButtonStyle}" />
                         </Grid>
                     </Grid>
                 </ScrollViewer>

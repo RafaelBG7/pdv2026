@@ -46,7 +46,7 @@ public partial class SalesView : UserControl
         }
     }
 
-    private void ProductSearchInput_PreviewKeyDown(object sender, KeyEventArgs e)
+    private async void ProductSearchInput_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (DataContext is not SalesViewModel viewModel)
         {
@@ -62,13 +62,18 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Enter)
         {
+            if (!viewModel.HasSearchResults && viewModel.SearchCommand.CanExecute(null))
+            {
+                await viewModel.SearchCommand.ExecuteAsync();
+            }
+
             if (viewModel.HasSearchResults)
             {
                 AddSelectedProductAndFocusSearch(viewModel);
             }
             else
             {
-                ExecuteIfAllowed(viewModel.SearchCommand);
+                FocusProductSearch();
             }
 
             e.Handled = true;
@@ -101,6 +106,17 @@ public partial class SalesView : UserControl
             FocusProductSearch();
             e.Handled = true;
         }
+    }
+
+    private void SearchResultsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is not SalesViewModel viewModel || !viewModel.HasSearchResults)
+        {
+            return;
+        }
+
+        AddSelectedProductAndFocusSearch(viewModel);
+        e.Handled = true;
     }
 
     private void PaymentTextBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)

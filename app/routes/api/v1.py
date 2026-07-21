@@ -3401,6 +3401,82 @@ def api_create_sale():
         )
 
 
+@api_v1_bp.get('/sales/today')
+@api_permission_required('can_manage_sales')
+def api_today_sales():
+    try:
+        company_id = g.api_user.company_id
+        with api_tenant_database(g.api_user) as tenant_db:
+            open_cash_register = (
+                tenant_db.query(CashRegister)
+                .filter(
+                    CashRegister.company_id == company_id,
+                    CashRegister.status == 'open',
+                )
+                .order_by(CashRegister.opened_at.desc(), CashRegister.id.desc())
+                .first()
+            )
+
+            sales_query = (
+                tenant_db.query(Sale)
+                .options(selectinload(Sale.payments))
+                .filter(Sale.company_id == company_id)
+            )
+
+            if open_cash_register:
+                sales_query = sales_query.filter(
+                    Sale.cash_register_id == open_cash_register.id,
+                )
+            else:
+                today = datetime.now().date()
+                start_at = datetime.combine(today, time.min)
+                end_at = start_at + timedelta(days=1)
+                sales_query = sales_query.filter(
+                    Sale.created_at >= start_at,
+                    Sale.created_at < end_at,
+                )
+
+            sales = (
+                sales_query
+                .order_by(Sale.created_at.desc(), Sale.id.desc())
+                .all()
+            )
+            user_ids = {sale.user_id for sale in sales if sale.user_id}
+            users = {}
+            if user_ids:
+                users = {
+                    user.id: user
+                    for user in tenant_db.query(User).filter(User.id.in_(user_ids)).all()
+                }
+
+            cash_register_id = open_cash_register.id if open_cash_register else None
+            sales_data = [
+                {
+                    'id': sale.id,
+                    'created_at': timestamp_value(sale.created_at),
+                    'final_amount': money_value(sale.final_amount),
+                    'payment_status': sale.payment_status or 'pending',
+                    'user_name': (
+                        users.get(sale.user_id).username
+                        if sale.user_id in users
+                        else 'Sistema'
+                    ),
+                    'payment_methods': [
+                        PAYMENT_METHODS.get(payment.method, payment.method or 'Pagamento')
+                        for payment in sale.payments
+                    ],
+                }
+                for sale in sales
+            ]
+
+        return api_success({
+            'cash_register_id': cash_register_id,
+            'sales': sales_data,
+        })
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+
+
 @api_v1_bp.get('/catalog/categories')
 @api_permission_required('can_view_products')
 def api_catalog_categories():

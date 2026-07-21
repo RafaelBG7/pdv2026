@@ -218,6 +218,12 @@ public sealed class DashboardRecentSale
         : string.Join(" + ", PaymentMethods);
 }
 
+public sealed class SalesHistorySnapshot
+{
+    [JsonPropertyName("sales")]
+    public IReadOnlyList<DashboardRecentSale> Sales { get; init; } = [];
+}
+
 public sealed class DashboardPayable
 {
     [JsonPropertyName("id")]

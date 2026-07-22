@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using Girofy.Application.Models;
 using Girofy.Application.ViewModels;
 
 namespace Girofy.Desktop.Views;
@@ -101,7 +102,7 @@ public partial class SalesView : UserControl
 
             if (viewModel.HasSearchResults)
             {
-                AddSelectedProductAndFocusSearch(viewModel);
+                ConfirmSelectedProductAndFocusQuantity(viewModel);
             }
             else
             {
@@ -121,7 +122,7 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Enter)
         {
-            AddSelectedProductAndFocusSearch(viewModel);
+            ConfirmSelectedProductAndFocusQuantity(viewModel);
             e.Handled = true;
             return;
         }
@@ -168,8 +169,79 @@ public partial class SalesView : UserControl
             return;
         }
 
-        AddSelectedProductAndFocusSearch(viewModel);
+        ConfirmSelectedProductAndFocusQuantity(viewModel);
         e.Handled = true;
+    }
+
+    private void QuantityInput_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox textBox)
+        {
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+                textBox.Focus();
+                textBox.SelectAll();
+            }));
+        }
+    }
+
+    private void QuantityInput_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (DataContext is SalesViewModel viewModel)
+        {
+            NormalizeQuantityText(viewModel);
+        }
+    }
+
+    private void QuantityInput_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (DataContext is not SalesViewModel viewModel)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            NormalizeQuantityText(viewModel);
+            AddSelectedProductAndFocusSearch(viewModel);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            FocusProductSearch();
+            e.Handled = true;
+        }
+    }
+
+    private void QuantityInput_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (!DigitsOnlyRegex.IsMatch(e.Text))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private void QuantityInput_Pasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (sender is not TextBox textBox || !e.DataObject.GetDataPresent(DataFormats.Text))
+        {
+            e.CancelCommand();
+            return;
+        }
+
+        var pastedText = e.DataObject.GetData(DataFormats.Text) as string ?? string.Empty;
+        var digits = ExtractDigits(pastedText);
+        if (digits.Length == 0)
+        {
+            e.CancelCommand();
+            return;
+        }
+
+        textBox.Text = digits;
+        textBox.CaretIndex = textBox.Text.Length;
+        e.CancelCommand();
     }
 
     private void PaymentTextBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -295,10 +367,60 @@ public partial class SalesView : UserControl
     private void OpenDiscountPopupButton_Click(object sender, System.Windows.RoutedEventArgs e) =>
         FocusDiscountInput();
 
+    private void AddProductButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SalesViewModel viewModel)
+        {
+            return;
+        }
+
+        NormalizeQuantityText(viewModel);
+        AddSelectedProductAndFocusSearch(viewModel);
+    }
+
+    private void ConfirmSelectedProductAndFocusQuantity(SalesViewModel viewModel)
+    {
+        if (SearchSuggestionsList.SelectedItem is CatalogProduct selectedProduct)
+        {
+            viewModel.SelectedSearchProduct = selectedProduct;
+        }
+        else if (viewModel.SelectedSearchProduct is null
+                 && SearchSuggestionsList.Items.Count > 0
+                 && SearchSuggestionsList.Items[0] is CatalogProduct firstProduct)
+        {
+            viewModel.SelectedSearchProduct = firstProduct;
+        }
+
+        if (viewModel.SelectedSearchProduct is null)
+        {
+            FocusProductSearch();
+            return;
+        }
+
+        NormalizeQuantityText(viewModel);
+
+        FocusQuantityInput();
+    }
+
+    private static void NormalizeQuantityText(SalesViewModel viewModel)
+    {
+        if (!int.TryParse(viewModel.QuantityText, out var quantity) || quantity < 1)
+        {
+            viewModel.QuantityText = "1";
+        }
+    }
+
     private void AddSelectedProductAndFocusSearch(SalesViewModel viewModel)
     {
         ExecuteIfAllowed(viewModel.AddProductCommand);
-        FocusProductSearch();
+        if (viewModel.HasError)
+        {
+            FocusQuantityInput();
+        }
+        else
+        {
+            FocusProductSearch();
+        }
     }
 
     private void FocusProductSearch() =>
@@ -306,6 +428,13 @@ public partial class SalesView : UserControl
         {
             ProductSearchInput.Focus();
             ProductSearchInput.SelectAll();
+        }));
+
+    private void FocusQuantityInput() =>
+        Dispatcher.BeginInvoke((Action)(() =>
+        {
+            QuantityInput.Focus();
+            QuantityInput.SelectAll();
         }));
 
     private void FocusPaymentMethod() =>

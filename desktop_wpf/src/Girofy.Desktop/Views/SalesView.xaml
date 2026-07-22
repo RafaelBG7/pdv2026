@@ -742,8 +742,15 @@
                                         </StackPanel>
                                         <TextBox x:Name="QuantityInput"
                                                  Grid.Column="2" Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="Quantidade" Style="{StaticResource TextInputStyle}" />
-                                        <Button Grid.Column="4" MinWidth="112" Command="{Binding AddProductCommand}"
+                                                 ToolTip="Quantidade"
+                                                 GotKeyboardFocus="QuantityInput_GotKeyboardFocus"
+                                                 LostKeyboardFocus="QuantityInput_LostKeyboardFocus"
+                                                 PreviewKeyDown="QuantityInput_PreviewKeyDown"
+                                                 PreviewTextInput="QuantityInput_PreviewTextInput"
+                                                 DataObject.Pasting="QuantityInput_Pasting"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                        <Button Grid.Column="4" MinWidth="112"
+                                                Click="AddProductButton_Click"
                                                 Content="Adicionar" Style="{StaticResource PrimaryButtonStyle}" />
                                     </Grid>
                                 </Grid>
@@ -825,7 +832,7 @@
                                 </StackPanel>
                                 <Button Grid.Column="1" MinWidth="190" Height="52"
                                         Command="{Binding OpenPaymentStepCommand}"
-                                        Content="Ir para pagamento" Style="{StaticResource PrimaryButtonStyle}" />
+                                        Content="Finalizar pedido - F2" Style="{StaticResource PrimaryButtonStyle}" />
                             </Grid>
                         </Grid>
 

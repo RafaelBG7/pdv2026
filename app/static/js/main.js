@@ -1021,11 +1021,67 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  function isCurrencyInputControlKey(event) {
+    if (event.ctrlKey || event.metaKey) {
+      return true;
+    }
+
+    return [
+      'Backspace',
+      'Delete',
+      'Tab',
+      'Enter',
+      'Escape',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+    ].includes(event.key);
+  }
+
+  function moveCurrencyCaretToEnd(input) {
+    window.requestAnimationFrame(function () {
+      try {
+        input.setSelectionRange(input.value.length, input.value.length);
+      } catch (error) {
+        // Alguns campos/navegadores nao suportam selecao manual.
+      }
+    });
+  }
+
   document.querySelectorAll('[data-currency-input]').forEach(function (input) {
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('pattern', '[0-9]*');
     input.value = formatCurrencyInputValue(input.value);
+    input.addEventListener('focus', function () {
+      moveCurrencyCaretToEnd(input);
+    });
+    input.addEventListener('keydown', function (event) {
+      if (isCurrencyInputControlKey(event) || /^[0-9]$/.test(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+    });
     input.addEventListener('input', function () {
       input.value = formatCurrencyInputValue(input.value);
+      moveCurrencyCaretToEnd(input);
       input.dispatchEvent(new Event('currencychange', { bubbles: true }));
+    });
+    input.addEventListener('paste', function (event) {
+      const clipboardText = event.clipboardData ? event.clipboardData.getData('text') : '';
+      const digits = clipboardText.replace(/\D/g, '');
+
+      event.preventDefault();
+      input.value = formatCurrencyInputValue(digits);
+      moveCurrencyCaretToEnd(input);
+      input.dispatchEvent(new Event('currencychange', { bubbles: true }));
+    });
+    input.addEventListener('blur', function () {
+      input.value = formatCurrencyInputValue(input.value);
     });
   });
 

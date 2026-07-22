@@ -71,7 +71,7 @@
     <Style x:Key="TextInputStyle" TargetType="TextBox">
         <Setter Property="Height" Value="48" />
         <Setter Property="MinWidth" Value="88" />
-        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Padding" Value="10,0" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
@@ -110,7 +110,7 @@
 
     <Style x:Key="PasswordInputStyle" TargetType="PasswordBox">
         <Setter Property="Height" Value="48" />
-        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Padding" Value="10,0" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />

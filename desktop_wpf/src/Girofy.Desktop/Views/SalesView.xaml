@@ -645,6 +645,8 @@
                                                     <Setter Property="Margin" Value="0,0,0,6" />
                                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                                     <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                                                     <Setter Property="Template">
                                                         <Setter.Value>
                                                             <ControlTemplate TargetType="ListBoxItem">
@@ -653,7 +655,8 @@
                                                                         Background="{TemplateBinding Background}"
                                                                         BorderBrush="Transparent"
                                                                         BorderThickness="1"
-                                                                        CornerRadius="7">
+                                                                        CornerRadius="7"
+                                                                        TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}">
                                                                     <ContentPresenter />
                                                                 </Border>
                                                                 <ControlTemplate.Triggers>
@@ -668,10 +671,22 @@
                                                                     <Trigger Property="IsSelected" Value="True">
                                                                         <Setter TargetName="SuggestionItem"
                                                                                 Property="Background"
-                                                                                Value="{StaticResource InfoSurfaceBrush}" />
+                                                                                Value="{StaticResource AccentSoftBrush}" />
                                                                         <Setter TargetName="SuggestionItem"
                                                                                 Property="BorderBrush"
                                                                                 Value="{StaticResource AccentBrush}" />
+                                                                        <Setter Property="Foreground"
+                                                                                Value="{StaticResource TextPrimaryBrush}" />
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                                                        <Setter TargetName="SuggestionItem"
+                                                                                Property="Background"
+                                                                                Value="{StaticResource AccentSoftBrush}" />
+                                                                        <Setter TargetName="SuggestionItem"
+                                                                                Property="BorderBrush"
+                                                                                Value="{StaticResource AccentBrush}" />
+                                                                        <Setter Property="Foreground"
+                                                                                Value="{StaticResource TextPrimaryBrush}" />
                                                                     </Trigger>
                                                                 </ControlTemplate.Triggers>
                                                             </ControlTemplate>
@@ -805,13 +820,13 @@
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
                                             <DataGridTextColumn Header="Subtotal" Binding="{Binding LineTotalText}" Width="1*" />
-                                            <DataGridTemplateColumn Header="Ação" Width="100">
+                                            <DataGridTemplateColumn Header="Ação" Width="128">
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
-                                                        <Button Height="32" Content="Remover"
+                                                        <Button Height="34" MinWidth="108" Content="Remover"
                                                                 Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 CommandParameter="{Binding}"
-                                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                                                Style="{StaticResource DangerButtonStyle}" />
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>

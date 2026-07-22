@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Exceptions;
 using Girofy.Application.Models;
@@ -611,15 +612,11 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             }
 
             SearchResults.Clear();
-            foreach (var product in result.Items.OrderBy(
-                product => product.Name,
-                StringComparer.CurrentCultureIgnoreCase))
+            foreach (var product in RankSearchResults(result.Items, term))
             {
                 SearchResults.Add(product);
             }
-            SelectedSearchProduct = SearchResults.FirstOrDefault(product =>
-                string.Equals(product.Barcode, term, StringComparison.OrdinalIgnoreCase))
-                ?? SearchResults.FirstOrDefault();
+            SelectedSearchProduct = SearchResults.FirstOrDefault();
             OnPropertyChanged(nameof(HasSearchResults));
             if (SearchResults.Count == 0 && showMessages)
             {
@@ -641,6 +638,83 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         {
             IsSearching = false;
         }
+    }
+
+    private static IEnumerable<CatalogProduct> RankSearchResults(IEnumerable<CatalogProduct> products, string term)
+    {
+        var normalizedTerm = NormalizeSearchText(term);
+        return products
+            .Where(product => ProductMatchesSearch(product, normalizedTerm))
+            .OrderBy(product => GetProductSearchRank(product, normalizedTerm))
+            .ThenBy(product => NormalizeSearchText(product.Name), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(product => product.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Take(12);
+    }
+
+    private static bool ProductMatchesSearch(CatalogProduct product, string normalizedTerm)
+    {
+        var name = NormalizeSearchText(product.Name);
+        var barcode = NormalizeSearchText(product.Barcode);
+        return name.Contains(normalizedTerm, StringComparison.OrdinalIgnoreCase)
+               || barcode.Contains(normalizedTerm, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int GetProductSearchRank(CatalogProduct product, string normalizedTerm)
+    {
+        var barcode = NormalizeSearchText(product.Barcode);
+        if (string.Equals(barcode, normalizedTerm, StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        if (barcode.StartsWith(normalizedTerm, StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        var name = NormalizeSearchText(product.Name);
+        if (name.StartsWith(normalizedTerm, StringComparison.OrdinalIgnoreCase))
+        {
+            return 2;
+        }
+
+        if (name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Any(part => part.StartsWith(normalizedTerm, StringComparison.OrdinalIgnoreCase)))
+        {
+            return 3;
+        }
+
+        if (name.Contains(normalizedTerm, StringComparison.OrdinalIgnoreCase))
+        {
+            return 4;
+        }
+
+        if (barcode.Contains(normalizedTerm, StringComparison.OrdinalIgnoreCase))
+        {
+            return 5;
+        }
+
+        return 6;
+    }
+
+    private static string NormalizeSearchText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = value.Trim().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+        foreach (var character in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(char.ToUpperInvariant(character));
+            }
+        }
+
+        return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 
     private void QueueSearch()

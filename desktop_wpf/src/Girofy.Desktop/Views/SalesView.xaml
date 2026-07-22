@@ -632,6 +632,7 @@
                                                  KeyboardNavigation.DirectionalNavigation="Contained"
                                                  KeyboardNavigation.TabNavigation="Contained"
                                                  PreviewKeyDown="SearchSuggestionsList_PreviewKeyDown"
+                                                 PreviewMouseLeftButtonUp="SearchSuggestionsList_PreviewMouseLeftButtonUp"
                                                  MouseDoubleClick="SearchSuggestionsList_MouseDoubleClick"
                                                  Background="Transparent"
                                                  BorderThickness="0"
@@ -646,6 +647,7 @@
                                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                                     <Setter Property="Background" Value="Transparent" />
                                                     <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                                    <Setter Property="Cursor" Value="Hand" />
                                                     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                                                     <Setter Property="Template">
                                                         <Setter.Value>
@@ -696,11 +698,11 @@
                                             </ListBox.ItemContainerStyle>
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Grid>
+                                                    <Grid MinHeight="54">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="16" />
-                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" MinWidth="110" />
                                                         </Grid.ColumnDefinitions>
                                                         <StackPanel>
                                                             <TextBlock Text="{Binding Name}"
@@ -710,7 +712,7 @@
                                                                        TextTrimming="CharacterEllipsis" />
                                                             <StackPanel Margin="0,4,0,0"
                                                                         Orientation="Horizontal">
-                                                                <TextBlock Text="{Binding SalePriceText}"
+                                                                <TextBlock Text="{Binding CategoryName}"
                                                                            FontSize="13"
                                                                            Foreground="{StaticResource TextSecondaryBrush}" />
                                                                 <TextBlock Text=" · "

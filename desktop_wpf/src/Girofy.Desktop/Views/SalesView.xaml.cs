@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using Girofy.Application.Models;
 using Girofy.Application.ViewModels;
 
@@ -89,14 +90,14 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Down && viewModel.HasSearchResults)
         {
-            FocusSearchSuggestions();
+            MoveSearchSuggestion(1, focusList: false);
             e.Handled = true;
             return;
         }
 
         if (e.Key == Key.Up && viewModel.HasSearchResults)
         {
-            FocusSearchSuggestions(selectLast: true);
+            MoveSearchSuggestion(-1, focusList: false);
             e.Handled = true;
             return;
         }
@@ -145,6 +146,7 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Escape)
         {
+            viewModel.SearchText = string.Empty;
             FocusProductSearch();
             e.Handled = true;
             return;
@@ -185,6 +187,25 @@ public partial class SalesView : UserControl
             return;
         }
 
+        ConfirmSelectedProductAndFocusQuantity(viewModel);
+        e.Handled = true;
+    }
+
+    private void SearchSuggestionsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is not SalesViewModel viewModel)
+        {
+            return;
+        }
+
+        var item = FindParent<ListBoxItem>(e.OriginalSource as DependencyObject);
+        if (item?.DataContext is not CatalogProduct product)
+        {
+            return;
+        }
+
+        SearchSuggestionsList.SelectedItem = product;
+        viewModel.SelectedSearchProduct = product;
         ConfirmSelectedProductAndFocusQuantity(viewModel);
         e.Handled = true;
     }
@@ -467,7 +488,7 @@ public partial class SalesView : UserControl
             DiscountPopupInput.SelectAll();
         }));
 
-    private void FocusSearchSuggestions(bool selectLast = false)
+    private void FocusSearchSuggestions(bool selectLast = false, bool focusList = true)
     {
         if (SearchSuggestionsList.Items.Count == 0)
         {
@@ -481,11 +502,15 @@ public partial class SalesView : UserControl
                 : 0;
         }
 
-        SearchSuggestionsList.Focus();
+        if (focusList)
+        {
+            SearchSuggestionsList.Focus();
+        }
+
         SearchSuggestionsList.ScrollIntoView(SearchSuggestionsList.SelectedItem);
     }
 
-    private void MoveSearchSuggestion(int offset)
+    private void MoveSearchSuggestion(int offset, bool focusList = true)
     {
         if (SearchSuggestionsList.Items.Count == 0)
         {
@@ -493,13 +518,13 @@ public partial class SalesView : UserControl
         }
 
         var currentIndex = SearchSuggestionsList.SelectedIndex < 0
-            ? 0
+            ? (offset > 0 ? -1 : SearchSuggestionsList.Items.Count)
             : SearchSuggestionsList.SelectedIndex;
         var nextIndex = Math.Clamp(currentIndex + offset, 0, SearchSuggestionsList.Items.Count - 1);
-        SelectSearchSuggestion(nextIndex);
+        SelectSearchSuggestion(nextIndex, focusList);
     }
 
-    private void SelectSearchSuggestion(int index)
+    private void SelectSearchSuggestion(int index, bool focusList = true)
     {
         if (SearchSuggestionsList.Items.Count == 0)
         {
@@ -511,6 +536,12 @@ public partial class SalesView : UserControl
         SearchSuggestionsList.ScrollIntoView(SearchSuggestionsList.SelectedItem);
         SearchSuggestionsList.UpdateLayout();
 
+        if (!focusList)
+        {
+            ProductSearchInput.Focus();
+            return;
+        }
+
         if (SearchSuggestionsList.ItemContainerGenerator.ContainerFromIndex(safeIndex) is ListBoxItem item)
         {
             item.Focus();
@@ -519,6 +550,22 @@ public partial class SalesView : UserControl
         {
             SearchSuggestionsList.Focus();
         }
+    }
+
+    private static T? FindParent<T>(DependencyObject? current)
+        where T : DependencyObject
+    {
+        while (current is not null)
+        {
+            if (current is T match)
+            {
+                return match;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
     }
 
     private void FocusNextPaymentField(TextBox current) =>

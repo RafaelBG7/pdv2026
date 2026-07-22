@@ -36,6 +36,22 @@ public partial class SalesView : UserControl
             return;
         }
 
+        if (e.Key == Key.Escape && viewModel.IsSaleEditorOpen)
+        {
+            if (viewModel.IsDiscountPopupVisible)
+            {
+                ExecuteIfAllowed(viewModel.CloseDiscountPopupCommand);
+                FocusPaymentMethod();
+            }
+            else
+            {
+                ExecuteIfAllowed(viewModel.CloseSaleEditorCommand);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.F3)
         {
             ExecuteIfAllowed(viewModel.OpenSaleEditorCommand);

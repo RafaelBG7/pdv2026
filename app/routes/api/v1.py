@@ -569,6 +569,49 @@ def api_sale_item_profit(item):
     return ((item.unit_price or 0.0) - (item.unit_cost_price or 0.0)) * (item.quantity or 0)
 
 
+def api_serialize_sale_receipt(sale):
+    paid_amount = sum(
+        (money_decimal(payment.amount) for payment in sale.payments),
+        Decimal('0.00'),
+    )
+    final_amount = money_decimal(sale.final_amount)
+    change_amount = max(paid_amount - final_amount, Decimal('0.00'))
+
+    return {
+        'id': sale.id,
+        'idempotency_key': '',
+        'already_processed': False,
+        'created_at': timestamp_value(sale.created_at),
+        'cash_register_id': sale.cash_register_id or 0,
+        'payment_status': sale.payment_status or 'pending',
+        'subtotal': money_value(sale.total_amount),
+        'discount_amount': money_value(sale.discount_amount),
+        'final_amount': money_value(final_amount),
+        'paid_amount': money_value(paid_amount),
+        'change_amount': money_value(change_amount),
+        'stock_warnings': [],
+        'items': [
+            {
+                'product_id': item.product_id,
+                'name': item.product.name if item.product else f'Produto #{item.product_id}',
+                'quantity': item.quantity or 0,
+                'unit_price': money_value(item.unit_price),
+                'subtotal': money_value(item.total_price),
+                'profit_amount': money_value(api_sale_item_profit(item)),
+            }
+            for item in sale.items
+        ],
+        'payments': [
+            {
+                'method': payment.method,
+                'label': PAYMENT_METHODS.get(payment.method, payment.method or 'Pagamento'),
+                'amount': money_value(payment.amount),
+            }
+            for payment in sale.payments
+        ],
+    }
+
+
 def api_build_sales_report(sales):
     payment_totals = {method: 0.0 for method in PAYMENT_METHODS}
     product_totals = {}
@@ -3399,6 +3442,37 @@ def api_create_sale():
             error.status_code,
             error.field,
         )
+
+
+@api_v1_bp.get('/sales/<int:sale_id>')
+@api_permission_required('can_manage_sales')
+def api_sale_detail(sale_id):
+    try:
+        company_id = g.api_user.company_id
+        with api_tenant_database(g.api_user) as tenant_db:
+            sale = (
+                tenant_db.query(Sale)
+                .options(
+                    selectinload(Sale.items).selectinload(SaleItem.product),
+                    selectinload(Sale.payments),
+                )
+                .filter(
+                    Sale.company_id == company_id,
+                    Sale.id == sale_id,
+                )
+                .first()
+            )
+            if sale is None:
+                return api_failure(
+                    'Venda não encontrada.',
+                    'sale_not_found',
+                    404,
+                )
+            response_data = api_serialize_sale_receipt(sale)
+
+        return api_success(response_data)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
 
 
 @api_v1_bp.get('/sales/today')

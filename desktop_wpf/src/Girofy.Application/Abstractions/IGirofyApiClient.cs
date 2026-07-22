@@ -106,6 +106,12 @@ public interface IGirofyApiClient
         CancellationToken cancellationToken) =>
         Task.FromException<SalesHistorySnapshot>(new NotSupportedException());
 
+    Task<SaleReceipt> GetSaleDetailAsync(
+        string accessToken,
+        int saleId,
+        CancellationToken cancellationToken) =>
+        Task.FromException<SaleReceipt>(new NotSupportedException());
+
     Task<ReportsSnapshot> GetReportsSummaryAsync(
         string accessToken,
         ReportsQuery query,

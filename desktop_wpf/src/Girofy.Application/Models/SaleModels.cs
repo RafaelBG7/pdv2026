@@ -59,6 +59,10 @@ public sealed class SaleReceipt
 
     public string SaleNumberText => $"Venda #{Id}";
 
+    public string SubtotalText => FormatMoney(Subtotal);
+
+    public string DiscountAmountText => FormatMoney(DiscountAmount);
+
     public string FinalAmountText => FormatMoney(FinalAmount);
 
     public string PaidAmountText => FormatMoney(PaidAmount);
@@ -92,9 +96,16 @@ public sealed class SaleReceiptItem
     [JsonPropertyName("subtotal")]
     public decimal Subtotal { get; init; }
 
+    [JsonPropertyName("profit_amount")]
+    public decimal ProfitAmount { get; init; }
+
     public string QuantityText => $"{Quantity} un.";
 
+    public string UnitPriceText => $"R$ {UnitPrice.ToString("N2", BrazilianCulture)}";
+
     public string SubtotalText => $"R$ {Subtotal.ToString("N2", BrazilianCulture)}";
+
+    public string ProfitAmountText => $"R$ {ProfitAmount.ToString("N2", BrazilianCulture)}";
 }
 
 public sealed class SaleReceiptPayment

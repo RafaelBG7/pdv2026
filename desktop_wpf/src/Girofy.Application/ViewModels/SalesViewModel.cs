@@ -54,6 +54,90 @@ public sealed class SaleCartItemViewModel : ObservableObject
         $"R$ {value.ToString("N2", BrazilianCulture)}";
 }
 
+public sealed class SaleHistoryItemViewModel : ObservableObject
+{
+    private bool _isExpanded;
+    private bool _isLoadingDetail;
+    private SaleReceipt? _detail;
+    private string _detailError = string.Empty;
+
+    public SaleHistoryItemViewModel(DashboardRecentSale sale) => Sale = sale;
+
+    public DashboardRecentSale Sale { get; }
+
+    public int Id => Sale.Id;
+
+    public string NumberText => Sale.NumberText;
+
+    public string DateText => Sale.DateText;
+
+    public string UserName => Sale.UserName;
+
+    public string FinalAmountText => Sale.FinalAmountText;
+
+    public string PaymentText => Sale.PaymentText;
+
+    public string PaymentStatus => Sale.PaymentStatus;
+
+    public string PaymentStatusText =>
+        string.Equals(Sale.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase)
+            ? "Pago"
+            : "Pendente";
+
+    public string ExpandHint => IsExpanded ? "Ocultar" : "Detalhes";
+
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (SetProperty(ref _isExpanded, value))
+            {
+                OnPropertyChanged(nameof(ExpandHint));
+            }
+        }
+    }
+
+    public bool IsLoadingDetail
+    {
+        get => _isLoadingDetail;
+        set => SetProperty(ref _isLoadingDetail, value);
+    }
+
+    public SaleReceipt? Detail
+    {
+        get => _detail;
+        set
+        {
+            if (SetProperty(ref _detail, value))
+            {
+                OnPropertyChanged(nameof(HasDetail));
+                OnPropertyChanged(nameof(DetailPaymentsText));
+            }
+        }
+    }
+
+    public string DetailError
+    {
+        get => _detailError;
+        set
+        {
+            if (SetProperty(ref _detailError, value))
+            {
+                OnPropertyChanged(nameof(HasDetailError));
+            }
+        }
+    }
+
+    public bool HasDetail => Detail is not null;
+
+    public bool HasDetailError => !string.IsNullOrWhiteSpace(DetailError);
+
+    public string DetailPaymentsText => Detail is null
+        ? string.Empty
+        : string.Join(" + ", Detail.Payments.Select(payment => $"{payment.Label}: {payment.AmountText}"));
+}
+
 public sealed class SalesViewModel : ObservableObject, IDisposable
 {
     private static readonly CultureInfo BrazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
@@ -109,6 +193,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         CloseDiscountPopupCommand = new RelayCommand(CloseDiscountPopup);
         ApplyDiscountCommand = new RelayCommand(ApplyDiscount);
         NewSaleCommand = new RelayCommand(StartNewSale);
+        ToggleTodaySaleCommand = new RelayCommand<SaleHistoryItemViewModel>(
+            sale => _ = ToggleTodaySaleAsync(sale));
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -116,7 +202,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<SaleCartItemViewModel> CartItems { get; } = [];
 
-    public ObservableCollection<DashboardRecentSale> TodaySales { get; } = [];
+    public ObservableCollection<SaleHistoryItemViewModel> TodaySales { get; } = [];
 
     public string SearchText
     {
@@ -417,6 +503,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public RelayCommand NewSaleCommand { get; }
 
+    public RelayCommand<SaleHistoryItemViewModel> ToggleTodaySaleCommand { get; }
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_sessionContext.Current is null || !IsAvailable)
@@ -430,6 +518,62 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private Task SearchAsync(CancellationToken cancellationToken) =>
         SearchProductsAsync(showMessages: true, cancellationToken);
+
+    private async Task ToggleTodaySaleAsync(SaleHistoryItemViewModel? sale)
+    {
+        if (sale is null)
+        {
+            return;
+        }
+
+        if (sale.IsExpanded)
+        {
+            sale.IsExpanded = false;
+            return;
+        }
+
+        foreach (var item in TodaySales.Where(item => !ReferenceEquals(item, sale)))
+        {
+            item.IsExpanded = false;
+        }
+
+        sale.IsExpanded = true;
+        if (sale.Detail is not null || sale.IsLoadingDetail)
+        {
+            return;
+        }
+
+        var session = RequireSession();
+        sale.IsLoadingDetail = true;
+        sale.DetailError = string.Empty;
+        try
+        {
+            var detail = await _apiClient.GetSaleDetailAsync(
+                session.AccessToken,
+                sale.Id,
+                CancellationToken.None);
+            if (!IsSameSession(session))
+            {
+                return;
+            }
+
+            sale.Detail = detail;
+        }
+        catch (Exception exception)
+        {
+            sale.DetailError = exception switch
+            {
+                GirofyApiException apiException => apiException.Message,
+                TaskCanceledException => "O servidor demorou para responder.",
+                HttpRequestException => "Não foi possível conectar ao servidor.",
+                _ => "Não foi possível carregar os detalhes desta venda.",
+            };
+        }
+        finally
+        {
+            sale.IsLoadingDetail = false;
+        }
+    }
 
     private async Task SearchProductsAsync(bool showMessages, CancellationToken cancellationToken)
     {
@@ -848,7 +992,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private void SetPaymentText(ref string field, string value, string propertyName)
     {
-        if (SetProperty(ref field, value, propertyName))
+        var normalizedValue = NormalizePaymentText(value);
+        if (SetProperty(ref field, normalizedValue, propertyName))
         {
             if (!_updatingPaymentText)
             {
@@ -862,6 +1007,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             NotifyTotalsChanged();
         }
     }
+
+    private static string NormalizePaymentText(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "0,00" : value.Trim();
 
     private void NotifyCartChanged()
     {
@@ -1031,7 +1179,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             TodaySales.Clear();
             foreach (var sale in snapshot.Sales)
             {
-                TodaySales.Add(sale);
+                TodaySales.Add(new SaleHistoryItemViewModel(sale));
             }
             OnPropertyChanged(nameof(HasTodaySales));
             OnPropertyChanged(nameof(HasNoTodaySales));

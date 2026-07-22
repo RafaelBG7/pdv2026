@@ -86,6 +86,65 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Toggle_today_sale_expands_and_loads_detail()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient
+        {
+            DashboardRecentSales =
+            [
+                new DashboardRecentSale
+                {
+                    Id = 18,
+                    CreatedAt = "2026-07-21T09:15:00-03:00",
+                    FinalAmount = 11m,
+                    UserName = "operador",
+                    PaymentMethods = ["Dinheiro"],
+                    PaymentStatus = "paid",
+                },
+            ],
+        };
+        apiClient.SaleDetails[18] = new SaleReceipt
+        {
+            Id = 18,
+            CashRegisterId = 5,
+            Subtotal = 11m,
+            DiscountAmount = 1m,
+            FinalAmount = 10m,
+            PaidAmount = 10m,
+            ChangeAmount = 0m,
+            Items =
+            [
+                new SaleReceiptItem
+                {
+                    ProductId = 3,
+                    Name = "Heineken 269ml",
+                    Quantity = 2,
+                    UnitPrice = 5.5m,
+                    Subtotal = 11m,
+                    ProfitAmount = 6m,
+                },
+            ],
+            Payments =
+            [
+                new SaleReceiptPayment { Method = "money", Label = "Dinheiro", Amount = 10m },
+            ],
+        };
+
+        using var viewModel = new SalesViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        var sale = viewModel.TodaySales.Single();
+        viewModel.ToggleTodaySaleCommand.Execute(sale);
+        await WaitUntilAsync(() => sale.Detail is not null);
+
+        Assert.True(sale.IsExpanded);
+        Assert.Equal("Ocultar", sale.ExpandHint);
+        Assert.Equal("Dinheiro: R$ 10,00", sale.DetailPaymentsText);
+        Assert.Equal("R$ 6,00", sale.Detail?.Items.Single().ProfitAmountText);
+    }
+
+    [Fact]
     public async Task Failure_preserves_the_order_and_retry_reuses_the_idempotency_key()
     {
         var sessionContext = SessionContext();
@@ -329,6 +388,8 @@ public sealed class SalesViewModelTests
 
         public IReadOnlyList<DashboardRecentSale> DashboardRecentSales { get; init; } = [];
 
+        public Dictionary<int, SaleReceipt> SaleDetails { get; } = [];
+
         public Task<CatalogProductList> GetCatalogProductsAsync(
             string accessToken,
             string search,
@@ -441,6 +502,14 @@ public sealed class SalesViewModelTests
             {
                 Sales = DashboardRecentSales,
             });
+
+        public Task<SaleReceipt> GetSaleDetailAsync(
+            string accessToken,
+            int saleId,
+            CancellationToken cancellationToken) =>
+            SaleDetails.TryGetValue(saleId, out var receipt)
+                ? Task.FromResult(receipt)
+                : Task.FromException<SaleReceipt>(new InvalidOperationException("Venda não encontrada."));
 
         public Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
             string accessToken,

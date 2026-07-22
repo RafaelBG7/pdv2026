@@ -1,4 +1,10 @@
+using System;
+using System.Globalization;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using Girofy.Application.ViewModels;
 
@@ -6,6 +12,9 @@ namespace Girofy.Desktop.Views;
 
 public partial class SalesView : UserControl
 {
+    private static readonly CultureInfo BrazilianCulture = new("pt-BR");
+    private static readonly Regex DigitsOnlyRegex = new(@"^\d+$", RegexOptions.Compiled);
+
     public SalesView()
     {
         InitializeComponent();
@@ -124,9 +133,30 @@ public partial class SalesView : UserControl
             return;
         }
 
-        if (e.Key == Key.Up && SearchSuggestionsList.SelectedIndex <= 0)
+        if (e.Key == Key.Down)
         {
-            FocusProductSearch();
+            MoveSearchSuggestion(1);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Up)
+        {
+            MoveSearchSuggestion(-1);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Home)
+        {
+            SelectSearchSuggestion(0);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.End)
+        {
+            SelectSearchSuggestion(SearchSuggestionsList.Items.Count - 1);
             e.Handled = true;
         }
     }
@@ -144,9 +174,14 @@ public partial class SalesView : UserControl
 
     private void PaymentTextBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        if (sender is TextBox { Tag: string method } && DataContext is SalesViewModel viewModel)
+        if (sender is TextBox textBox && textBox.Tag is string method && DataContext is SalesViewModel viewModel)
         {
             viewModel.AutoCompletePaymentIfEmpty(method);
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+                textBox.Focus();
+                textBox.SelectAll();
+            }));
         }
     }
 
@@ -154,6 +189,26 @@ public partial class SalesView : UserControl
     {
         if (sender is not TextBox textBox)
         {
+            return;
+        }
+
+        if (TryGetDigitFromKey(e.Key, out var digit))
+        {
+            AppendCurrencyDigit(textBox, digit);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key is Key.Back or Key.Delete)
+        {
+            RemoveCurrencyDigit(textBox);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key is Key.Space or Key.Decimal or Key.OemComma or Key.OemPeriod)
+        {
+            e.Handled = true;
             return;
         }
 
@@ -168,6 +223,46 @@ public partial class SalesView : UserControl
         {
             FocusPreviousPaymentField(textBox);
             e.Handled = true;
+        }
+    }
+
+    private void PaymentTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (sender is not TextBox textBox || !DigitsOnlyRegex.IsMatch(e.Text))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        AppendCurrencyDigit(textBox, e.Text[^1]);
+        e.Handled = true;
+    }
+
+    private void PaymentTextBox_Pasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (sender is not TextBox textBox || !e.DataObject.GetDataPresent(DataFormats.Text))
+        {
+            e.CancelCommand();
+            return;
+        }
+
+        var pastedText = e.DataObject.GetData(DataFormats.Text) as string ?? string.Empty;
+        var digits = ExtractDigits(pastedText);
+        if (digits.Length == 0)
+        {
+            e.CancelCommand();
+            return;
+        }
+
+        SetCurrencyDigits(textBox, digits);
+        e.CancelCommand();
+    }
+
+    private void PaymentTextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox textBox)
+        {
+            EnsureCurrencyText(textBox);
         }
     }
 
@@ -245,6 +340,42 @@ public partial class SalesView : UserControl
         SearchSuggestionsList.ScrollIntoView(SearchSuggestionsList.SelectedItem);
     }
 
+    private void MoveSearchSuggestion(int offset)
+    {
+        if (SearchSuggestionsList.Items.Count == 0)
+        {
+            return;
+        }
+
+        var currentIndex = SearchSuggestionsList.SelectedIndex < 0
+            ? 0
+            : SearchSuggestionsList.SelectedIndex;
+        var nextIndex = Math.Clamp(currentIndex + offset, 0, SearchSuggestionsList.Items.Count - 1);
+        SelectSearchSuggestion(nextIndex);
+    }
+
+    private void SelectSearchSuggestion(int index)
+    {
+        if (SearchSuggestionsList.Items.Count == 0)
+        {
+            return;
+        }
+
+        var safeIndex = Math.Clamp(index, 0, SearchSuggestionsList.Items.Count - 1);
+        SearchSuggestionsList.SelectedIndex = safeIndex;
+        SearchSuggestionsList.ScrollIntoView(SearchSuggestionsList.SelectedItem);
+        SearchSuggestionsList.UpdateLayout();
+
+        if (SearchSuggestionsList.ItemContainerGenerator.ContainerFromIndex(safeIndex) is ListBoxItem item)
+        {
+            item.Focus();
+        }
+        else
+        {
+            SearchSuggestionsList.Focus();
+        }
+    }
+
     private void FocusNextPaymentField(TextBox current) =>
         FocusPaymentField(current, forward: true);
 
@@ -266,6 +397,73 @@ public partial class SalesView : UserControl
         fields[nextIndex].Focus();
         fields[nextIndex].SelectAll();
     }
+
+    private static bool TryGetDigitFromKey(Key key, out char digit)
+    {
+        if (key >= Key.D0 && key <= Key.D9)
+        {
+            digit = (char)('0' + ((int)key - (int)Key.D0));
+            return true;
+        }
+
+        if (key >= Key.NumPad0 && key <= Key.NumPad9)
+        {
+            digit = (char)('0' + ((int)key - (int)Key.NumPad0));
+            return true;
+        }
+
+        digit = '\0';
+        return false;
+    }
+
+    private static void AppendCurrencyDigit(TextBox textBox, char digit)
+    {
+        var currentDigits = textBox.SelectionLength == textBox.Text.Length
+            ? string.Empty
+            : ExtractDigits(textBox.Text);
+        SetCurrencyDigits(textBox, currentDigits + digit);
+    }
+
+    private static void RemoveCurrencyDigit(TextBox textBox)
+    {
+        if (textBox.SelectionLength > 0)
+        {
+            SetCurrencyDigits(textBox, string.Empty);
+            return;
+        }
+
+        var digits = ExtractDigits(textBox.Text);
+        SetCurrencyDigits(textBox, digits.Length > 0 ? digits[..^1] : string.Empty);
+    }
+
+    private static void EnsureCurrencyText(TextBox textBox)
+    {
+        var digits = ExtractDigits(textBox.Text);
+        SetCurrencyDigits(textBox, digits);
+    }
+
+    private static void SetCurrencyDigits(TextBox textBox, string digits)
+    {
+        digits = digits.TrimStart('0');
+        if (digits.Length == 0)
+        {
+            digits = "0";
+        }
+
+        if (digits.Length > 12)
+        {
+            digits = digits[^12..];
+        }
+
+        var cents = decimal.Parse(digits, CultureInfo.InvariantCulture);
+        var value = cents / 100m;
+        textBox.Text = value.ToString("N2", BrazilianCulture);
+        textBox.CaretIndex = textBox.Text.Length;
+        textBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+    }
+
+    private static string ExtractDigits(string text) =>
+        new((text ?? string.Empty).Where(char.IsDigit).ToArray());
 
     private static bool IsTextInputFocused() =>
         Keyboard.FocusedElement is Control { IsVisible: true, IsKeyboardFocusWithin: true } control

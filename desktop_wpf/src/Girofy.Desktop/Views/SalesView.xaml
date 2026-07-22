@@ -4,6 +4,27 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Focusable="True"
              PreviewKeyDown="SalesView_PreviewKeyDown">
+    <UserControl.Resources>
+        <Style x:Key="SaleHistoryRowButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
     <Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
@@ -125,22 +146,9 @@
                                                Text="Histórico registrado" />
                                 </Grid>
 
-                                <DataGrid Grid.Row="2"
-                                          ItemsSource="{Binding TodaySales}"
-                                          AutoGenerateColumns="False" IsReadOnly="True"
-                                          CanUserAddRows="False" CanUserDeleteRows="False"
-                                          HeadersVisibility="Column" SelectionMode="Single"
-                                          EnableRowVirtualization="True"
-                                          Background="{StaticResource SurfaceBrush}"
-                                          Foreground="{StaticResource TextPrimaryBrush}"
-                                          BorderBrush="{StaticResource BorderBrush}"
-                                          HorizontalGridLinesBrush="{StaticResource BorderBrush}"
-                                          VerticalGridLinesBrush="Transparent"
-                                          RowBackground="{StaticResource SurfaceBrush}"
-                                          AlternatingRowBackground="#102034"
-                                          RowHeight="44" ColumnHeaderHeight="36">
-                                    <DataGrid.Style>
-                                        <Style TargetType="DataGrid">
+                                <StackPanel Grid.Row="2">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding HasTodaySales}" Value="True">
@@ -148,15 +156,259 @@
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </DataGrid.Style>
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Venda" Binding="{Binding NumberText}" Width="0.65*" />
-                                        <DataGridTextColumn Header="Data" Binding="{Binding DateText}" Width="1.35*" />
-                                        <DataGridTextColumn Header="Vendedor" Binding="{Binding UserName}" Width="1*" />
-                                        <DataGridTextColumn Header="Total" Binding="{Binding FinalAmountText}" Width="0.9*" />
-                                        <DataGridTextColumn Header="Pagamento" Binding="{Binding PaymentText}" Width="1.2*" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                    </StackPanel.Style>
+                                    <Border Padding="12,10" Background="{StaticResource SurfaceRaisedBrush}"
+                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6,6,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="0.75*" />
+                                                <ColumnDefinition Width="1.35*" />
+                                                <ColumnDefinition Width="1*" />
+                                                <ColumnDefinition Width="0.95*" />
+                                                <ColumnDefinition Width="1.2*" />
+                                                <ColumnDefinition Width="0.75*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Venda" />
+                                            <TextBlock Grid.Column="1" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Data" />
+                                            <TextBlock Grid.Column="2" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Vendedor" />
+                                            <TextBlock Grid.Column="3" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Total" />
+                                            <TextBlock Grid.Column="4" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Pagamento" />
+                                            <TextBlock Grid.Column="5" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Ação" />
+                                        </Grid>
+                                    </Border>
+                                    <ItemsControl ItemsSource="{Binding TodaySales}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{StaticResource BorderBrush}"
+                                                        BorderThickness="1,0,1,1"
+                                                        Background="{StaticResource SurfaceBrush}">
+                                                    <StackPanel>
+                                                        <Button Style="{StaticResource SaleHistoryRowButtonStyle}"
+                                                                Command="{Binding DataContext.ToggleTodaySaleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}">
+                                                            <Border Padding="12">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                                <Setter Property="Background" Value="{StaticResource InfoSurfaceBrush}" />
+                                                                            </DataTrigger>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter Property="Background" Value="{StaticResource SurfaceHoverBrush}" />
+                                                                            </Trigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="0.75*" />
+                                                                        <ColumnDefinition Width="1.35*" />
+                                                                        <ColumnDefinition Width="1*" />
+                                                                        <ColumnDefinition Width="0.95*" />
+                                                                        <ColumnDefinition Width="1.2*" />
+                                                                        <ColumnDefinition Width="0.75*" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock FontSize="13" FontWeight="Bold"
+                                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                                               Text="{Binding NumberText}" />
+                                                                    <TextBlock Grid.Column="1" FontSize="13"
+                                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                                               Text="{Binding DateText}" />
+                                                                    <TextBlock Grid.Column="2" FontSize="13"
+                                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                                               Text="{Binding UserName}" />
+                                                                    <TextBlock Grid.Column="3" FontSize="13" FontWeight="SemiBold"
+                                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                                               Text="{Binding FinalAmountText}" />
+                                                                    <TextBlock Grid.Column="4" FontSize="13"
+                                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                                               Text="{Binding PaymentText}" TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Grid.Column="5" FontSize="12" FontWeight="SemiBold"
+                                                                               Foreground="{StaticResource InfoBrush}"
+                                                                               Text="{Binding ExpandHint}" />
+                                                                </Grid>
+                                                            </Border>
+                                                        </Button>
+
+                                                        <Border Margin="12,0,12,12" Padding="16"
+                                                                Background="{StaticResource SurfaceRaisedBrush}"
+                                                                BorderBrush="{StaticResource InfoBorderBrush}"
+                                                                BorderThickness="1" CornerRadius="8">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <StackPanel>
+                                                                <TextBlock Foreground="{StaticResource TextSecondaryBrush}"
+                                                                           Text="Carregando detalhes...">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsLoadingDetail}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                                <TextBlock Foreground="{StaticResource ErrorBrush}"
+                                                                           Text="{Binding DetailError}"
+                                                                           TextWrapping="Wrap">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding HasDetailError}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                                <Grid>
+                                                                    <Grid.Style>
+                                                                        <Style TargetType="Grid">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding HasDetail}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Grid.Style>
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="Auto" />
+                                                                        <RowDefinition Height="16" />
+                                                                        <RowDefinition Height="Auto" />
+                                                                    </Grid.RowDefinitions>
+
+                                                                    <StackPanel>
+                                                                        <TextBlock FontSize="16" FontWeight="Bold"
+                                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                                   Text="Produtos" />
+                                                                        <Border Margin="0,10,0,0" Padding="12"
+                                                                                Background="{StaticResource SurfaceBrush}"
+                                                                                BorderBrush="{StaticResource BorderBrush}"
+                                                                                BorderThickness="1" CornerRadius="6">
+                                                                            <StackPanel>
+                                                                                <Grid>
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="70" />
+                                                                                        <ColumnDefinition Width="110" />
+                                                                                        <ColumnDefinition Width="110" />
+                                                                                        <ColumnDefinition Width="110" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Produto" />
+                                                                                    <TextBlock Grid.Column="1" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Qtd." />
+                                                                                    <TextBlock Grid.Column="2" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Unitário" />
+                                                                                    <TextBlock Grid.Column="3" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Subtotal" />
+                                                                                    <TextBlock Grid.Column="4" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" Text="Lucro final" />
+                                                                                </Grid>
+                                                                                <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Detail.Items}">
+                                                                                    <ItemsControl.ItemTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <Border Padding="0,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                                                                                                <Grid>
+                                                                                                    <Grid.ColumnDefinitions>
+                                                                                                        <ColumnDefinition Width="*" />
+                                                                                                        <ColumnDefinition Width="70" />
+                                                                                                        <ColumnDefinition Width="110" />
+                                                                                                        <ColumnDefinition Width="110" />
+                                                                                                        <ColumnDefinition Width="110" />
+                                                                                                    </Grid.ColumnDefinitions>
+                                                                                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Name}" TextWrapping="Wrap" />
+                                                                                                    <TextBlock Grid.Column="1" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding QuantityText}" />
+                                                                                                    <TextBlock Grid.Column="2" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding UnitPriceText}" />
+                                                                                                    <TextBlock Grid.Column="3" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding SubtotalText}" />
+                                                                                                    <TextBlock Grid.Column="4" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="{Binding ProfitAmountText}" />
+                                                                                                </Grid>
+                                                                                            </Border>
+                                                                                        </DataTemplate>
+                                                                                    </ItemsControl.ItemTemplate>
+                                                                                </ItemsControl>
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                    </StackPanel>
+
+                                                                    <StackPanel Grid.Row="2">
+                                                                        <TextBlock FontSize="16" FontWeight="Bold"
+                                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                                   Text="Pagamento" />
+                                                                        <Border Margin="0,10,0,0" Padding="12"
+                                                                                Background="{StaticResource SurfaceBrush}"
+                                                                                BorderBrush="{StaticResource BorderBrush}"
+                                                                                BorderThickness="1" CornerRadius="6">
+                                                                            <StackPanel>
+                                                                                <Grid Margin="0,0,0,6">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock Foreground="{StaticResource TextSecondaryBrush}" Text="Subtotal" />
+                                                                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Detail.SubtotalText}" />
+                                                                                </Grid>
+                                                                                <Grid Margin="0,0,0,6">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock Foreground="{StaticResource TextSecondaryBrush}" Text="Desconto" />
+                                                                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Detail.DiscountAmountText}" />
+                                                                                </Grid>
+                                                                                <Grid Margin="0,0,0,6">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="Total" />
+                                                                                    <TextBlock Grid.Column="1" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}" Text="{Binding Detail.FinalAmountText}" />
+                                                                                </Grid>
+                                                                                <Grid Margin="0,0,0,6">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock Foreground="{StaticResource TextSecondaryBrush}" Text="Pago" />
+                                                                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Detail.PaidAmountText}" />
+                                                                                </Grid>
+                                                                                <Grid Margin="0,0,0,12">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock Foreground="{StaticResource TextSecondaryBrush}" Text="Troco" />
+                                                                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Foreground="{StaticResource InfoBrush}" Text="{Binding Detail.ChangeAmountText}" />
+                                                                                </Grid>
+                                                                                <Separator Background="{StaticResource BorderBrush}" />
+                                                                                <Grid Margin="0,12,0,0">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}" Text="Formas" />
+                                                                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding DetailPaymentsText}" />
+                                                                                </Grid>
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
 
                                 <TextBlock Grid.Row="2" HorizontalAlignment="Center" Padding="0,18"
                                            Foreground="{StaticResource TextSecondaryBrush}"
@@ -375,11 +627,16 @@
                                         <ListBox x:Name="SearchSuggestionsList"
                                                  ItemsSource="{Binding SearchResults}"
                                                  SelectedItem="{Binding SelectedSearchProduct, Mode=TwoWay}"
+                                                 Focusable="True"
+                                                 SelectionMode="Single"
+                                                 KeyboardNavigation.DirectionalNavigation="Contained"
+                                                 KeyboardNavigation.TabNavigation="Contained"
                                                  PreviewKeyDown="SearchSuggestionsList_PreviewKeyDown"
                                                  MouseDoubleClick="SearchSuggestionsList_MouseDoubleClick"
                                                  Background="Transparent"
                                                  BorderThickness="0"
                                                  Foreground="{StaticResource TextPrimaryBrush}"
+                                                 ScrollViewer.CanContentScroll="True"
                                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
                                             <ListBox.ItemContainerStyle>
@@ -646,6 +903,9 @@
                                                      Tag="money"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
                                                      PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
+                                                     PreviewTextInput="PaymentTextBox_PreviewTextInput"
+                                                     DataObject.Pasting="PaymentTextBox_Pasting"
+                                                     LostKeyboardFocus="PaymentTextBox_LostKeyboardFocus"
                                                      Text="{Binding MoneyText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
@@ -655,6 +915,9 @@
                                                      Tag="pix"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
                                                      PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
+                                                     PreviewTextInput="PaymentTextBox_PreviewTextInput"
+                                                     DataObject.Pasting="PaymentTextBox_Pasting"
+                                                     LostKeyboardFocus="PaymentTextBox_LostKeyboardFocus"
                                                      Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
@@ -664,6 +927,9 @@
                                                      Tag="debit"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
                                                      PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
+                                                     PreviewTextInput="PaymentTextBox_PreviewTextInput"
+                                                     DataObject.Pasting="PaymentTextBox_Pasting"
+                                                     LostKeyboardFocus="PaymentTextBox_LostKeyboardFocus"
                                                      Text="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
@@ -673,6 +939,9 @@
                                                      Tag="credit"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
                                                      PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
+                                                     PreviewTextInput="PaymentTextBox_PreviewTextInput"
+                                                     DataObject.Pasting="PaymentTextBox_Pasting"
+                                                     LostKeyboardFocus="PaymentTextBox_LostKeyboardFocus"
                                                      Text="{Binding CreditText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>

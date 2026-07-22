@@ -972,7 +972,7 @@
                                         <Button Grid.Row="10" Height="42"
                                                 Command="{Binding OpenDiscountPopupCommand}"
                                                 Click="OpenDiscountPopupButton_Click"
-                                                Content="Aplicar desconto"
+                                                Content="Desconto - F3"
                                                 Style="{StaticResource SecondaryButtonStyle}" />
                                     </Grid>
                                 </Border>

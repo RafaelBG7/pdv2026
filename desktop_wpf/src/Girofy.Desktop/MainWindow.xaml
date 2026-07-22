@@ -63,14 +63,15 @@
                         <Border Grid.Row="2" Padding="16" BorderThickness="1" CornerRadius="6">
                             <Border.Style>
                                 <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Visible" />
                                     <Setter Property="Background" Value="{StaticResource InfoSurfaceBrush}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource InfoBorderBrush}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource SuccessSurfaceBrush}" />
-                                            <Setter Property="BorderBrush" Value="{StaticResource SuccessBorderBrush}" />
+                                            <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding HasConnectionError}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
                                             <Setter Property="Background" Value="{StaticResource ErrorSurfaceBrush}" />
                                             <Setter Property="BorderBrush" Value="{StaticResource ErrorBorderBrush}" />
                                         </DataTrigger>
@@ -110,7 +111,7 @@
                         </Border>
 
                         <Grid Grid.Row="4">
-                            <StackPanel MaxWidth="520" HorizontalAlignment="Center">
+                            <StackPanel Width="340" MaxWidth="340" HorizontalAlignment="Center">
                                 <StackPanel.Style>
                                     <Style TargetType="StackPanel">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -247,7 +248,7 @@
                                         Style="{StaticResource LinkButtonStyle}" />
                             </StackPanel>
 
-                            <StackPanel MaxWidth="520" HorizontalAlignment="Center">
+                            <StackPanel Width="340" MaxWidth="340" HorizontalAlignment="Center">
                                 <StackPanel.Style>
                                     <Style TargetType="StackPanel">
                                         <Setter Property="Visibility" Value="Collapsed" />

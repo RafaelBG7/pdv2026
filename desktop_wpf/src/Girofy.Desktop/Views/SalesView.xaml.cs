@@ -18,6 +18,14 @@ public partial class SalesView : UserControl
             return;
         }
 
+        if (viewModel.HasReceipt && (e.Key is Key.Enter or Key.Space) && !IsTextInputFocused())
+        {
+            ExecuteIfAllowed(viewModel.NewSaleCommand);
+            FocusProductSearch();
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.F3)
         {
             ExecuteIfAllowed(viewModel.OpenSaleEditorCommand);
@@ -55,7 +63,22 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Down && viewModel.HasSearchResults)
         {
-            FocusSearchResults();
+            FocusSearchSuggestions();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Up && viewModel.HasSearchResults)
+        {
+            FocusSearchSuggestions(selectLast: true);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            viewModel.SearchText = string.Empty;
+            FocusProductSearch();
             e.Handled = true;
             return;
         }
@@ -80,7 +103,7 @@ public partial class SalesView : UserControl
         }
     }
 
-    private void SearchResultsGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+    private void SearchSuggestionsList_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (DataContext is not SalesViewModel viewModel)
         {
@@ -101,14 +124,14 @@ public partial class SalesView : UserControl
             return;
         }
 
-        if (e.Key == Key.Up && SearchResultsGrid.SelectedIndex <= 0)
+        if (e.Key == Key.Up && SearchSuggestionsList.SelectedIndex <= 0)
         {
             FocusProductSearch();
             e.Handled = true;
         }
     }
 
-    private void SearchResultsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void SearchSuggestionsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (DataContext is not SalesViewModel viewModel || !viewModel.HasSearchResults)
         {
@@ -204,20 +227,22 @@ public partial class SalesView : UserControl
             DiscountPopupInput.SelectAll();
         }));
 
-    private void FocusSearchResults()
+    private void FocusSearchSuggestions(bool selectLast = false)
     {
-        if (SearchResultsGrid.Items.Count == 0)
+        if (SearchSuggestionsList.Items.Count == 0)
         {
             return;
         }
 
-        if (SearchResultsGrid.SelectedIndex < 0)
+        if (SearchSuggestionsList.SelectedIndex < 0 || selectLast)
         {
-            SearchResultsGrid.SelectedIndex = 0;
+            SearchSuggestionsList.SelectedIndex = selectLast
+                ? SearchSuggestionsList.Items.Count - 1
+                : 0;
         }
 
-        SearchResultsGrid.Focus();
-        SearchResultsGrid.ScrollIntoView(SearchResultsGrid.SelectedItem);
+        SearchSuggestionsList.Focus();
+        SearchSuggestionsList.ScrollIntoView(SearchSuggestionsList.SelectedItem);
     }
 
     private void FocusNextPaymentField(TextBox current) =>
@@ -241,6 +266,10 @@ public partial class SalesView : UserControl
         fields[nextIndex].Focus();
         fields[nextIndex].SelectAll();
     }
+
+    private static bool IsTextInputFocused() =>
+        Keyboard.FocusedElement is Control { IsVisible: true, IsKeyboardFocusWithin: true } control
+        && (control is TextBox or PasswordBox or ComboBox);
 
     private static void ExecuteIfAllowed(ICommand command)
     {

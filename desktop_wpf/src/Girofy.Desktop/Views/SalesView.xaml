@@ -358,25 +358,12 @@
                                                 Content="Pesquisar" Visibility="Collapsed"
                                                 Style="{StaticResource PrimaryButtonStyle}" />
                                     </Grid>
-                                    <DataGrid x:Name="SearchResultsGrid"
-                                              Grid.Row="4" MaxHeight="165"
-                                              ItemsSource="{Binding SearchResults}"
-                                              SelectedItem="{Binding SelectedSearchProduct}"
-                                              AutoGenerateColumns="False" IsReadOnly="True"
-                                              CanUserAddRows="False" CanUserDeleteRows="False"
-                                              HeadersVisibility="Column" SelectionMode="Single"
-                                              PreviewKeyDown="SearchResultsGrid_PreviewKeyDown"
-                                              MouseDoubleClick="SearchResultsGrid_MouseDoubleClick"
-                                              EnableRowVirtualization="True"
-                                              Background="{StaticResource SurfaceBrush}"
-                                              Foreground="{StaticResource TextPrimaryBrush}"
-                                              BorderBrush="{StaticResource BorderBrush}"
-                                              HorizontalGridLinesBrush="{StaticResource BorderBrush}"
-                                              VerticalGridLinesBrush="Transparent"
-                                              RowBackground="{StaticResource SurfaceBrush}"
-                                              RowHeight="42" ColumnHeaderHeight="36">
-                                        <DataGrid.Style>
-                                            <Style TargetType="DataGrid">
+                                    <Border Grid.Row="4" MaxHeight="248" Padding="6"
+                                            Background="{StaticResource SurfaceRaisedBrush}"
+                                            BorderBrush="{StaticResource BorderBrush}"
+                                            BorderThickness="1" CornerRadius="8">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding HasSearchResults}" Value="True">
@@ -384,14 +371,103 @@
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </DataGrid.Style>
-                                        <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Produto" Binding="{Binding Name}" Width="2*" />
-                                            <DataGridTextColumn Header="Código" Binding="{Binding Barcode}" Width="1.1*" />
-                                            <DataGridTextColumn Header="Preço" Binding="{Binding SalePriceText}" Width="1*" />
-                                            <DataGridTextColumn Header="Estoque" Binding="{Binding StockText}" Width="0.9*" />
-                                        </DataGrid.Columns>
-                                    </DataGrid>
+                                        </Border.Style>
+                                        <ListBox x:Name="SearchSuggestionsList"
+                                                 ItemsSource="{Binding SearchResults}"
+                                                 SelectedItem="{Binding SelectedSearchProduct, Mode=TwoWay}"
+                                                 PreviewKeyDown="SearchSuggestionsList_PreviewKeyDown"
+                                                 MouseDoubleClick="SearchSuggestionsList_MouseDoubleClick"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="Margin" Value="0,0,0,6" />
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Border x:Name="SuggestionItem"
+                                                                        Padding="12"
+                                                                        Background="{TemplateBinding Background}"
+                                                                        BorderBrush="Transparent"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="7">
+                                                                    <ContentPresenter />
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="SuggestionItem"
+                                                                                Property="Background"
+                                                                                Value="{StaticResource SurfaceBrush}" />
+                                                                        <Setter TargetName="SuggestionItem"
+                                                                                Property="BorderBrush"
+                                                                                Value="{StaticResource BorderBrush}" />
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="SuggestionItem"
+                                                                                Property="Background"
+                                                                                Value="{StaticResource InfoSurfaceBrush}" />
+                                                                        <Setter TargetName="SuggestionItem"
+                                                                                Property="BorderBrush"
+                                                                                Value="{StaticResource AccentBrush}" />
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="16" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       FontSize="15"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <StackPanel Margin="0,4,0,0"
+                                                                        Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding SalePriceText}"
+                                                                           FontSize="13"
+                                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                                <TextBlock Text=" · "
+                                                                           FontSize="13"
+                                                                           Foreground="{StaticResource TextMutedBrush}" />
+                                                                <TextBlock Text="{Binding StockText}"
+                                                                           FontSize="13"
+                                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="2"
+                                                                    HorizontalAlignment="Right"
+                                                                    VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding SalePriceText}"
+                                                                       FontSize="14"
+                                                                       FontWeight="Bold"
+                                                                       Foreground="{StaticResource AccentBrush}"
+                                                                       TextAlignment="Right" />
+                                                            <TextBlock Margin="0,3,0,0"
+                                                                       Text="{Binding StockText}"
+                                                                       FontSize="12"
+                                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                                       TextAlignment="Right" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
                                     <Grid Grid.Row="6">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />

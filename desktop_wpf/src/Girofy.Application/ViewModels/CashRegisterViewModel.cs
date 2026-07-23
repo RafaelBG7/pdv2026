@@ -19,6 +19,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     private string _errorMessage = string.Empty;
     private string _successMessage = string.Empty;
     private bool _isBusy;
+    private bool _isDetailLoading;
 
     public CashRegisterViewModel(
         IGirofyApiClient apiClient,
@@ -165,6 +166,12 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _isBusy, value);
     }
 
+    public bool IsDetailLoading
+    {
+        get => _isDetailLoading;
+        private set => SetProperty(ref _isDetailLoading, value);
+    }
+
     public AsyncRelayCommand RefreshCommand { get; }
 
     public AsyncRelayCommand OpenCommand { get; }
@@ -300,7 +307,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         }
 
         var session = RequireSession();
-        IsBusy = true;
+        IsDetailLoading = true;
         ClearMessages();
         try
         {
@@ -314,7 +321,6 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
                 StringComparison.Ordinal))
             {
                 DetailSnapshot = detail;
-                SuccessMessage = $"Detalhes do caixa #{selected.Id} carregados.";
             }
         }
         catch (Exception exception)
@@ -323,7 +329,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            IsBusy = false;
+            IsDetailLoading = false;
         }
     }
 
@@ -395,6 +401,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
         IsBusy = false;
+        IsDetailLoading = false;
     }
 
     public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;

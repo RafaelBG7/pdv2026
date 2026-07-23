@@ -309,7 +309,9 @@
                            Foreground="{StaticResource TextSecondaryBrush}"
                            Text="Últimos caixas registrados nesta adega." />
                 <DataGrid ItemsSource="{Binding RecentRegisters}"
+                          x:Name="RecentRegistersGrid"
                           SelectedItem="{Binding SelectedRegister, Mode=TwoWay}"
+                          SelectionChanged="RecentRegistersGrid_SelectionChanged"
                           AutoGenerateColumns="False" IsReadOnly="True"
                           HeadersVisibility="Column" CanUserAddRows="False"
                           CanUserDeleteRows="False" CanUserReorderColumns="False"
@@ -325,6 +327,11 @@
                           RowBackground="{StaticResource SurfaceRaisedBrush}"
                           AlternatingRowBackground="#102034"
                           RowHeight="50" ColumnHeaderHeight="42">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Cursor" Value="Hand" />
+                        </Style>
+                    </DataGrid.RowStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Caixa" Binding="{Binding NumberText}" Width="0.8*" />
                         <DataGridTextColumn Header="Abertura" Binding="{Binding OpenedAtText}" Width="1.25*" />
@@ -343,12 +350,30 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock VerticalAlignment="Center" FontSize="12"
                                Foreground="{StaticResource TextSecondaryBrush}"
-                               Text="Selecione um caixa recente para consultar vendas, itens e pagamentos." />
+                               Text="Clique em qualquer caixa para abrir vendas, itens e pagamentos." />
                     <Button Grid.Column="1" MinWidth="150"
                             Command="{Binding LoadRegisterDetailCommand}"
-                            Content="Ver detalhes"
+                            Content="Atualizar detalhe"
                             Style="{StaticResource SecondaryButtonStyle}" />
                 </Grid>
+
+                <Border Margin="0,14,0,0" Padding="12"
+                        Background="{StaticResource InfoSurfaceBrush}"
+                        BorderBrush="{StaticResource InfoBorderBrush}"
+                        BorderThickness="1" CornerRadius="6">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDetailLoading}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="Carregando detalhes do caixa..." />
+                </Border>
 
                 <Border Margin="0,16,0,0" Padding="18"
                         Background="{StaticResource SurfaceRaisedBrush}"

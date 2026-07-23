@@ -111,6 +111,67 @@ public sealed class CashRegisterViewModelTests
     }
 
     [Fact]
+    public async Task Loading_selected_register_detail_fetches_timeline()
+    {
+        var sessionContext = CreateSessionContext();
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = new CashRegisterSnapshot
+            {
+                Permissions = new CashRegisterPermissions { CanViewFinancials = true },
+                RecentRegisters =
+                [
+                    new CashRegisterRecord
+                    {
+                        Id = 77,
+                        Status = "closed",
+                        OpenedAt = "2026-07-16T12:00:00Z",
+                        ClosedAt = "2026-07-16T18:00:00Z",
+                        ResponsibleUser = "operador",
+                        SalesCount = 1,
+                        SalesTotal = 25m,
+                    },
+                ],
+            },
+            DetailResult = new CashRegisterDetailSnapshot
+            {
+                Permissions = new CashRegisterPermissions { CanViewFinancials = true },
+                CashRegister = new CashRegisterRecord
+                {
+                    Id = 77,
+                    Status = "closed",
+                    ResponsibleUser = "operador",
+                    SalesCount = 1,
+                    SalesTotal = 25m,
+                },
+                Timeline =
+                [
+                    new CashRegisterTimelineSale
+                    {
+                        Id = 301,
+                        Number = "#301",
+                        Time = "18:03",
+                        Seller = "operador",
+                        FinalAmount = 25m,
+                    },
+                ],
+            },
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedRegister = viewModel.RecentRegisters.Single();
+        await viewModel.LoadRegisterDetailCommand.ExecuteAsync();
+
+        Assert.Equal(77, apiClient.LastDetailCashRegisterId);
+        Assert.True(viewModel.HasDetail);
+        Assert.True(viewModel.HasTimeline);
+        Assert.Equal("Caixa #77", viewModel.DetailRegister!.NumberText);
+        Assert.Equal("#301", viewModel.Timeline.Single().Number);
+        Assert.False(viewModel.IsDetailLoading);
+    }
+
+    [Fact]
     public async Task Clearing_session_removes_cash_register_data()
     {
         var sessionContext = CreateSessionContext();
@@ -170,6 +231,8 @@ public sealed class CashRegisterViewModelTests
 
         public CashRegisterSnapshot CloseResult { get; init; } = new();
 
+        public CashRegisterDetailSnapshot DetailResult { get; init; } = new();
+
         public Exception? CloseException { get; init; }
 
         public string LastAccessToken { get; private set; } = string.Empty;
@@ -177,6 +240,8 @@ public sealed class CashRegisterViewModelTests
         public decimal LastOpeningAmount { get; private set; }
 
         public int LastCashRegisterId { get; private set; }
+
+        public int LastDetailCashRegisterId { get; private set; }
 
         public decimal LastClosingAmount { get; private set; }
 
@@ -210,6 +275,16 @@ public sealed class CashRegisterViewModelTests
             return CloseException is null
                 ? Task.FromResult(CloseResult)
                 : Task.FromException<CashRegisterSnapshot>(CloseException);
+        }
+
+        public Task<CashRegisterDetailSnapshot> GetCashRegisterDetailAsync(
+            string accessToken,
+            int cashRegisterId,
+            CancellationToken cancellationToken)
+        {
+            LastAccessToken = accessToken;
+            LastDetailCashRegisterId = cashRegisterId;
+            return Task.FromResult(DetailResult);
         }
 
         public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken) =>

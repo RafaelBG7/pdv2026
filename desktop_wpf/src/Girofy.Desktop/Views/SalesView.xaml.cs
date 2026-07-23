@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -20,6 +21,48 @@ public partial class SalesView : UserControl
     public SalesView()
     {
         InitializeComponent();
+        DataContextChanged += SalesView_DataContextChanged;
+        Unloaded += SalesView_Unloaded;
+    }
+
+    private void SalesView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.OldValue is SalesViewModel oldViewModel)
+        {
+            oldViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        }
+
+        if (e.NewValue is SalesViewModel newViewModel)
+        {
+            newViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        }
+    }
+
+    private void SalesView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is SalesViewModel viewModel)
+        {
+            viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        }
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not SalesViewModel viewModel)
+        {
+            return;
+        }
+
+        if (e.PropertyName == nameof(SalesViewModel.IsOpenCashPromptOpen) && viewModel.IsOpenCashPromptOpen)
+        {
+            FocusOpeningCashInput();
+            return;
+        }
+
+        if (e.PropertyName == nameof(SalesViewModel.IsProductStepOpen) && viewModel.IsProductStepOpen)
+        {
+            FocusProductSearch();
+        }
     }
 
     private void SalesView_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -35,6 +78,23 @@ public partial class SalesView : UserControl
             FocusProductSearch();
             e.Handled = true;
             return;
+        }
+
+        if (viewModel.IsOpenCashPromptOpen)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ExecuteIfAllowed(viewModel.ConfirmOpenCashBeforeSaleCommand);
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Escape)
+            {
+                ExecuteIfAllowed(viewModel.CancelOpenCashBeforeSaleCommand);
+                e.Handled = true;
+                return;
+            }
         }
 
         if (e.Key == Key.Escape && viewModel.IsSaleEditorOpen)
@@ -56,7 +116,6 @@ public partial class SalesView : UserControl
         if (e.Key == Key.F3)
         {
             ExecuteIfAllowed(viewModel.OpenSaleEditorCommand);
-            FocusProductSearch();
             e.Handled = true;
             return;
         }
@@ -375,6 +434,30 @@ public partial class SalesView : UserControl
         }
     }
 
+    private void OpeningCashInput_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (DataContext is not SalesViewModel viewModel)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            ExecuteIfAllowed(viewModel.ConfirmOpenCashBeforeSaleCommand);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            ExecuteIfAllowed(viewModel.CancelOpenCashBeforeSaleCommand);
+            e.Handled = true;
+            return;
+        }
+
+        PaymentTextBox_PreviewKeyDown(sender, e);
+    }
+
     private void DiscountPopupInput_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (DataContext is not SalesViewModel viewModel)
@@ -479,6 +562,13 @@ public partial class SalesView : UserControl
         {
             MoneyInput.Focus();
             MoneyInput.SelectAll();
+        }));
+
+    private void FocusOpeningCashInput() =>
+        Dispatcher.BeginInvoke((Action)(() =>
+        {
+            OpeningCashInput.Focus();
+            OpeningCashInput.SelectAll();
         }));
 
     private void FocusDiscountInput() =>

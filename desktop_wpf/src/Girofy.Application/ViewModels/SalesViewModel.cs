@@ -160,7 +160,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private bool _isSaleEditorOpen;
     private bool _isPaymentStepOpen;
     private bool _isDiscountPopupOpen;
+    private bool _isOpenCashPromptOpen;
     private bool _updatingPaymentText;
+    private string _openingCashText = "0,00";
     private CancellationTokenSource? _searchDebounceCts;
     private string? _idempotencyKey;
     private SaleReceipt? _receipt;
@@ -186,8 +188,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         FillDebitCommand = new RelayCommand(() => FillRemaining("debit", markAsManual: true));
         FillCreditCommand = new RelayCommand(() => FillRemaining("credit", markAsManual: true));
         FinalizeCommand = new AsyncRelayCommand(FinalizeAsync);
-        OpenSaleEditorCommand = new RelayCommand(OpenSaleEditor);
+        OpenSaleEditorCommand = new AsyncRelayCommand(OpenSaleEditorAsync);
         CloseSaleEditorCommand = new RelayCommand(CloseSaleEditor);
+        ConfirmOpenCashBeforeSaleCommand = new AsyncRelayCommand(ConfirmOpenCashBeforeSaleAsync, () => !IsBusy);
+        CancelOpenCashBeforeSaleCommand = new RelayCommand(CancelOpenCashBeforeSale);
         OpenPaymentStepCommand = new RelayCommand(OpenPaymentStep, () => HasCart && !IsBusy);
         BackToProductsCommand = new RelayCommand(BackToProducts);
         OpenDiscountPopupCommand = new RelayCommand(OpenDiscountPopup, () => HasCart && !IsBusy);
@@ -414,6 +418,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(CanProceedToPayment));
                 OpenPaymentStepCommand.NotifyCanExecuteChanged();
                 OpenDiscountPopupCommand.NotifyCanExecuteChanged();
+                ConfirmOpenCashBeforeSaleCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -466,6 +471,22 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public bool IsDiscountPopupVisible => IsSaleEditorOpen && IsDiscountPopupOpen && !HasReceipt;
 
+    public bool IsOpenCashPromptOpen
+    {
+        get => _isOpenCashPromptOpen;
+        private set => SetProperty(ref _isOpenCashPromptOpen, value);
+    }
+
+    public string OpeningCashText
+    {
+        get => _openingCashText;
+        set
+        {
+            var normalizedValue = NormalizePaymentText(value);
+            SetProperty(ref _openingCashText, normalizedValue);
+        }
+    }
+
     public bool CanProceedToPayment => HasCart && !IsBusy;
 
     public AsyncRelayCommand SearchCommand { get; }
@@ -488,9 +509,13 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand FinalizeCommand { get; }
 
-    public RelayCommand OpenSaleEditorCommand { get; }
+    public AsyncRelayCommand OpenSaleEditorCommand { get; }
 
     public RelayCommand CloseSaleEditorCommand { get; }
+
+    public AsyncRelayCommand ConfirmOpenCashBeforeSaleCommand { get; }
+
+    public RelayCommand CancelOpenCashBeforeSaleCommand { get; }
 
     public RelayCommand OpenPaymentStepCommand { get; }
 
@@ -982,12 +1007,13 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         Receipt = null;
         SuccessMessage = string.Empty;
         ErrorMessage = string.Empty;
+        IsOpenCashPromptOpen = false;
         ResetDraftAfterSuccess();
         IsSaleEditorOpen = true;
         IsPaymentStepOpen = false;
     }
 
-    private void OpenSaleEditor()
+    private async Task OpenSaleEditorAsync(CancellationToken cancellationToken)
     {
         if (HasReceipt)
         {
@@ -996,8 +1022,88 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
 
         ClearMessages();
-        IsSaleEditorOpen = true;
-        IsPaymentStepOpen = false;
+        IsOpenCashPromptOpen = false;
+        var session = RequireSession();
+        IsBusy = true;
+        try
+        {
+            var snapshot = await _apiClient.GetCashRegisterSummaryAsync(session.AccessToken, cancellationToken);
+            if (!IsSameSession(session))
+            {
+                return;
+            }
+
+            if (snapshot.CurrentRegister?.IsOpen == true)
+            {
+                IsDiscountPopupOpen = false;
+                IsPaymentStepOpen = false;
+                IsSaleEditorOpen = true;
+                return;
+            }
+
+            OpeningCashText = "0,00";
+            IsDiscountPopupOpen = false;
+            IsPaymentStepOpen = false;
+            IsSaleEditorOpen = false;
+            ErrorMessage = "O caixa está fechado. Abra o caixa para registrar a venda.";
+            IsOpenCashPromptOpen = true;
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception, "Não foi possível verificar o caixa agora.");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ConfirmOpenCashBeforeSaleAsync(CancellationToken cancellationToken)
+    {
+        if (!TryParseMoney(OpeningCashText, out var openingAmount))
+        {
+            ErrorMessage = "Informe um valor inicial válido para abrir o caixa.";
+            return;
+        }
+
+        var session = RequireSession();
+        IsBusy = true;
+        ClearMessages();
+        try
+        {
+            var snapshot = await _apiClient.OpenCashRegisterAsync(session.AccessToken, openingAmount, cancellationToken);
+            if (!IsSameSession(session))
+            {
+                return;
+            }
+
+            if (snapshot.CurrentRegister?.IsOpen != true)
+            {
+                ErrorMessage = "Não foi possível abrir o caixa.";
+                return;
+            }
+
+            IsOpenCashPromptOpen = false;
+            OpeningCashText = "0,00";
+            IsDiscountPopupOpen = false;
+            IsPaymentStepOpen = false;
+            IsSaleEditorOpen = true;
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception, "Não foi possível abrir o caixa agora.");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void CancelOpenCashBeforeSale()
+    {
+        ClearMessages();
+        IsOpenCashPromptOpen = false;
+        OpeningCashText = "0,00";
     }
 
     private void CloseSaleEditor()
@@ -1005,6 +1111,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         ClearMessages();
         IsDiscountPopupOpen = false;
         IsPaymentStepOpen = false;
+        IsOpenCashPromptOpen = false;
         IsSaleEditorOpen = false;
     }
 
@@ -1151,7 +1258,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         PixText = "0,00";
         DebitText = "0,00";
         CreditText = "0,00";
+        OpeningCashText = "0,00";
         IsDiscountPopupOpen = false;
+        IsOpenCashPromptOpen = false;
         _idempotencyKey = null;
         _manualPaymentMethods.Clear();
         _autoPaymentMethods.Clear();
@@ -1166,6 +1275,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
         IsBusy = false;
+        IsPaymentStepOpen = false;
+        IsSaleEditorOpen = false;
         TodaySales.Clear();
         OnPropertyChanged(nameof(HasTodaySales));
         OnPropertyChanged(nameof(HasNoTodaySales));

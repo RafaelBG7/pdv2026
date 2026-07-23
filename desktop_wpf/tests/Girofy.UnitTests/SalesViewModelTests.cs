@@ -216,7 +216,7 @@ public sealed class SalesViewModelTests
             SearchText = "789",
         };
 
-        viewModel.OpenSaleEditorCommand.Execute(null);
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
         await viewModel.SearchCommand.ExecuteAsync();
         viewModel.AddProductCommand.Execute(null);
 
@@ -248,7 +248,7 @@ public sealed class SalesViewModelTests
             SearchText = "789",
         };
 
-        viewModel.OpenSaleEditorCommand.Execute(null);
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
         await viewModel.SearchCommand.ExecuteAsync();
         viewModel.AddProductCommand.Execute(null);
         viewModel.OpenDiscountPopupCommand.Execute(null);
@@ -272,7 +272,7 @@ public sealed class SalesViewModelTests
             SearchText = "coca",
         };
 
-        viewModel.OpenSaleEditorCommand.Execute(null);
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
 
         Assert.True(viewModel.IsSaleEditorOpen);
         Assert.True(viewModel.IsProductStepOpen);
@@ -317,7 +317,7 @@ public sealed class SalesViewModelTests
             SearchText = "789",
         };
 
-        viewModel.OpenSaleEditorCommand.Execute(null);
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
         await viewModel.SearchCommand.ExecuteAsync();
         viewModel.AddProductCommand.Execute(null);
         viewModel.OpenPaymentStepCommand.Execute(null);
@@ -341,6 +341,46 @@ public sealed class SalesViewModelTests
         Assert.Equal("3,00", viewModel.DebitText);
         Assert.Equal("0,00", viewModel.PixText);
         Assert.Equal("9,00", viewModel.CreditText);
+    }
+
+    [Fact]
+    public async Task Opening_sale_with_closed_cash_prompts_before_editor()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient
+        {
+            CashRegisterSnapshot = new CashRegisterSnapshot(),
+        };
+        using var viewModel = new SalesViewModel(apiClient, sessionContext);
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+
+        Assert.False(viewModel.IsSaleEditorOpen);
+        Assert.True(viewModel.IsOpenCashPromptOpen);
+        Assert.Contains("caixa", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("0,00", viewModel.OpeningCashText);
+    }
+
+    [Fact]
+    public async Task Confirm_cash_prompt_opens_register_and_sale_editor()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient
+        {
+            CashRegisterSnapshot = new CashRegisterSnapshot(),
+        };
+        using var viewModel = new SalesViewModel(apiClient, sessionContext);
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        viewModel.OpeningCashText = "12,50";
+
+        await viewModel.ConfirmOpenCashBeforeSaleCommand.ExecuteAsync();
+
+        Assert.Equal(12.50m, apiClient.LastOpeningAmount);
+        Assert.Equal(1, apiClient.OpenCashRegisterCalls);
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.False(viewModel.IsOpenCashPromptOpen);
+        Assert.True(viewModel.IsProductStepOpen);
     }
 
     private static async Task WaitUntilAsync(Func<bool> predicate)
@@ -374,6 +414,19 @@ public sealed class SalesViewModelTests
         return context;
     }
 
+    private static CashRegisterSnapshot CreateOpenCashRegisterSnapshot(decimal openingAmount = 0) =>
+        new()
+        {
+            CurrentRegister = new CashRegisterRecord
+            {
+                Id = 12,
+                Status = "open",
+                OpenedAt = "2026-07-22T10:00:00-03:00",
+                ResponsibleUser = "operador",
+                OpeningAmount = openingAmount,
+            },
+        };
+
     private sealed class StubApiClient : IGirofyApiClient
     {
         private int _saleAttempts;
@@ -389,6 +442,12 @@ public sealed class SalesViewModelTests
         public IReadOnlyList<DashboardRecentSale> DashboardRecentSales { get; init; } = [];
 
         public Dictionary<int, SaleReceipt> SaleDetails { get; } = [];
+
+        public CashRegisterSnapshot CashRegisterSnapshot { get; set; } = CreateOpenCashRegisterSnapshot();
+
+        public int OpenCashRegisterCalls { get; private set; }
+
+        public decimal? LastOpeningAmount { get; private set; }
 
         public Task<CatalogProductList> GetCatalogProductsAsync(
             string accessToken,
@@ -514,13 +573,18 @@ public sealed class SalesViewModelTests
         public Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
             string accessToken,
             CancellationToken cancellationToken) =>
-            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+            Task.FromResult(CashRegisterSnapshot);
 
         public Task<CashRegisterSnapshot> OpenCashRegisterAsync(
             string accessToken,
             decimal openingAmount,
-            CancellationToken cancellationToken) =>
-            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+            CancellationToken cancellationToken)
+        {
+            OpenCashRegisterCalls++;
+            LastOpeningAmount = openingAmount;
+            CashRegisterSnapshot = CreateOpenCashRegisterSnapshot(openingAmount);
+            return Task.FromResult(CashRegisterSnapshot);
+        }
 
         public Task<CashRegisterSnapshot> CloseCashRegisterAsync(
             string accessToken,

@@ -522,6 +522,81 @@
             </Grid>
         </ScrollViewer>
 
+        <Grid Panel.ZIndex="55" Background="#CC000914">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsOpenCashPromptOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
+            <Border Margin="24" Padding="24" MaxWidth="560"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource InfoBorderBrush}" BorderThickness="1" CornerRadius="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock FontSize="24" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Caixa fechado" />
+                        <TextBlock Margin="0,4,0,0" FontSize="13"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Para registrar uma venda, abra o caixa agora. Pressione Enter para confirmar."
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <Border Grid.Row="2" Padding="16" Background="{StaticResource InfoSurfaceBrush}"
+                            BorderBrush="{StaticResource InfoBorderBrush}" BorderThickness="1" CornerRadius="7">
+                        <TextBlock Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap"
+                                   Text="Deseja abrir o caixa e continuar para a nova venda?" />
+                    </Border>
+
+                    <StackPanel Grid.Row="4">
+                        <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Valor inicial em caixa" />
+                        <TextBox x:Name="OpeningCashInput"
+                                 Text="{Binding OpeningCashText, UpdateSourceTrigger=PropertyChanged}"
+                                 PreviewKeyDown="OpeningCashInput_PreviewKeyDown"
+                                 PreviewTextInput="PaymentTextBox_PreviewTextInput"
+                                 DataObject.Pasting="PaymentTextBox_Pasting"
+                                 LostKeyboardFocus="PaymentTextBox_LostKeyboardFocus"
+                                 Style="{StaticResource TextInputStyle}" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Height="46"
+                                Command="{Binding CancelOpenCashBeforeSaleCommand}"
+                                Content="Não"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button Grid.Column="2" Height="46"
+                                Command="{Binding ConfirmOpenCashBeforeSaleCommand}"
+                                Content="Sim, abrir caixa - Enter"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
         <Grid Background="#B8000914">
             <Grid.Style>
                 <Style TargetType="Grid">

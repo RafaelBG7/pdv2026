@@ -22,6 +22,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private int _totalPages;
     private int _totalProducts;
     private bool _isInitialized;
+    private bool _suppressCategoryFilter;
     private CatalogProduct? _selectedProduct;
     private CatalogCategory? _editorCategory;
     private bool _isProductEditorOpen;
@@ -86,6 +87,8 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<CatalogCategory> Categories { get; } = [];
 
+    public ObservableCollection<CatalogCategory> ProductCategories { get; } = [];
+
     public ObservableCollection<CatalogCategory> CategoryRows { get; } = [];
 
     public IReadOnlyList<CatalogFilterOption> ActiveFilters { get; }
@@ -141,7 +144,15 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     public CatalogCategory? SelectedCategory
     {
         get => _selectedCategory;
-        set => SetProperty(ref _selectedCategory, value);
+        set
+        {
+            if (SetProperty(ref _selectedCategory, value)
+                && _isInitialized
+                && !_suppressCategoryFilter)
+            {
+                _ = ApplyCategoryFilterAsync();
+            }
+        }
     }
 
     public CatalogFilterOption SelectedActiveFilter
@@ -411,6 +422,12 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         await LoadProductsAsync(cancellationToken);
     }
 
+    private async Task ApplyCategoryFilterAsync()
+    {
+        Page = 1;
+        await LoadProductsAsync(CancellationToken.None);
+    }
+
     private async Task RefreshAsync(CancellationToken cancellationToken) =>
         await LoadCatalogAsync(cancellationToken);
 
@@ -446,7 +463,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         SelectedProduct = null;
         EditorName = string.Empty;
         EditorBarcode = string.Empty;
-        EditorCategory = Categories.FirstOrDefault();
+        EditorCategory = ProductCategories.FirstOrDefault();
         EditorCostPrice = "0,00";
         EditorSalePrice = "0,00";
         EditorStockQuantity = "0";
@@ -470,8 +487,8 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         EditorName = product.Name;
         EditorBarcode = product.Barcode;
         EditorCategory = product.Category is { Id: > 0 }
-            ? Categories.FirstOrDefault(category => category.Id == product.Category.Id)
-            : Categories.FirstOrDefault();
+            ? ProductCategories.FirstOrDefault(category => category.Id == product.Category.Id)
+            : ProductCategories.FirstOrDefault();
         EditorCostPrice = FormatMoney(product.CostPrice ?? 0);
         EditorSalePrice = FormatMoney(product.SalePrice);
         EditorStockQuantity = product.StockQuantity.ToString(CultureInfo.InvariantCulture);
@@ -684,17 +701,27 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             string.Empty,
             cancellationToken);
 
-        Categories.Clear();
-        CategoryRows.Clear();
-        Categories.Add(new CatalogCategory { Id = 0, Name = "Todas", ProductCount = result.Total });
-        foreach (var category in result.Items)
+        _suppressCategoryFilter = true;
+        try
         {
-            Categories.Add(category);
-            CategoryRows.Add(category);
+            Categories.Clear();
+            ProductCategories.Clear();
+            CategoryRows.Clear();
+            Categories.Add(new CatalogCategory { Id = 0, Name = "Todas", ProductCount = result.Total });
+            foreach (var category in result.Items)
+            {
+                Categories.Add(category);
+                ProductCategories.Add(category);
+                CategoryRows.Add(category);
+            }
+            SelectedCategory = Categories.FirstOrDefault(category => category.Id == selectedCategoryId)
+                ?? Categories.FirstOrDefault();
+            SelectedCategoryRow = CategoryRows.FirstOrDefault(category => category.Id == selectedCategoryRowId);
         }
-        SelectedCategory = Categories.FirstOrDefault(category => category.Id == selectedCategoryId)
-            ?? Categories.FirstOrDefault();
-        SelectedCategoryRow = CategoryRows.FirstOrDefault(category => category.Id == selectedCategoryRowId);
+        finally
+        {
+            _suppressCategoryFilter = false;
+        }
     }
 
     private async Task LoadProductsCoreAsync(CancellationToken cancellationToken)
@@ -850,6 +877,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     {
         Products.Clear();
         Categories.Clear();
+        ProductCategories.Clear();
         CategoryRows.Clear();
         SearchText = string.Empty;
         ErrorMessage = string.Empty;

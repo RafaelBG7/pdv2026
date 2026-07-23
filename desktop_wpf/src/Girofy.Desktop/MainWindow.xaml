@@ -971,7 +971,7 @@
                                         <StackPanel Grid.Column="4">
                                             <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
                                                        Foreground="{StaticResource TextSecondaryBrush}" Text="Categoria" />
-                                            <ComboBox ItemsSource="{Binding Catalog.Categories}"
+                                            <ComboBox ItemsSource="{Binding Catalog.ProductCategories}"
                                                       SelectedItem="{Binding Catalog.EditorCategory}"
                                                       DisplayMemberPath="Name" />
                                         </StackPanel>

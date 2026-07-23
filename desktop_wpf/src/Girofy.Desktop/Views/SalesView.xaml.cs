@@ -115,7 +115,16 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.F3)
         {
-            ExecuteIfAllowed(viewModel.OpenSaleEditorCommand);
+            if (viewModel.IsPaymentStepVisible)
+            {
+                ExecuteIfAllowed(viewModel.OpenDiscountPopupCommand);
+                FocusDiscountInput();
+            }
+            else
+            {
+                ExecuteIfAllowed(viewModel.OpenSaleEditorCommand);
+            }
+
             e.Handled = true;
             return;
         }

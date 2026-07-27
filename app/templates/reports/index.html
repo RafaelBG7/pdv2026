@@ -164,7 +164,13 @@
 <div class="report-layout">
   <section class="card card-dark table-card p-0">
     <div class="report-section-header">
-      <h5 class="mb-0">Vendas do período</h5>
+      <div>
+        <h5 class="mb-1">Vendas do período</h5>
+        <small class="text-muted">
+          Mostrando {{ sales_display_count }} de {{ totals.sales_count }} venda{{ 's' if totals.sales_count != 1 else '' }}.
+          Totais, gráficos, pagamentos e produtos consideram o período completo.
+        </small>
+      </div>
     </div>
     <div class="table-responsive">
       <table class="table table-dark table-hover align-middle mb-0 app-table report-sales-table">
@@ -180,6 +186,7 @@
           </tr>
         </thead>
         <tbody>
+          {% if sales %}
           {% for sale in sales %}
           <tr>
             <td><a href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">#{{ sale.id }}</a></td>
@@ -196,11 +203,19 @@
               {% endfor %}
             </td>
           </tr>
+          {% endfor %}
+          {% if sales_has_more %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-3">
+              Listagem limitada às {{ sales_table_limit }} vendas mais recentes para manter o relatório leve.
+            </td>
+          </tr>
+          {% endif %}
           {% else %}
           <tr>
             <td colspan="7" class="text-center text-muted py-4">Nenhuma venda encontrada neste período.</td>
           </tr>
-          {% endfor %}
+          {% endif %}
         </tbody>
       </table>
     </div>

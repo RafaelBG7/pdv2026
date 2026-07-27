@@ -32,6 +32,8 @@ PAYMENT_METHODS = {
 }
 PAYABLE_CATEGORIES = ('Aluguel', 'Luz', 'Água', 'Internet', 'Fornecedor', 'Impostos', 'Outros')
 EXPORT_TYPES = ('produtos', 'vendas', 'caixas', 'contas')
+REPORT_SALES_TABLE_LIMIT = 50
+REPORT_SALES_TABLE_MAX_LIMIT = 200
 
 
 @main_bp.get('/health')
@@ -1461,6 +1463,9 @@ def reports():
         start_date=start_date,
         end_date=end_date,
     )
+    sales_table_limit = request.args.get('sales_limit', REPORT_SALES_TABLE_LIMIT, type=int) or REPORT_SALES_TABLE_LIMIT
+    sales_table_limit = min(max(sales_table_limit, 1), REPORT_SALES_TABLE_MAX_LIMIT)
+
     sales = tenant_query(Sale).options(
         selectinload(Sale.payments),
         selectinload(Sale.items).selectinload(SaleItem.product),
@@ -1468,9 +1473,15 @@ def reports():
         Sale.created_at >= start_datetime,
         Sale.created_at < end_datetime,
     ).order_by(Sale.created_at.desc()).all()
+
     totals, payment_totals, top_products = build_sales_report(sales)
     daily_activity = build_daily_sales_activity(start_datetime, end_datetime, chart_metric) if period == 'daily' else None
     chart_data = daily_activity['buckets'] if daily_activity else build_sales_chart(period, start, end, sales)
+
+    sales_table = sales[:sales_table_limit]
+    sales_display_count = len(sales_table)
+    sales_has_more = len(sales) > sales_display_count
+
     product_start_arg = request.args.get('product_start_date', '').strip()
     product_end_arg = request.args.get('product_end_date', '').strip()
     product_has_date_filter = bool(product_start_arg or product_end_arg)
@@ -1503,7 +1514,10 @@ def reports():
         period_label=label,
         start_date=start,
         end_date=end,
-        sales=sales,
+        sales=sales_table,
+        sales_display_count=sales_display_count,
+        sales_table_limit=sales_table_limit,
+        sales_has_more=sales_has_more,
         totals=totals,
         chart_data=chart_data,
         chart_metric=chart_metric,

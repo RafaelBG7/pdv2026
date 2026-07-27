@@ -65,7 +65,7 @@
         <form class="cash-action-form cash-close-form" method="post" action="{{ url_for('main.close_cash_register_route') }}" {% if needs_permission_override('can_manage_cash_register') %}data-permission-override="true"{% endif %}>
           <div>
             <label class="form-label" for="closing_amount">Valor final em caixa</label>
-            <input class="form-control" id="closing_amount" name="closing_amount" inputmode="numeric" autocomplete="off" pattern="[0-9]*" placeholder="0,00" value="0,00" data-currency-input required>
+            <input class="form-control" id="closing_amount" name="closing_amount" inputmode="numeric" autocomplete="off" placeholder="0,00" value="0,00" data-currency-input required>
           </div>
           <button class="btn btn-outline-danger" type="submit">Fechar caixa</button>
         </form>

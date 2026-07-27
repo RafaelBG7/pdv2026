@@ -1054,7 +1054,8 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[data-currency-input]').forEach(function (input) {
     input.setAttribute('inputmode', 'numeric');
     input.setAttribute('autocomplete', 'off');
-    input.setAttribute('pattern', '[0-9]*');
+    // Campos de moeda sao exibidos em formato brasileiro (0,00); pattern numerico bloqueia o envio.
+    input.removeAttribute('pattern');
     input.value = formatCurrencyInputValue(input.value);
     input.addEventListener('focus', function () {
       moveCurrencyCaretToEnd(input);

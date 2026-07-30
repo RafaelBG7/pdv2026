@@ -71,7 +71,8 @@ public sealed class ConnectionViewModelTests
             new StubPreferencesStore(),
             new StubBrowserService(),
             new AppSessionContext(),
-            new Uri("https://girofy.example/forgot-password"));
+            new ForgotPasswordViewModel(new StubPasswordRecoveryService()),
+            new Uri("https://girofy.example/login?auth_tab=register"));
 
     private static CatalogViewModel CreateCatalogViewModel(IGirofyApiClient apiClient) =>
         new(apiClient, new AppSessionContext());
@@ -219,6 +220,12 @@ public sealed class ConnectionViewModelTests
         public void Open(Uri uri)
         {
         }
+    }
+
+    private sealed class StubPasswordRecoveryService : IPasswordRecoveryService
+    {
+        public Task RequestAsync(string identifier, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class StubSessionStore : ISecureSessionStore

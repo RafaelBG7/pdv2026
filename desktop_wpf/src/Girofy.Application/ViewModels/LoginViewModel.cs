@@ -12,7 +12,7 @@ public sealed class LoginViewModel : ObservableObject
     private readonly IUserPreferencesStore _preferencesStore;
     private readonly IExternalBrowserService _browserService;
     private readonly IAppSessionContext _sessionContext;
-    private readonly Uri _forgotPasswordUri;
+    private readonly Uri _registrationUri;
     private AuthSession? _session;
     private string _identifier = string.Empty;
     private string _password = string.Empty;
@@ -33,18 +33,21 @@ public sealed class LoginViewModel : ObservableObject
         IUserPreferencesStore preferencesStore,
         IExternalBrowserService browserService,
         IAppSessionContext sessionContext,
-        Uri forgotPasswordUri)
+        ForgotPasswordViewModel forgotPassword,
+        Uri registrationUri)
     {
         _apiClient = apiClient;
         _sessionStore = sessionStore;
         _preferencesStore = preferencesStore;
         _browserService = browserService;
         _sessionContext = sessionContext;
-        _forgotPasswordUri = forgotPasswordUri;
+        ForgotPassword = forgotPassword;
+        _registrationUri = registrationUri;
         LoginCommand = new AsyncRelayCommand(LoginAsync);
         ActivateSubscriptionCommand = new AsyncRelayCommand(ActivateSubscriptionAsync);
         LogoutCommand = new AsyncRelayCommand(LogoutAsync);
-        ForgotPasswordCommand = new RelayCommand(() => _browserService.Open(_forgotPasswordUri));
+        ForgotPasswordCommand = new RelayCommand(ForgotPassword.Open);
+        OpenRegistrationCommand = new AsyncRelayCommand(OpenRegistrationAsync);
     }
 
     public string Identifier
@@ -153,6 +156,20 @@ public sealed class LoginViewModel : ObservableObject
     public AsyncRelayCommand LogoutCommand { get; }
 
     public RelayCommand ForgotPasswordCommand { get; }
+
+    public AsyncRelayCommand OpenRegistrationCommand { get; }
+
+    public ForgotPasswordViewModel ForgotPassword { get; }
+
+    private async Task OpenRegistrationAsync(CancellationToken cancellationToken)
+    {
+        ErrorMessage = string.Empty;
+        if (!await _browserService.OpenAsync(_registrationUri, cancellationToken))
+        {
+            ErrorMessage =
+                "Não foi possível abrir a página de cadastro. Verifique seu navegador padrão e tente novamente.";
+        }
+    }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

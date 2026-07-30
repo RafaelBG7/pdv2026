@@ -42,6 +42,18 @@ Inicialização -> refresh rotativo -> sessão anterior revogada -> novo par pro
 Logout -> revogação no servidor + remoção local obrigatória
 ```
 
+Fluxos públicos no login:
+
+- `Criar uma conta` monta `/login?auth_tab=register` a partir da mesma URL base
+  configurada para o servidor e abre o cadastro web no navegador padrão.
+- `Esqueci minha senha` abre um diálogo WPF que envia somente usuário ou e-mail para
+  `POST /api/v1/auth/password-recovery/request`.
+- o servidor devolve a mesma confirmação pública independentemente de a conta existir;
+  quando aplicável, reutiliza o serviço de recuperação web e envia o link por e-mail.
+- o token e a definição da nova senha permanecem exclusivamente em
+  `/reset-password/<token>` no navegador. O cliente Windows não recebe nem processa o
+  token.
+
 O cliente não salva senha. A opção “Lembrar usuário” persiste apenas o identificador em
 JSON. Alteração de senha, usuário/empresa inativos ou assinatura vencida são revalidados
 no servidor e bloqueiam a sessão. Quando a assinatura estiver vencida, o login normal
@@ -54,6 +66,13 @@ Configurações reconhecidas:
 - `GIROFY_API_BASE_URL`
 - `GIROFY_ALLOW_INSECURE_HTTP`
 - `GIROFY_API_TIMEOUT_SECONDS`
+
+A URL web desses fluxos usa a própria `Api.BaseUrl`/`GIROFY_API_BASE_URL`, pois API e
+site são publicados no mesmo servidor. Não há domínio ou rota codificados nos ViewModels.
+
+Para validar localmente, execute os testes Python de rotas, `dotnet test` na solução e
+abra o login no Windows. Confirme o cadastro no navegador, o diálogo de recuperação, o
+estado de envio e a mensagem genérica. O recebimento real exige SMTP configurado.
 
 Configurações do servidor:
 

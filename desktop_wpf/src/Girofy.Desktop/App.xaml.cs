@@ -53,13 +53,21 @@ public partial class App : System.Windows.Application
                     client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
                     client.DefaultRequestHeaders.UserAgent.ParseAdd("Girofy-Windows/0.1");
                 });
+                services.AddHttpClient<IPasswordRecoveryService, PasswordRecoveryService>(client =>
+                {
+                    client.BaseAddress = serverUri;
+                    client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Girofy-Windows/0.1");
+                });
+                services.AddTransient<ForgotPasswordViewModel>();
                 services.AddSingleton(provider => new LoginViewModel(
                     provider.GetRequiredService<IGirofyApiClient>(),
                     provider.GetRequiredService<ISecureSessionStore>(),
                     provider.GetRequiredService<IUserPreferencesStore>(),
                     provider.GetRequiredService<IExternalBrowserService>(),
                     provider.GetRequiredService<IAppSessionContext>(),
-                    new Uri(serverUri, "forgot-password")));
+                    provider.GetRequiredService<ForgotPasswordViewModel>(),
+                    new Uri(serverUri, "login?auth_tab=register")));
                 services.AddSingleton<CatalogViewModel>();
                 services.AddSingleton<DashboardViewModel>();
                 services.AddSingleton<CashRegisterViewModel>();

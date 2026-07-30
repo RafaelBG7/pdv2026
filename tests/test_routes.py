@@ -3981,6 +3981,40 @@ class RouteTestCase(unittest.TestCase):
             self.assertTrue(user.check_password('nova1234'))
             self.assertTrue(token_record.used)
 
+    def test_api_password_recovery_accepts_username_and_keeps_response_generic(self):
+        self.create_api_user(username='recuperavel')
+
+        existing = self.client.post(
+            '/api/v1/auth/password-recovery/request',
+            json={'identifier': '  recuperavel  '},
+        )
+        missing = self.client.post(
+            '/api/v1/auth/password-recovery/request',
+            json={'identifier': 'nao-existe'},
+        )
+
+        self.assertEqual(existing.status_code, 200)
+        self.assertEqual(existing.get_json(), missing.get_json())
+        self.assertEqual(existing.get_json()['data'], {'requested': True})
+        self.assertNotIn('token', existing.get_data(as_text=True).lower())
+        self.assertNotIn('email', existing.get_data(as_text=True).lower())
+        with self.app.app_context():
+            self.assertEqual(PasswordResetToken.query.count(), 1)
+            self.assertTrue(
+                self.app.config['TEST_LAST_PASSWORD_RESET_URL'].startswith(
+                    'http://localhost/reset-password/'
+                )
+            )
+
+    def test_api_password_recovery_rejects_empty_identifier(self):
+        response = self.client.post(
+            '/api/v1/auth/password-recovery/request',
+            json={'identifier': '   '},
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'identifier_required')
+
     def test_authenticated_user_is_redirected_away_from_login(self):
         self.login()
 

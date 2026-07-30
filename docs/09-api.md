@@ -1695,3 +1695,22 @@ Query params:
 - `end_date`: `YYYY-MM-DD`.
 
 Resposta: HTML `reports/index.html`.
+### `POST /api/v1/auth/password-recovery/request`
+
+`POST /api/v1/auth/password-recovery/request` é público e recebe:
+
+```json
+{
+  "identifier": "usuario-ou-email"
+}
+```
+
+O campo é aparado somente nas extremidades e aceita usuário ou e-mail. Campo vazio
+retorna `422`; uma solicitação válida retorna sempre a mesma confirmação técnica,
+inclusive quando não existe conta elegível. A resposta nunca contém usuário, e-mail,
+empresa, token ou URL de redefinição.
+
+Quando existe uma conta ativa, com e-mail confirmado e utilizável, o backend reutiliza o
+mesmo serviço do fluxo web, invalida solicitações anteriores, gera um token com expiração
+de 30 minutos e envia o link web `/reset-password/<token>`. O aplicativo Windows não
+recebe nem processa esse token.

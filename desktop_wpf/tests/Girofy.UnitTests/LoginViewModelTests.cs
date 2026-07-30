@@ -159,17 +159,52 @@ public sealed class LoginViewModelTests
         Assert.True(sessionStore.WasCleared);
     }
 
+    [Fact]
+    public async Task Registration_opens_the_centrally_built_web_url()
+    {
+        var browser = new StubBrowserService();
+        var viewModel = CreateViewModel(
+            new StubApiClient(),
+            new StubSessionStore(),
+            new StubPreferencesStore(),
+            browser);
+
+        await viewModel.OpenRegistrationCommand.ExecuteAsync();
+
+        Assert.Equal(
+            new Uri("https://girofy.example/login?auth_tab=register"),
+            browser.LastUri);
+        Assert.False(viewModel.HasError);
+    }
+
+    [Fact]
+    public async Task Registration_browser_failure_is_exposed_safely()
+    {
+        var browser = new StubBrowserService { OpenResult = false };
+        var viewModel = CreateViewModel(
+            new StubApiClient(),
+            new StubSessionStore(),
+            new StubPreferencesStore(),
+            browser);
+
+        await viewModel.OpenRegistrationCommand.ExecuteAsync();
+
+        Assert.Contains("Não foi possível abrir", viewModel.ErrorMessage);
+    }
+
     private static LoginViewModel CreateViewModel(
         IGirofyApiClient apiClient,
         ISecureSessionStore sessionStore,
-        IUserPreferencesStore preferencesStore) =>
+        IUserPreferencesStore preferencesStore,
+        StubBrowserService? browserService = null) =>
         new(
             apiClient,
             sessionStore,
             preferencesStore,
-            new StubBrowserService(),
+            browserService ?? new StubBrowserService(),
             new AppSessionContext(),
-            new Uri("https://girofy.example/forgot-password"));
+            new ForgotPasswordViewModel(new StubPasswordRecoveryService()),
+            new Uri("https://girofy.example/login?auth_tab=register"));
 
     private static AuthSession CreateSession(
         string accessToken = "access-token",
@@ -359,8 +394,24 @@ public sealed class LoginViewModelTests
 
     private sealed class StubBrowserService : IExternalBrowserService
     {
+        public bool OpenResult { get; init; } = true;
+        public Uri? LastUri { get; private set; }
+
         public void Open(Uri uri)
         {
+            LastUri = uri;
         }
+
+        public Task<bool> OpenAsync(Uri uri, CancellationToken cancellationToken = default)
+        {
+            LastUri = uri;
+            return Task.FromResult(OpenResult);
+        }
+    }
+
+    private sealed class StubPasswordRecoveryService : IPasswordRecoveryService
+    {
+        public Task RequestAsync(string identifier, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

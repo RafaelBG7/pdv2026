@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Windows.Input;
 using Girofy.Application.ViewModels;
 using Microsoft.Extensions.Logging;
 
@@ -22,6 +23,27 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         Loaded += HandleLoaded;
         _viewModel.Login.PropertyChanged += HandleLoginPropertyChanged;
+        _viewModel.Login.ForgotPassword.PropertyChanged += HandleForgotPasswordPropertyChanged;
+    }
+
+    private void HandleForgotPasswordPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ForgotPasswordViewModel.IsOpen) &&
+            _viewModel.Login.ForgotPassword.IsOpen)
+        {
+            Dispatcher.InvokeAsync(
+                () => ForgotPasswordIdentifierInput.Focus(),
+                DispatcherPriority.Background);
+        }
+    }
+
+    private void HandleForgotPasswordKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            _viewModel.Login.ForgotPassword.Close();
+            e.Handled = true;
+        }
     }
 
     private async void HandleLoaded(object sender, RoutedEventArgs e)
@@ -168,6 +190,7 @@ public partial class MainWindow : Window
     {
         Loaded -= HandleLoaded;
         _viewModel.Login.PropertyChanged -= HandleLoginPropertyChanged;
+        _viewModel.Login.ForgotPassword.PropertyChanged -= HandleForgotPasswordPropertyChanged;
         base.OnClosed(e);
     }
 }

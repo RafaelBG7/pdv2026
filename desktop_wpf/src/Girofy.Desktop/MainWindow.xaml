@@ -242,10 +242,17 @@
                                         </Style>
                                     </Button.Style>
                                 </Button>
-                                <Button Margin="0,12,0,0" HorizontalAlignment="Center"
-                                        Command="{Binding Login.ForgotPasswordCommand}"
-                                        Content="Esqueci minha senha"
-                                        Style="{StaticResource LinkButtonStyle}" />
+                                <StackPanel Margin="0,12,0,0" Orientation="Horizontal"
+                                            HorizontalAlignment="Center">
+                                    <Button Command="{Binding Login.ForgotPasswordCommand}"
+                                            Content="Esqueci minha senha"
+                                            Style="{StaticResource LinkButtonStyle}" />
+                                    <TextBlock Margin="8,0" Foreground="{StaticResource TextMutedBrush}"
+                                               VerticalAlignment="Center" Text="•" />
+                                    <Button Command="{Binding Login.OpenRegistrationCommand}"
+                                            Content="Criar uma conta"
+                                            Style="{StaticResource LinkButtonStyle}" />
+                                </StackPanel>
                             </StackPanel>
 
                             <StackPanel Width="340" MaxWidth="340" HorizontalAlignment="Center">
@@ -1146,6 +1153,97 @@
                     </Grid>
                 </Border>
             </Grid>
+        </Grid>
+        <Grid Panel.ZIndex="100"
+              Background="#B0050B16"
+              PreviewKeyDown="HandleForgotPasswordKeyDown">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Login.ForgotPassword.IsOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Border Width="460" Padding="28"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource InfoBorderBrush}"
+                    BorderThickness="1" CornerRadius="14">
+                <StackPanel>
+                    <TextBlock FontSize="25" FontWeight="Bold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="Recuperar senha" />
+                    <TextBlock Margin="0,8,0,20"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Text="Informe seu usuário ou e-mail. Enviaremos um link para redefinir sua senha."
+                               TextWrapping="Wrap" />
+                    <TextBlock Margin="0,0,0,7" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="Usuário ou e-mail" />
+                    <TextBox x:Name="ForgotPasswordIdentifierInput"
+                             Text="{Binding Login.ForgotPassword.Identifier, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource TextInputStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Login.ForgotPassword.IsLoading}" Value="True">
+                                        <Setter Property="IsEnabled" Value="False" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+                    <Border Margin="0,16,0,0" Padding="12"
+                            Background="{StaticResource ErrorSurfaceBrush}"
+                            BorderBrush="{StaticResource ErrorBorderBrush}"
+                            BorderThickness="1" CornerRadius="6">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Login.ForgotPassword.HasError}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="{Binding Login.ForgotPassword.ErrorMessage}" TextWrapping="Wrap" />
+                    </Border>
+                    <Border Margin="0,16,0,0" Padding="12"
+                            Background="{StaticResource SuccessSurfaceBrush}"
+                            BorderBrush="{StaticResource SuccessBorderBrush}"
+                            BorderThickness="1" CornerRadius="6">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Login.ForgotPassword.IsSuccess}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="{Binding Login.ForgotPassword.SuccessMessage}" TextWrapping="Wrap" />
+                    </Border>
+                    <Grid Margin="0,22,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Command="{Binding Login.ForgotPassword.CancelCommand}"
+                                Content="Voltar" Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button Grid.Column="2" IsDefault="True"
+                                Command="{Binding Login.ForgotPassword.SubmitCommand}"
+                                Content="{Binding Login.ForgotPassword.SubmitButtonText}"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
         </Grid>
     </Grid>
 </Window>

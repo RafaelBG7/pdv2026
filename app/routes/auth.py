@@ -27,7 +27,8 @@ from app.permissions import (
 from app.security.passwords import validate_password_strength
 from app.services.alert_service import EMAIL_ALERT_TYPES, alert_settings_for_company, parse_recipients
 from app.services.audit_service import record_audit_event
-from app.services.email_service import EmailAuthenticationError, send_email_change_confirmation, send_password_reset_email, send_verification_code_email
+from app.services.email_service import EmailAuthenticationError, send_email_change_confirmation, send_verification_code_email
+from app.services.password_recovery_service import request_password_recovery
 from app.tenant import current_tenant_company, drop_mysql_database, tenant_database_identifier, tenant_engine
 
 
@@ -791,7 +792,9 @@ def login():
         flash(LOGIN_FAILED_MESSAGE, 'danger')
         return render_auth_form('login', login_form_values(), {'password': LOGIN_FAILED_MESSAGE})
 
-    return render_auth_form('login')
+    return render_auth_form(
+        'register' if request.args.get('auth_tab') == 'register' else 'login'
+    )
 
 
 @auth_bp.route('/verify-email', methods=['GET', 'POST'])
@@ -889,33 +892,16 @@ def forgot_password():
             flash('Informe um e-mail válido.', 'danger')
             return render_template('forgot_password.html')
 
-        user = User.query.filter_by(email=email).first()
-        if user and user.is_active and user.email_verified:
-            PasswordResetToken.query.filter_by(user_id=user.id, used=False).update({'used': True})
-            token = secrets.token_urlsafe(32)
-            reset_record = PasswordResetToken(
-                user_id=user.id,
-                token_hash=generate_password_hash(token, method='scrypt'),
-                expires_at=utc_now() + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES),
-                used=False,
-            )
-            db.session.add(reset_record)
-            db.session.commit()
-            reset_url = public_url_for('auth.reset_password', token=token)
-            try:
-                if current_app.config.get('MAIL_SUPPRESS_SEND'):
-                    current_app.config['TEST_LAST_PASSWORD_RESET_TOKEN'] = token
-                    current_app.config['TEST_LAST_PASSWORD_RESET_URL'] = reset_url
-                send_password_reset_email(user, reset_url)
-                current_app.logger.info('Email de recuperação enviado para user_id=%s', user.id)
-            except EmailAuthenticationError as error:
-                current_app.logger.error('Falha de autenticação SMTP na recuperação de senha para %s: %s', email, error, exc_info=True)
-                flash('Gmail recusou o envio. Confira se MAIL_SMTP_LOGIN é o e-mail correto e se MAIL_SMTP_PASSWORD é uma senha de app válida.', 'danger')
-                return render_template('forgot_password.html')
-            except Exception as error:
-                current_app.logger.error('Falha ao enviar recuperação de senha para %s: %s', email, error, exc_info=True)
-                flash('Não foi possível enviar o e-mail agora. Verifique a configuração de envio.', 'danger')
-                return render_template('forgot_password.html')
+        try:
+            request_password_recovery(email)
+        except EmailAuthenticationError as error:
+            current_app.logger.error('Falha de autenticação SMTP na recuperação de senha.', exc_info=True)
+            flash('Gmail recusou o envio. Confira as configurações de envio.', 'danger')
+            return render_template('forgot_password.html')
+        except Exception:
+            current_app.logger.error('Falha ao enviar recuperação de senha.', exc_info=True)
+            flash('Não foi possível enviar o e-mail agora. Verifique a configuração de envio.', 'danger')
+            return render_template('forgot_password.html')
 
         flash('Se este e-mail estiver cadastrado, enviaremos um link de redefinição.', 'success')
         return redirect(url_for('auth.login'))

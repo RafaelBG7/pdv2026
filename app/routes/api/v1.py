@@ -65,6 +65,7 @@ from app.services.product_service import (
     create_product,
     update_product,
 )
+from app.services.password_recovery_service import request_password_recovery
 from app.services.sale_service import (
     PAYMENT_METHODS,
     SaleLineInput,
@@ -1311,6 +1312,45 @@ def api_login():
             )
             db.session.commit()
         return api_auth_error_response(error)
+
+
+@api_v1_bp.post('/auth/password-recovery/request')
+def api_request_password_recovery():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return api_failure(
+            'Envie um objeto JSON válido.',
+            'invalid_json',
+            400,
+        )
+    identifier = str(payload.get('identifier') or '').strip()
+    if not identifier:
+        return api_failure(
+            'Informe seu usuário ou e-mail.',
+            'identifier_required',
+            422,
+            'identifier',
+        )
+    if len(identifier) > 255:
+        return api_failure(
+            'Os dados informados excedem o tamanho permitido.',
+            'identifier_too_long',
+            422,
+            'identifier',
+        )
+
+    try:
+        request_password_recovery(identifier)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.error(
+            'Falha técnica na solicitação de recuperação pela API.',
+            exc_info=True,
+        )
+
+    return api_success({
+        'requested': True,
+    })
 
 
 @api_v1_bp.post('/subscription/activate')

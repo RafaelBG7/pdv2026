@@ -145,6 +145,67 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Refresh_history_reloads_and_preserves_a_safe_empty_state()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+
+        await viewModel.InitializeAsync();
+        await viewModel.RefreshHistoryCommand.ExecuteAsync();
+
+        Assert.Equal(2, apiClient.HistoryCalls);
+        Assert.True(viewModel.ShowHistoryEmptyState);
+        Assert.False(viewModel.IsHistoryLoading);
+    }
+
+    [Fact]
+    public async Task History_network_failure_has_a_friendly_message()
+    {
+        var apiClient = new StubApiClient
+        {
+            HistoryException = new HttpRequestException("offline"),
+        };
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+
+        await viewModel.InitializeAsync();
+
+        Assert.Contains("Verifique sua conexão", viewModel.HistoryErrorMessage);
+        Assert.False(viewModel.ShowHistoryEmptyState);
+    }
+
+    [Fact]
+    public async Task Historical_sale_reuses_the_existing_receipt()
+    {
+        var apiClient = new StubApiClient
+        {
+            DashboardRecentSales =
+            [
+                new DashboardRecentSale { Id = 18, FinalAmount = 10m },
+            ],
+        };
+        apiClient.SaleDetails[18] = new SaleReceipt
+        {
+            Id = 18,
+            FinalAmount = 10m,
+            Items = [new SaleReceiptItem { Name = "Produto", Quantity = 1, Subtotal = 10m }],
+            Payments = [new SaleReceiptPayment { Label = "Pix", Amount = 10m }],
+        };
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+        await viewModel.InitializeAsync();
+
+        viewModel.ViewHistoricalReceiptCommand.Execute(viewModel.TodaySales.Single());
+        await WaitUntilAsync(() => viewModel.IsHistoricalReceipt);
+
+        Assert.Equal(18, viewModel.Receipt?.Id);
+        Assert.Equal("Comprovante da venda", viewModel.ReceiptTitle);
+        Assert.Single(viewModel.Receipt!.Items);
+        Assert.Single(viewModel.Receipt.Payments);
+
+        viewModel.CloseHistoricalReceiptCommand.Execute(null);
+        Assert.Null(viewModel.Receipt);
+    }
+
+    [Fact]
     public async Task Failure_preserves_the_order_and_retry_reuses_the_idempotency_key()
     {
         var sessionContext = SessionContext();
@@ -441,6 +502,10 @@ public sealed class SalesViewModelTests
 
         public IReadOnlyList<DashboardRecentSale> DashboardRecentSales { get; init; } = [];
 
+        public Exception? HistoryException { get; init; }
+
+        public int HistoryCalls { get; private set; }
+
         public Dictionary<int, SaleReceipt> SaleDetails { get; } = [];
 
         public CashRegisterSnapshot CashRegisterSnapshot { get; set; } = CreateOpenCashRegisterSnapshot();
@@ -556,11 +621,16 @@ public sealed class SalesViewModelTests
 
         public Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
             string accessToken,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(new SalesHistorySnapshot
+            CancellationToken cancellationToken)
+        {
+            HistoryCalls++;
+            return HistoryException is null
+                ? Task.FromResult(new SalesHistorySnapshot
             {
                 Sales = DashboardRecentSales,
-            });
+            })
+                : Task.FromException<SalesHistorySnapshot>(HistoryException);
+        }
 
         public Task<SaleReceipt> GetSaleDetailAsync(
             string accessToken,

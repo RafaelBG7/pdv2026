@@ -128,6 +128,17 @@ As regras de produto ativo, kit, estoque negativo, desconto, taxas de Pix/débit
 pagamento mínimo e permissão continuam centralizadas no Flask. O WPF calcula uma prévia
 para agilizar a operação, mas a resposta do servidor é sempre a fonte de verdade.
 
+O módulo também consulta `GET /api/v1/sales/today` para o histórico disponível e
+`GET /api/v1/sales/{id}` para detalhes. A interface permite atualização manual, expande
+itens e pagamentos e reutiliza o mesmo comprovante nativo da venda recém-concluída, sem
+registrar ou alterar dados. Não existe infraestrutura de impressão no cliente atual.
+
+O contrato de listagem existente é limitado ao dia atual ou ao caixa aberto e não oferece
+parâmetros de filtro, paginação nem total de registros. Por isso o Windows não simula
+filtros ou páginas sobre uma lista baixada integralmente. Período, número, operador, forma
+de pagamento e paginação permanecem indisponíveis até que o backend forneça um contrato
+de consulta apropriado. Cancelamento, estorno e edição continuam fora do escopo.
+
 ## Estoque nativo
 
 O módulo Estoque consome `GET /api/v1/stock/movements`, `POST /api/v1/stock/entries` e

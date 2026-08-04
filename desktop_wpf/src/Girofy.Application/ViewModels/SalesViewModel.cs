@@ -168,6 +168,11 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private SaleReceipt? _receipt;
     private readonly HashSet<string> _manualPaymentMethods = [];
     private readonly HashSet<string> _autoPaymentMethods = [];
+    private CancellationTokenSource? _historyCts;
+    private CancellationTokenSource? _detailCts;
+    private bool _isHistoryLoading;
+    private string _historyErrorMessage = string.Empty;
+    private bool _isHistoricalReceipt;
 
     public SalesViewModel(
         IGirofyApiClient apiClient,
@@ -200,6 +205,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         NewSaleCommand = new RelayCommand(StartNewSale);
         ToggleTodaySaleCommand = new RelayCommand<SaleHistoryItemViewModel>(
             sale => _ = ToggleTodaySaleAsync(sale));
+        RefreshHistoryCommand = new AsyncRelayCommand(RefreshHistoryAsync, () => !IsHistoryLoading);
+        ViewHistoricalReceiptCommand = new RelayCommand<SaleHistoryItemViewModel>(
+            sale => _ = ViewHistoricalReceiptAsync(sale));
+        CloseHistoricalReceiptCommand = new RelayCommand(CloseHistoricalReceipt);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -340,6 +349,52 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public bool HasTodaySales => TodaySales.Count > 0;
 
     public bool HasNoTodaySales => !HasTodaySales;
+
+    public bool IsHistoryLoading
+    {
+        get => _isHistoryLoading;
+        private set
+        {
+            if (SetProperty(ref _isHistoryLoading, value))
+            {
+                RefreshHistoryCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(ShowHistoryEmptyState));
+            }
+        }
+    }
+
+    public string HistoryErrorMessage
+    {
+        get => _historyErrorMessage;
+        private set
+        {
+            if (SetProperty(ref _historyErrorMessage, value))
+            {
+                OnPropertyChanged(nameof(HasHistoryError));
+            }
+        }
+    }
+
+    public bool HasHistoryError => !string.IsNullOrWhiteSpace(HistoryErrorMessage);
+
+    public bool ShowHistoryEmptyState => !IsHistoryLoading && HasNoTodaySales && !HasHistoryError;
+
+    public bool IsHistoricalReceipt
+    {
+        get => _isHistoricalReceipt;
+        private set
+        {
+            if (SetProperty(ref _isHistoricalReceipt, value))
+            {
+                OnPropertyChanged(nameof(ReceiptTitle));
+                OnPropertyChanged(nameof(ReceiptActionText));
+            }
+        }
+    }
+
+    public string ReceiptTitle => IsHistoricalReceipt ? "Comprovante da venda" : "Venda concluída";
+
+    public string ReceiptActionText => IsHistoricalReceipt ? "Voltar ao histórico" : "Nova venda - F3";
 
     public SaleReceipt? Receipt
     {
@@ -531,6 +586,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public RelayCommand<SaleHistoryItemViewModel> ToggleTodaySaleCommand { get; }
 
+    public AsyncRelayCommand RefreshHistoryCommand { get; }
+
+    public RelayCommand<SaleHistoryItemViewModel> ViewHistoricalReceiptCommand { get; }
+
+    public RelayCommand CloseHistoricalReceiptCommand { get; }
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_sessionContext.Current is null || !IsAvailable)
@@ -570,6 +631,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
 
         var session = RequireSession();
+        _detailCts?.Cancel();
+        _detailCts?.Dispose();
+        _detailCts = new CancellationTokenSource();
+        var detailCts = _detailCts;
         sale.IsLoadingDetail = true;
         sale.DetailError = string.Empty;
         try
@@ -577,13 +642,16 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             var detail = await _apiClient.GetSaleDetailAsync(
                 session.AccessToken,
                 sale.Id,
-                CancellationToken.None);
+                detailCts.Token);
             if (!IsSameSession(session))
             {
                 return;
             }
 
             sale.Detail = detail;
+        }
+        catch (OperationCanceledException) when (detailCts.IsCancellationRequested)
+        {
         }
         catch (Exception exception)
         {
@@ -600,6 +668,40 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             sale.IsLoadingDetail = false;
         }
     }
+
+    private async Task ViewHistoricalReceiptAsync(SaleHistoryItemViewModel? sale)
+    {
+        if (sale is null)
+        {
+            return;
+        }
+
+        if (sale.Detail is null)
+        {
+            await ToggleTodaySaleAsync(sale);
+        }
+        if (sale.Detail is null)
+        {
+            return;
+        }
+
+        Receipt = sale.Detail;
+        IsHistoricalReceipt = true;
+        SuccessMessage = string.Empty;
+    }
+
+    private void CloseHistoricalReceipt()
+    {
+        if (!IsHistoricalReceipt)
+        {
+            return;
+        }
+        Receipt = null;
+        IsHistoricalReceipt = false;
+    }
+
+    private Task RefreshHistoryAsync(CancellationToken cancellationToken) =>
+        LoadTodaySalesAsync(cancellationToken);
 
     private async Task SearchProductsAsync(bool showMessages, CancellationToken cancellationToken)
     {
@@ -957,6 +1059,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             }
 
             Receipt = receipt;
+            IsHistoricalReceipt = false;
             SuccessMessage = receipt.AlreadyProcessed
                 ? $"{receipt.SaleNumberText} já estava registrada e foi recuperada sem duplicação."
                 : $"{receipt.SaleNumberText} finalizada com sucesso.";
@@ -1005,6 +1108,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private void StartNewSale()
     {
         Receipt = null;
+        IsHistoricalReceipt = false;
         SuccessMessage = string.Empty;
         ErrorMessage = string.Empty;
         IsOpenCashPromptOpen = false;
@@ -1270,7 +1374,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private void ResetAll()
     {
+        _historyCts?.Cancel();
+        _detailCts?.Cancel();
         Receipt = null;
+        IsHistoricalReceipt = false;
         ResetDraftAfterSuccess();
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
@@ -1278,6 +1385,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         IsPaymentStepOpen = false;
         IsSaleEditorOpen = false;
         TodaySales.Clear();
+        HistoryErrorMessage = string.Empty;
+        IsHistoryLoading = false;
         OnPropertyChanged(nameof(HasTodaySales));
         OnPropertyChanged(nameof(HasNoTodaySales));
         OnPropertyChanged(nameof(IsAvailable));
@@ -1353,9 +1462,17 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             return;
         }
 
+        _historyCts?.Cancel();
+        _historyCts?.Dispose();
+        _historyCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var historyCts = _historyCts;
+        IsHistoryLoading = true;
+        HistoryErrorMessage = string.Empty;
         try
         {
-            var snapshot = await _apiClient.GetTodaySalesHistoryAsync(session.AccessToken, cancellationToken);
+            var snapshot = await _apiClient.GetTodaySalesHistoryAsync(
+                session.AccessToken,
+                historyCts.Token);
             if (!IsSameSession(session))
             {
                 return;
@@ -1368,12 +1485,35 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             }
             OnPropertyChanged(nameof(HasTodaySales));
             OnPropertyChanged(nameof(HasNoTodaySales));
+            OnPropertyChanged(nameof(ShowHistoryEmptyState));
         }
-        catch
+        catch (OperationCanceledException) when (historyCts.IsCancellationRequested)
+        {
+        }
+        catch (TaskCanceledException)
+        {
+            HistoryErrorMessage = "O servidor demorou para responder. Tente novamente.";
+        }
+        catch (HttpRequestException)
+        {
+            HistoryErrorMessage =
+                "Não foi possível carregar as vendas. Verifique sua conexão e tente novamente.";
+        }
+        catch (GirofyApiException exception) when (exception.StatusCode is 401 or 403)
+        {
+            HistoryErrorMessage = "Sua sessão terminou. Entre novamente para continuar.";
+        }
+        catch (Exception)
         {
             TodaySales.Clear();
+            HistoryErrorMessage = "Não foi possível carregar o histórico de vendas.";
             OnPropertyChanged(nameof(HasTodaySales));
             OnPropertyChanged(nameof(HasNoTodaySales));
+            OnPropertyChanged(nameof(ShowHistoryEmptyState));
+        }
+        finally
+        {
+            IsHistoryLoading = false;
         }
     }
 
@@ -1389,6 +1529,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         CancelPendingSearch();
+        _historyCts?.Cancel();
+        _historyCts?.Dispose();
+        _detailCts?.Cancel();
+        _detailCts?.Dispose();
         _sessionContext.Changed -= HandleSessionChanged;
     }
 }

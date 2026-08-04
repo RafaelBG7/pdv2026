@@ -140,10 +140,16 @@
                                     <TextBlock FontSize="18" FontWeight="Bold"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                Text="Vendas do dia/caixa" />
-                                    <TextBlock Grid.Column="1" FontSize="12"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource TextMutedBrush}"
-                                               Text="Histórico registrado" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <TextBlock Margin="0,0,12,0" FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   Text="Histórico do dia/caixa atual" />
+                                        <Button MinWidth="104" Height="34"
+                                                Command="{Binding RefreshHistoryCommand}"
+                                                Content="Atualizar"
+                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                    </StackPanel>
                                 </Grid>
 
                                 <StackPanel Grid.Row="2">
@@ -291,6 +297,39 @@
                                                                     </Grid.RowDefinitions>
 
                                                                     <StackPanel>
+                                                                        <Border Margin="0,0,0,14" Padding="12"
+                                                                                Background="{StaticResource InfoSurfaceBrush}"
+                                                                                BorderBrush="{StaticResource InfoBorderBrush}"
+                                                                                BorderThickness="1" CornerRadius="6">
+                                                                            <Grid>
+                                                                                <Grid.ColumnDefinitions>
+                                                                                    <ColumnDefinition Width="*" />
+                                                                                    <ColumnDefinition Width="*" />
+                                                                                    <ColumnDefinition Width="*" />
+                                                                                    <ColumnDefinition Width="*" />
+                                                                                </Grid.ColumnDefinitions>
+                                                                                <StackPanel>
+                                                                                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="VENDA" />
+                                                                                    <TextBlock FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding NumberText}" />
+                                                                                </StackPanel>
+                                                                                <StackPanel Grid.Column="1">
+                                                                                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="DATA E HORA" />
+                                                                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding DateText}" />
+                                                                                </StackPanel>
+                                                                                <StackPanel Grid.Column="2">
+                                                                                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="OPERADOR" />
+                                                                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding UserName}" />
+                                                                                </StackPanel>
+                                                                                <StackPanel Grid.Column="3">
+                                                                                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="CAIXA / STATUS" />
+                                                                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}">
+                                                                                        <Run Text="{Binding Detail.CashRegisterText}" />
+                                                                                        <Run Text=" • " />
+                                                                                        <Run Text="{Binding PaymentStatusText}" />
+                                                                                    </TextBlock>
+                                                                                </StackPanel>
+                                                                            </Grid>
+                                                                        </Border>
                                                                         <TextBlock FontSize="16" FontWeight="Bold"
                                                                                    Foreground="{StaticResource TextPrimaryBrush}"
                                                                                    Text="Produtos" />
@@ -399,6 +438,12 @@
                                                                                 </Grid>
                                                                             </StackPanel>
                                                                         </Border>
+                                                                        <Button Margin="0,14,0,0"
+                                                                                HorizontalAlignment="Right"
+                                                                                Command="{Binding DataContext.ViewHistoricalReceiptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                                CommandParameter="{Binding}"
+                                                                                Content="Ver comprovante"
+                                                                                Style="{StaticResource SecondaryButtonStyle}" />
                                                                     </StackPanel>
                                                                 </Grid>
                                                             </StackPanel>
@@ -412,12 +457,45 @@
 
                                 <TextBlock Grid.Row="2" HorizontalAlignment="Center" Padding="0,18"
                                            Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="Nenhuma venda registrada hoje.">
+                                           Text="Carregando histórico...">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasNoTodaySales}" Value="True">
+                                                <DataTrigger Binding="{Binding IsHistoryLoading}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <Border Grid.Row="2" Margin="0,12,0,0" Padding="12"
+                                        Background="{StaticResource ErrorSurfaceBrush}"
+                                        BorderBrush="{StaticResource ErrorBorderBrush}"
+                                        BorderThickness="1" CornerRadius="6">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasHistoryError}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                               Text="{Binding HistoryErrorMessage}" TextWrapping="Wrap" />
+                                </Border>
+
+                                <TextBlock Grid.Row="2" HorizontalAlignment="Center" Padding="0,18"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Nenhuma venda encontrada.">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ShowHistoryEmptyState}" Value="True">
                                                     <Setter Property="Visibility" Value="Visible" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -444,7 +522,7 @@
                     <StackPanel>
                         <TextBlock HorizontalAlignment="Center" FontSize="26" FontWeight="Bold"
                                    Foreground="{StaticResource SuccessBrush}"
-                                   Text="Venda concluída" />
+                                   Text="{Binding ReceiptTitle}" />
                         <TextBlock Margin="0,5,0,22" HorizontalAlignment="Center" FontSize="16"
                                    Foreground="{StaticResource TextPrimaryBrush}"
                                    Text="{Binding Receipt.SaleNumberText}" />
@@ -516,7 +594,32 @@
                                        Text="{Binding ReceiptStockWarningsText}" TextWrapping="Wrap" />
                         </Border>
                         <Button Margin="0,22,0,0" Height="52" Command="{Binding NewSaleCommand}"
-                                Content="Nova venda - F3" Style="{StaticResource PrimaryButtonStyle}" />
+                                Content="Nova venda - F3">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsHistoricalReceipt}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Margin="0,22,0,0" Height="52"
+                                Command="{Binding CloseHistoricalReceiptCommand}"
+                                Content="Voltar ao histórico">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsHistoricalReceipt}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </StackPanel>
                 </Border>
             </Grid>

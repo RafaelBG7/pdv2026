@@ -34,6 +34,48 @@
             </Grid>
 
             <StackPanel Grid.Row="2">
+                <Border Margin="0,0,0,16" Padding="6"
+                        HorizontalAlignment="Left"
+                        Background="{StaticResource SurfaceRaisedBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="10">
+                    <StackPanel Orientation="Horizontal">
+                        <Button MinWidth="150" Height="40"
+                                Command="{Binding ShowCurrentRegisterTabCommand}"
+                                Content="Caixa atual">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="BorderBrush" Value="Transparent" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCurrentRegisterTabSelected}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource InfoSurfaceBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource InfoBorderBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button MinWidth="170" Height="40" Margin="6,0,0,0"
+                                Command="{Binding ShowPreviousRegistersTabCommand}"
+                                Content="Caixas anteriores">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="BorderBrush" Value="Transparent" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPreviousRegistersTabSelected}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource InfoSurfaceBrush}" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource InfoBorderBrush}" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+                </Border>
                 <Border Padding="12" Margin="0,0,0,8"
                         Background="{StaticResource ErrorSurfaceBrush}"
                         BorderBrush="{StaticResource ErrorBorderBrush}"
@@ -78,9 +120,13 @@
                     <Style TargetType="Border">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding HasNoOpenRegister}" Value="True">
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding HasNoOpenRegister}" Value="True" />
+                                    <Condition Binding="{Binding IsCurrentRegisterTabSelected}" Value="True" />
+                                </MultiDataTrigger.Conditions>
                                 <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
+                            </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
@@ -129,9 +175,13 @@
                     <Style TargetType="Border">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding HasOpenRegister}" Value="True">
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding HasOpenRegister}" Value="True" />
+                                    <Condition Binding="{Binding IsCurrentRegisterTabSelected}" Value="True" />
+                                </MultiDataTrigger.Conditions>
                                 <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
+                            </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
@@ -301,13 +351,23 @@
                 </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="6">
+            <StackPanel Grid.Row="4">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsPreviousRegistersTabSelected}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
                 <TextBlock FontSize="19" FontWeight="Bold"
                            Foreground="{StaticResource TextPrimaryBrush}"
-                           Text="Caixas recentes" />
+                           Text="Caixas anteriores" />
                 <TextBlock Margin="0,4,0,12" FontSize="12"
                            Foreground="{StaticResource TextSecondaryBrush}"
-                           Text="Últimos caixas registrados nesta adega." />
+                           Text="Consulte os caixas encerrados e abra os detalhes somente quando precisar." />
                 <DataGrid ItemsSource="{Binding RecentRegisters}"
                           x:Name="RecentRegistersGrid"
                           SelectedItem="{Binding SelectedRegister, Mode=TwoWay}"
@@ -327,6 +387,16 @@
                           RowBackground="{StaticResource SurfaceRaisedBrush}"
                           AlternatingRowBackground="#102034"
                           RowHeight="50" ColumnHeaderHeight="42">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasRecentRegisters}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
                     <DataGrid.RowStyle>
                         <Style TargetType="DataGridRow">
                             <Setter Property="Cursor" Value="Hand" />
@@ -342,6 +412,31 @@
                         <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="0.75*" />
                     </DataGrid.Columns>
                 </DataGrid>
+
+                <Border Margin="0,14,0,0" Padding="22"
+                        Background="{StaticResource SurfaceRaisedBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="8">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasNoRecentRegisters}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock FontSize="16" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Nenhum caixa anterior encontrado" />
+                        <TextBlock Margin="0,5,0,0" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Os caixas encerrados aparecerão aqui." />
+                    </StackPanel>
+                </Border>
 
                 <Grid Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>

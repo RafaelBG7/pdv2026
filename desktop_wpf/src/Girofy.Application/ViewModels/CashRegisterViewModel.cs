@@ -20,6 +20,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     private string _successMessage = string.Empty;
     private bool _isBusy;
     private bool _isDetailLoading;
+    private bool _isCurrentRegisterTabSelected = true;
 
     public CashRegisterViewModel(
         IGirofyApiClient apiClient,
@@ -34,6 +35,8 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
             LoadSelectedRegisterDetailAsync,
             () => SelectedRegister is not null);
         ClearRegisterDetailCommand = new AsyncRelayCommand(ClearRegisterDetailAsync);
+        ShowCurrentRegisterTabCommand = new RelayCommand(ShowCurrentRegisterTab);
+        ShowPreviousRegistersTabCommand = new RelayCommand(ShowPreviousRegistersTab);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -48,6 +51,8 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
             }
             OnPropertyChanged(nameof(CurrentRegister));
             OnPropertyChanged(nameof(RecentRegisters));
+            OnPropertyChanged(nameof(HasRecentRegisters));
+            OnPropertyChanged(nameof(HasNoRecentRegisters));
             OnPropertyChanged(nameof(HasOpenRegister));
             OnPropertyChanged(nameof(HasNoOpenRegister));
             OnPropertyChanged(nameof(CanViewFinancials));
@@ -63,6 +68,24 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     public CashRegisterRecord? CurrentRegister => Snapshot?.CurrentRegister;
 
     public IReadOnlyList<CashRegisterRecord> RecentRegisters => Snapshot?.RecentRegisters ?? [];
+
+    public bool HasRecentRegisters => RecentRegisters.Count > 0;
+
+    public bool HasNoRecentRegisters => !HasRecentRegisters;
+
+    public bool IsCurrentRegisterTabSelected
+    {
+        get => _isCurrentRegisterTabSelected;
+        private set
+        {
+            if (SetProperty(ref _isCurrentRegisterTabSelected, value))
+            {
+                OnPropertyChanged(nameof(IsPreviousRegistersTabSelected));
+            }
+        }
+    }
+
+    public bool IsPreviousRegistersTabSelected => !IsCurrentRegisterTabSelected;
 
     public CashRegisterRecord? SelectedRegister
     {
@@ -182,6 +205,10 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand ClearRegisterDetailCommand { get; }
 
+    public RelayCommand ShowCurrentRegisterTabCommand { get; }
+
+    public RelayCommand ShowPreviousRegistersTabCommand { get; }
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         LoadAsync(cancellationToken);
 
@@ -189,6 +216,18 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     {
         Reset();
         OnPropertyChanged(nameof(IsAvailable));
+    }
+
+    private void ShowCurrentRegisterTab()
+    {
+        IsCurrentRegisterTabSelected = true;
+        ClearMessages();
+    }
+
+    private void ShowPreviousRegistersTab()
+    {
+        IsCurrentRegisterTabSelected = false;
+        ClearMessages();
     }
 
     private async Task LoadAsync(CancellationToken cancellationToken)
@@ -286,6 +325,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
             ApplySnapshotIfCurrent(session, snapshot);
             ClosingAmountText = string.Empty;
             SuccessMessage = "Caixa fechado com sucesso.";
+            IsCurrentRegisterTabSelected = false;
         }
         catch (Exception exception)
         {
@@ -402,6 +442,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         SuccessMessage = string.Empty;
         IsBusy = false;
         IsDetailLoading = false;
+        IsCurrentRegisterTabSelected = true;
     }
 
     public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;

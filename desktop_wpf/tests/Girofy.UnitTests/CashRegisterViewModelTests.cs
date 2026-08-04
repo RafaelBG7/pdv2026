@@ -25,6 +25,7 @@ public sealed class CashRegisterViewModelTests
         Assert.Equal("access-token", apiClient.LastAccessToken);
         Assert.Equal("135,50", viewModel.ClosingAmountText);
         Assert.Equal("Caixa #42", viewModel.CurrentRegister!.NumberText);
+        Assert.True(viewModel.IsCurrentRegisterTabSelected);
     }
 
     [Fact]
@@ -108,6 +109,36 @@ public sealed class CashRegisterViewModelTests
         Assert.Empty(viewModel.ClosingAmountText);
         Assert.Equal("Caixa fechado com sucesso.", viewModel.SuccessMessage);
         Assert.Single(viewModel.RecentRegisters);
+        Assert.True(viewModel.IsPreviousRegistersTabSelected);
+    }
+
+    [Fact]
+    public async Task Internal_navigation_separates_current_and_previous_registers()
+    {
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = new CashRegisterSnapshot
+            {
+                RecentRegisters =
+                [
+                    new CashRegisterRecord { Id = 77, Status = "closed" },
+                ],
+            },
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
+        await viewModel.InitializeAsync();
+
+        Assert.True(viewModel.IsCurrentRegisterTabSelected);
+        Assert.True(viewModel.HasRecentRegisters);
+
+        viewModel.ShowPreviousRegistersTabCommand.Execute(null);
+
+        Assert.True(viewModel.IsPreviousRegistersTabSelected);
+        Assert.False(viewModel.IsCurrentRegisterTabSelected);
+
+        viewModel.ShowCurrentRegisterTabCommand.Execute(null);
+
+        Assert.True(viewModel.IsCurrentRegisterTabSelected);
     }
 
     [Fact]

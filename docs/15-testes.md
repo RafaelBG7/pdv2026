@@ -98,6 +98,15 @@ Caixa:
 - Fechamento.
 - Validação exata de valor.
 - Detalhes de caixa anterior.
+- Navegação interna entre caixa atual e caixas anteriores no Windows.
+- Seleção automática de caixas anteriores após fechamento bem-sucedido.
+- Detecção de lista histórica vazia ou preenchida.
+- Carregamento sob demanda da linha do tempo do caixa selecionado.
+- Limpeza de snapshot, detalhe e navegação após troca de sessão.
+
+Os testes unitários específicos do cliente Windows ficam em
+`desktop_wpf/tests/Girofy.UnitTests/CashRegisterViewModelTests.cs`. O roteiro completo de
+aceite manual do módulo está em `docs/25-caixas-windows.md`.
 
 Relatórios:
 

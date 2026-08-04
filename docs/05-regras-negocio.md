@@ -73,6 +73,11 @@
 - Fechamento só conclui quando o valor bate exatamente.
 - Caixa atual exibe totais por forma de pagamento, total geral, quantidade de vendas e ticket médio para usuários autorizados a ver relatórios.
 - A análise do caixa usa linha do tempo cronológica das vendas, com itens e pagamentos expansíveis.
+- No Windows, caixa atual e caixas encerrados ocupam áreas internas separadas do mesmo módulo.
+- O Windows abre no caixa atual e muda para caixas anteriores após um fechamento confirmado.
+- O resumo histórico traz os dez caixas fechados mais recentes; o detalhe de vendas é carregado somente após a seleção de um caixa.
+- Trocar de área não altera o caixa nem realiza nova consulta; apenas reorganiza o conteúdo já carregado.
+- Valores financeiros de caixas atuais ou anteriores permanecem condicionados à permissão de relatórios.
 
 ## Venda
 

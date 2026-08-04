@@ -41,6 +41,8 @@
 | RF033 | Preservar pedido quando há erro | Implementado | Renderização mantém estado do formulário. |
 | RF045 | Configurar venda com estoque negativo por adega | Implementado | Configurações > Operação e `allow_negative_stock`. |
 | RF046 | Consultar caixas anteriores em linhas expansíveis | Implementado | `/caixa`, com vendas e pagamentos no detalhe. |
+| RF053 | Separar caixa atual e caixas anteriores no Windows | Implementado | Navegação interna no módulo WPF, com seleção inicial do caixa atual e troca automática após fechamento. |
+| RF054 | Carregar detalhe do caixa anterior sob demanda no Windows | Implementado | `GET /api/v1/cash-registers/{id}`, com totais, pagamentos e linha do tempo expansível. |
 | RF047 | Mostrar apenas vendas do dia na listagem principal | Implementado | `/vendas` filtra por data atual no backend. |
 | RF048 | Padronizar campos de busca como `Buscar X` | Implementado | Templates de vendas, produtos, categorias, equipe e painel master. |
 | RF034 | Calcular lucro por produto/venda/caixa | Implementado | `profit_amount` e relatórios. |

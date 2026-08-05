@@ -330,11 +330,13 @@ public sealed class GirofyApiClient(
 
     public async Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
         string accessToken,
+        int page,
+        int perPage,
         CancellationToken cancellationToken)
     {
         using var request = CreateAuthenticatedRequest(
             HttpMethod.Get,
-            "api/v1/sales/today",
+            $"api/v1/sales/today?page={page}&per_page={perPage}",
             accessToken);
         using var response = await httpClient.SendAsync(
             request,

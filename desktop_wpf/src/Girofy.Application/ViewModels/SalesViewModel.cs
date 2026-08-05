@@ -141,6 +141,7 @@ public sealed class SaleHistoryItemViewModel : ObservableObject
 
 public sealed class SalesViewModel : ObservableObject, IDisposable
 {
+    private const int HistoryPageSize = 30;
     private static readonly CultureInfo BrazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
@@ -173,6 +174,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private bool _isHistoryLoading;
     private string _historyErrorMessage = string.Empty;
     private bool _isHistoricalReceipt;
+    private int _historyPage;
+    private bool _hasMoreSales;
 
     public SalesViewModel(
         IGirofyApiClient apiClient,
@@ -206,6 +209,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         ToggleTodaySaleCommand = new RelayCommand<SaleHistoryItemViewModel>(
             sale => _ = ToggleTodaySaleAsync(sale));
         RefreshHistoryCommand = new AsyncRelayCommand(RefreshHistoryAsync, () => !IsHistoryLoading);
+        LoadMoreHistoryCommand = new AsyncRelayCommand(LoadMoreHistoryAsync, () => HasMoreSales && !IsHistoryLoading);
         ViewHistoricalReceiptCommand = new RelayCommand<SaleHistoryItemViewModel>(
             sale => _ = ViewHistoricalReceiptAsync(sale));
         CloseHistoricalReceiptCommand = new RelayCommand(CloseHistoricalReceipt);
@@ -358,6 +362,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _isHistoryLoading, value))
             {
                 RefreshHistoryCommand.NotifyCanExecuteChanged();
+                LoadMoreHistoryCommand.NotifyCanExecuteChanged();
                 OnPropertyChanged(nameof(ShowHistoryEmptyState));
             }
         }
@@ -378,6 +383,16 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public bool HasHistoryError => !string.IsNullOrWhiteSpace(HistoryErrorMessage);
 
     public bool ShowHistoryEmptyState => !IsHistoryLoading && HasNoTodaySales && !HasHistoryError;
+
+    public bool HasMoreSales
+    {
+        get => _hasMoreSales;
+        private set
+        {
+            if (SetProperty(ref _hasMoreSales, value))
+                LoadMoreHistoryCommand.NotifyCanExecuteChanged();
+        }
+    }
 
     public bool IsHistoricalReceipt
     {
@@ -588,6 +603,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand RefreshHistoryCommand { get; }
 
+    public AsyncRelayCommand LoadMoreHistoryCommand { get; }
+
     public RelayCommand<SaleHistoryItemViewModel> ViewHistoricalReceiptCommand { get; }
 
     public RelayCommand CloseHistoricalReceiptCommand { get; }
@@ -600,7 +617,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await LoadTodaySalesAsync(cancellationToken);
+        await LoadTodaySalesAsync(reset: true, cancellationToken);
     }
 
     private Task SearchAsync(CancellationToken cancellationToken) =>
@@ -609,6 +626,11 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private async Task ToggleTodaySaleAsync(SaleHistoryItemViewModel? sale)
     {
         if (sale is null)
+        {
+            return;
+        }
+
+        if (sale.IsLoadingDetail)
         {
             return;
         }
@@ -701,7 +723,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     }
 
     private Task RefreshHistoryAsync(CancellationToken cancellationToken) =>
-        LoadTodaySalesAsync(cancellationToken);
+        LoadTodaySalesAsync(reset: true, cancellationToken);
+
+    private Task LoadMoreHistoryAsync(CancellationToken cancellationToken) =>
+        LoadTodaySalesAsync(reset: false, cancellationToken);
 
     private async Task SearchProductsAsync(bool showMessages, CancellationToken cancellationToken)
     {
@@ -1063,7 +1088,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             SuccessMessage = receipt.AlreadyProcessed
                 ? $"{receipt.SaleNumberText} já estava registrada e foi recuperada sem duplicação."
                 : $"{receipt.SaleNumberText} finalizada com sucesso.";
-            await LoadTodaySalesAsync(cancellationToken);
+            await LoadTodaySalesAsync(reset: true, cancellationToken);
             ResetDraftAfterSuccess();
             IsPaymentStepOpen = false;
             IsSaleEditorOpen = false;
@@ -1385,6 +1410,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         IsPaymentStepOpen = false;
         IsSaleEditorOpen = false;
         TodaySales.Clear();
+        _historyPage = 0;
+        HasMoreSales = false;
         HistoryErrorMessage = string.Empty;
         IsHistoryLoading = false;
         OnPropertyChanged(nameof(HasTodaySales));
@@ -1451,7 +1478,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         return $"{percent.ToString("N2", BrazilianCulture)}%";
     }
 
-    private async Task LoadTodaySalesAsync(CancellationToken cancellationToken)
+    private async Task LoadTodaySalesAsync(bool reset, CancellationToken cancellationToken)
     {
         var session = _sessionContext.Current;
         if (session is null || !IsAvailable)
@@ -1466,23 +1493,34 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         _historyCts?.Dispose();
         _historyCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var historyCts = _historyCts;
+        if (reset)
+        {
+            _historyPage = 0;
+            HasMoreSales = false;
+        }
         IsHistoryLoading = true;
         HistoryErrorMessage = string.Empty;
         try
         {
+            var requestedPage = reset ? 1 : _historyPage + 1;
             var snapshot = await _apiClient.GetTodaySalesHistoryAsync(
                 session.AccessToken,
+                requestedPage,
+                HistoryPageSize,
                 historyCts.Token);
             if (!IsSameSession(session))
             {
                 return;
             }
 
-            TodaySales.Clear();
+            if (reset)
+                TodaySales.Clear();
             foreach (var sale in snapshot.Sales)
             {
                 TodaySales.Add(new SaleHistoryItemViewModel(sale));
             }
+            _historyPage = snapshot.Page > 0 ? snapshot.Page : requestedPage;
+            HasMoreSales = snapshot.HasMore;
             OnPropertyChanged(nameof(HasTodaySales));
             OnPropertyChanged(nameof(HasNoTodaySales));
             OnPropertyChanged(nameof(ShowHistoryEmptyState));
@@ -1505,7 +1543,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
         catch (Exception)
         {
-            TodaySales.Clear();
+            if (reset)
+                TodaySales.Clear();
             HistoryErrorMessage = "Não foi possível carregar o histórico de vendas.";
             OnPropertyChanged(nameof(HasTodaySales));
             OnPropertyChanged(nameof(HasNoTodaySales));
@@ -1513,7 +1552,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            IsHistoryLoading = false;
+            if (ReferenceEquals(_historyCts, historyCts))
+                IsHistoryLoading = false;
         }
     }
 

@@ -2429,6 +2429,45 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.get_json()['errors'][0]['code'], 'permission_denied')
 
+    def test_api_today_sales_is_paginated_and_bounded(self):
+        user, company = self.create_api_user(username='api-sales-history')
+        with self.app.app_context():
+            cash_register = CashRegister(
+                company_id=company.id,
+                user_id=user.id,
+                status='open',
+                opening_amount=100,
+            )
+            db.session.add(cash_register)
+            db.session.flush()
+            db.session.add_all([
+                Sale(
+                    company_id=company.id,
+                    user_id=user.id,
+                    cash_register_id=cash_register.id,
+                    final_amount=index,
+                    payment_status='paid',
+                )
+                for index in range(1, 66)
+            ])
+            db.session.commit()
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+        first = self.client.get('/api/v1/sales/today?page=1&per_page=30', headers=headers)
+        third = self.client.get('/api/v1/sales/today?page=3&per_page=30', headers=headers)
+
+        self.assertEqual(first.status_code, 200)
+        first_data = first.get_json()['data']
+        self.assertEqual(len(first_data['sales']), 30)
+        self.assertEqual(first_data['total'], 65)
+        self.assertTrue(first_data['has_more'])
+        self.assertEqual(first_data['page'], 1)
+        third_data = third.get_json()['data']
+        self.assertEqual(len(third_data['sales']), 5)
+        self.assertFalse(third_data['has_more'])
+        self.assertEqual(third_data['page'], 3)
+
     def test_login_remember_me_sets_persistent_cookie(self):
         response = self.client.post(
             '/login',

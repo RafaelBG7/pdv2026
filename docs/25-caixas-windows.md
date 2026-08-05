@@ -65,13 +65,19 @@ parte deste fluxo.
 
 ## Abertura do detalhe
 
-Ao selecionar uma linha, o `SelectionChanged` solicita o detalhe daquele caixa. A lista
-resumida não transporta antecipadamente todas as vendas, itens e pagamentos. Esse desenho
-mantém a entrada na tela leve e transfere os dados detalhados somente quando necessários.
+Ao selecionar uma linha, o `SelectionChanged` fixa explicitamente o registro no
+`CashRegisterViewModel`, solicita o detalhe e expande a própria linha por meio de
+`RowDetailsVisibilityMode="VisibleWhenSelected"`. A lista resumida não transporta
+antecipadamente todas as vendas, itens e pagamentos. Esse desenho mantém a entrada na tela
+leve e transfere os dados detalhados somente quando necessários.
 
-Durante a solicitação, a interface mostra `Carregando detalhes do caixa...`. O botão
-`Atualizar detalhe` permite repetir a consulta do registro selecionado. O botão `Fechar`
-remove o painel de detalhe da tela sem alterar dados no servidor.
+Durante a solicitação, a área expandida mostra `Carregando detalhes do caixa...`. O botão
+`Atualizar detalhe` permite repetir a consulta do registro selecionado. Selecionar outra
+linha recolhe visualmente o detalhe anterior e abre o novo, sem alterar dados no servidor.
+
+Cada solicitação recebe uma versão interna. Se o usuário trocar rapidamente de linha, uma
+resposta antiga é descartada e não pode substituir o detalhe do caixa atualmente
+selecionado.
 
 O painel apresenta os dados consolidados disponíveis, incluindo:
 

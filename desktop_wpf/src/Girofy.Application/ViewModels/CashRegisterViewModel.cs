@@ -21,6 +21,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     private bool _isBusy;
     private bool _isDetailLoading;
     private bool _isCurrentRegisterTabSelected = true;
+    private int _detailRequestVersion;
 
     public CashRegisterViewModel(
         IGirofyApiClient apiClient,
@@ -337,7 +338,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task LoadSelectedRegisterDetailAsync(CancellationToken cancellationToken)
+    public async Task LoadSelectedRegisterDetailAsync(CancellationToken cancellationToken = default)
     {
         var selected = SelectedRegister;
         if (selected is null)
@@ -347,7 +348,9 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         }
 
         var session = RequireSession();
+        var requestVersion = ++_detailRequestVersion;
         IsDetailLoading = true;
+        DetailSnapshot = null;
         ClearMessages();
         try
         {
@@ -355,7 +358,9 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
                 session.AccessToken,
                 selected.Id,
                 cancellationToken);
-            if (string.Equals(
+            if (requestVersion == _detailRequestVersion &&
+                SelectedRegister?.Id == selected.Id &&
+                string.Equals(
                 _sessionContext.Current?.AccessToken,
                 session.AccessToken,
                 StringComparison.Ordinal))
@@ -365,16 +370,23 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         }
         catch (Exception exception)
         {
-            SetSafeError(exception);
+            if (requestVersion == _detailRequestVersion)
+            {
+                SetSafeError(exception);
+            }
         }
         finally
         {
-            IsDetailLoading = false;
+            if (requestVersion == _detailRequestVersion)
+            {
+                IsDetailLoading = false;
+            }
         }
     }
 
     private Task ClearRegisterDetailAsync(CancellationToken cancellationToken)
     {
+        _detailRequestVersion++;
         DetailSnapshot = null;
         SuccessMessage = string.Empty;
         return Task.CompletedTask;
@@ -443,6 +455,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         IsBusy = false;
         IsDetailLoading = false;
         IsCurrentRegisterTabSelected = true;
+        _detailRequestVersion++;
     }
 
     public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;

@@ -1,4 +1,5 @@
 using System.Windows.Controls;
+using Girofy.Application.Models;
 using Girofy.Application.ViewModels;
 
 namespace Girofy.Desktop.Views;
@@ -10,13 +11,13 @@ public partial class CashRegisterView : UserControl
         InitializeComponent();
     }
 
-    private void RecentRegistersGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void RecentRegistersGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (DataContext is CashRegisterViewModel viewModel &&
-            viewModel.SelectedRegister is not null &&
-            viewModel.LoadRegisterDetailCommand.CanExecute(null))
+        if (sender is DataGrid { SelectedItem: CashRegisterRecord selectedRegister } &&
+            DataContext is CashRegisterViewModel viewModel)
         {
-            viewModel.LoadRegisterDetailCommand.Execute(null);
+            viewModel.SelectedRegister = selectedRegister;
+            await viewModel.LoadSelectedRegisterDetailAsync();
         }
     }
 }

@@ -217,7 +217,7 @@ public sealed class CashRegisterViewModelTests
                     new CashRegisterRecord { Id = 20, Status = "closed" },
                 ],
             },
-            DetailHandler = id => id == 10 ? firstResponse.Task : secondResponse.Task,
+            DetailHandler = (id, _) => id == 10 ? firstResponse.Task : secondResponse.Task,
         };
         using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
         await viewModel.InitializeAsync();
@@ -240,6 +240,49 @@ public sealed class CashRegisterViewModelTests
 
         Assert.Equal(20, viewModel.DetailRegister?.Id);
         Assert.False(viewModel.IsDetailLoading);
+    }
+
+    [Fact]
+    public async Task Selecting_another_register_cancels_the_previous_detail_request()
+    {
+        var firstRequestCancelled = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = new CashRegisterSnapshot
+            {
+                RecentRegisters =
+                [
+                    new CashRegisterRecord { Id = 10, Status = "closed" },
+                    new CashRegisterRecord { Id = 20, Status = "closed" },
+                ],
+            },
+            DetailHandler = async (id, cancellationToken) =>
+            {
+                if (id == 10)
+                {
+                    using var registration = cancellationToken.Register(
+                        () => firstRequestCancelled.TrySetResult(true));
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                }
+
+                return new CashRegisterDetailSnapshot
+                {
+                    CashRegister = new CashRegisterRecord { Id = id, Status = "closed" },
+                };
+            },
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedRegister = viewModel.RecentRegisters[0];
+        var firstLoad = viewModel.LoadSelectedRegisterDetailAsync();
+        viewModel.SelectedRegister = viewModel.RecentRegisters[1];
+        await viewModel.LoadSelectedRegisterDetailAsync();
+        await firstLoad;
+
+        Assert.True(await firstRequestCancelled.Task);
+        Assert.Equal(20, viewModel.DetailRegister?.Id);
     }
 
     [Fact]
@@ -304,7 +347,7 @@ public sealed class CashRegisterViewModelTests
 
         public CashRegisterDetailSnapshot DetailResult { get; init; } = new();
 
-        public Func<int, Task<CashRegisterDetailSnapshot>>? DetailHandler { get; init; }
+        public Func<int, CancellationToken, Task<CashRegisterDetailSnapshot>>? DetailHandler { get; init; }
 
         public Exception? CloseException { get; init; }
 
@@ -357,7 +400,8 @@ public sealed class CashRegisterViewModelTests
         {
             LastAccessToken = accessToken;
             LastDetailCashRegisterId = cashRegisterId;
-            return DetailHandler?.Invoke(cashRegisterId) ?? Task.FromResult(DetailResult);
+            return DetailHandler?.Invoke(cashRegisterId, cancellationToken) ??
+                Task.FromResult(DetailResult);
         }
 
         public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken) =>

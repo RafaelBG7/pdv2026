@@ -102,6 +102,21 @@ estoque baixo, vendas recentes e contas críticas. Lucro, ticket médio, totais 
 pagamentos e contas são omitidos quando as permissões do usuário não autorizam a leitura.
 Produtos e categorias são carregados somente ao abrir o respectivo módulo.
 
+## Instância única e reentrância
+
+O processo WPF adquire `Local\Girofy.Desktop.SingleInstance` antes de construir o host.
+Uma segunda inicialização na mesma sessão encerra imediatamente, evitando múltiplos hosts,
+clientes HTTP e janelas quando o usuário clica repetidamente no executável.
+
+Comandos assíncronos bloqueiam reentrância para operações comuns. Consultas substituíveis,
+como o detalhe de caixas anteriores, cancelam a chamada anterior e aplicam somente a versão
+mais recente compatível com seleção e sessão. O roteiro de estresse e os critérios para
+retomar funcionalidades estão em `docs/26-desempenho-estabilidade-windows.md`.
+
+A navegação principal possui um `CancellationTokenSource` compartilhado no
+`ConnectionViewModel`. Trocar de módulo cancela a inicialização anterior, impedindo que
+cliques rápidos disparem cargas simultâneas de Dashboard, Catálogo, Caixa e outros módulos.
+
 ## Caixa nativo
 
 O módulo Caixa consome `GET /api/v1/cash-registers/summary` somente quando o usuário abre

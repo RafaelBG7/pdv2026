@@ -113,6 +113,15 @@ Os testes unitários específicos do cliente Windows ficam em
 `desktop_wpf/tests/Girofy.UnitTests/CashRegisterViewModelTests.cs`. O roteiro completo de
 aceite manual do módulo está em `docs/25-caixas-windows.md`.
 
+Estabilidade Windows:
+
+- bloqueio de múltiplas instâncias do executável;
+- prevenção de reentrância em comandos assíncronos;
+- cancelamento de consultas substituídas por uma seleção mais recente;
+- descarte de respostas fora de ordem;
+- roteiro manual de cliques rápidos e uso prolongado em
+  `docs/26-desempenho-estabilidade-windows.md`.
+
 Relatórios:
 
 - Períodos automáticos.

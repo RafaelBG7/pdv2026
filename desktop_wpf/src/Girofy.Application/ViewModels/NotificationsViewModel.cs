@@ -10,6 +10,7 @@ public sealed class NotificationsViewModel : ObservableObject, IDisposable
 {
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
+    private readonly bool _enablePolling;
     private CancellationTokenSource? _pollingCancellation;
     private string _category = string.Empty;
     private string _severity = string.Empty;
@@ -21,10 +22,11 @@ public sealed class NotificationsViewModel : ObservableObject, IDisposable
     private int _page = 1;
     private int _total;
 
-    public NotificationsViewModel(IGirofyApiClient apiClient, IAppSessionContext sessionContext)
+    public NotificationsViewModel(IGirofyApiClient apiClient, IAppSessionContext sessionContext, bool enablePolling = true)
     {
         _apiClient = apiClient;
         _sessionContext = sessionContext;
+        _enablePolling = enablePolling;
         RefreshCommand = new AsyncRelayCommand(LoadAsync);
         ApplyFiltersCommand = new AsyncRelayCommand(ApplyFiltersAsync);
         MarkAllReadCommand = new AsyncRelayCommand(MarkAllReadAsync);
@@ -60,7 +62,7 @@ public sealed class NotificationsViewModel : ObservableObject, IDisposable
     {
         if (_sessionContext.Current is null) { Reset(); return; }
         await LoadAsync(cancellationToken);
-        StartPolling();
+        if (_enablePolling) StartPolling();
     }
 
     private async Task ApplyFiltersAsync(CancellationToken cancellationToken) { Page = 1; await LoadAsync(cancellationToken); }

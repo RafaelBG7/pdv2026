@@ -12,7 +12,7 @@ public sealed class NotificationsViewModelTests
     {
         var session = CreateSessionContext();
         var api = new StubApiClient();
-        using var viewModel = new NotificationsViewModel(api, session);
+        using var viewModel = new NotificationsViewModel(api, session, enablePolling: false);
 
         await viewModel.InitializeAsync();
 
@@ -28,12 +28,13 @@ public sealed class NotificationsViewModelTests
     {
         var session = CreateSessionContext();
         var api = new StubApiClient();
-        using var viewModel = new NotificationsViewModel(api, session);
+        using var viewModel = new NotificationsViewModel(api, session, enablePolling: false);
         await viewModel.InitializeAsync();
 
-        viewModel.MarkReadCommand.Execute(viewModel.Items[0]);
-        await WaitUntilAsync(() => api.ReadId == 12);
-        viewModel.DismissCommand.Execute(viewModel.Items[0]);
+        var selected = viewModel.Items[0];
+        viewModel.MarkReadCommand.Execute(selected);
+        await WaitUntilAsync(() => api.ReadId == 12 && api.GetCalls >= 2);
+        viewModel.DismissCommand.Execute(selected);
         await WaitUntilAsync(() => api.DismissedId == 12);
 
         Assert.Equal(12, api.ReadId);
@@ -45,7 +46,7 @@ public sealed class NotificationsViewModelTests
     public async Task Clearing_session_removes_notifications_and_badge()
     {
         var session = CreateSessionContext();
-        using var viewModel = new NotificationsViewModel(new StubApiClient(), session);
+        using var viewModel = new NotificationsViewModel(new StubApiClient(), session, enablePolling: false);
         await viewModel.InitializeAsync();
 
         session.Clear();

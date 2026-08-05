@@ -41,7 +41,7 @@ Filtros disponíveis: categoria, severidade, estado de leitura, período, texto,
 
 ## Experiência no Windows
 
-O cabeçalho possui um sino com badge de não lidas. A central contém busca, filtros por categoria e severidade, atualização manual, leitura individual, leitura de todas e dispensa. O carregamento trata os estados de espera, vazio, erro e nova tentativa.
+O cabeçalho possui um sino com badge de não lidas. Ao clicar, ele abre um painel flutuante compacto sem trocar a tela atual. O painel apresenta a lista resumida, leitura individual, leitura de todas e dispensa, com rolagem interna quando necessário. O carregamento trata os estados de espera, vazio, erro e nova tentativa.
 
 Após autenticação, o aplicativo atualiza a central e inicia polling a cada 60 segundos. O polling possui cancelamento por sessão: sair ou trocar de usuário interrompe a tarefa anterior, limpa os dados e evita requisições concorrentes antigas. As chamadas são assíncronas e não bloqueiam a interface.
 

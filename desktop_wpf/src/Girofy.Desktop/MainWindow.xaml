@@ -336,7 +336,7 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button MinWidth="54" Margin="0,0,14,0"
+                        <Button x:Name="NotificationsBellButton" MinWidth="54" Margin="0,0,14,0"
                                 Command="{Binding ShowNotificationsCommand}"
                                 ToolTip="Notificações pendentes"
                                 Style="{StaticResource SecondaryButtonStyle}">
@@ -348,6 +348,12 @@
                                 </Border>
                             </StackPanel>
                         </Button>
+                        <Popup PlacementTarget="{Binding ElementName=NotificationsBellButton}"
+                               Placement="Bottom" HorizontalOffset="-480" VerticalOffset="10"
+                               AllowsTransparency="True" StaysOpen="False"
+                               IsOpen="{Binding IsNotificationsPopupOpen, Mode=TwoWay}">
+                            <views:NotificationsPopoverView DataContext="{Binding Notifications}" />
+                        </Popup>
                         <StackPanel Margin="0,0,18,0" VerticalAlignment="Center">
                             <TextBlock HorizontalAlignment="Right" FontSize="14" FontWeight="SemiBold"
                                        Foreground="{StaticResource TextPrimaryBrush}"
@@ -641,10 +647,6 @@
                             </Style>
                         </Grid.Style>
                         <views:AuditView DataContext="{Binding Audit}" />
-                    </Grid>
-                    <Grid>
-                        <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsNotificationsView}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Grid.Style>
-                        <views:NotificationsView DataContext="{Binding Notifications}" />
                     </Grid>
                     <Grid>
                         <Grid.Style>

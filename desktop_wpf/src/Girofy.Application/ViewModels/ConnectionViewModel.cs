@@ -14,6 +14,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     private bool _isBusy;
     private bool _isConnected;
     private bool _hasConnectionError;
+    private bool _isNotificationsPopupOpen;
     private string _activeView = "dashboard";
     private CancellationTokenSource? _navigationCancellation;
     private int _navigationVersion;
@@ -99,9 +100,13 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     public bool IsReportsView => string.Equals(_activeView, "reports", StringComparison.Ordinal);
 
     public bool IsAuditView => string.Equals(_activeView, "audit", StringComparison.Ordinal);
-    public bool IsNotificationsView => string.Equals(_activeView, "notifications", StringComparison.Ordinal);
-
     public bool IsSettingsView => string.Equals(_activeView, "settings", StringComparison.Ordinal);
+
+    public bool IsNotificationsPopupOpen
+    {
+        get => _isNotificationsPopupOpen;
+        set => SetProperty(ref _isNotificationsPopupOpen, value);
+    }
 
     public string StatusTitle
     {
@@ -204,8 +209,12 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     private Task ShowAuditAsync(CancellationToken cancellationToken) =>
         NavigateAsync("audit", Audit.InitializeAsync, cancellationToken);
 
-    private Task ShowNotificationsAsync(CancellationToken cancellationToken) =>
-        NavigateAsync("notifications", Notifications.InitializeAsync, cancellationToken);
+    private async Task ShowNotificationsAsync(CancellationToken cancellationToken)
+    {
+        IsNotificationsPopupOpen = !IsNotificationsPopupOpen;
+        if (IsNotificationsPopupOpen)
+            await Notifications.InitializeAsync(cancellationToken);
+    }
 
     private Task ShowSettingsAsync(CancellationToken cancellationToken) =>
         NavigateAsync("settings", Settings.InitializeAsync, cancellationToken);
@@ -216,6 +225,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         CancellationToken commandCancellation,
         Action? beforeInitialize = null)
     {
+        IsNotificationsPopupOpen = false;
         var navigationVersion = ++_navigationVersion;
         _navigationCancellation?.Cancel();
         var navigationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
@@ -258,7 +268,6 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsPayablesView));
         OnPropertyChanged(nameof(IsReportsView));
         OnPropertyChanged(nameof(IsAuditView));
-        OnPropertyChanged(nameof(IsNotificationsView));
         OnPropertyChanged(nameof(IsSettingsView));
     }
 

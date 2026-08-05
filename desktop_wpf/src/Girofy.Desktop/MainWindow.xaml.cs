@@ -66,6 +66,25 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void HandleNotificationsBellMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        NotificationsPopup.IsOpen = !NotificationsPopup.IsOpen;
+        if (!NotificationsPopup.IsOpen)
+        {
+            return;
+        }
+
+        try
+        {
+            await _viewModel.Notifications.InitializeAsync();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Notification popover initialization failed.");
+        }
+    }
+
     private void QueueLoginFocus()
     {
         if (_viewModel.Login.IsAuthenticated)

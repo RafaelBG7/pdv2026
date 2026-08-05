@@ -203,6 +203,46 @@ public sealed class CashRegisterViewModelTests
     }
 
     [Fact]
+    public async Task Latest_selected_register_wins_when_detail_responses_finish_out_of_order()
+    {
+        var firstResponse = new TaskCompletionSource<CashRegisterDetailSnapshot>();
+        var secondResponse = new TaskCompletionSource<CashRegisterDetailSnapshot>();
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = new CashRegisterSnapshot
+            {
+                RecentRegisters =
+                [
+                    new CashRegisterRecord { Id = 10, Status = "closed" },
+                    new CashRegisterRecord { Id = 20, Status = "closed" },
+                ],
+            },
+            DetailHandler = id => id == 10 ? firstResponse.Task : secondResponse.Task,
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedRegister = viewModel.RecentRegisters[0];
+        var firstLoad = viewModel.LoadSelectedRegisterDetailAsync();
+        viewModel.SelectedRegister = viewModel.RecentRegisters[1];
+        var secondLoad = viewModel.LoadSelectedRegisterDetailAsync();
+
+        secondResponse.SetResult(new CashRegisterDetailSnapshot
+        {
+            CashRegister = new CashRegisterRecord { Id = 20, Status = "closed" },
+        });
+        await secondLoad;
+        firstResponse.SetResult(new CashRegisterDetailSnapshot
+        {
+            CashRegister = new CashRegisterRecord { Id = 10, Status = "closed" },
+        });
+        await firstLoad;
+
+        Assert.Equal(20, viewModel.DetailRegister?.Id);
+        Assert.False(viewModel.IsDetailLoading);
+    }
+
+    [Fact]
     public async Task Clearing_session_removes_cash_register_data()
     {
         var sessionContext = CreateSessionContext();
@@ -264,6 +304,8 @@ public sealed class CashRegisterViewModelTests
 
         public CashRegisterDetailSnapshot DetailResult { get; init; } = new();
 
+        public Func<int, Task<CashRegisterDetailSnapshot>>? DetailHandler { get; init; }
+
         public Exception? CloseException { get; init; }
 
         public string LastAccessToken { get; private set; } = string.Empty;
@@ -315,7 +357,7 @@ public sealed class CashRegisterViewModelTests
         {
             LastAccessToken = accessToken;
             LastDetailCashRegisterId = cashRegisterId;
-            return Task.FromResult(DetailResult);
+            return DetailHandler?.Invoke(cashRegisterId) ?? Task.FromResult(DetailResult);
         }
 
         public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken) =>

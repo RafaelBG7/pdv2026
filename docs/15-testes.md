@@ -105,6 +105,8 @@ Caixa:
 - Seleção automática de caixas anteriores após fechamento bem-sucedido.
 - Detecção de lista histórica vazia ou preenchida.
 - Carregamento sob demanda da linha do tempo do caixa selecionado.
+- Expansão do detalhe dentro da própria linha selecionada no Windows.
+- Descarte de respostas antigas quando a seleção muda durante o carregamento.
 - Limpeza de snapshot, detalhe e navegação após troca de sessão.
 
 Os testes unitários específicos do cliente Windows ficam em

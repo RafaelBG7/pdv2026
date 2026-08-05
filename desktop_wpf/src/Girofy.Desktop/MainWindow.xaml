@@ -337,7 +337,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="NotificationsBellButton" MinWidth="54" Margin="0,0,14,0"
-                                Command="{Binding ShowNotificationsCommand}"
+                                PreviewMouseLeftButtonDown="HandleNotificationsBellMouseDown"
                                 ToolTip="Notificações pendentes"
                                 Style="{StaticResource SecondaryButtonStyle}">
                             <StackPanel Orientation="Horizontal">
@@ -348,10 +348,9 @@
                                 </Border>
                             </StackPanel>
                         </Button>
-                        <Popup PlacementTarget="{Binding ElementName=NotificationsBellButton}"
+                        <Popup x:Name="NotificationsPopup" PlacementTarget="{Binding ElementName=NotificationsBellButton}"
                                Placement="Bottom" HorizontalOffset="-480" VerticalOffset="10"
-                               AllowsTransparency="True" StaysOpen="False"
-                               IsOpen="{Binding IsNotificationsPopupOpen, Mode=TwoWay}">
+                               AllowsTransparency="True" StaysOpen="False">
                             <views:NotificationsPopoverView DataContext="{Binding Notifications}" />
                         </Popup>
                         <StackPanel Margin="0,0,18,0" VerticalAlignment="Center">

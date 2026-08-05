@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using Girofy.Application.Abstractions;
@@ -18,11 +19,20 @@ namespace Girofy.Desktop;
 
 public partial class App : System.Windows.Application
 {
-    private readonly IHost _host;
+    private const string SingleInstanceMutexName = @"Local\Girofy.Desktop.SingleInstance";
+    private readonly Mutex _singleInstanceMutex = new(false, SingleInstanceMutexName);
+    private readonly bool _ownsSingleInstance;
+    private readonly IHost? _host;
     private ILogger<App>? _logger;
 
     public App()
     {
+        _ownsSingleInstance = TryAcquireSingleInstance(_singleInstanceMutex);
+        if (!_ownsSingleInstance)
+        {
+            return;
+        }
+
         _host = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((_, configuration) =>
             {
@@ -110,6 +120,12 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        if (!_ownsSingleInstance || _host is null)
+        {
+            Shutdown();
+            return;
+        }
+
         try
         {
             await _host.StartAsync();
@@ -132,11 +148,37 @@ public partial class App : System.Windows.Application
 
     protected override async void OnExit(ExitEventArgs e)
     {
-        _logger?.LogInformation("Girofy Windows stopped.");
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await _host.StopAsync(timeout.Token);
-        _host.Dispose();
-        base.OnExit(e);
+        try
+        {
+            if (_host is not null)
+            {
+                _logger?.LogInformation("Girofy Windows stopped.");
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                await _host.StopAsync(timeout.Token);
+                _host.Dispose();
+            }
+        }
+        finally
+        {
+            if (_ownsSingleInstance)
+            {
+                _singleInstanceMutex.ReleaseMutex();
+            }
+            _singleInstanceMutex.Dispose();
+            base.OnExit(e);
+        }
+    }
+
+    private static bool TryAcquireSingleInstance(Mutex mutex)
+    {
+        try
+        {
+            return mutex.WaitOne(TimeSpan.Zero, false);
+        }
+        catch (AbandonedMutexException)
+        {
+            return true;
+        }
     }
 
     private void HandleDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)

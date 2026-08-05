@@ -3,7 +3,7 @@ using Girofy.Application.Mvvm;
 
 namespace Girofy.Application.ViewModels;
 
-public sealed class ConnectionViewModel : ObservableObject
+public sealed class ConnectionViewModel : ObservableObject, IDisposable
 {
     private readonly IGirofyApiClient _apiClient;
     private readonly IExternalBrowserService _browserService;
@@ -15,6 +15,8 @@ public sealed class ConnectionViewModel : ObservableObject
     private bool _isConnected;
     private bool _hasConnectionError;
     private string _activeView = "dashboard";
+    private CancellationTokenSource? _navigationCancellation;
+    private int _navigationVersion;
 
     public ConnectionViewModel(
         IGirofyApiClient apiClient,
@@ -161,66 +163,74 @@ public sealed class ConnectionViewModel : ObservableObject
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         CheckConnectionAsync(cancellationToken);
 
-    private async Task ShowDashboardAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("dashboard");
-        await Dashboard.InitializeAsync(cancellationToken);
-    }
+    private Task ShowDashboardAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("dashboard", Dashboard.InitializeAsync, cancellationToken);
 
-    private async Task ShowProductsAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("catalog");
-        Catalog.ShowProductsCommand.Execute(null);
-        await Catalog.InitializeAsync(cancellationToken);
-    }
+    private Task ShowProductsAsync(CancellationToken cancellationToken) =>
+        NavigateAsync(
+            "catalog",
+            Catalog.InitializeAsync,
+            cancellationToken,
+            () => Catalog.ShowProductsCommand.Execute(null));
 
-    private async Task ShowCategoriesAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("catalog");
-        Catalog.ShowCategoriesCommand.Execute(null);
-        await Catalog.InitializeAsync(cancellationToken);
-    }
+    private Task ShowCategoriesAsync(CancellationToken cancellationToken) =>
+        NavigateAsync(
+            "catalog",
+            Catalog.InitializeAsync,
+            cancellationToken,
+            () => Catalog.ShowCategoriesCommand.Execute(null));
 
-    private async Task ShowCashRegisterAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("cash-register");
-        await CashRegister.InitializeAsync(cancellationToken);
-    }
+    private Task ShowCashRegisterAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("cash-register", CashRegister.InitializeAsync, cancellationToken);
 
-    private async Task ShowSalesAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("sales");
-        await Sales.InitializeAsync(cancellationToken);
-    }
+    private Task ShowSalesAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("sales", Sales.InitializeAsync, cancellationToken);
 
-    private async Task ShowStockAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("stock");
-        await Stock.InitializeAsync(cancellationToken);
-    }
+    private Task ShowStockAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("stock", Stock.InitializeAsync, cancellationToken);
 
-    private async Task ShowPayablesAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("payables");
-        await Payables.InitializeAsync(cancellationToken);
-    }
+    private Task ShowPayablesAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("payables", Payables.InitializeAsync, cancellationToken);
 
-    private async Task ShowReportsAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("reports");
-        await Reports.InitializeAsync(cancellationToken);
-    }
+    private Task ShowReportsAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("reports", Reports.InitializeAsync, cancellationToken);
 
-    private async Task ShowAuditAsync(CancellationToken cancellationToken)
-    {
-        SetActiveView("audit");
-        await Audit.InitializeAsync(cancellationToken);
-    }
+    private Task ShowAuditAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("audit", Audit.InitializeAsync, cancellationToken);
 
-    private async Task ShowSettingsAsync(CancellationToken cancellationToken)
+    private Task ShowSettingsAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("settings", Settings.InitializeAsync, cancellationToken);
+
+    private async Task NavigateAsync(
+        string activeView,
+        Func<CancellationToken, Task> initialize,
+        CancellationToken commandCancellation,
+        Action? beforeInitialize = null)
     {
-        SetActiveView("settings");
-        await Settings.InitializeAsync(cancellationToken);
+        var navigationVersion = ++_navigationVersion;
+        _navigationCancellation?.Cancel();
+        var navigationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            commandCancellation);
+        _navigationCancellation = navigationCancellation;
+
+        SetActiveView(activeView);
+        beforeInitialize?.Invoke();
+        try
+        {
+            await initialize(navigationCancellation.Token);
+        }
+        catch (OperationCanceledException) when (navigationCancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (navigationVersion == _navigationVersion &&
+                ReferenceEquals(_navigationCancellation, navigationCancellation))
+            {
+                _navigationCancellation = null;
+            }
+            navigationCancellation.Dispose();
+        }
     }
 
     private void SetActiveView(string activeView)
@@ -277,5 +287,10 @@ public sealed class ConnectionViewModel : ObservableObject
             LastCheckedText = $"Última verificação: {DateTimeOffset.Now:dd/MM/yyyy HH:mm:ss}";
             IsBusy = false;
         }
+    }
+
+    public void Dispose()
+    {
+        _navigationCancellation?.Cancel();
     }
 }

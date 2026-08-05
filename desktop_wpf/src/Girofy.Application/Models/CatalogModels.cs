@@ -65,7 +65,29 @@ public sealed class CatalogProduct
 
     public string SalePriceText => $"R$ {SalePrice.ToString("N2", BrazilianCulture)}";
 
+    public string CostPriceText => CostPrice is decimal costPrice
+        ? $"R$ {costPrice.ToString("N2", BrazilianCulture)}"
+        : "Não disponível";
+
+    public string ProfitAmountText => ProfitAmount is decimal profitAmount
+        ? $"R$ {profitAmount.ToString("N2", BrazilianCulture)}"
+        : "Não disponível";
+
     public string StockText => $"{StockQuantity} un.";
+
+    public string MinStockText => $"{MinStockQuantity} un.";
+
+    public string BarcodeText => string.IsNullOrWhiteSpace(Barcode)
+        ? "Não informado"
+        : Barcode;
+
+    public string ProductTypeText => IsKit ? "Kit" : "Produto unitário";
+
+    public string StockStatusText => StockQuantity <= 0
+        ? "Sem estoque"
+        : StockQuantity <= MinStockQuantity
+            ? "Estoque baixo"
+            : "Estoque adequado";
 
     public string StatusText => Active ? "Ativo" : "Inativo";
 }

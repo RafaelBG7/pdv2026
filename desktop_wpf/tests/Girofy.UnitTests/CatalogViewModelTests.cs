@@ -30,6 +30,49 @@ public sealed class CatalogViewModelTests
     }
 
     [Fact]
+    public void Product_exposes_complete_formatted_details_for_expanded_row()
+    {
+        var product = new CatalogProduct
+        {
+            Name = "Cesta Especial",
+            Barcode = "7891234567890",
+            Category = new CatalogCategoryReference { Id = 7, Name = "Presentes" },
+            CostPrice = 40.50m,
+            SalePrice = 65m,
+            ProfitAmount = 24.50m,
+            StockQuantity = 2,
+            MinStockQuantity = 3,
+            IsKit = true,
+            Active = true,
+        };
+
+        Assert.Equal("7891234567890", product.BarcodeText);
+        Assert.Equal("Presentes", product.CategoryName);
+        Assert.Equal("R$ 40,50", product.CostPriceText);
+        Assert.Equal("R$ 65,00", product.SalePriceText);
+        Assert.Equal("R$ 24,50", product.ProfitAmountText);
+        Assert.Equal("2 un.", product.StockText);
+        Assert.Equal("3 un.", product.MinStockText);
+        Assert.Equal("Kit", product.ProductTypeText);
+        Assert.Equal("Estoque baixo", product.StockStatusText);
+        Assert.Equal("Ativo", product.StatusText);
+    }
+
+    [Fact]
+    public void Product_detail_uses_safe_fallbacks_for_optional_values()
+    {
+        var product = new CatalogProduct();
+
+        Assert.Equal("Não informado", product.BarcodeText);
+        Assert.Equal("Sem categoria", product.CategoryName);
+        Assert.Equal("Não disponível", product.CostPriceText);
+        Assert.Equal("Não disponível", product.ProfitAmountText);
+        Assert.Equal("Produto unitário", product.ProductTypeText);
+        Assert.Equal("Sem estoque", product.StockStatusText);
+        Assert.Equal("Inativo", product.StatusText);
+    }
+
+    [Fact]
     public async Task Search_sends_selected_filters_and_resets_page()
     {
         var sessionContext = new AppSessionContext();

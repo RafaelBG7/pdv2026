@@ -74,6 +74,9 @@ Catálogo:
 - Estoque mínimo.
 - Kits.
 - Importação.
+- Detalhe expansível do produto selecionado no Windows.
+- Formatação de código de barras, custo, venda, lucro e estoque atual/mínimo.
+- Fallbacks seguros para categoria, código de barras e valores financeiros opcionais.
 
 Vendas:
 

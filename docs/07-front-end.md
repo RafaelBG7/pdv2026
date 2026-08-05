@@ -203,6 +203,22 @@ Validação real:
 
 - O backend exige valor final igual ao esperado.
 
+## Produtos no Windows
+
+A grade nativa de Produtos mantém busca, categoria, filtros, ordenação e paginação no
+servidor. Cada linha é clicável e usa `RowDetailsVisibilityMode="VisibleWhenSelected"`:
+ao selecionar um produto, a própria linha se expande sem abrir outra página ou realizar
+uma nova consulta.
+
+O detalhe expandido apresenta nome, status, código de barras, categoria, tipo do produto,
+situação do estoque, custo, venda, lucro unitário e estoque atual/mínimo. Código ausente
+usa `Não informado`; categoria ausente usa `Sem categoria`; custo e lucro omitidos por
+permissão usam `Não disponível`.
+
+A expansão preserva a grade virtualizada e a paginação atual. Selecionar outro produto
+fecha visualmente o detalhe anterior e abre o novo. O botão `Editar selecionado` continua
+separado da consulta e só fica disponível para usuários autorizados a gerenciar produtos.
+
 ## Vendas
 
 Arquivos:

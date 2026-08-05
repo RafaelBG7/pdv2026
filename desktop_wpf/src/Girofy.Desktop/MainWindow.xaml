@@ -855,6 +855,7 @@
                                       CanUserDeleteRows="False" CanUserReorderColumns="False"
                                       CanUserResizeRows="False" SelectionMode="Single"
                                       SelectedItem="{Binding Catalog.SelectedProduct, Mode=TwoWay}"
+                                      RowDetailsVisibilityMode="VisibleWhenSelected"
                                       EnableRowVirtualization="True" EnableColumnVirtualization="True"
                                       VirtualizingPanel.IsVirtualizing="True"
                                       VirtualizingPanel.VirtualizationMode="Recycling"
@@ -867,6 +868,12 @@
                                       RowBackground="{StaticResource SurfaceRaisedBrush}"
                                       AlternatingRowBackground="#102034"
                                       RowHeight="66" ColumnHeaderHeight="48">
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Cursor" Value="Hand" />
+                                        <Setter Property="ToolTip" Value="Clique para expandir os detalhes do produto" />
+                                    </Style>
+                                </DataGrid.RowStyle>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Produto" Binding="{Binding Name}" Width="2.1*" />
                                     <DataGridTextColumn Header="Categoria" Binding="{Binding CategoryName}" Width="1.25*" />
@@ -874,6 +881,114 @@
                                     <DataGridTextColumn Header="Estoque" Binding="{Binding StockText}" Width="0.75*" />
                                     <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="0.7*" />
                                 </DataGrid.Columns>
+                                <DataGrid.RowDetailsTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="12,0,12,14" Padding="18"
+                                                Background="{StaticResource SurfaceBrush}"
+                                                BorderBrush="{StaticResource InfoBorderBrush}"
+                                                BorderThickness="1" CornerRadius="10">
+                                            <StackPanel>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="18" FontWeight="Bold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding Name}" />
+                                                        <TextBlock Margin="0,4,0,0" FontSize="12"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Text="Detalhes completos do produto" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="1" Padding="12,6"
+                                                            VerticalAlignment="Center"
+                                                            Background="{StaticResource InfoSurfaceBrush}"
+                                                            BorderBrush="{StaticResource InfoBorderBrush}"
+                                                            BorderThickness="1" CornerRadius="12">
+                                                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding StatusText}" />
+                                                    </Border>
+                                                </Grid>
+
+                                                <UniformGrid Margin="0,18,0,0" Columns="4">
+                                                    <StackPanel Margin="0,0,16,14">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="CÓDIGO DE BARRAS" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding BarcodeText}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <StackPanel Margin="0,0,16,14">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="CATEGORIA" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding CategoryName}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <StackPanel Margin="0,0,16,14">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="TIPO" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding ProductTypeText}" />
+                                                    </StackPanel>
+                                                    <StackPanel Margin="0,0,0,14">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="SITUAÇÃO DO ESTOQUE" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding StockStatusText}" />
+                                                    </StackPanel>
+                                                    <StackPanel Margin="0,0,16,0">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="PREÇO DE CUSTO" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding CostPriceText}" />
+                                                    </StackPanel>
+                                                    <StackPanel Margin="0,0,16,0">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="PREÇO DE VENDA" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding SalePriceText}" />
+                                                    </StackPanel>
+                                                    <StackPanel Margin="0,0,16,0">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="LUCRO UNITÁRIO" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding ProfitAmountText}" />
+                                                    </StackPanel>
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="ESTOQUE ATUAL / MÍNIMO" />
+                                                        <StackPanel Margin="0,5,0,0" Orientation="Horizontal">
+                                                            <TextBlock FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                                       Text="{Binding StockText}" />
+                                                            <TextBlock Margin="5,0" Foreground="{StaticResource TextMutedBrush}"
+                                                                       Text="/" />
+                                                            <TextBlock FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                                       Text="{Binding MinStockText}" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </UniformGrid>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGrid.RowDetailsTemplate>
                             </DataGrid>
                         </Grid>
 

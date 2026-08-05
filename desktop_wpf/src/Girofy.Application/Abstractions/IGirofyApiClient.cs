@@ -118,6 +118,8 @@ public interface IGirofyApiClient
 
     Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
         string accessToken,
+        int page,
+        int perPage,
         CancellationToken cancellationToken) =>
         Task.FromException<SalesHistorySnapshot>(new NotSupportedException());
 

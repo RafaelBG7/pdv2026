@@ -3533,6 +3533,8 @@ def api_sale_detail(sale_id):
 def api_today_sales():
     try:
         company_id = g.api_user.company_id
+        page = positive_integer_argument('page', 1, maximum=100000)
+        per_page = positive_integer_argument('per_page', 30, maximum=100)
         with api_tenant_database(g.api_user) as tenant_db:
             open_cash_register = (
                 tenant_db.query(CashRegister)
@@ -3563,9 +3565,12 @@ def api_today_sales():
                     Sale.created_at < end_at,
                 )
 
+            total = sales_query.count()
             sales = (
                 sales_query
                 .order_by(Sale.created_at.desc(), Sale.id.desc())
+                .offset((page - 1) * per_page)
+                .limit(per_page)
                 .all()
             )
             user_ids = {sale.user_id for sale in sales if sale.user_id}
@@ -3599,6 +3604,10 @@ def api_today_sales():
         return api_success({
             'cash_register_id': cash_register_id,
             'sales': sales_data,
+            'page': page,
+            'per_page': per_page,
+            'total': total,
+            'has_more': page * per_page < total,
         })
     except ApiAuthError as error:
         return api_auth_error_response(error)

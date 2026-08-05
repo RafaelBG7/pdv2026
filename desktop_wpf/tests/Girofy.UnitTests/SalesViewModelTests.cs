@@ -159,6 +159,27 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task History_loads_thirty_sales_then_appends_the_next_page()
+    {
+        var apiClient = new StubApiClient
+        {
+            DashboardRecentSales = Enumerable.Range(1, 40)
+                .Select(id => new DashboardRecentSale { Id = id, FinalAmount = id })
+                .ToArray(),
+        };
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+
+        await viewModel.InitializeAsync();
+
+        Assert.Equal(30, viewModel.TodaySales.Count);
+        Assert.True(viewModel.HasMoreSales);
+        await viewModel.LoadMoreHistoryCommand.ExecuteAsync();
+        Assert.Equal(40, viewModel.TodaySales.Count);
+        Assert.False(viewModel.HasMoreSales);
+        Assert.Equal([1, 2], apiClient.RequestedHistoryPages);
+    }
+
+    [Fact]
     public async Task History_network_failure_has_a_friendly_message()
     {
         var apiClient = new StubApiClient
@@ -506,6 +527,8 @@ public sealed class SalesViewModelTests
 
         public int HistoryCalls { get; private set; }
 
+        public List<int> RequestedHistoryPages { get; } = [];
+
         public Dictionary<int, SaleReceipt> SaleDetails { get; } = [];
 
         public CashRegisterSnapshot CashRegisterSnapshot { get; set; } = CreateOpenCashRegisterSnapshot();
@@ -621,13 +644,24 @@ public sealed class SalesViewModelTests
 
         public Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
             string accessToken,
+            int page,
+            int perPage,
             CancellationToken cancellationToken)
         {
             HistoryCalls++;
+            RequestedHistoryPages.Add(page);
+            var pageSales = DashboardRecentSales
+                .Skip((page - 1) * perPage)
+                .Take(perPage)
+                .ToArray();
             return HistoryException is null
                 ? Task.FromResult(new SalesHistorySnapshot
             {
-                Sales = DashboardRecentSales,
+                Sales = pageSales,
+                Page = page,
+                PerPage = perPage,
+                Total = DashboardRecentSales.Count,
+                HasMore = page * perPage < DashboardRecentSales.Count,
             })
                 : Task.FromException<SalesHistorySnapshot>(HistoryException);
         }

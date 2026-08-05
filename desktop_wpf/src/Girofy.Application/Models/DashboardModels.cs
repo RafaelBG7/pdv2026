@@ -222,6 +222,18 @@ public sealed class SalesHistorySnapshot
 {
     [JsonPropertyName("sales")]
     public IReadOnlyList<DashboardRecentSale> Sales { get; init; } = [];
+
+    [JsonPropertyName("page")]
+    public int Page { get; init; } = 1;
+
+    [JsonPropertyName("per_page")]
+    public int PerPage { get; init; } = 30;
+
+    [JsonPropertyName("total")]
+    public int Total { get; init; }
+
+    [JsonPropertyName("has_more")]
+    public bool HasMore { get; init; }
 }
 
 public sealed class DashboardPayable

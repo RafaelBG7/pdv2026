@@ -125,11 +125,15 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Caixa atual ou detalhe do caixa"] --> B["Carrega vendas do caixa"]
-    B --> C["Ordena cronologicamente"]
-    C --> D["Mostra linha resumida por venda"]
-    D --> E["Usuário expande venda"]
-    E --> F["Exibe produtos, descontos e pagamentos"]
+    A["Abre módulo Caixa no Windows"] --> B["Caixa atual selecionado"]
+    B --> C["Usuário abre Caixas anteriores"]
+    C --> D["Mostra resumo dos 10 caixas recentes"]
+    D --> E["Usuário seleciona um caixa"]
+    E --> F["GET /api/v1/cash-registers/{id}"]
+    F --> G["Mostra resumo e pagamentos autorizados"]
+    G --> H["Mostra linha cronológica resumida"]
+    H --> I["Usuário expande uma venda"]
+    I --> J["Exibe produtos, descontos e pagamentos"]
 ```
 
 ## Fluxo de Importação

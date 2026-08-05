@@ -113,6 +113,30 @@ Usuários com `can_manage_cash_register` podem operar o módulo. Valores iniciai
 diferenças e formas de pagamento só são enviados quando a identidade também possui
 `can_view_reports`.
 
+A interface separa o fluxo em uma navegação secundária entre `Caixa atual` e
+`Caixas anteriores`. O resumo dos dez caixas encerrados é carregado com o snapshot, mas
+vendas, itens e pagamentos são obtidos apenas ao selecionar um registro. A grade utiliza
+virtualização e reciclagem de linhas; cada venda do detalhe usa um `Expander`, reduzindo o
+custo visual do histórico. Depois de um fechamento bem-sucedido, a interface seleciona
+automaticamente `Caixas anteriores`.
+
+O estado das opções fica no `CashRegisterViewModel`; o code-behind apenas encaminha a
+seleção da grade ao comando assíncrono. Estados vazio, carregando, com detalhe e sem vendas
+são controlados por bindings. Consulte `docs/25-caixas-windows.md` para o contrato completo
+de UX, segurança, testes e critérios de aceite.
+
+## Catálogo de produtos expansível
+
+A listagem de Produtos reutiliza o objeto `CatalogProduct` recebido na consulta paginada.
+Selecionar uma linha abre um `RowDetailsTemplate` com os dados completos já disponíveis,
+sem endpoint adicional e sem duplicar estado no `CatalogViewModel`. A grade mantém
+virtualização de linhas e colunas com reciclagem de contêineres.
+
+Propriedades de apresentação no modelo formatam moeda em `pt-BR`, estoque, tipo, situação
+e valores opcionais. Custo e lucro permanecem nulos quando o backend os omite por falta de
+permissão e são exibidos como `Não disponível`. A expansão é somente leitura; edição
+continua sendo uma ação explícita e protegida por `can_manage_products`.
+
 ## Venda nativa
 
 O módulo Vendas pesquisa o catálogo existente, mantém o pedido em memória no WPF e envia

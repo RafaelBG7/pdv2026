@@ -161,6 +161,47 @@ Pós-condições:
 
 - Caixa fechado.
 
+## UC005A - Consultar caixas anteriores no Windows
+
+Ator: operador com permissão de caixa.
+
+Objetivo: consultar o resumo e as vendas de um caixa encerrado sem carregar antecipadamente
+todo o detalhe histórico.
+
+Pré-condições:
+
+- Usuário autenticado.
+- Permissão `can_manage_cash_register`.
+
+Fluxo principal:
+
+1. Acessa Caixa; o sistema inicia em `Caixa atual`.
+2. Seleciona `Caixas anteriores`.
+3. O sistema mostra os dez caixas encerrados mais recentes.
+4. Seleciona uma linha da grade.
+5. O sistema solicita o detalhe do caixa selecionado.
+6. O sistema exibe o resumo, as formas de pagamento e a linha do tempo autorizada.
+7. O usuário expande uma venda para consultar itens e pagamentos.
+
+Fluxos alternativos:
+
+- Sem caixas encerrados: o sistema mostra um estado vazio e oculta a grade.
+- Caixa sem vendas: o sistema mantém o resumo e mostra o estado vazio da linha do tempo.
+- Atualização solicitada: o sistema repete a consulta do caixa selecionado.
+- Fechamento concluído: o sistema abre automaticamente `Caixas anteriores`.
+
+Exceções:
+
+- Sem permissão de caixa: o módulo permanece indisponível.
+- Sem permissão de relatórios: valores financeiros são omitidos.
+- Registro inexistente ou de outra adega: a API retorna erro seguro e nenhum detalhe é aplicado.
+- Sessão alterada durante a consulta: a resposta antiga é descartada.
+
+Pós-condições:
+
+- Nenhum dado operacional é alterado pela consulta.
+- O detalhe permanece visível até ser fechado, substituído ou invalidado por atualização/sessão.
+
 ## UC006 - Consultar Relatório
 
 Ator: gerente ou administrador futuro.

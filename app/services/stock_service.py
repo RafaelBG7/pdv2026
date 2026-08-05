@@ -117,6 +117,89 @@ def register_stock_movement(
     db_session.add(movement)
     db_session.flush()
 
+    from app.services.notification_service import create_notification, resolve_notification
+    stock_notification_keys = {
+        'negative': f'product_negative_stock:{product.company_id}:{product.id}',
+        'out': f'product_out_of_stock:{product.company_id}:{product.id}',
+        'low': f'product_low_stock:{product.company_id}:{product.id}',
+    }
+    if new_stock < 0:
+        create_notification(
+            db_session,
+            company_id=product.company_id,
+            user_id=None,
+            notification_type='product_negative_stock',
+            category='stock',
+            severity='critical',
+            title=f'Estoque negativo - {product.name}',
+            message=f'O produto {product.name} ficou com {new_stock} unidade(s) em estoque.',
+            deduplication_key=stock_notification_keys['negative'],
+            entity_type='product',
+            entity_id=product.id,
+            action_url='/estoque/movimentacoes',
+            metadata={'stock_quantity': new_stock, 'movement_id': movement.id},
+        )
+    else:
+        resolve_notification(db_session, product.company_id, stock_notification_keys['negative'])
+
+    if new_stock == 0:
+        create_notification(
+            db_session,
+            company_id=product.company_id,
+            user_id=None,
+            notification_type='product_out_of_stock',
+            category='stock',
+            severity='critical',
+            title=f'Produto sem estoque - {product.name}',
+            message=f'O produto {product.name} chegou a zero unidade em estoque.',
+            deduplication_key=stock_notification_keys['out'],
+            entity_type='product',
+            entity_id=product.id,
+            action_url='/catalogo/produtos',
+            metadata={'stock_quantity': new_stock, 'movement_id': movement.id},
+        )
+    else:
+        resolve_notification(db_session, product.company_id, stock_notification_keys['out'])
+
+    minimum_stock = int(product.min_stock_quantity or 0)
+    if 0 < new_stock <= minimum_stock:
+        create_notification(
+            db_session,
+            company_id=product.company_id,
+            user_id=None,
+            notification_type='product_low_stock',
+            category='stock',
+            severity='warning',
+            title=f'Estoque baixo - {product.name}',
+            message=f'{product.name} possui {new_stock} unidade(s); mínimo configurado: {minimum_stock}.',
+            deduplication_key=stock_notification_keys['low'],
+            entity_type='product',
+            entity_id=product.id,
+            action_url='/catalogo/produtos',
+            metadata={'stock_quantity': new_stock, 'minimum_stock': minimum_stock, 'movement_id': movement.id},
+            email_requested=False,
+        )
+    else:
+        resolve_notification(db_session, product.company_id, stock_notification_keys['low'])
+
+    if movement_type in {'adjustment_in', 'adjustment_out'} and quantity >= 50:
+        create_notification(
+            db_session,
+            company_id=product.company_id,
+            notification_type='large_manual_stock_adjustment',
+            category='stock',
+            severity='warning',
+            title=f'Grande ajuste de estoque - {product.name}',
+            message=f'Foi realizado um ajuste manual de {quantity} unidade(s) em {product.name}.',
+            deduplication_key=f'large_stock_adjustment:{product.company_id}:{movement.id}',
+            user_id=user_id,
+            entity_type='stock_movement',
+            entity_id=movement.id,
+            action_url='/estoque/movimentacoes',
+            metadata={'quantity': quantity, 'previous_stock': previous_stock, 'new_stock': new_stock},
+            email_requested=False,
+        )
+
     if audit:
         record_audit_event(
             audit_action_for_movement(movement_type),

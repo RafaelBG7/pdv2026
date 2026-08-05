@@ -14,12 +14,13 @@ from flask import g
 
 from app import create_app
 from app.extensions import db
-from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, Notification, NotificationPreference, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.services.api_auth_service import clear_api_login_attempts
 from app.services.audit_service import changed_values, record_audit_event
 from sqlalchemy.exc import SQLAlchemyError
 from app import tenant as tenant_module
 from app.services import alert_service
+from app.services.notification_service import create_notification
 
 
 class TestConfig:
@@ -6271,6 +6272,147 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Quantidade'.encode(), response.data)
         self.assertNotIn('stock_quantity'.encode(), response.data)
         self.assertNotIn('source_type'.encode(), response.data)
+
+
+    def test_notification_api_lists_marks_and_dismisses_only_current_company(self):
+        user, company = self.create_api_user(username='notify-admin')
+        other_user, other_company = self.create_api_user(
+            username='notify-other', company_name='Outra Adega',
+        )
+        login_response = self.api_login('notify-admin', 'SenhaApi123')
+        token = login_response.get_json()['data']['access_token']
+
+        with self.app.app_context():
+            own, _ = create_notification(
+                db.session,
+                company_id=company.id,
+                notification_type='product_low_stock',
+                category='stock',
+                severity='warning',
+                title='Estoque baixo',
+                message='Produto com estoque baixo.',
+                deduplication_key=f'low:{company.id}:1',
+            )
+            create_notification(
+                db.session,
+                company_id=other_company.id,
+                notification_type='payable_overdue',
+                category='payables',
+                severity='critical',
+                title='Conta de outra adega',
+                message='Não pode aparecer.',
+                deduplication_key=f'overdue:{other_company.id}:1',
+            )
+            db.session.commit()
+            own_id = own.id
+
+        response = self.client.get(
+            '/api/v1/notifications?severity=warning',
+            headers=self.bearer_header(token),
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['total'], 1)
+        self.assertEqual(data['unread_count'], 1)
+        self.assertEqual(data['items'][0]['title'], 'Estoque baixo')
+
+        read_response = self.client.put(
+            f'/api/v1/notifications/{own_id}/read',
+            headers=self.bearer_header(token),
+        )
+        self.assertEqual(read_response.status_code, 200)
+        self.assertTrue(read_response.get_json()['data']['is_read'])
+
+        dismiss_response = self.client.put(
+            f'/api/v1/notifications/{own_id}/dismiss',
+            headers=self.bearer_header(token),
+        )
+        self.assertEqual(dismiss_response.status_code, 200)
+        count_response = self.client.get(
+            '/api/v1/notifications/unread-count',
+            headers=self.bearer_header(token),
+        )
+        self.assertEqual(count_response.get_json()['data']['unread_count'], 0)
+
+    def test_notification_deduplication_and_preferences(self):
+        user, company = self.create_api_user(username='notify-preferences')
+        login_response = self.api_login('notify-preferences', 'SenhaApi123')
+        token = login_response.get_json()['data']['access_token']
+
+        with self.app.app_context():
+            first, created_first = create_notification(
+                db.session,
+                company_id=company.id,
+                notification_type='payable_overdue',
+                category='payables',
+                severity='critical',
+                title='Conta vencida',
+                message='Conta vencida.',
+                deduplication_key=f'payable:{company.id}:9',
+            )
+            second, created_second = create_notification(
+                db.session,
+                company_id=company.id,
+                notification_type='payable_overdue',
+                category='payables',
+                severity='critical',
+                title='Conta vencida novamente',
+                message='Não deve duplicar.',
+                deduplication_key=f'payable:{company.id}:9',
+            )
+            db.session.commit()
+            self.assertTrue(created_first)
+            self.assertFalse(created_second)
+            self.assertEqual(first.id, second.id)
+            self.assertEqual(Notification.query.filter_by(company_id=company.id).count(), 1)
+
+        preference_response = self.client.put(
+            '/api/v1/notifications/preferences',
+            headers=self.bearer_header(token),
+            json={
+                'in_app_enabled': True,
+                'desktop_enabled': True,
+                'email_enabled': True,
+                'minimum_severity': 'warning',
+                'email_recipients': 'alertas@girofy.test',
+                'daily_digest_enabled': True,
+                'daily_digest_time': '08:30',
+            },
+        )
+        self.assertEqual(preference_response.status_code, 200)
+        preference = preference_response.get_json()['data']
+        self.assertEqual(preference['minimum_severity'], 'warning')
+        self.assertEqual(preference['email_recipients'], 'alertas@girofy.test')
+
+        with self.app.app_context():
+            self.assertEqual(NotificationPreference.query.filter_by(
+                company_id=company.id, user_id=user.id,
+            ).count(), 1)
+
+    def test_notification_api_materializes_web_stock_and_payable_alerts(self):
+        user, company = self.create_api_user(username='notify-operational')
+        token = self.api_login('notify-operational', 'SenhaApi123').get_json()['data']['access_token']
+        with self.app.app_context():
+            db.session.add(Product(
+                name='Produto crítico', sale_price=10, stock_quantity=0,
+                min_stock_quantity=2, active=True, company_id=company.id,
+            ))
+            db.session.add(Payable(
+                description='Fornecedor vencido', amount=125.50,
+                due_date=date.today() - timedelta(days=2), paid=False, company_id=company.id,
+            ))
+            db.session.commit()
+
+        response = self.client.get('/api/v1/notifications', headers=self.bearer_header(token))
+
+        self.assertEqual(response.status_code, 200)
+        items = response.get_json()['data']['items']
+        self.assertIn('product_out_of_stock', {item['notification_type'] for item in items})
+        self.assertIn('payable_overdue', {item['notification_type'] for item in items})
+        self.assertEqual(len(items), 2)
+
+        repeated = self.client.get('/api/v1/notifications', headers=self.bearer_header(token))
+        self.assertEqual(repeated.get_json()['data']['total'], 2)
 
 
 if __name__ == '__main__':

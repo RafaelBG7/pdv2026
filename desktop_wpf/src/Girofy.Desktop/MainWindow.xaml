@@ -336,6 +336,18 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button MinWidth="54" Margin="0,0,14,0"
+                                Command="{Binding ShowNotificationsCommand}"
+                                ToolTip="Notificações pendentes"
+                                Style="{StaticResource SecondaryButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontSize="18" Text="🔔" />
+                                <Border Margin="6,0,0,0" Padding="6,2" Background="{StaticResource ErrorBrush}" CornerRadius="9">
+                                    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Notifications.HasUnread}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                                    <TextBlock FontSize="10" FontWeight="Bold" Foreground="White" Text="{Binding Notifications.UnreadText}" />
+                                </Border>
+                            </StackPanel>
+                        </Button>
                         <StackPanel Margin="0,0,18,0" VerticalAlignment="Center">
                             <TextBlock HorizontalAlignment="Right" FontSize="14" FontWeight="SemiBold"
                                        Foreground="{StaticResource TextPrimaryBrush}"
@@ -629,6 +641,10 @@
                             </Style>
                         </Grid.Style>
                         <views:AuditView DataContext="{Binding Audit}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsNotificationsView}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Grid.Style>
+                        <views:NotificationsView DataContext="{Binding Notifications}" />
                     </Grid>
                     <Grid>
                         <Grid.Style>

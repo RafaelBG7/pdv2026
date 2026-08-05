@@ -523,7 +523,7 @@ def create_app(config_class=Config):
         permission_authorizer_users = []
         subscription_locked = False
         from app.permissions import has_permission_view_override, needs_permission_override
-        from app.services.alert_service import alert_settings_for_company, claim_email_alert_check, send_configured_email_alert
+        from app.services.alert_service import alert_settings_for_company, claim_email_alert_check, enqueue_configured_email_alert
 
         def can_view_permission(permission):
             if not current_user.is_authenticated:
@@ -614,7 +614,7 @@ def create_app(config_class=Config):
                 alert_type = 'product_out_of_stock' if stock_quantity <= 0 else 'product_low_stock'
                 product_url = url_for('catalog.products')
                 if should_check_email_alerts:
-                    send_configured_email_alert(
+                    enqueue_configured_email_alert(
                         company,
                         alert_type,
                         notification_key,
@@ -658,7 +658,7 @@ def create_app(config_class=Config):
 
                 if alert_type and should_check_email_alerts:
                     alert_key = f'{alert_type}:{payable.id}:{payable.due_date}'
-                    send_configured_email_alert(
+                    enqueue_configured_email_alert(
                         company,
                         alert_type,
                         alert_key,
@@ -682,7 +682,7 @@ def create_app(config_class=Config):
                     title = 'Assinatura perto do vencimento'
                     message = f'A assinatura da adega {company.name} vence em {days_left} dia{"s" if days_left != 1 else ""}.'
                     if should_check_email_alerts:
-                        send_configured_email_alert(
+                        enqueue_configured_email_alert(
                             company,
                             'subscription_expiring',
                             f'subscription_expiring:{company.id}:{company.subscription_renews_at}:{days_left}',

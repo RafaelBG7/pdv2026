@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 import time
 from threading import Lock
 
 from flask import current_app
 
 from app.extensions import db
-from app.models import EmailAlertDelivery, EmailAlertSetting
+from app.models import Company, EmailAlertDelivery, EmailAlertSetting
 from app.services.email_service import EmailAuthenticationError, send_alert_email
 
 
@@ -39,6 +40,9 @@ EMAIL_ALERT_TYPES = {
 
 _email_alert_check_times = {}
 _email_alert_check_lock = Lock()
+_email_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='girofy-email-alert')
+_pending_email_alerts = set()
+_pending_email_lock = Lock()
 
 
 def claim_email_alert_check(company_id, interval_seconds=60):
@@ -134,4 +138,37 @@ def send_configured_email_alert(company, alert_type, alert_key, title, message, 
         sent_at=datetime.now(timezone.utc),
     ))
     db.session.commit()
+    return True
+
+
+def enqueue_configured_email_alert(company, alert_type, alert_key, title, message, url=None, settings=None):
+    """Agenda o SMTP fora da requisição Web; testes continuam determinísticos."""
+    if not company or alert_type not in EMAIL_ALERT_TYPES:
+        return False
+    if current_app.config.get('TESTING'):
+        return send_configured_email_alert(company, alert_type, alert_key, title, message, url, settings)
+
+    application = current_app._get_current_object()
+    company_id = company.id
+    pending_key = (company_id, alert_type, alert_key)
+    with _pending_email_lock:
+        if pending_key in _pending_email_alerts:
+            return False
+        _pending_email_alerts.add(pending_key)
+
+    def deliver():
+        try:
+            with application.app_context():
+                current_company = db.session.get(Company, company_id)
+                if current_company:
+                    send_configured_email_alert(
+                        current_company, alert_type, alert_key, title, message, url,
+                    )
+        except Exception as error:
+            application.logger.error('Falha inesperada na fila do alerta %s: %s', alert_key, error, exc_info=True)
+        finally:
+            with _pending_email_lock:
+                _pending_email_alerts.discard(pending_key)
+
+    _email_executor.submit(deliver)
     return True

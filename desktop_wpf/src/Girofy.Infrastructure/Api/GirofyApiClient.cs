@@ -12,6 +12,64 @@ public sealed class GirofyApiClient(
     HttpClient httpClient,
     ILogger<GirofyApiClient> logger) : IGirofyApiClient
 {
+    public async Task<NotificationSnapshot> GetNotificationsAsync(string accessToken, NotificationQuery query, CancellationToken cancellationToken)
+    {
+        var parameters = new List<string> { $"page={query.Page}", $"page_size={query.PageSize}" };
+        if (!string.IsNullOrWhiteSpace(query.Category)) parameters.Add($"category={Uri.EscapeDataString(query.Category)}");
+        if (!string.IsNullOrWhiteSpace(query.Severity)) parameters.Add($"severity={Uri.EscapeDataString(query.Severity)}");
+        if (!string.IsNullOrWhiteSpace(query.ReadFilter)) parameters.Add($"is_read={Uri.EscapeDataString(query.ReadFilter)}");
+        if (!string.IsNullOrWhiteSpace(query.Search)) parameters.Add($"search={Uri.EscapeDataString(query.Search)}");
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, $"api/v1/notifications?{string.Join("&", parameters)}", accessToken);
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await ReadEnvelopeAsync<NotificationSnapshot>(response, cancellationToken);
+    }
+
+    public async Task<NotificationUnreadCount> GetNotificationUnreadCountAsync(string accessToken, CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, "api/v1/notifications/unread-count", accessToken);
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await ReadEnvelopeAsync<NotificationUnreadCount>(response, cancellationToken);
+    }
+
+    public async Task<NotificationItem> MarkNotificationReadAsync(string accessToken, int notificationId, CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Put, $"api/v1/notifications/{notificationId}/read", accessToken);
+        request.Content = JsonContent.Create(new { });
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<NotificationItem>(response, cancellationToken);
+    }
+
+    public async Task MarkAllNotificationsReadAsync(string accessToken, CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Put, "api/v1/notifications/read-all", accessToken);
+        request.Content = JsonContent.Create(new { });
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await ReadEnvelopeAsync<JsonElement>(response, cancellationToken);
+    }
+
+    public async Task DismissNotificationAsync(string accessToken, int notificationId, CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Put, $"api/v1/notifications/{notificationId}/dismiss", accessToken);
+        request.Content = JsonContent.Create(new { });
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await ReadEnvelopeAsync<JsonElement>(response, cancellationToken);
+    }
+
+    public async Task<NotificationPreferenceSnapshot> GetNotificationPreferencesAsync(string accessToken, CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, "api/v1/notifications/preferences", accessToken);
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await ReadEnvelopeAsync<NotificationPreferenceSnapshot>(response, cancellationToken);
+    }
+
+    public async Task<NotificationPreferenceSnapshot> UpdateNotificationPreferencesAsync(string accessToken, UpdateNotificationPreferenceRequest preferences, CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Put, "api/v1/notifications/preferences", accessToken);
+        request.Content = JsonContent.Create(preferences);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<NotificationPreferenceSnapshot>(response, cancellationToken);
+    }
+
     public async Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken)
     {
         using var response = await httpClient.GetAsync(

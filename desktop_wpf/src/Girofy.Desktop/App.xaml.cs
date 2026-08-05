@@ -86,6 +86,7 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<PayablesViewModel>();
                 services.AddSingleton<ReportsViewModel>();
                 services.AddSingleton<AuditViewModel>();
+                services.AddSingleton<NotificationsViewModel>();
                 services.AddSingleton(provider => new SettingsViewModel(
                     provider.GetRequiredService<IGirofyApiClient>(),
                     provider.GetRequiredService<IAppSessionContext>(),
@@ -106,6 +107,7 @@ public partial class App : System.Windows.Application
                     provider.GetRequiredService<PayablesViewModel>(),
                     provider.GetRequiredService<ReportsViewModel>(),
                     provider.GetRequiredService<AuditViewModel>(),
+                    provider.GetRequiredService<NotificationsViewModel>(),
                     provider.GetRequiredService<SettingsViewModel>()));
                 services.AddSingleton<MainWindow>();
             })

@@ -4,6 +4,21 @@ namespace Girofy.Application.Abstractions;
 
 public interface IGirofyApiClient
 {
+    Task<NotificationSnapshot> GetNotificationsAsync(string accessToken, NotificationQuery query, CancellationToken cancellationToken) =>
+        Task.FromException<NotificationSnapshot>(new NotSupportedException());
+    Task<NotificationUnreadCount> GetNotificationUnreadCountAsync(string accessToken, CancellationToken cancellationToken) =>
+        Task.FromException<NotificationUnreadCount>(new NotSupportedException());
+    Task<NotificationItem> MarkNotificationReadAsync(string accessToken, int notificationId, CancellationToken cancellationToken) =>
+        Task.FromException<NotificationItem>(new NotSupportedException());
+    Task MarkAllNotificationsReadAsync(string accessToken, CancellationToken cancellationToken) =>
+        Task.FromException(new NotSupportedException());
+    Task DismissNotificationAsync(string accessToken, int notificationId, CancellationToken cancellationToken) =>
+        Task.FromException(new NotSupportedException());
+    Task<NotificationPreferenceSnapshot> GetNotificationPreferencesAsync(string accessToken, CancellationToken cancellationToken) =>
+        Task.FromException<NotificationPreferenceSnapshot>(new NotSupportedException());
+    Task<NotificationPreferenceSnapshot> UpdateNotificationPreferencesAsync(string accessToken, UpdateNotificationPreferenceRequest preferences, CancellationToken cancellationToken) =>
+        Task.FromException<NotificationPreferenceSnapshot>(new NotSupportedException());
+
     Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken);
 
     Task<AuthSession> LoginAsync(

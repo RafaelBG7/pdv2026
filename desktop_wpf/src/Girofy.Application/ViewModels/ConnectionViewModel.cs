@@ -31,6 +31,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         PayablesViewModel payables,
         ReportsViewModel reports,
         AuditViewModel audit,
+        NotificationsViewModel notifications,
         SettingsViewModel settings)
     {
         _apiClient = apiClient;
@@ -45,6 +46,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         Payables = payables;
         Reports = reports;
         Audit = audit;
+        Notifications = notifications;
         Settings = settings;
         RetryConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
         OpenWebCommand = new RelayCommand(() => _browserService.Open(_serverUri));
@@ -57,6 +59,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         ShowPayablesCommand = new AsyncRelayCommand(ShowPayablesAsync);
         ShowReportsCommand = new AsyncRelayCommand(ShowReportsAsync);
         ShowAuditCommand = new AsyncRelayCommand(ShowAuditAsync);
+        ShowNotificationsCommand = new AsyncRelayCommand(ShowNotificationsAsync);
         ShowSettingsCommand = new AsyncRelayCommand(ShowSettingsAsync);
     }
 
@@ -77,6 +80,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     public ReportsViewModel Reports { get; }
 
     public AuditViewModel Audit { get; }
+    public NotificationsViewModel Notifications { get; }
 
     public SettingsViewModel Settings { get; }
 
@@ -95,6 +99,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     public bool IsReportsView => string.Equals(_activeView, "reports", StringComparison.Ordinal);
 
     public bool IsAuditView => string.Equals(_activeView, "audit", StringComparison.Ordinal);
+    public bool IsNotificationsView => string.Equals(_activeView, "notifications", StringComparison.Ordinal);
 
     public bool IsSettingsView => string.Equals(_activeView, "settings", StringComparison.Ordinal);
 
@@ -157,6 +162,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand ShowReportsCommand { get; }
 
     public AsyncRelayCommand ShowAuditCommand { get; }
+    public AsyncRelayCommand ShowNotificationsCommand { get; }
 
     public AsyncRelayCommand ShowSettingsCommand { get; }
 
@@ -197,6 +203,9 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
 
     private Task ShowAuditAsync(CancellationToken cancellationToken) =>
         NavigateAsync("audit", Audit.InitializeAsync, cancellationToken);
+
+    private Task ShowNotificationsAsync(CancellationToken cancellationToken) =>
+        NavigateAsync("notifications", Notifications.InitializeAsync, cancellationToken);
 
     private Task ShowSettingsAsync(CancellationToken cancellationToken) =>
         NavigateAsync("settings", Settings.InitializeAsync, cancellationToken);
@@ -249,6 +258,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsPayablesView));
         OnPropertyChanged(nameof(IsReportsView));
         OnPropertyChanged(nameof(IsAuditView));
+        OnPropertyChanged(nameof(IsNotificationsView));
         OnPropertyChanged(nameof(IsSettingsView));
     }
 

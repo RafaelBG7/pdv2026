@@ -29,6 +29,7 @@ public sealed class ConnectionViewModelTests
             CreatePayablesViewModel(apiClient),
             CreateReportsViewModel(apiClient),
             CreateAuditViewModel(apiClient),
+            CreateNotificationsViewModel(apiClient),
             CreateSettingsViewModel(apiClient));
 
         await viewModel.InitializeAsync();
@@ -54,6 +55,7 @@ public sealed class ConnectionViewModelTests
             CreatePayablesViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
             CreateReportsViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
             CreateAuditViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
+            CreateNotificationsViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))),
             CreateSettingsViewModel(new StubApiClient(new HttpRequestException("internal diagnostic"))));
 
         await viewModel.InitializeAsync();
@@ -96,6 +98,9 @@ public sealed class ConnectionViewModelTests
         new(apiClient, new AppSessionContext());
 
     private static AuditViewModel CreateAuditViewModel(IGirofyApiClient apiClient) =>
+        new(apiClient, new AppSessionContext());
+
+    private static NotificationsViewModel CreateNotificationsViewModel(IGirofyApiClient apiClient) =>
         new(apiClient, new AppSessionContext());
 
     private static SettingsViewModel CreateSettingsViewModel(IGirofyApiClient apiClient) =>

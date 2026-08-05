@@ -21,6 +21,7 @@ from app.models import (
     AuditLog,
     CashRegister,
     Category,
+    NotificationPreference,
     Payable,
     Payment,
     Product,
@@ -66,6 +67,18 @@ from app.services.product_service import (
     update_product,
 )
 from app.services.password_recovery_service import request_password_recovery
+from app.services.notification_service import (
+    CATEGORIES as NOTIFICATION_CATEGORIES,
+    SEVERITIES as NOTIFICATION_SEVERITIES,
+    dismiss_notification,
+    find_visible_notification,
+    get_unread_count,
+    get_user_notifications,
+    mark_all_as_read,
+    mark_as_read,
+    preference_for,
+    sync_operational_notifications,
+)
 from app.services.sale_service import (
     PAYMENT_METHODS,
     SaleLineInput,
@@ -4170,3 +4183,173 @@ def api_create_stock_adjustment():
         return api_auth_error_response(error)
     except StockMovementError as error:
         return api_failure(str(error), 'stock_movement_error', 422)
+
+
+def notification_preference_data(preference):
+    return {
+        'notification_type': preference.notification_type,
+        'in_app_enabled': bool(preference.in_app_enabled),
+        'email_enabled': bool(preference.email_enabled),
+        'desktop_enabled': bool(preference.desktop_enabled),
+        'minimum_severity': preference.minimum_severity,
+        'email_recipients': preference.email_recipients or '',
+        'quiet_hours_start': preference.quiet_hours_start or '',
+        'quiet_hours_end': preference.quiet_hours_end or '',
+        'daily_digest_enabled': bool(preference.daily_digest_enabled),
+        'daily_digest_time': preference.daily_digest_time or '08:00',
+    }
+
+
+@api_v1_bp.get('/notifications')
+@api_auth_required
+def api_notifications():
+    try:
+        page = positive_integer_argument('page', 1)
+        page_size = positive_integer_argument('page_size', 20, maximum=100)
+        category = (request.args.get('category') or '').strip()
+        severity = (request.args.get('severity') or '').strip()
+        raw_is_read = (request.args.get('is_read') or '').strip().lower()
+        if category and category not in NOTIFICATION_CATEGORIES:
+            raise ApiAuthError('Categoria de notificação inválida.', 'invalid_query_parameter', 422, 'category')
+        if severity and severity not in NOTIFICATION_SEVERITIES:
+            raise ApiAuthError('Severidade de notificação inválida.', 'invalid_query_parameter', 422, 'severity')
+        if raw_is_read not in {'', 'true', 'false', '1', '0'}:
+            raise ApiAuthError('O parâmetro is_read precisa ser true ou false.', 'invalid_query_parameter', 422, 'is_read')
+        is_read = None if not raw_is_read else raw_is_read in {'true', '1'}
+        date_from = parse_optional_query_date_argument('date_from')
+        date_to = parse_optional_query_date_argument('date_to')
+        start_at = datetime.combine(date_from, time.min) if date_from else None
+        end_at = datetime.combine(date_to, time.max) if date_to else None
+
+        with api_tenant_database(g.api_user) as tenant_db:
+            sync_operational_notifications(tenant_db, g.api_user.company_id)
+            data = get_user_notifications(
+                tenant_db,
+                g.api_user.company_id,
+                g.api_user.id,
+                page=page,
+                page_size=page_size,
+                category=category or None,
+                severity=severity or None,
+                is_read=is_read,
+                date_from=start_at,
+                date_to=end_at,
+                search=(request.args.get('search') or '').strip(),
+            )
+            tenant_db.commit()
+        return api_success(data)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+
+
+@api_v1_bp.get('/notifications/unread-count')
+@api_auth_required
+def api_notifications_unread_count():
+    with api_tenant_database(g.api_user) as tenant_db:
+        sync_operational_notifications(tenant_db, g.api_user.company_id)
+        count = get_unread_count(tenant_db, g.api_user.company_id, g.api_user.id)
+        tenant_db.commit()
+    return api_success({'unread_count': count})
+
+
+@api_v1_bp.put('/notifications/<int:notification_id>/read')
+@api_auth_required
+def api_notification_read(notification_id):
+    with api_tenant_database(g.api_user) as tenant_db:
+        notification = find_visible_notification(
+            tenant_db, g.api_user.company_id, g.api_user.id, notification_id,
+        )
+        if notification is None:
+            return api_failure('Notificação não encontrada.', 'notification_not_found', 404)
+        mark_as_read(tenant_db, notification)
+        tenant_db.commit()
+        from app.services.notification_service import notification_data
+        data = notification_data(notification)
+    return api_success(data)
+
+
+@api_v1_bp.put('/notifications/read-all')
+@api_auth_required
+def api_notifications_read_all():
+    with api_tenant_database(g.api_user) as tenant_db:
+        changed = mark_all_as_read(tenant_db, g.api_user.company_id, g.api_user.id)
+        record_audit_event(
+            'notifications_read_all', 'notification', None,
+            f'{changed} notificações marcadas como lidas.',
+            company_id=g.api_user.company_id, db_session=tenant_db,
+        )
+        tenant_db.commit()
+    return api_success({'changed': changed, 'unread_count': 0})
+
+
+@api_v1_bp.put('/notifications/<int:notification_id>/dismiss')
+@api_auth_required
+def api_notification_dismiss(notification_id):
+    with api_tenant_database(g.api_user) as tenant_db:
+        notification = find_visible_notification(
+            tenant_db, g.api_user.company_id, g.api_user.id, notification_id,
+        )
+        if notification is None:
+            return api_failure('Notificação não encontrada.', 'notification_not_found', 404)
+        dismiss_notification(tenant_db, notification)
+        tenant_db.commit()
+    return api_success({'id': notification_id, 'dismissed': True})
+
+
+@api_v1_bp.get('/notifications/preferences')
+@api_auth_required
+def api_notification_preferences():
+    with api_tenant_database(g.api_user) as tenant_db:
+        preference = preference_for(
+            tenant_db, g.api_user.company_id, g.api_user.id, '*', create=True,
+        )
+        tenant_db.commit()
+        data = notification_preference_data(preference)
+    data['can_manage_recipients'] = g.api_user.has_permission('can_manage_settings')
+    return api_success(data)
+
+
+@api_v1_bp.put('/notifications/preferences')
+@api_auth_required
+def api_update_notification_preferences():
+    try:
+        payload = json_object_body()
+        minimum_severity = json_text(payload, 'minimum_severity', max_length=20) or 'info'
+        if minimum_severity not in NOTIFICATION_SEVERITIES:
+            raise ApiAuthError('Severidade mínima inválida.', 'invalid_severity', 422, 'minimum_severity')
+        recipients = json_text(payload, 'email_recipients', max_length=1000)
+        if recipients and not g.api_user.has_permission('can_manage_settings'):
+            raise ApiAuthError(
+                'Você não tem permissão para alterar destinatários.',
+                'permission_denied', 403, 'email_recipients',
+            )
+        recipient_values = [item.strip() for item in recipients.replace(';', ',').split(',') if item.strip()]
+        if any(not EMAIL_PATTERN.match(item) for item in recipient_values):
+            raise ApiAuthError('Informe apenas e-mails válidos.', 'invalid_email', 422, 'email_recipients')
+
+        with api_tenant_database(g.api_user) as tenant_db:
+            preference = preference_for(
+                tenant_db, g.api_user.company_id, g.api_user.id, '*', create=True,
+            )
+            preference.in_app_enabled = json_bool(payload, 'in_app_enabled', True)
+            preference.email_enabled = json_bool(payload, 'email_enabled', False)
+            preference.desktop_enabled = json_bool(payload, 'desktop_enabled', True)
+            preference.minimum_severity = minimum_severity
+            if g.api_user.has_permission('can_manage_settings'):
+                preference.email_recipients = ', '.join(recipient_values)
+            preference.quiet_hours_start = json_text(payload, 'quiet_hours_start', max_length=5)
+            preference.quiet_hours_end = json_text(payload, 'quiet_hours_end', max_length=5)
+            preference.daily_digest_enabled = json_bool(payload, 'daily_digest_enabled', False)
+            preference.daily_digest_time = json_text(payload, 'daily_digest_time', max_length=5) or '08:00'
+            record_audit_event(
+                'notification_preferences_updated', 'notification_preference', preference.id,
+                'Preferências de notificações atualizadas.',
+                new_values=notification_preference_data(preference),
+                company_id=g.api_user.company_id, db_session=tenant_db,
+            )
+            tenant_db.commit()
+            data = notification_preference_data(preference)
+        data['can_manage_recipients'] = g.api_user.has_permission('can_manage_settings')
+        return api_success(data)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)

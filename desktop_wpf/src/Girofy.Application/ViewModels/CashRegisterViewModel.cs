@@ -396,12 +396,19 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         }
     }
 
-    private Task ClearRegisterDetailAsync(CancellationToken cancellationToken)
+    public void CollapseSelectedRegisterDetail()
     {
         _detailRequestVersion++;
         _detailCancellation?.Cancel();
+        SelectedRegister = null;
         DetailSnapshot = null;
+        IsDetailLoading = false;
         SuccessMessage = string.Empty;
+    }
+
+    private Task ClearRegisterDetailAsync(CancellationToken cancellationToken)
+    {
+        CollapseSelectedRegisterDetail();
         return Task.CompletedTask;
     }
 

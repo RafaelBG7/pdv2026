@@ -374,6 +374,7 @@
                           x:Name="RecentRegistersGrid"
                           MaxHeight="620"
                           SelectedItem="{Binding SelectedRegister, Mode=TwoWay}"
+                          PreviewMouseLeftButtonDown="RecentRegistersGrid_PreviewMouseLeftButtonDown"
                           SelectionChanged="RecentRegistersGrid_SelectionChanged"
                           AutoGenerateColumns="False" IsReadOnly="True"
                           HeadersVisibility="Column" CanUserAddRows="False"

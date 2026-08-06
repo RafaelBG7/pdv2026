@@ -203,6 +203,36 @@ public sealed class CashRegisterViewModelTests
     }
 
     [Fact]
+    public async Task Collapsing_selected_register_clears_selection_and_detail()
+    {
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = new CashRegisterSnapshot
+            {
+                RecentRegisters =
+                [
+                    new CashRegisterRecord { Id = 77, Status = "closed" },
+                ],
+            },
+            DetailResult = new CashRegisterDetailSnapshot
+            {
+                CashRegister = new CashRegisterRecord { Id = 77, Status = "closed" },
+            },
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
+        await viewModel.InitializeAsync();
+        viewModel.SelectedRegister = viewModel.RecentRegisters.Single();
+        await viewModel.LoadSelectedRegisterDetailAsync();
+
+        viewModel.CollapseSelectedRegisterDetail();
+
+        Assert.Null(viewModel.SelectedRegister);
+        Assert.Null(viewModel.DetailSnapshot);
+        Assert.False(viewModel.HasDetail);
+        Assert.False(viewModel.IsDetailLoading);
+    }
+
+    [Fact]
     public async Task Latest_selected_register_wins_when_detail_responses_finish_out_of_order()
     {
         var firstResponse = new TaskCompletionSource<CashRegisterDetailSnapshot>();

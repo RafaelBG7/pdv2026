@@ -24,7 +24,7 @@
                 <TextBlock FontSize="22" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Text="Alertas" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Margin="0,0,12,0" FontSize="14" Foreground="{StaticResource TextSecondaryBrush}">
-                        <Run Text="{Binding UnreadCount}" /><Run Text=" pendentes" />
+                        <Run Text="{Binding UnreadCount, Mode=OneWay}" /><Run Text=" pendentes" />
                     </TextBlock>
                     <Button Padding="9,5" Command="{Binding MarkAllReadCommand}" Content="Marcar lidas"
                             Style="{StaticResource SecondaryButtonStyle}" />
@@ -66,7 +66,7 @@
                                             <TextBlock Margin="0,4,0,0" MaxWidth="365" Foreground="{StaticResource TextSecondaryBrush}"
                                                        Text="{Binding Message}" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
                                             <TextBlock Margin="0,5,0,0" FontSize="11" Foreground="{StaticResource TextMutedBrush}">
-                                                <Run Text="{Binding CategoryText}" /><Run Text=" • " /><Run Text="{Binding CreatedAtText}" />
+                                                <Run Text="{Binding CategoryText, Mode=OneWay}" /><Run Text=" • " /><Run Text="{Binding CreatedAtText, Mode=OneWay}" />
                                             </TextBlock>
                                         </StackPanel>
                                         <StackPanel Grid.Column="3" Margin="10,0,0,0">

@@ -66,9 +66,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void HandleNotificationsBellMouseDown(object sender, MouseButtonEventArgs e)
+    private async void HandleNotificationsBellClick(object sender, RoutedEventArgs e)
     {
-        e.Handled = true;
         NotificationsPopup.IsOpen = !NotificationsPopup.IsOpen;
         if (!NotificationsPopup.IsOpen)
         {

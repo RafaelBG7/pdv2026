@@ -49,6 +49,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate inline WPF bindings
+        shell: pwsh
+        run: |
+          $violations = Get-ChildItem desktop_wpf/src/Girofy.Desktop -Recurse -Filter *.xaml |
+            Select-String -Pattern '<Run[^>]*Text="\{Binding(?![^}]*Mode=OneWay)'
+          if ($violations) {
+            $violations | ForEach-Object { Write-Error "$($_.Path):$($_.LineNumber): $($_.Line.Trim())" }
+            throw 'Run.Text bindings must explicitly use Mode=OneWay.'
+          }
+
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:

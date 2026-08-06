@@ -2,7 +2,9 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto">
+                  VerticalScrollBarVisibility="Auto"
+                  PanningMode="VerticalOnly"
+                  ScrollViewer.IsDeferredScrollingEnabled="True">
         <Grid Margin="0,0,8,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -370,6 +372,7 @@
                            Text="Consulte os caixas encerrados e abra os detalhes somente quando precisar." />
                 <DataGrid ItemsSource="{Binding RecentRegisters}"
                           x:Name="RecentRegistersGrid"
+                          MaxHeight="620"
                           SelectedItem="{Binding SelectedRegister, Mode=TwoWay}"
                           SelectionChanged="RecentRegistersGrid_SelectionChanged"
                           AutoGenerateColumns="False" IsReadOnly="True"
@@ -378,8 +381,14 @@
                           CanUserResizeRows="False" SelectionMode="Single"
                           RowDetailsVisibilityMode="VisibleWhenSelected"
                           EnableRowVirtualization="True"
+                          EnableColumnVirtualization="True"
                           VirtualizingPanel.IsVirtualizing="True"
                           VirtualizingPanel.VirtualizationMode="Recycling"
+                          VirtualizingPanel.ScrollUnit="Pixel"
+                          ScrollViewer.CanContentScroll="True"
+                          ScrollViewer.IsDeferredScrollingEnabled="True"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
                           Background="{StaticResource SurfaceRaisedBrush}"
                           Foreground="{StaticResource TextPrimaryBrush}"
                           BorderBrush="{StaticResource BorderBrush}"
@@ -580,8 +589,36 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <ItemsControl ItemsSource="{Binding Timeline}">
-                                            <ItemsControl.ItemTemplate>
+                                        <ListBox MaxHeight="360"
+                                                 ItemsSource="{Binding Timeline}"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 ScrollViewer.CanContentScroll="True"
+                                                 ScrollViewer.IsDeferredScrollingEnabled="True"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                 VirtualizingPanel.IsVirtualizing="True"
+                                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                                 VirtualizingPanel.ScrollUnit="Pixel">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="Focusable" Value="False" />
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <ContentPresenter />
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Expander Margin="0,0,0,9">
                                                         <Expander.Header>
@@ -654,8 +691,8 @@
                                                         </StackPanel>
                                                     </Expander>
                                                 </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

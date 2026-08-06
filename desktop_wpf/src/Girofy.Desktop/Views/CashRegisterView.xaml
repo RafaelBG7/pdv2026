@@ -456,9 +456,9 @@
                                                            Text="{Binding DetailRegister.NumberText}" />
                                                 <TextBlock Margin="0,4,0,0" FontSize="12"
                                                            Foreground="{StaticResource TextSecondaryBrush}">
-                                                    <Run Text="{Binding DetailRegister.ResponsibleUser}" />
+                                                    <Run Text="{Binding DetailRegister.ResponsibleUser, Mode=OneWay}" />
                                                     <Run Text=" • " />
-                                                    <Run Text="{Binding DetailRegister.StatusText}" />
+                                                    <Run Text="{Binding DetailRegister.StatusText, Mode=OneWay}" />
                                                 </TextBlock>
                                             </StackPanel>
                                             <Button Grid.Column="1" MinWidth="128"

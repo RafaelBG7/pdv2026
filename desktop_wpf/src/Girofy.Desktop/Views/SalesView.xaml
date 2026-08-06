@@ -345,9 +345,9 @@
                                                                                 <StackPanel Grid.Column="3">
                                                                                     <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="CAIXA / STATUS" />
                                                                                     <TextBlock Foreground="{StaticResource TextPrimaryBrush}">
-                                                                                        <Run Text="{Binding Detail.CashRegisterText}" />
+                                                                                        <Run Text="{Binding Detail.CashRegisterText, Mode=OneWay}" />
                                                                                         <Run Text=" • " />
-                                                                                        <Run Text="{Binding PaymentStatusText}" />
+                                                                                        <Run Text="{Binding PaymentStatusText, Mode=OneWay}" />
                                                                                     </TextBlock>
                                                                                 </StackPanel>
                                                                             </Grid>

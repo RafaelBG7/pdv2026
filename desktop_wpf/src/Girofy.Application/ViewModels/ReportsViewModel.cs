@@ -18,6 +18,7 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private string _errorMessage = string.Empty;
     private bool _isBusy;
     private bool _isInitialized;
+    private bool _isSummaryTabSelected = true;
     private ReportsSnapshot _snapshot = new();
     private ProductReportSnapshot _productSnapshot = new();
 
@@ -60,6 +61,8 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         NextProductPageCommand = new AsyncRelayCommand(
             NextProductPageAsync,
             () => CanViewReports && !IsBusy && ProductSnapshot.Pagination.HasNext);
+        ShowSummaryTabCommand = new RelayCommand(() => IsSummaryTabSelected = true);
+        ShowProductsTabCommand = new RelayCommand(() => IsSummaryTabSelected = false);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -155,6 +158,20 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
 
     public bool HasProductRows => ProductRows.Count > 0;
 
+    public bool IsSummaryTabSelected
+    {
+        get => _isSummaryTabSelected;
+        private set
+        {
+            if (SetProperty(ref _isSummaryTabSelected, value))
+            {
+                OnPropertyChanged(nameof(IsProductsTabSelected));
+            }
+        }
+    }
+
+    public bool IsProductsTabSelected => !IsSummaryTabSelected;
+
     public string ErrorMessage
     {
         get => _errorMessage;
@@ -197,6 +214,10 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand PreviousProductPageCommand { get; }
 
     public AsyncRelayCommand NextProductPageCommand { get; }
+
+    public RelayCommand ShowSummaryTabCommand { get; }
+
+    public RelayCommand ShowProductsTabCommand { get; }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

@@ -17,6 +17,7 @@ public sealed class StockViewModel : ObservableObject, IDisposable
     private string _successMessage = string.Empty;
     private bool _isBusy;
     private bool _isInitialized;
+    private bool _isMovementsTabSelected = true;
     private int _page = 1;
     private int _totalPages;
     private CatalogCategory? _selectedCategory;
@@ -64,6 +65,8 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         NextPageCommand = new AsyncRelayCommand(NextPageAsync);
         RegisterEntryCommand = new AsyncRelayCommand(RegisterEntryAsync, () => CanManageStock && !IsBusy);
         RegisterAdjustmentCommand = new AsyncRelayCommand(RegisterAdjustmentAsync, () => CanManageStock && !IsBusy);
+        ShowMovementsTabCommand = new RelayCommand(ShowMovementsTab);
+        ShowManualEntriesTabCommand = new RelayCommand(ShowManualEntriesTab);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -234,6 +237,20 @@ public sealed class StockViewModel : ObservableObject, IDisposable
 
     public bool HasSuccess => !string.IsNullOrWhiteSpace(SuccessMessage);
 
+    public bool IsMovementsTabSelected
+    {
+        get => _isMovementsTabSelected;
+        private set
+        {
+            if (SetProperty(ref _isMovementsTabSelected, value))
+            {
+                OnPropertyChanged(nameof(IsManualEntriesTabSelected));
+            }
+        }
+    }
+
+    public bool IsManualEntriesTabSelected => !IsMovementsTabSelected;
+
     public bool IsBusy
     {
         get => _isBusy;
@@ -298,6 +315,14 @@ public sealed class StockViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand RegisterEntryCommand { get; }
 
     public AsyncRelayCommand RegisterAdjustmentCommand { get; }
+
+    public RelayCommand ShowMovementsTabCommand { get; }
+
+    public RelayCommand ShowManualEntriesTabCommand { get; }
+
+    private void ShowMovementsTab() => IsMovementsTabSelected = true;
+
+    private void ShowManualEntriesTab() => IsMovementsTabSelected = false;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -723,6 +748,7 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         TotalPages = 0;
         EntryProduct = null;
         AdjustmentProduct = null;
+        IsMovementsTabSelected = true;
         _isInitialized = false;
         NotifyCommandState();
     }

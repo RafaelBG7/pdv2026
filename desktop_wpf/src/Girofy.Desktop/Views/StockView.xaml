@@ -74,7 +74,57 @@
                 </Border>
             </StackPanel>
 
-            <UniformGrid Grid.Row="4" Columns="4">
+            <Border Grid.Row="4" Margin="0,0,0,2" BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal">
+                    <Button MinWidth="150" Height="42" Command="{Binding ShowMovementsTabCommand}"
+                            Content="Movimentações">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMovementsTabSelected}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{StaticResource InfoBrush}" />
+                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button MinWidth="178" Height="42" Margin="8,0,0,0"
+                            Command="{Binding ShowManualEntriesTabCommand}"
+                            Content="Lançamentos manuais"
+                            IsEnabled="{Binding CanManageStock}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsManualEntriesTabSelected}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{StaticResource InfoBrush}" />
+                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <UniformGrid Grid.Row="6" Columns="4">
+                <UniformGrid.Style>
+                    <Style TargetType="UniformGrid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsMovementsTabSelected}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </UniformGrid.Style>
                 <Border Margin="0,0,10,0" Padding="16"
                         Background="{StaticResource SurfaceRaisedBrush}"
                         BorderBrush="{StaticResource BorderBrush}"
@@ -129,10 +179,20 @@
                 </Border>
             </UniformGrid>
 
-            <Border Grid.Row="6" Padding="18"
+            <Border Grid.Row="8" Padding="18"
                     Background="{StaticResource SurfaceRaisedBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="1" CornerRadius="7">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsMovementsTabSelected}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -213,9 +273,13 @@
                     <Style TargetType="Border">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding CanManageStock}" Value="True">
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding CanManageStock}" Value="True" />
+                                    <Condition Binding="{Binding IsManualEntriesTabSelected}" Value="True" />
+                                </MultiDataTrigger.Conditions>
                                 <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
+                            </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
@@ -395,12 +459,42 @@
                     Background="{StaticResource SurfaceRaisedBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="1" CornerRadius="7">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsMovementsTabSelected}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <DataGrid ItemsSource="{Binding Movements}"
+                    <Border Padding="18,14" Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="Histórico de movimentações" />
+                                <TextBlock Margin="0,3,0,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Entradas, saídas, ajustes, vendas e importações." />
+                            </StackPanel>
+                            <Border Grid.Column="1" Padding="10,5" VerticalAlignment="Center"
+                                    Background="{StaticResource InfoSurfaceBrush}" BorderBrush="{StaticResource InfoBorderBrush}"
+                                    BorderThickness="1" CornerRadius="5">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource InfoBrush}"
+                                           Text="{Binding PageSummary}" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding Movements}"
+                              MaxHeight="560"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
                               CanUserAddRows="False"
@@ -408,6 +502,14 @@
                               HeadersVisibility="Column"
                               SelectionMode="Single"
                               EnableRowVirtualization="True"
+                              EnableColumnVirtualization="True"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              VirtualizingPanel.ScrollUnit="Pixel"
+                              ScrollViewer.CanContentScroll="True"
+                              ScrollViewer.IsDeferredScrollingEnabled="True"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
                               Background="{StaticResource SurfaceBrush}"
                               Foreground="{StaticResource TextPrimaryBrush}"
                               BorderBrush="{StaticResource BorderBrush}"
@@ -415,8 +517,23 @@
                               VerticalGridLinesBrush="Transparent"
                               RowBackground="{StaticResource SurfaceBrush}"
                               AlternatingRowBackground="#102034"
-                              RowHeight="48"
+                              RowHeight="52"
                               ColumnHeaderHeight="40">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Cursor" Value="Arrow" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource SurfaceHoverBrush}" />
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource InfoSurfaceBrush}" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource InfoBorderBrush}" />
+                                        <Setter Property="BorderThickness" Value="0,1,0,1" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Data e hora" Binding="{Binding CreatedAtText}" Width="1.15*" />
                             <DataGridTextColumn Header="Produto" Binding="{Binding ProductName}" Width="1.8*" />
@@ -430,7 +547,7 @@
                             <DataGridTextColumn Header="Motivo" Binding="{Binding Reason}" Width="1.4*" />
                         </DataGrid.Columns>
                     </DataGrid>
-                    <Grid Grid.Row="1" Margin="14">
+                    <Grid Grid.Row="2" Margin="14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />

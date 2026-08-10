@@ -2,6 +2,27 @@
 
 Esta pasta contém a aplicação Windows nativa experimental do Girofy. Ela é independente da interface Flask/Jinja e não acessa o MySQL diretamente.
 
+## Relação com a versão web
+
+A versão Windows é um cliente nativo conectado à API do Girofy. Ela usa os mesmos usuários,
+permissões, assinatura/key, bancos por adega e regras de negócio da versão web.
+
+A comparação detalhada entre a versão web e a versão Windows está em:
+
+```text
+docs/24-estado-versoes-web-windows.md
+```
+
+Limites atuais desta frente:
+
+- depende do servidor web/OCI disponível;
+- não possui banco local e não acessa MySQL diretamente;
+- ainda usa HTTP no ambiente atual, então exige `API_ALLOW_INSECURE_AUTH=1` apenas para teste controlado;
+- ainda não possui assinatura digital reconhecida pela Microsoft;
+- a atualização automática foi pausada/cancelada por decisão de produto;
+- algumas configurações administrativas avançadas seguem sendo feitas pela versão web;
+- antes da entrega comercial, precisa de validação manual em Windows 10/11 no fluxo real do cliente.
+
 ## Estado atual
 
 Décimo sétimo corte vertical implementado:

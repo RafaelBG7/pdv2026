@@ -1,8 +1,16 @@
-# 07 - Front-end
+# 07 - Front-end WEB e APP WINDOWS
 
 ## Visão Geral
 
-O frontend é renderizado por templates Jinja2 no servidor e enriquecido por CSS customizado e JavaScript vanilla.
+Este capítulo diferencia explicitamente as duas interfaces do Girofy:
+
+- **WEB**: renderizada por templates Jinja2 no servidor e enriquecida por CSS customizado e
+  JavaScript vanilla. Todas as seções sem o sufixo `APP WINDOWS` abaixo descrevem a WEB.
+- **APP WINDOWS**: interface WPF nativa. Suas regras visuais gerais e a comparação funcional
+  completa estão em `docs/24-estado-versoes-web-windows.md`.
+
+As duas interfaces usam os mesmos dados e regras do backend, mas não compartilham o mesmo código
+visual. CSS/HTML altera somente a WEB; XAML e os temas WPF alteram somente o APP WINDOWS.
 
 Arquivos principais:
 
@@ -35,7 +43,7 @@ Elementos:
 - JavaScript Bootstrap via CDN.
 - JavaScript local.
 
-## Identidade Visual
+## Identidade Visual — WEB
 
 Arquivo: `app/static/css/style.css`.
 
@@ -203,7 +211,7 @@ Validação real:
 
 - O backend exige valor final igual ao esperado.
 
-## Produtos no Windows
+## Produtos — APP WINDOWS
 
 A grade nativa de Produtos mantém busca, categoria, filtros, ordenação e paginação no
 servidor. Cada linha é clicável e usa `RowDetailsVisibilityMode="VisibleWhenSelected"`:

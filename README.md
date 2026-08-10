@@ -72,6 +72,26 @@ Pontos que ainda merecem prioridade antes de produção pública:
 - domínio definitivo com HTTPS;
 - assinatura digital dos instaladores desktop.
 
+## Versões do Projeto
+
+O Girofy hoje está dividido em duas frentes.
+
+| Versão | Estado atual | Uso recomendado |
+|---|---|---|
+| Web Flask/Jinja | Produto principal, hospedado na OCI em `http://168.75.101.126:18080`. | Operação real/controlada, gestão da adega, painel master, cadastros, vendas, caixa, relatórios e configurações. |
+| Windows nativo WPF | Cliente em desenvolvimento avançado, consumindo a API da versão web. | Testes manuais no Windows, validação de UX nativa e preparação para o primeiro cliente Windows. |
+
+A versão web continua sendo a fonte de verdade: usuários, permissões, assinatura, bancos
+por adega e regras de negócio ficam no backend Flask/MySQL. A versão Windows não possui
+banco local e não acessa MySQL diretamente; ela autentica no mesmo servidor e usa os
+mesmos dados da versão web.
+
+A documentação detalhada e separada das duas versões fica em:
+
+```text
+docs/24-estado-versoes-web-windows.md
+```
+
 ## Tecnologias Utilizadas
 
 | Tecnologia | Uso no projeto |
@@ -1200,6 +1220,7 @@ Documentação técnica:
 desktop_wpf/README.md
 docs/DESKTOP_ARCHITECTURE.md
 docs/DESKTOP_MIGRATION_ANALYSIS.md
+docs/24-estado-versoes-web-windows.md
 ```
 
 ### 10. Deploy automatizado na OCI

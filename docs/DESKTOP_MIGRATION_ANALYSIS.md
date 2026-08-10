@@ -12,6 +12,12 @@ A eventual versão Windows é desenvolvida separadamente em `desktop_wpf/`. Ela 
 C#, .NET 8, WPF e MVVM, com telas realmente nativas e integração exclusivamente pela
 API REST do Flask. Nenhuma etapa dessa migração substitui ou interrompe a versão web.
 
+Para a separação atual entre versão web e Windows, veja também:
+
+```text
+docs/24-estado-versoes-web-windows.md
+```
+
 ## Estado Atual
 
 Já existem no cliente WPF:
@@ -92,8 +98,9 @@ fonte de verdade. O cliente nunca acessa o MySQL diretamente.
 2. Ampliar detalhes de produtos e finalizar manutenção avançada de catálogo.
 3. Aprofundar relatórios de caixa e comparativos.
 4. Migrar importação e permissões administrativas avançadas restantes.
-5. Preparar assinatura digital, instalador e atualização apenas quando o cliente nativo
-   alcançar paridade suficiente com o fluxo web.
+5. Preparar assinatura digital e instalador quando o cliente nativo alcançar paridade
+   suficiente com o fluxo web. A atualização automática está pausada/cancelada por decisão
+   de produto.
 
 ## Progresso Funcional
 
@@ -107,7 +114,8 @@ Estimativa atual: **91% da migração Windows planejada**.
   produtos, exportação CSV, gestão básica de equipe e ativação por key;
 - parcial: histórico detalhado de caixa/vendas, manutenção avançada de catálogo e
   algumas configurações financeiras avançadas ainda dependem da versão web;
-- pendente: instalador assinado, atualização e HTTPS público.
+- pendente: instalador assinado e HTTPS público;
+- pausado por decisão de produto: atualização automática do cliente Windows.
 
 O percentual mede módulos funcionais necessários para paridade operacional e pode mudar
 quando o escopo de produção for refinado. A versão web permanece integralmente disponível.

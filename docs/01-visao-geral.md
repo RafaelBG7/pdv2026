@@ -2,7 +2,16 @@
 
 ## Propósito
 
-O Girofy é um PDV web para adegas e pequenos comércios, com operação local pelo navegador e estrutura multiadega para uso em modelo SaaS.
+O Girofy é um PDV multiadega para adegas e pequenos comércios, disponibilizado em duas
+interfaces claramente separadas:
+
+- **WEB**: produto principal executado no navegador, com backend Flask, templates Jinja e
+  operação centralizada no servidor.
+- **APP WINDOWS**: cliente nativo WPF/.NET conectado à API da WEB, usando os mesmos usuários,
+  permissões, regras e dados. O APP não acessa o MySQL diretamente e não funciona offline.
+
+O detalhamento funcional e visual, sempre separado entre WEB e APP WINDOWS, está em
+`docs/24-estado-versoes-web-windows.md`.
 
 O sistema centraliza:
 
@@ -72,7 +81,8 @@ O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MyS
 | Interface responsiva | Implementado | Paleta Girofy, filtros alinhados, menu lateral recolhível e ajustes para textos longos. |
 | Deploy OCI | Implementado | Docker Compose em VM OCI Free Tier na porta pública alta `18080`. |
 | Pipeline de deploy | Implementado | Workflow self-hosted recomendado para publicar sem depender do IP do desenvolvedor. |
-| API pública | Não implementado | Rotas atuais são HTML/formulário. |
+| API para o APP Windows | Implementado | Rotas REST autenticadas atendem os módulos nativos; não deve ser confundida com API pública irrestrita. |
+| APP Windows | Prévia funcional | Cliente WPF com login, dashboard, produtos, vendas, caixa, estoque, contas, relatórios, notificações, auditoria e configurações via API. |
 
 ## Pontos Fortes Atuais
 

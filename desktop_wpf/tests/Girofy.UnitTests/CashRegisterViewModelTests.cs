@@ -15,6 +15,20 @@ public sealed class CashRegisterViewModelTests
         var apiClient = new StubApiClient
         {
             SummaryResult = OpenSnapshot(42, expectedAmount: 135.50m),
+            DetailResult = new CashRegisterDetailSnapshot
+            {
+                CashRegister = new CashRegisterRecord { Id = 42, Status = "open" },
+                Timeline =
+                [
+                    new CashRegisterTimelineSale
+                    {
+                        Id = 201,
+                        Number = "#201",
+                        BalanceBeforeSale = 100m,
+                        BalanceAfterSale = 135.50m,
+                    },
+                ],
+            },
         };
         using var viewModel = new CashRegisterViewModel(apiClient, sessionContext);
 
@@ -25,6 +39,10 @@ public sealed class CashRegisterViewModelTests
         Assert.Equal("access-token", apiClient.LastAccessToken);
         Assert.Equal("135,50", viewModel.ClosingAmountText);
         Assert.Equal("Caixa #42", viewModel.CurrentRegister!.NumberText);
+        Assert.Equal(42, apiClient.LastDetailCashRegisterId);
+        Assert.True(viewModel.HasCurrentTimeline);
+        Assert.Equal("R$ 100,00", viewModel.CurrentTimeline.Single().BalanceBeforeSaleText);
+        Assert.Equal("R$ 135,50", viewModel.CurrentTimeline.Single().BalanceAfterSaleText);
         Assert.True(viewModel.IsCurrentRegisterTabSelected);
     }
 

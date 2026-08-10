@@ -146,6 +146,12 @@ public sealed class CashRegisterTimelineSale
     [JsonPropertyName("final_amount")]
     public decimal? FinalAmount { get; init; }
 
+    [JsonPropertyName("balance_before_sale")]
+    public decimal? BalanceBeforeSale { get; init; }
+
+    [JsonPropertyName("balance_after_sale")]
+    public decimal? BalanceAfterSale { get; init; }
+
     [JsonPropertyName("payments")]
     public IReadOnlyList<CashRegisterTimelinePayment> Payments { get; init; } = [];
 
@@ -157,6 +163,10 @@ public sealed class CashRegisterTimelineSale
     public string FinalAmountText => DashboardFormatting.OptionalMoney(FinalAmount);
 
     public string DiscountAmountText => DashboardFormatting.OptionalMoney(DiscountAmount);
+
+    public string BalanceBeforeSaleText => DashboardFormatting.OptionalMoney(BalanceBeforeSale);
+
+    public string BalanceAfterSaleText => DashboardFormatting.OptionalMoney(BalanceAfterSale);
 
     public string StatusText => string.Equals(PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase)
         ? "Pago"

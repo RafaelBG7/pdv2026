@@ -31,7 +31,9 @@ de uma operação anterior seja interpretado como pertencente ao conteúdo recé
 
 Quando não existe caixa aberto, a tela apresenta o formulário de abertura com valor inicial.
 Quando existe caixa aberto, apresenta seus dados operacionais, os indicadores financeiros
-autorizados e o formulário de fechamento.
+autorizados, o formulário de fechamento e o histórico expansível das vendas já realizadas.
+O detalhe do caixa atual é consultado separadamente do detalhe de um caixa anterior, evitando
+que a seleção no histórico substitua a linha do tempo do caixa em operação.
 
 O fechamento exige o valor contado. O servidor valida esse valor contra:
 
@@ -109,6 +111,26 @@ O cabeçalho identifica, conforme dados disponíveis:
 Ao expandir, são apresentados os produtos vendidos, quantidades, valores, descontos e os
 pagamentos associados. Se o caixa não possuir vendas, a tela apresenta um estado vazio
 específico para a linha do tempo.
+
+### Saldo antes e após cada venda
+
+Cada item da linha do tempo também informa o saldo acumulado imediatamente antes e depois
+da venda. A regra base é:
+
+```text
+saldo antes da primeira venda = valor inicial do caixa
+saldo após a venda = saldo antes + valor final da venda
+saldo antes da próxima venda = saldo após a venda anterior
+```
+
+As vendas são ordenadas por data/hora e, em caso de empate, pelo identificador da venda.
+O cálculo considera o total final da venda depois do desconto, seguindo a mesma definição
+usada pelo saldo esperado do caixa. Nesta primeira versão, ele representa o saldo total
+registrado no caixa, e não somente dinheiro físico por forma de pagamento.
+
+Os campos enviados pela API são `balance_before_sale` e `balance_after_sale`. Ambos retornam
+`null` quando o usuário não possui permissão financeira. O cálculo acontece no backend; o
+cliente WPF apenas formata e apresenta os valores.
 
 ## Contratos da API
 
@@ -197,6 +219,9 @@ Os testes do `CashRegisterViewModel` cobrem:
 - navegação entre as duas opções internas;
 - detecção de lista de caixas anteriores com conteúdo;
 - carregamento do detalhe e da linha do tempo do caixa selecionado;
+- carregamento da linha do tempo do caixa atual sem substituir o detalhe histórico;
+- saldo anterior e posterior em duas vendas cronológicas consecutivas;
+- ocultação desses saldos quando o usuário não possui permissão financeira;
 - limpeza dos dados após encerramento da sessão.
 
 Comando de validação em ambiente com .NET SDK:
@@ -212,10 +237,12 @@ dotnet test desktop_wpf/tests/Girofy.UnitTests/Girofy.UnitTests.csproj
 3. Abrir um caixa, registrar vendas com formas de pagamento diferentes e fechá-lo.
 4. Confirmar a troca automática para `Caixas anteriores` após o fechamento.
 5. Selecionar o caixa encerrado e conferir totais, pagamentos e quantidade de vendas.
-6. Expandir vendas da linha do tempo e conferir itens e pagamentos.
-7. Testar um caixa sem vendas e confirmar o estado vazio da linha do tempo.
-8. Testar um usuário sem permissão financeira e confirmar que valores sensíveis não aparecem.
-9. Trocar ou encerrar a sessão durante o uso e confirmar que nenhum dado da sessão anterior permanece.
+6. Expandir vendas da linha do tempo e conferir itens, pagamentos, saldo anterior e saldo posterior.
+7. Confirmar que o saldo anterior da primeira venda é igual ao valor inicial do caixa.
+8. Confirmar que o saldo anterior da segunda venda é igual ao saldo posterior da primeira.
+9. Testar um caixa sem vendas e confirmar o estado vazio da linha do tempo.
+10. Testar um usuário sem permissão financeira e confirmar que valores sensíveis não aparecem.
+11. Trocar ou encerrar a sessão durante o uso e confirmar que nenhum dado da sessão anterior permanece.
 
 ## Limitações conhecidas
 

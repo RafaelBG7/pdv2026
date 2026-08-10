@@ -37,6 +37,10 @@
           </table>
         </div>
         <div class="timeline-payment-grid">
+          {% if show_cash_financials %}
+          <div><span>Saldo antes da venda</span><strong>R$ {{ '%.2f'|format(entry.balance_before_sale or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Saldo após a venda</span><strong>R$ {{ '%.2f'|format(entry.balance_after_sale or 0)|replace('.', ',') }}</strong></div>
+          {% endif %}
           <div><span>Subtotal</span><strong>R$ {{ '%.2f'|format(entry.sale.total_amount or 0)|replace('.', ',') }}</strong></div>
           <div><span>Desconto</span><strong>R$ {{ '%.2f'|format(entry.sale.discount_amount or 0)|replace('.', ',') }}</strong></div>
           <div><span>Total</span><strong>R$ {{ '%.2f'|format(entry.sale.final_amount or 0)|replace('.', ',') }}</strong></div>

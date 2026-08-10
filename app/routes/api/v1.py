@@ -3290,10 +3290,13 @@ def api_cash_register_detail_data(tenant_db, cash_register, can_view_financials)
         }
 
     timeline = []
+    running_balance = money_decimal(cash_register.opening_amount)
     for sale in sales:
         sale_datetime = sale.created_at
         payments = [sale_payment_data(payment) for payment in sale.payments]
         payment_labels = [payment['label'] for payment in payments]
+        balance_before_sale = running_balance
+        running_balance += money_decimal(sale.final_amount)
         timeline.append({
             'id': sale.id,
             'number': f'#{sale.id}',
@@ -3306,6 +3309,12 @@ def api_cash_register_detail_data(tenant_db, cash_register, can_view_financials)
             'total_amount': float(sale.total_amount or 0) if can_view_financials else None,
             'discount_amount': float(sale.discount_amount or 0) if can_view_financials else None,
             'final_amount': float(sale.final_amount or 0) if can_view_financials else None,
+            'balance_before_sale': (
+                money_value(balance_before_sale) if can_view_financials else None
+            ),
+            'balance_after_sale': (
+                money_value(running_balance) if can_view_financials else None
+            ),
             'payments': payments,
             'items': [sale_item_data(item) for item in sale.items],
         })

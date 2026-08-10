@@ -528,8 +528,11 @@ def payment_summary_text(sale):
     return ' · '.join(summary) if summary else '-'
 
 
-def build_sale_timeline(sales):
-    ordered_sales = sorted(sales, key=lambda sale: sale.created_at or datetime.min)
+def build_sale_timeline(sales, opening_amount=0.0):
+    ordered_sales = sorted(
+        sales,
+        key=lambda sale: (sale.created_at or datetime.min, sale.id or 0),
+    )
     user_ids = {sale.user_id for sale in ordered_sales if sale.user_id}
     users = {
         user.id: user.full_name or user.username
@@ -537,13 +540,18 @@ def build_sale_timeline(sales):
     } if user_ids else {}
 
     timeline = []
+    running_balance = round(opening_amount or 0.0, 2)
     for sale in ordered_sales:
+        balance_before_sale = running_balance
+        running_balance = round(running_balance + (sale.final_amount or 0.0), 2)
         timeline.append({
             'sale': sale,
             'time': sale.created_at.strftime('%H:%M') if sale.created_at else '-',
             'date': sale.created_at.strftime('%d/%m/%Y') if sale.created_at else '-',
             'user': users.get(sale.user_id, 'Usuário não identificado'),
             'payments_text': payment_summary_text(sale),
+            'balance_before_sale': balance_before_sale,
+            'balance_after_sale': running_balance,
         })
     return timeline
 
@@ -554,7 +562,7 @@ def build_cash_register_snapshot(cash_register):
     return {
         'totals': totals,
         'payment_totals': payment_totals,
-        'timeline': build_sale_timeline(sales),
+        'timeline': build_sale_timeline(sales, cash_register.opening_amount),
     }
 
 
@@ -1842,7 +1850,7 @@ def cash_register_detail(cash_register_id):
         reverse=True,
     )
     totals, payment_totals, top_products = build_sales_report(sales)
-    timeline = build_sale_timeline(sales)
+    timeline = build_sale_timeline(sales, selected_cash_register.opening_amount)
     return render_template(
         'cash_register_detail.html',
         cash_register=selected_cash_register,

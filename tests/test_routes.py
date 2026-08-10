@@ -2081,7 +2081,7 @@ class RouteTestCase(unittest.TestCase):
                 user_id=user.id,
                 status='closed',
                 opening_amount=100,
-                closing_amount=116,
+                closing_amount=119,
                 opened_at=datetime(2026, 7, 12, 15, 0),
                 closed_at=datetime(2026, 7, 12, 18, 0),
             )
@@ -2110,6 +2110,28 @@ class RouteTestCase(unittest.TestCase):
                 Payment(sale_id=sale.id, method='money', amount=10),
                 Payment(sale_id=sale.id, method='pix', amount=5),
             ])
+            second_sale = Sale(
+                company_id=company.id,
+                user_id=user.id,
+                cash_register_id=cash_register.id,
+                created_at=datetime(2026, 7, 12, 17, 0),
+                total_amount=4,
+                discount_amount=0,
+                final_amount=4,
+                payment_status='paid',
+            )
+            db.session.add(second_sale)
+            db.session.flush()
+            db.session.add_all([
+                SaleItem(
+                    sale_id=second_sale.id,
+                    product_id=product.id,
+                    quantity=1,
+                    unit_price=4,
+                    total_price=4,
+                ),
+                Payment(sale_id=second_sale.id, method='money', amount=4),
+            ])
             db.session.commit()
             cash_register_id = cash_register.id
             sale_id = sale.id
@@ -2123,18 +2145,22 @@ class RouteTestCase(unittest.TestCase):
         data = response.get_json()['data']
         self.assertTrue(data['permissions']['can_view_financials'])
         self.assertEqual(data['cash_register']['id'], cash_register_id)
-        self.assertEqual(data['cash_register']['sales_total'], 15.0)
+        self.assertEqual(data['cash_register']['sales_total'], 19.0)
         self.assertEqual(data['cash_register']['payment_totals'][0]['method'], 'money')
-        self.assertEqual(len(data['timeline']), 1)
+        self.assertEqual(len(data['timeline']), 2)
         sale_data = data['timeline'][0]
         self.assertEqual(sale_data['id'], sale_id)
         self.assertEqual(sale_data['time'], '16:15')
         self.assertEqual(sale_data['seller'], user.username)
         self.assertEqual(sale_data['payments_text'], 'Dinheiro, Pix')
         self.assertEqual(sale_data['final_amount'], 15.0)
+        self.assertEqual(sale_data['balance_before_sale'], 100.0)
+        self.assertEqual(sale_data['balance_after_sale'], 115.0)
         self.assertEqual(sale_data['payments'][0]['amount'], 10.0)
         self.assertEqual(sale_data['items'][0]['product_name'], 'Heineken unidade')
         self.assertEqual(sale_data['items'][0]['quantity'], 2)
+        self.assertEqual(data['timeline'][1]['balance_before_sale'], 115.0)
+        self.assertEqual(data['timeline'][1]['balance_after_sale'], 119.0)
 
     def test_api_cash_register_detail_redacts_financials_without_reports_permission(self):
         user, company = self.create_api_user(
@@ -2196,6 +2222,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertIsNone(data['cash_register']['opening_amount'])
         self.assertEqual(data['cash_register']['payment_totals'], [])
         self.assertIsNone(data['timeline'][0]['final_amount'])
+        self.assertIsNone(data['timeline'][0]['balance_before_sale'])
+        self.assertIsNone(data['timeline'][0]['balance_after_sale'])
         self.assertIsNone(data['timeline'][0]['payments'][0]['amount'])
         self.assertIsNone(data['timeline'][0]['items'][0]['unit_price'])
 

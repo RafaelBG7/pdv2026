@@ -186,6 +186,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="16" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -329,6 +331,87 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+
+                    <Border Grid.Row="4" Padding="18"
+                            Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="10">
+                        <StackPanel>
+                            <TextBlock FontSize="16" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="Histórico de vendas do caixa atual" />
+                            <TextBlock Margin="0,4,0,12" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Clique em uma venda para conferir o saldo acumulado antes e depois dela." />
+                            <TextBlock Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Nenhuma venda registrada neste caixa.">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasNoCurrentTimeline}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <ItemsControl ItemsSource="{Binding CurrentTimeline}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Expander Margin="0,0,0,8">
+                                            <Expander.Header>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock FontWeight="SemiBold"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               Text="{Binding HeaderText}" />
+                                                    <TextBlock Grid.Column="1" Margin="18,0,0,0"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               Text="{Binding PaymentsText}" />
+                                                    <TextBlock Grid.Column="2" Margin="18,0,0,0" FontWeight="Bold"
+                                                               Foreground="{StaticResource SuccessBrush}"
+                                                               Text="{Binding FinalAmountText}" />
+                                                </Grid>
+                                            </Expander.Header>
+                                            <Border Margin="16,10,16,12" Padding="12"
+                                                    Background="{StaticResource InfoSurfaceBrush}"
+                                                    BorderBrush="{StaticResource InfoBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="18" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Text="SALDO ANTES DA VENDA" />
+                                                        <TextBlock Margin="0,4,0,0" FontSize="16" FontWeight="Bold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding BalanceBeforeSaleText}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Text="SALDO APÓS A VENDA" />
+                                                        <TextBlock Margin="0,4,0,0" FontSize="16" FontWeight="Bold"
+                                                                   Foreground="{StaticResource SuccessBrush}"
+                                                                   Text="{Binding BalanceAfterSaleText}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </Expander>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -663,6 +746,34 @@
                                                             </Grid>
                                                         </Expander.Header>
                                                         <StackPanel Margin="16,12,16,12">
+                                                            <Border Margin="0,0,0,12" Padding="12"
+                                                                    Background="{StaticResource InfoSurfaceBrush}"
+                                                                    BorderBrush="{StaticResource InfoBorderBrush}"
+                                                                    BorderThickness="1" CornerRadius="6">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="18" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <StackPanel>
+                                                                        <TextBlock FontSize="11"
+                                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                                   Text="SALDO ANTES DA VENDA" />
+                                                                        <TextBlock Margin="0,4,0,0" FontSize="16" FontWeight="Bold"
+                                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                                   Text="{Binding BalanceBeforeSaleText}" />
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="2">
+                                                                        <TextBlock FontSize="11"
+                                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                                   Text="SALDO APÓS A VENDA" />
+                                                                        <TextBlock Margin="0,4,0,0" FontSize="16" FontWeight="Bold"
+                                                                                   Foreground="{StaticResource SuccessBrush}"
+                                                                                   Text="{Binding BalanceAfterSaleText}" />
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </Border>
                                                             <TextBlock Margin="0,0,0,7" FontWeight="SemiBold"
                                                                        Foreground="{StaticResource TextSecondaryBrush}"
                                                                        Text="Produtos vendidos" />
@@ -965,6 +1076,34 @@
                                             </Grid>
                                         </Expander.Header>
                                         <StackPanel Margin="16,12,16,14">
+                                            <Border Margin="0,0,0,12" Padding="12"
+                                                    Background="{StaticResource InfoSurfaceBrush}"
+                                                    BorderBrush="{StaticResource InfoBorderBrush}"
+                                                    BorderThickness="1" CornerRadius="6">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="18" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Text="SALDO ANTES DA VENDA" />
+                                                        <TextBlock Margin="0,4,0,0" FontSize="16" FontWeight="Bold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   Text="{Binding BalanceBeforeSaleText}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Text="SALDO APÓS A VENDA" />
+                                                        <TextBlock Margin="0,4,0,0" FontSize="16" FontWeight="Bold"
+                                                                   Foreground="{StaticResource SuccessBrush}"
+                                                                   Text="{Binding BalanceAfterSaleText}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
                                             <TextBlock Margin="0,0,0,8" FontWeight="SemiBold"
                                                        Foreground="{StaticResource TextSecondaryBrush}"
                                                        Text="Produtos vendidos" />

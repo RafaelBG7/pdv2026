@@ -12,6 +12,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
     private CashRegisterSnapshot? _snapshot;
+    private CashRegisterDetailSnapshot? _currentDetailSnapshot;
     private CashRegisterRecord? _selectedRegister;
     private CashRegisterDetailSnapshot? _detailSnapshot;
     private string _openingAmountText = "0,00";
@@ -58,6 +59,11 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(HasOpenRegister));
             OnPropertyChanged(nameof(HasNoOpenRegister));
             OnPropertyChanged(nameof(CanViewFinancials));
+            if (CurrentRegister is null ||
+                CurrentDetailSnapshot?.CashRegister?.Id != CurrentRegister.Id)
+            {
+                CurrentDetailSnapshot = null;
+            }
             if (SelectedRegister is not null &&
                 RecentRegisters.All(item => item.Id != SelectedRegister.Id) &&
                 CurrentRegister?.Id != SelectedRegister.Id)
@@ -70,6 +76,27 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     public CashRegisterRecord? CurrentRegister => Snapshot?.CurrentRegister;
 
     public IReadOnlyList<CashRegisterRecord> RecentRegisters => Snapshot?.RecentRegisters ?? [];
+
+    public CashRegisterDetailSnapshot? CurrentDetailSnapshot
+    {
+        get => _currentDetailSnapshot;
+        private set
+        {
+            if (SetProperty(ref _currentDetailSnapshot, value))
+            {
+                OnPropertyChanged(nameof(CurrentTimeline));
+                OnPropertyChanged(nameof(HasCurrentTimeline));
+                OnPropertyChanged(nameof(HasNoCurrentTimeline));
+            }
+        }
+    }
+
+    public IReadOnlyList<CashRegisterTimelineSale> CurrentTimeline =>
+        CurrentDetailSnapshot?.Timeline ?? [];
+
+    public bool HasCurrentTimeline => CurrentTimeline.Count > 0;
+
+    public bool HasNoCurrentTimeline => HasOpenRegister && !HasCurrentTimeline;
 
     public bool HasRecentRegisters => RecentRegisters.Count > 0;
 
@@ -249,6 +276,21 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
                 session.AccessToken,
                 cancellationToken);
             ApplySnapshotIfCurrent(session, snapshot);
+            if (snapshot.CurrentRegister is not null)
+            {
+                var currentDetail = await _apiClient.GetCashRegisterDetailAsync(
+                    session.AccessToken,
+                    snapshot.CurrentRegister.Id,
+                    cancellationToken);
+                if (CurrentRegister?.Id == snapshot.CurrentRegister.Id &&
+                    string.Equals(
+                        _sessionContext.Current?.AccessToken,
+                        session.AccessToken,
+                        StringComparison.Ordinal))
+                {
+                    CurrentDetailSnapshot = currentDetail;
+                }
+            }
             DetailSnapshot = null;
         }
         catch (Exception exception)
@@ -466,6 +508,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     private void Reset()
     {
         Snapshot = null;
+        CurrentDetailSnapshot = null;
         SelectedRegister = null;
         DetailSnapshot = null;
         OpeningAmountText = "0,00";

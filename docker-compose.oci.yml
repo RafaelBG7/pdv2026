@@ -22,6 +22,7 @@ services:
   redis:
     image: redis:7.4.2-alpine
     restart: unless-stopped
+    user: redis
     command:
       - redis-server
       - --save
@@ -41,7 +42,7 @@ services:
       - default
     read_only: true
     tmpfs:
-      - /data:size=16m
+      - /data:size=16m,mode=1777
     security_opt:
       - no-new-privileges:true
     cap_drop:

@@ -48,7 +48,7 @@ echo "Gerando backup obrigatório antes das migrations."
 docker compose -f docker-compose.oci.yml run --rm -e AUTO_BACKUP_ONCE=1 backup
 
 echo "Aplicando migrations versionadas no banco central e nos tenants."
-docker compose -f docker-compose.oci.yml run --rm app python scripts/schema_migrate.py upgrade-all
+docker compose -f docker-compose.oci.yml run --rm --no-deps app python scripts/schema_migrate.py upgrade-all
 
 docker compose -f docker-compose.oci.yml up -d --remove-orphans app backup caddy
 docker image prune -f >/dev/null

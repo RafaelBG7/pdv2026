@@ -9,6 +9,7 @@ PERMISSION_LABELS = {
     'can_manage_products': 'Gerenciar produtos',
     'can_manage_categories': 'Categorias',
     'can_manage_sales': 'Vendas',
+    'can_cancel_sales': 'Cancelar vendas',
     'can_manage_cash_register': 'Caixa',
     'can_view_reports': 'Relatórios',
     'can_manage_payables': 'Contas a pagar',

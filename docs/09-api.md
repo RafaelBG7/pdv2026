@@ -524,6 +524,16 @@ Erros principais:
 - `422 payment_insufficient`: pagamentos não completam o total;
 - `409 sale_request_conflict`: outra tentativa com a mesma chave ainda está em processamento.
 
+### `POST /api/v1/sales/<sale_id>/cancel`
+
+Descrição: cancela logicamente uma venda, devolve exatamente o estoque originalmente baixado
+e mantém itens e pagamentos para auditoria. Exige `can_cancel_sales`.
+
+Payload: `{"reason": "Cliente desistiu antes de retirar."}`. O motivo é obrigatório e aceita
+até 500 caracteres. O retorno contém a venda atualizada, os movimentos de devolução e o campo
+`cash_register_was_closed`. Repetir a operação retorna `409 sale_already_cancelled` sem nova
+devolução. A referência completa está em `docs/27-cancelamento-estorno-vendas.md`.
+
 ## Estoque da API
 
 Todos os endpoints de estoque exigem Bearer access token e transporte seguro. A empresa é

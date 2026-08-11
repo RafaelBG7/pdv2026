@@ -1,5 +1,7 @@
 # 04 - Modelagem do Banco
 
+> O schema é versionado por duas árvores Alembic. Veja [29-migracoes-versionadas.md](29-migracoes-versionadas.md). Git versiona código, Alembic versiona schema e backups protegem dados.
+
 ## Visão Geral
 
 O sistema usa MySQL em dois níveis:
@@ -94,6 +96,7 @@ Campos principais:
 - `can_manage_products`
 - `can_manage_categories`
 - `can_manage_sales`
+- `can_cancel_sales`
 - `can_manage_cash_register`
 - `can_view_reports`
 - `can_manage_payables`
@@ -250,9 +253,18 @@ Regras:
 - `discount_amount`
 - `final_amount`
 - `payment_status`
+- `status`: `completed` ou `cancelled`
+- `cancelled_at`
+- `cancelled_by_user_id`
+- `cancellation_reason`
 - `user_id`
 - `company_id`
 - `cash_register_id`
+
+O cancelamento é lógico: a linha de `sales` e seus registros em `sale_items` e `payments`
+permanecem armazenados. `cancelled_by_user_id` referencia o usuário que executou a operação.
+Bases existentes recebem as colunas pelo mecanismo de compatibilidade atual, tanto no banco
+central quanto nos bancos por tenant. Vendas legadas são normalizadas para `completed`.
 
 ### `sale_items`
 

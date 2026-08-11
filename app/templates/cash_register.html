@@ -143,6 +143,16 @@
                       {% endif %}
                     </div>
 
+                    {% if show_cash_financials and history.get('cancelled_sales_count', 0) %}
+                    <div class="alert alert-warning mt-3 mb-3">
+                      <strong>Ajuste posterior ao fechamento:</strong>
+                      {{ history.get('cancelled_sales_count') }} venda(s) cancelada(s), total de
+                      R$ {{ '%.2f'|format(history.get('cancelled_sales_total', 0))|replace('.', ',') }}.
+                      O fechamento original foi preservado; o total válido atual é
+                      R$ {{ '%.2f'|format(history.get('valid_sales_total', 0))|replace('.', ',') }}.
+                    </div>
+                    {% endif %}
+
                     {% if show_cash_financials %}
                     <div class="cash-register-detail-columns">
                       <div>

@@ -1,8 +1,6 @@
 import hashlib
 import hmac
 import secrets
-import threading
-import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -11,7 +9,7 @@ from itsdangerous import BadData, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy import func, or_
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models import ApiRefreshToken, User
 
 
@@ -22,6 +20,7 @@ PERMISSION_FIELDS = (
     'can_manage_products',
     'can_manage_categories',
     'can_manage_sales',
+    'can_cancel_sales',
     'can_manage_cash_register',
     'can_view_reports',
     'can_manage_payables',
@@ -35,8 +34,6 @@ _DUMMY_PASSWORD_HASH = generate_password_hash(
     'girofy-api-invalid-credential',
     method='scrypt',
 )
-_LOGIN_ATTEMPTS = {}
-_LOGIN_ATTEMPTS_LOCK = threading.Lock()
 
 
 def utc_now_naive():
@@ -93,59 +90,15 @@ def require_secure_auth_transport():
 
 
 def _request_ip_address():
-    remote_addr = request.remote_addr or ''
-    if current_app.config.get('TRUST_PROXY_HEADERS', False):
-        forwarded_for = request.headers.get('X-Forwarded-For', '')
-        if forwarded_for:
-            return forwarded_for.split(',', 1)[0].strip()
-    return remote_addr
-
-
-def _login_attempt_key(identifier):
-    return f'{_request_ip_address()}:{(identifier or "").strip().casefold()}'
-
-
-def _login_attempt_limit():
-    return max(1, int(current_app.config.get('API_LOGIN_ATTEMPT_LIMIT', 5)))
-
-
-def _login_block_seconds():
-    return max(1, int(current_app.config.get('API_LOGIN_BLOCK_SECONDS', 15 * 60)))
-
-
-def _login_is_blocked(identifier):
-    key = _login_attempt_key(identifier)
-    now = time.monotonic()
-    with _LOGIN_ATTEMPTS_LOCK:
-        attempt = _LOGIN_ATTEMPTS.get(key)
-        if not attempt:
-            return False
-        blocked_until = attempt.get('blocked_until', 0)
-        if blocked_until > now:
-            return True
-        if blocked_until:
-            _LOGIN_ATTEMPTS.pop(key, None)
-    return False
-
-
-def _register_login_failure(identifier):
-    key = _login_attempt_key(identifier)
-    with _LOGIN_ATTEMPTS_LOCK:
-        attempt = _LOGIN_ATTEMPTS.setdefault(key, {'count': 0, 'blocked_until': 0})
-        attempt['count'] += 1
-        if attempt['count'] >= _login_attempt_limit():
-            attempt['blocked_until'] = time.monotonic() + _login_block_seconds()
-
-
-def _clear_login_failures(identifier):
-    with _LOGIN_ATTEMPTS_LOCK:
-        _LOGIN_ATTEMPTS.pop(_login_attempt_key(identifier), None)
+    return request.remote_addr or ''
 
 
 def clear_api_login_attempts():
-    """Clear process-local throttling state. Intended for isolated test suites."""
-    with _LOGIN_ATTEMPTS_LOCK:
-        _LOGIN_ATTEMPTS.clear()
+    """Reset the configured limiter storage for isolated test suites."""
+    try:
+        limiter.reset()
+    except Exception:
+        pass
 
 
 def _find_user(identifier):
@@ -189,13 +142,6 @@ def _validate_user_access(user):
 
 
 def authenticate_credentials(identifier, password):
-    if _login_is_blocked(identifier):
-        raise ApiAuthError(
-            'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.',
-            'login_rate_limited',
-            429,
-        )
-
     user = _find_user(identifier)
     password_matches = (
         user.check_password(password)
@@ -203,7 +149,6 @@ def authenticate_credentials(identifier, password):
         else check_password_hash(_DUMMY_PASSWORD_HASH, password or '')
     )
     if not password_matches:
-        _register_login_failure(identifier)
         raise ApiAuthError(
             'Usuário, e-mail ou senha inválidos.',
             'invalid_credentials',
@@ -211,7 +156,6 @@ def authenticate_credentials(identifier, password):
             'password',
         )
 
-    _clear_login_failures(identifier)
     _validate_user_access(user)
     return user
 
@@ -223,13 +167,6 @@ def authenticate_credentials_for_activation(identifier, password):
     client uses this narrower path only to validate the user's password before
     applying an activation key to that same user's company.
     """
-    if _login_is_blocked(identifier):
-        raise ApiAuthError(
-            'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.',
-            'login_rate_limited',
-            429,
-        )
-
     user = _find_user(identifier)
     password_matches = (
         user.check_password(password)
@@ -237,7 +174,6 @@ def authenticate_credentials_for_activation(identifier, password):
         else check_password_hash(_DUMMY_PASSWORD_HASH, password or '')
     )
     if not password_matches:
-        _register_login_failure(identifier)
         raise ApiAuthError(
             'Usuário, e-mail ou senha inválidos.',
             'invalid_credentials',
@@ -245,7 +181,6 @@ def authenticate_credentials_for_activation(identifier, password):
             'password',
         )
 
-    _clear_login_failures(identifier)
     if not user.is_active:
         raise ApiAuthError(
             'Este usuário está inativo. Fale com o administrador da adega.',

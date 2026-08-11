@@ -11,6 +11,8 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, s
 from flask_login import current_user, login_required
 
 from app.extensions import db
+from app.extensions import limiter
+from app.security.rate_limit import authenticated_identity_key, configured_limit
 from app.models import Category, Product
 from app.permissions import authorize_permission_override, permission_required
 from app.services.audit_service import changed_values, record_audit_event
@@ -458,6 +460,10 @@ def products():
 @catalog_bp.route('/produtos/importar', methods=['POST'])
 @login_required
 @permission_required('can_manage_products')
+@limiter.limit(
+    configured_limit('RATELIMIT_IMPORT', '5 per hour'),
+    key_func=authenticated_identity_key,
+)
 def import_products():
     if not can_import_products() and not authorize_permission_override('can_manage_products'):
         flash('Apenas o dono da adega pode importar planilhas.', 'danger')

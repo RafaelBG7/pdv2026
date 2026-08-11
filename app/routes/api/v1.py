@@ -9,11 +9,11 @@ import zipfile
 from xml.etree import ElementTree
 
 from flask import Blueprint, Response, current_app, g, jsonify, request
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func, or_, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload, sessionmaker
 
-from app.extensions import db
+from app.extensions import db, limiter
 from app.backup import BACKUP_FREQUENCIES, create_company_backup
 from app.models import (
     ActivationKey,
@@ -67,6 +67,14 @@ from app.services.product_service import (
     update_product,
 )
 from app.services.password_recovery_service import request_password_recovery
+from app.security.rate_limit import (
+    authenticated_identity_key,
+    api_identity_key,
+    configured_limit,
+    login_identity_key,
+    token_identity_key,
+    redis_health_status,
+)
 from app.services.notification_service import (
     CATEGORIES as NOTIFICATION_CATEGORIES,
     SEVERITIES as NOTIFICATION_SEVERITIES,
@@ -84,6 +92,7 @@ from app.services.sale_service import (
     SaleLineInput,
     SaleOperationError,
     SalePaymentInput,
+    cancel_sale,
     create_sale,
     find_completed_sale_request,
     serialize_sale_result,
@@ -102,6 +111,10 @@ from app.tenant import tenant_engine
 
 
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
+limiter.limit(
+    configured_limit('RATELIMIT_API_GENERAL', '600 per minute'),
+    key_func=api_identity_key,
+)(api_v1_bp)
 IDEMPOTENCY_KEY_PATTERN = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$')
 PAYABLE_CATEGORIES = ('Aluguel', 'Luz', 'Água', 'Internet', 'Fornecedor', 'Impostos', 'Outros')
 PAYABLE_STATUS_LABELS = {
@@ -116,6 +129,7 @@ EMPLOYEE_PERMISSIONS = (
     'can_manage_products',
     'can_manage_categories',
     'can_manage_sales',
+    'can_cancel_sales',
     'can_manage_cash_register',
     'can_view_reports',
     'can_manage_payables',
@@ -129,6 +143,7 @@ EMPLOYEE_PERMISSION_LABELS = {
     'can_manage_products': 'Gerenciar produtos',
     'can_manage_categories': 'Gerenciar categorias',
     'can_manage_sales': 'Realizar vendas',
+    'can_cancel_sales': 'Cancelar vendas',
     'can_manage_cash_register': 'Abrir e fechar caixa',
     'can_view_reports': 'Ver relatórios',
     'can_manage_payables': 'Contas a pagar',
@@ -157,6 +172,7 @@ ROLE_PERMISSION_DEFAULTS = {
         'can_manage_products': False,
         'can_manage_categories': False,
         'can_manage_sales': True,
+        'can_cancel_sales': False,
         'can_manage_cash_register': True,
         'can_view_reports': False,
         'can_manage_payables': False,
@@ -170,6 +186,7 @@ ROLE_PERMISSION_DEFAULTS = {
         'can_manage_products': True,
         'can_manage_categories': True,
         'can_manage_sales': True,
+        'can_cancel_sales': True,
         'can_manage_cash_register': True,
         'can_view_reports': True,
         'can_manage_payables': True,
@@ -598,6 +615,15 @@ def api_serialize_sale_receipt(sale):
         'created_at': timestamp_value(sale.created_at),
         'cash_register_id': sale.cash_register_id or 0,
         'payment_status': sale.payment_status or 'pending',
+        'status': sale.status or 'completed',
+        'is_cancelled': sale.is_cancelled,
+        'cancelled_at': timestamp_value(sale.cancelled_at),
+        'cancelled_by_user_id': sale.cancelled_by_user_id,
+        'cancelled_by_user_name': (
+            sale.cancelled_by_user.full_name or sale.cancelled_by_user.username
+            if sale.cancelled_by_user else ''
+        ),
+        'cancellation_reason': sale.cancellation_reason or '',
         'subtotal': money_value(sale.total_amount),
         'discount_amount': money_value(sale.discount_amount),
         'final_amount': money_value(final_amount),
@@ -627,6 +653,7 @@ def api_serialize_sale_receipt(sale):
 
 
 def api_build_sales_report(sales):
+    sales = [sale for sale in sales if not sale.is_cancelled]
     payment_totals = {method: 0.0 for method in PAYMENT_METHODS}
     product_totals = {}
     totals = {
@@ -729,6 +756,7 @@ def api_build_product_report(
         .join(Sale, Sale.id == SaleItem.sale_id)
         .filter(
             Sale.company_id == company_id,
+            Sale.valid_filter(),
             Sale.created_at >= start_datetime,
             Sale.created_at < end_datetime,
         )
@@ -1266,7 +1294,28 @@ def health_check():
     })
 
 
+@api_v1_bp.get('/health/dependencies')
+def api_dependency_health_check():
+    database_status = 'ok'
+    try:
+        db.session.execute(text('SELECT 1'))
+    except Exception:
+        database_status = 'error'
+    redis_status = redis_health_status()
+    healthy = database_status == 'ok' and redis_status in {'ok', 'memory', 'disabled'}
+    response, status_code = api_success({
+        'status': 'ok' if healthy else 'degraded',
+        'dependencies': {'database': database_status, 'redis': redis_status},
+    }), 200 if healthy else 503
+    return response, status_code
+
+
 @api_v1_bp.post('/auth/login')
+@limiter.limit(
+    configured_limit('RATELIMIT_LOGIN', '5 per minute;20 per hour'),
+    key_func=login_identity_key,
+    override_defaults=False,
+)
 def api_login():
     identifier = ''
     try:
@@ -1328,6 +1377,11 @@ def api_login():
 
 
 @api_v1_bp.post('/auth/password-recovery/request')
+@limiter.limit(
+    configured_limit('RATELIMIT_PASSWORD_RESET', '3 per 15 minutes'),
+    key_func=login_identity_key,
+    override_defaults=False,
+)
 def api_request_password_recovery():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
@@ -1367,6 +1421,11 @@ def api_request_password_recovery():
 
 
 @api_v1_bp.post('/subscription/activate')
+@limiter.limit(
+    configured_limit('RATELIMIT_ACTIVATION', '5 per 15 minutes'),
+    key_func=login_identity_key,
+    override_defaults=False,
+)
 def api_activate_subscription():
     identifier = ''
     try:
@@ -1459,6 +1518,11 @@ def api_activate_subscription():
 
 
 @api_v1_bp.post('/auth/refresh')
+@limiter.limit(
+    configured_limit('RATELIMIT_REFRESH', '120 per hour'),
+    key_func=token_identity_key,
+    override_defaults=False,
+)
 def api_refresh():
     try:
         require_secure_auth_transport()
@@ -2419,6 +2483,11 @@ def api_update_backup_settings():
 
 @api_v1_bp.post('/settings/backup/run')
 @api_auth_required
+@limiter.limit(
+    configured_limit('RATELIMIT_BACKUP', '3 per hour'),
+    key_func=authenticated_identity_key,
+    override_defaults=False,
+)
 def api_run_manual_backup():
     try:
         api_require_settings_permission()
@@ -2460,6 +2529,11 @@ def api_run_manual_backup():
 
 @api_v1_bp.get('/settings/export/<export_type>')
 @api_auth_required
+@limiter.limit(
+    configured_limit('RATELIMIT_EXPORT', '20 per hour'),
+    key_func=authenticated_identity_key,
+    override_defaults=False,
+)
 def api_export_settings_data(export_type):
     try:
         api_require_export_permission()
@@ -2499,6 +2573,11 @@ def api_export_settings_data(export_type):
 
 @api_v1_bp.post('/settings/import/products')
 @api_auth_required
+@limiter.limit(
+    configured_limit('RATELIMIT_IMPORT', '5 per hour'),
+    key_func=authenticated_identity_key,
+    override_defaults=False,
+)
 def api_import_settings_products():
     try:
         api_require_product_import_permission()
@@ -2764,6 +2843,7 @@ def api_reports_summary():
                 )
                 .filter(
                     Sale.company_id == g.api_user.company_id,
+                    Sale.valid_filter(),
                     Sale.created_at >= start_datetime,
                     Sale.created_at < end_datetime,
                 )
@@ -3305,6 +3385,11 @@ def api_cash_register_detail_data(tenant_db, cash_register, can_view_financials)
             'time': sale_datetime.strftime('%H:%M') if sale_datetime else '',
             'seller': users.get(sale.user_id, 'Usuário não identificado'),
             'payment_status': sale.payment_status,
+            'status': sale.status or 'completed',
+            'is_cancelled': sale.is_cancelled,
+            'cancelled_at': timestamp_value(sale.cancelled_at),
+            'cancelled_by_user_id': sale.cancelled_by_user_id,
+            'cancellation_reason': sale.cancellation_reason or '',
             'payments_text': ', '.join(payment_labels) if payment_labels else 'Sem pagamento',
             'total_amount': float(sale.total_amount or 0) if can_view_financials else None,
             'discount_amount': float(sale.discount_amount or 0) if can_view_financials else None,
@@ -3537,6 +3622,44 @@ def api_sale_detail(sale_id):
         return api_auth_error_response(error)
 
 
+@api_v1_bp.post('/sales/<int:sale_id>/cancel')
+@api_permission_required('can_cancel_sales')
+def api_cancel_sale(sale_id):
+    try:
+        payload = json_object_body()
+        reason = json_text(payload, 'reason', required=True, max_length=500)
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                result = cancel_sale(
+                    tenant_db,
+                    g.api_user.company,
+                    g.api_user,
+                    sale_id,
+                    reason,
+                )
+                tenant_db.commit()
+                response_data = api_serialize_sale_receipt(result.sale)
+                response_data['stock_movements'] = [
+                    {
+                        'id': movement.id,
+                        'product_id': movement.product_id,
+                        'quantity': movement.quantity,
+                        'previous_stock': movement.previous_stock,
+                        'new_stock': movement.new_stock,
+                    }
+                    for movement in result.stock_movements
+                ]
+                response_data['cash_register_was_closed'] = result.cash_register_was_closed
+            except Exception:
+                tenant_db.rollback()
+                raise
+        return api_success(response_data)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except SaleOperationError as error:
+        return api_failure(error.message, error.code, error.status_code, error.field)
+
+
 @api_v1_bp.get('/sales/today')
 @api_permission_required('can_manage_sales')
 def api_today_sales():
@@ -3597,6 +3720,8 @@ def api_today_sales():
                     'created_at': timestamp_value(sale.created_at),
                     'final_amount': money_value(sale.final_amount),
                     'payment_status': sale.payment_status or 'pending',
+                    'status': sale.status or 'completed',
+                    'is_cancelled': sale.is_cancelled,
                     'user_name': (
                         users.get(sale.user_id).username
                         if sale.user_id in users

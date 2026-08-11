@@ -604,6 +604,29 @@
                                             </StackPanel>
                                         </UniformGrid>
 
+                                        <Border Margin="0,0,0,14" Padding="12"
+                                                Background="#26F59E0B" BorderBrush="#FFF59E0B"
+                                                BorderThickness="1" CornerRadius="7">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DetailRegister.HasCancellationAdjustment}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel>
+                                                <TextBlock FontWeight="Bold" Foreground="#FFF59E0B"
+                                                           Text="Ajuste posterior ao fechamento" />
+                                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                                           Text="{Binding DetailRegister.CancellationAdjustmentText}" TextWrapping="Wrap" />
+                                                <TextBlock Margin="0,3,0,0" FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                           Text="A conferência original foi preservada." />
+                                            </StackPanel>
+                                        </Border>
+
                                         <Border Margin="0,4,0,0" Padding="14"
                                                 Background="{StaticResource InfoSurfaceBrush}"
                                                 BorderBrush="{StaticResource InfoBorderBrush}"

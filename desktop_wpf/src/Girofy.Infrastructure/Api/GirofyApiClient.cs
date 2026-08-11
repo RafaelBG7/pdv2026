@@ -361,6 +361,21 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<SaleReceipt>(response, cancellationToken);
     }
 
+    public async Task<SaleReceipt> CancelSaleAsync(
+        string accessToken,
+        int saleId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"api/v1/sales/{saleId}/cancel",
+            accessToken);
+        request.Content = JsonContent.Create(new CancelSaleRequest(reason));
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<SaleReceipt>(response, cancellationToken);
+    }
+
     public async Task<ReportsSnapshot> GetReportsSummaryAsync(
         string accessToken,
         ReportsQuery query,
@@ -873,6 +888,9 @@ public sealed class GirofyApiClient(
         [property: global::System.Text.Json.Serialization.JsonPropertyName("items")] IReadOnlyList<SaleLineRequest> Items,
         [property: global::System.Text.Json.Serialization.JsonPropertyName("discount_amount")] decimal DiscountAmount,
         [property: global::System.Text.Json.Serialization.JsonPropertyName("payments")] IReadOnlyList<SalePaymentRequest> Payments);
+
+    private sealed record CancelSaleRequest(
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("reason")] string Reason);
 
     private sealed class LogoutResult
     {

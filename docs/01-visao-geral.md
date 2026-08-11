@@ -1,5 +1,7 @@
 # 01 - Visão Geral
 
+O banco central e cada banco de adega possuem revisão Alembic própria, conforme [29-migracoes-versionadas.md](29-migracoes-versionadas.md).
+
 ## Propósito
 
 O Girofy é um PDV multiadega para adegas e pequenos comércios, disponibilizado em duas
@@ -96,7 +98,7 @@ O projeto deixou de ser um PDV local simples em SQLite e passou a operar com MyS
 ## O Que Ainda Faz Falta
 
 - Migrações versionadas com Alembic/Flask-Migrate.
-- Rate limit persistente para produção.
+- Monitoramento do Redis e dos eventos de rate limit em produção.
 - Ampliar auditoria para cancelamento, estorno, sangria e aprovações futuras.
 - Sangria e suprimento de caixa.
 - Cadastro de fornecedores e compras.

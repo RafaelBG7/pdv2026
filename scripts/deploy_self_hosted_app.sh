@@ -41,7 +41,16 @@ cd "$OCI_DEPLOY_PATH"
 test -f .env
 mkdir -p /opt/girofy/backups
 
-docker compose -f docker-compose.oci.yml up -d --build --remove-orphans
+docker compose -f docker-compose.oci.yml build app backup
+docker compose -f docker-compose.oci.yml up -d mysql redis
+
+echo "Gerando backup obrigatório antes das migrations."
+docker compose -f docker-compose.oci.yml run --rm -e AUTO_BACKUP_ONCE=1 backup
+
+echo "Aplicando migrations versionadas no banco central e nos tenants."
+docker compose -f docker-compose.oci.yml run --rm app python scripts/schema_migrate.py upgrade-all
+
+docker compose -f docker-compose.oci.yml up -d --remove-orphans app backup caddy
 docker image prune -f >/dev/null
 
 for attempt in {1..30}; do
@@ -57,4 +66,6 @@ for attempt in {1..30}; do
 done
 
 docker compose -f docker-compose.oci.yml ps
+curl -fsS "http://127.0.0.1:$OCI_DEPLOY_PORT/health/dependencies" >/dev/null
+curl -fsS "http://127.0.0.1:$OCI_DEPLOY_PORT/api/v1/health/dependencies" >/dev/null
 echo "Deploy local concluído em http://127.0.0.1:$OCI_DEPLOY_PORT"

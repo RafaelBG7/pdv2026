@@ -4,13 +4,15 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
 from app.models import AuditLog, CashRegister, Category, Company, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.permissions import authorize_role_override, has_permission_view_override, permission_required
 from app.services.audit_service import audit_action_label, entity_label, record_audit_event
+from app.services.sale_service import SaleOperationError, cancel_sale
+from app.security.rate_limit import redis_health_status
 from app.services.stock_service import (
     MOVEMENT_TYPE_LABELS,
     SOURCE_TYPE_LABELS,
@@ -39,6 +41,25 @@ REPORT_SALES_TABLE_MAX_LIMIT = 200
 @main_bp.get('/health')
 def health_check():
     response = jsonify({'status': 'ok', 'service': 'girofy'})
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@main_bp.get('/health/dependencies')
+def dependency_health_check():
+    database_status = 'ok'
+    try:
+        db.session.execute(text('SELECT 1'))
+    except Exception:
+        database_status = 'error'
+    redis_status = redis_health_status()
+    healthy = database_status == 'ok' and redis_status in {'ok', 'memory', 'disabled'}
+    response = jsonify({
+        'status': 'ok' if healthy else 'degraded',
+        'service': 'girofy',
+        'dependencies': {'database': database_status, 'redis': redis_status},
+    })
+    response.status_code = 200 if healthy else 503
     response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -327,6 +348,7 @@ AUDIT_FIELD_LABELS = {
     'can_manage_payables': 'Permissão para contas a pagar',
     'can_manage_products': 'Permissão para produtos',
     'can_manage_sales': 'Permissão para vendas',
+    'can_cancel_sales': 'Permissão para cancelar vendas',
     'can_manage_settings': 'Permissão para configurações',
     'can_manage_stock': 'Permissão para estoque',
     'can_view_audit_logs': 'Permissão para auditoria',
@@ -504,13 +526,19 @@ def sale_profit(sale):
 def cash_register_profit(cash_register):
     if not cash_register:
         return 0.0
-    return round(sum(sale_profit(sale) for sale in cash_register.sales), 2)
+    sales = cash_register.sales if cash_register.status == 'closed' else [
+        sale for sale in cash_register.sales if not sale.is_cancelled
+    ]
+    return round(sum(sale_profit(sale) for sale in sales), 2)
 
 
 def cash_register_total_sold(cash_register):
     if not cash_register:
         return 0.0
-    return round(sum(sale.final_amount or 0.0 for sale in cash_register.sales), 2)
+    sales = cash_register.sales if cash_register.status == 'closed' else [
+        sale for sale in cash_register.sales if not sale.is_cancelled
+    ]
+    return round(sum(sale.final_amount or 0.0 for sale in sales), 2)
 
 
 def cash_register_expected_amount(cash_register):
@@ -598,7 +626,8 @@ def report_period_range(period, start_date=None, end_date=None):
     return period, start, end, start_datetime, end_datetime, label
 
 
-def build_sales_report(sales):
+def build_sales_report(sales, include_cancelled=False):
+    sales = list(sales) if include_cancelled else [sale for sale in sales if not sale.is_cancelled]
     payment_totals = {method: 0.0 for method in PAYMENT_METHODS}
     product_totals = {}
     totals = {
@@ -714,6 +743,7 @@ def build_daily_sales_activity(start_datetime, end_datetime, metric='revenue'):
     ).filter(
         Sale.created_at >= start_datetime,
         Sale.created_at < end_datetime,
+        Sale.valid_filter(),
     ).group_by(hour_expression).all()
 
     aggregated = {
@@ -772,6 +802,8 @@ def cash_register_peak_hours(cash_register):
         return []
 
     for sale in cash_register.sales:
+        if sale.is_cancelled:
+            continue
         if not sale.created_at:
             continue
         hour = sale.created_at.hour
@@ -807,7 +839,7 @@ def build_product_report(start_datetime, end_datetime, category_id='', product_i
             func.coalesce(func.sum(SaleItem.profit_amount), 0).label('profit'),
         )
         .join(Sale, Sale.id == SaleItem.sale_id)
-        .filter(Sale.company_id == company.id)
+        .filter(Sale.company_id == company.id, Sale.valid_filter())
     )
     if start_datetime and end_datetime:
         sale_item_query = sale_item_query.filter(
@@ -1480,6 +1512,7 @@ def reports():
     ).filter(
         Sale.created_at >= start_datetime,
         Sale.created_at < end_datetime,
+        Sale.valid_filter(),
     ).order_by(Sale.created_at.desc()).all()
 
     totals, payment_totals, top_products = build_sales_report(sales)
@@ -1782,7 +1815,40 @@ def sale_detail(sale_id):
         paid_amount=paid_amount,
         change_amount=change_amount,
         payment_methods=PAYMENT_METHODS,
+        can_cancel_sale=current_user.has_permission('can_cancel_sales'),
     )
+
+
+@main_bp.post('/vendas/<int:sale_id>/cancelar')
+@login_required
+@permission_required('can_cancel_sales')
+def cancel_sale_route(sale_id):
+    tenant_db = tenant_session()
+    try:
+        result = cancel_sale(
+            tenant_db,
+            current_tenant_company(),
+            current_user,
+            sale_id,
+            request.form.get('reason'),
+        )
+        tenant_db.commit()
+    except SaleOperationError as error:
+        tenant_db.rollback()
+        flash(error.message, 'danger')
+        return redirect(url_for('main.sale_detail', sale_id=sale_id))
+    except Exception:
+        tenant_db.rollback()
+        raise
+
+    if result.cash_register_was_closed:
+        flash(
+            'Venda cancelada e estoque devolvido. O caixa já estava fechado; o estorno ficou registrado como ajuste auditável e a conferência original foi preservada.',
+            'warning',
+        )
+    else:
+        flash('Venda cancelada e estoque devolvido com sucesso.', 'success')
+    return redirect(url_for('main.sale_detail', sale_id=sale_id))
 
 
 @main_bp.route('/caixa')
@@ -1808,7 +1874,9 @@ def cash_register():
     cash_history = {}
     for item in closed_registers:
         sales = sorted(item.sales, key=lambda sale: sale.created_at or datetime.min, reverse=True)
-        totals, payment_totals, _ = build_sales_report(sales)
+        totals, payment_totals, _ = build_sales_report(sales, include_cancelled=True)
+        valid_totals, _, _ = build_sales_report(sales)
+        cancelled_sales = [sale for sale in sales if sale.is_cancelled]
         expected_amount = cash_register_expected_amount(item)
         cash_history[item.id] = {
             'responsible': responsible_users.get(item.user_id, 'Usuário não identificado'),
@@ -1818,6 +1886,9 @@ def cash_register():
             'payment_totals': payment_totals,
             'expected_amount': expected_amount,
             'difference': round((item.closing_amount or 0.0) - expected_amount, 2),
+            'cancelled_sales_count': len(cancelled_sales),
+            'cancelled_sales_total': round(sum((sale.final_amount or 0.0) for sale in cancelled_sales), 2),
+            'valid_sales_total': valid_totals['final'],
         }
     current_cash_snapshot = build_cash_register_snapshot(current_cash_register) if current_cash_register else None
     return render_template(
@@ -1849,7 +1920,9 @@ def cash_register_detail(cash_register_id):
         key=lambda sale: sale.created_at or datetime.min,
         reverse=True,
     )
-    totals, payment_totals, top_products = build_sales_report(sales)
+    totals, payment_totals, top_products = build_sales_report(sales, include_cancelled=True)
+    valid_totals, _, _ = build_sales_report(sales)
+    cancelled_sales = [sale for sale in sales if sale.is_cancelled]
     timeline = build_sale_timeline(sales, selected_cash_register.opening_amount)
     return render_template(
         'cash_register_detail.html',
@@ -1862,6 +1935,11 @@ def cash_register_detail(cash_register_id):
         payment_methods=PAYMENT_METHODS,
         cash_register_profit=cash_register_profit(selected_cash_register),
         cash_register_total_sold=cash_register_total_sold(selected_cash_register),
+        cancellation_adjustment={
+            'count': len(cancelled_sales),
+            'total': round(sum((sale.final_amount or 0.0) for sale in cancelled_sales), 2),
+            'valid_total': valid_totals['final'],
+        },
         show_cash_financials=can_view_cash_financials(),
     )
 

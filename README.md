@@ -65,7 +65,7 @@ Pontos mais maduros:
 
 Pontos que ainda merecem prioridade antes de produção pública:
 
-- rate limit persistente/distribuído para endpoints sensíveis;
+- rate limit persistente/distribuído já implementado para endpoints sensíveis;
 - migrações versionadas com Alembic/Flask-Migrate;
 - restauração guiada de backup;
 - cobrança real e regras concretas para Basic/Pro;
@@ -92,6 +92,12 @@ A documentação detalhada e separada das duas versões fica em:
 docs/24-estado-versoes-web-windows.md
 ```
 
+Migrações de banco central e tenants, deploy seguro e rollback:
+
+```text
+docs/29-migracoes-versionadas.md
+```
+
 ## Tecnologias Utilizadas
 
 | Tecnologia | Uso no projeto |
@@ -100,6 +106,7 @@ docs/24-estado-versoes-web-windows.md
 | Flask | Framework web usado para rotas, templates e servidor local. |
 | Flask-Login | Login, logout, sessão de usuário e proteção de rotas. |
 | Flask-SQLAlchemy | Integração do Flask com SQLAlchemy. |
+| Flask-Migrate / Alembic | Versionamento independente do schema central e dos bancos tenants. |
 | SQLAlchemy | ORM e conexão com MySQL. Também é usado em consultas parametrizadas e criação de bancos por adega. |
 | PyMySQL | Driver MySQL usado na URL `mysql+pymysql://...`. |
 | MySQL | Banco relacional principal. Existe um banco central e bancos separados por adega. |
@@ -558,6 +565,8 @@ O sistema permite:
 - calcular total, pago, faltante e troco;
 - finalizar venda;
 - ver detalhe da venda.
+- cancelar logicamente uma venda autorizada, informando motivo obrigatório;
+- manter venda, produtos, valores e pagamentos visíveis após o cancelamento;
 
 Regras importantes:
 
@@ -577,6 +586,10 @@ Regras importantes:
 - dentro da tela de registrar venda, `F3` continua abrindo o desconto;
 - na tela pós-venda, `Enter`, `Espaço` e `F3` iniciam uma nova venda;
 - o atalho global é ignorado enquanto o usuário digita em campos de formulário.
+- cancelamento exige `can_cancel_sales`, devolve o estoque pela movimentação original e grava auditoria;
+- kits devolvem exatamente o componente e a quantidade consumidos na venda;
+- vendas canceladas não entram nos indicadores financeiros e operacionais válidos;
+- caixas fechados mantêm a conferência original e exibem o cancelamento como ajuste posterior.
 
 Padrão de busca:
 
@@ -1586,6 +1599,11 @@ O repositório possui assets de marca do Girofy em `app/static/img/` e usa CSS/B
 
 ## Segurança
 
+Em produção, o Girofy usa Flask-Limiter com Redis compartilhado para proteger login,
+recuperação, reenvio de confirmação, cadastro, ativação, refresh token, importação, backup,
+exportação e operações administrativas. Web e Windows recebem HTTP 429 com `Retry-After`; os
+eventos ficam em `logs/security.log`. Veja [docs/28-rate-limit-redis.md](docs/28-rate-limit-redis.md).
+
 O projeto já possui:
 
 - login e logout com Flask-Login;
@@ -1619,7 +1637,7 @@ O projeto já possui:
 - O `SECRET_KEY` padrão deve ser trocado em qualquer ambiente real.
 - O app só ativa debug quando `FLASK_DEBUG=1`; em produção use Gunicorn/Docker e `APP_ENV=production`.
 - CSRF está ativo por padrão fora de testes. Testes podem usar `WTF_CSRF_ENABLED=False` apenas no ambiente de teste.
-- Rate limit de login ainda é simples e em memória; produção com múltiplos workers deve evoluir para armazenamento compartilhado.
+- Rate limit compartilhado usa Redis em produção e aceita `memory://` apenas no desenvolvimento.
 - O `.env` não deve ser versionado com senhas reais.
 - O usuário MySQL `root` não é recomendado em produção.
 
@@ -1745,10 +1763,10 @@ Próximos passos para SaaS completo:
 
 - Adotar Flask-Migrate/Alembic para migrações versionadas.
 - Criar Dockerfile e `docker-compose.yml`.
-- Evoluir rate limit para armazenamento compartilhado em produção.
+- Monitorar capacidade e disponibilidade do Redis usado pelo rate limit.
 - Reduzir `unsafe-inline` da CSP com nonce ou hashes.
 - Ampliar camada de services para outras regras além de estoque/auditoria.
-- Ampliar auditoria para cancelamentos, estornos e aprovações futuras.
+- Ampliar auditoria para aprovações futuras, sangria, suprimento e estornos externos.
 - Melhorar testes de banco MySQL real.
 - Criar comandos CLI para manutenção.
 - Adicionar type hints em funções críticas.
@@ -1760,7 +1778,7 @@ Próximos passos para SaaS completo:
 - Integração WhatsApp.
 - Cadastro de clientes.
 - Sangria e suprimento de caixa.
-- Cancelamento/estorno de venda.
+- Cancelamento parcial e integração de estorno com adquirentes.
 - Dashboard financeiro.
 - API JSON.
 - Controle de produtos por código de barras com leitor físico.
@@ -1800,6 +1818,7 @@ Próximos passos para SaaS completo:
 - [x] Navbar colapsável
 - [x] Logs de erro
 - [x] Auditoria de ações críticas
+- [x] Cancelamento lógico de vendas na Web, API e Windows
 - [x] CSRF em formulários e requisições JavaScript
 - [x] Movimentações de estoque separadas
 - [x] Backup manual pela interface

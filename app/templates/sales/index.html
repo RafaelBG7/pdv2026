@@ -102,7 +102,12 @@
           data-sale-date-iso="{{ sale.created_at.strftime('%Y-%m-%d') if sale.created_at else '' }}"
           data-sale-client=""
         >
-          <td class="fw-semibold sales-id-column">#{{ sale.id }}</td>
+          <td class="fw-semibold sales-id-column">
+            #{{ sale.id }}
+            {% if sale.is_cancelled %}
+            <span class="badge text-bg-danger ms-1">CANCELADA</span>
+            {% endif %}
+          </td>
           <td class="sales-date-column">{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
           <td class="sales-seller-column">{{ seller }}</td>
           <td class="text-end sales-total-column">R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</td>

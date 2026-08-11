@@ -34,6 +34,8 @@ class TestConfig:
     API_ALLOW_INSECURE_AUTH = True
     API_ACCESS_TOKEN_MINUTES = 15
     API_REFRESH_TOKEN_DAYS = 30
+    RATELIMIT_ENABLED = False
+    RATELIMIT_STORAGE_URI = 'memory://'
 
 
 def close_test_log_handlers(app):
@@ -180,6 +182,189 @@ class RouteTestCase(unittest.TestCase):
             'message': None,
             'errors': [],
         })
+
+    def test_distributed_rate_limit_returns_web_and_api_429_and_separates_ips(self):
+        class RateLimitConfig(TestConfig):
+            RATELIMIT_ENABLED = True
+            RATELIMIT_STORAGE_URI = 'memory://'
+            RATELIMIT_LOGIN = '2 per minute'
+            RATELIMIT_API_GENERAL = '100 per minute'
+            RATELIMIT_KEY_PREFIX = 'test-login-limit'
+
+        rate_temp_dir = tempfile.TemporaryDirectory()
+        RateLimitConfig.LOG_DIR = Path(rate_temp_dir.name) / 'logs'
+        RateLimitConfig.BACKUP_DIR = Path(rate_temp_dir.name) / 'backups'
+        rate_app = create_app(RateLimitConfig)
+        rate_client = rate_app.test_client()
+        try:
+            api_payload = {'identifier': 'desconhecido', 'password': 'SenhaErrada123'}
+            first = rate_client.post('/api/v1/auth/login', json=api_payload, environ_base={'REMOTE_ADDR': '10.0.0.1'})
+            second = rate_client.post('/api/v1/auth/login', json=api_payload, environ_base={'REMOTE_ADDR': '10.0.0.1'})
+            blocked = rate_client.post('/api/v1/auth/login', json=api_payload, environ_base={'REMOTE_ADDR': '10.0.0.1'})
+            other_ip = rate_client.post('/api/v1/auth/login', json=api_payload, environ_base={'REMOTE_ADDR': '10.0.0.2'})
+
+            self.assertEqual(first.status_code, 401)
+            self.assertEqual(second.status_code, 401)
+            self.assertEqual(blocked.status_code, 429)
+            self.assertEqual(blocked.get_json()['errors'][0]['code'], 'rate_limit_exceeded')
+            self.assertIsNotNone(blocked.headers.get('Retry-After'))
+            self.assertEqual(other_ip.status_code, 401)
+
+            form = {'form_type': 'login', 'username': 'web-user', 'password': 'incorreta'}
+            rate_client.post('/login', data=form, environ_base={'REMOTE_ADDR': '10.0.0.3'})
+            rate_client.post('/login', data=form, environ_base={'REMOTE_ADDR': '10.0.0.3'})
+            web_blocked = rate_client.post('/login', data=form, environ_base={'REMOTE_ADDR': '10.0.0.3'})
+            self.assertEqual(web_blocked.status_code, 429)
+            self.assertIn('Muitas tentativas'.encode(), web_blocked.data)
+            security_log = (Path(RateLimitConfig.LOG_DIR) / 'security.log').read_text(encoding='utf-8')
+            self.assertIn('rate_limit_exceeded', security_log)
+            self.assertNotIn('SenhaErrada123', security_log)
+            self.assertNotIn('incorreta', security_log)
+        finally:
+            with rate_app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+            close_test_log_handlers(rate_app)
+            rate_temp_dir.cleanup()
+
+    def test_rate_limit_can_be_disabled_in_development(self):
+        for _ in range(8):
+            response = self.client.post(
+                '/api/v1/auth/login',
+                json={'identifier': 'sem-limite', 'password': 'SenhaErrada123'},
+            )
+            self.assertEqual(response.status_code, 401)
+
+    def test_dependency_health_reports_database_and_rate_limit_storage(self):
+        response = self.client.get('/health/dependencies')
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data['dependencies']['database'], 'ok')
+        self.assertEqual(data['dependencies']['redis'], 'disabled')
+
+    def test_rate_limit_uses_proxyfix_only_when_proxy_is_trusted(self):
+        class ProxyRateLimitConfig(TestConfig):
+            RATELIMIT_ENABLED = True
+            RATELIMIT_STORAGE_URI = 'memory://'
+            RATELIMIT_LOGIN = '1 per minute'
+            RATELIMIT_API_GENERAL = '100 per minute'
+            RATELIMIT_KEY_PREFIX = 'test-proxy-limit'
+            TRUST_PROXY_HEADERS = True
+            TRUSTED_PROXY_COUNT = 1
+
+        proxy_temp_dir = tempfile.TemporaryDirectory()
+        ProxyRateLimitConfig.LOG_DIR = Path(proxy_temp_dir.name) / 'logs'
+        ProxyRateLimitConfig.BACKUP_DIR = Path(proxy_temp_dir.name) / 'backups'
+        proxy_app = create_app(ProxyRateLimitConfig)
+        proxy_client = proxy_app.test_client()
+        try:
+            payload = {'identifier': 'proxy-user', 'password': 'SenhaErrada123'}
+            headers = {'X-Forwarded-For': '203.0.113.10'}
+            first = proxy_client.post('/api/v1/auth/login', json=payload, headers=headers)
+            blocked = proxy_client.post('/api/v1/auth/login', json=payload, headers=headers)
+            other_client = proxy_client.post(
+                '/api/v1/auth/login',
+                json=payload,
+                headers={'X-Forwarded-For': '203.0.113.11'},
+            )
+            self.assertEqual(first.status_code, 401)
+            self.assertEqual(blocked.status_code, 429)
+            self.assertEqual(other_client.status_code, 401)
+        finally:
+            with proxy_app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+            close_test_log_handlers(proxy_app)
+            proxy_temp_dir.cleanup()
+
+    def test_rate_limit_fails_closed_when_redis_is_unavailable(self):
+        class BrokenRedisConfig(TestConfig):
+            RATELIMIT_ENABLED = True
+            RATELIMIT_STORAGE_URI = 'redis://127.0.0.1:1/15'
+            RATELIMIT_LOGIN = '2 per minute'
+            RATELIMIT_API_GENERAL = '100 per minute'
+            RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = False
+            RATELIMIT_KEY_PREFIX = 'test-broken-redis'
+
+        redis_temp_dir = tempfile.TemporaryDirectory()
+        BrokenRedisConfig.LOG_DIR = Path(redis_temp_dir.name) / 'logs'
+        BrokenRedisConfig.BACKUP_DIR = Path(redis_temp_dir.name) / 'backups'
+        redis_app = create_app(BrokenRedisConfig)
+        redis_client = redis_app.test_client()
+        try:
+            response = redis_client.post(
+                '/api/v1/auth/login',
+                json={'identifier': 'redis-offline', 'password': 'SenhaErrada123'},
+            )
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.get_json()['errors'][0]['code'], 'rate_limit_unavailable')
+            self.assertEqual(response.headers.get('Retry-After'), '30')
+        finally:
+            with redis_app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+            close_test_log_handlers(redis_app)
+            redis_temp_dir.cleanup()
+
+    def test_api_general_rate_limit_isolated_by_authenticated_token_and_tenant(self):
+        class ApiLimitConfig(TestConfig):
+            RATELIMIT_ENABLED = True
+            RATELIMIT_STORAGE_URI = 'memory://'
+            RATELIMIT_LOGIN = '10 per minute'
+            RATELIMIT_API_GENERAL = '1 per minute'
+            RATELIMIT_KEY_PREFIX = 'test-api-tenant-limit'
+
+        api_temp_dir = tempfile.TemporaryDirectory()
+        ApiLimitConfig.LOG_DIR = Path(api_temp_dir.name) / 'logs'
+        ApiLimitConfig.BACKUP_DIR = Path(api_temp_dir.name) / 'backups'
+        api_app = create_app(ApiLimitConfig)
+        api_client = api_app.test_client()
+        try:
+            with api_app.app_context():
+                users = []
+                for index in (1, 2):
+                    company = Company(
+                        name=f'Empresa limite {index}', active=True,
+                        subscription_started_at=date.today(),
+                        subscription_renews_at=date.today() + timedelta(days=30),
+                    )
+                    db.session.add(company)
+                    db.session.flush()
+                    user = User(
+                        username=f'limite-{index}', email=f'limite-{index}@girofy.test',
+                        email_verified=True, role='admin', company_id=company.id, is_active=True,
+                    )
+                    user.set_password('SenhaApi123')
+                    db.session.add(user)
+                    users.append(user.username)
+                db.session.commit()
+
+            tokens = []
+            for index, username in enumerate(users, start=1):
+                login_response = api_client.post(
+                    '/api/v1/auth/login',
+                    json={'identifier': username, 'password': 'SenhaApi123'},
+                    environ_base={'REMOTE_ADDR': f'10.10.0.{index}'},
+                )
+                self.assertEqual(login_response.status_code, 200)
+                tokens.append(login_response.get_json()['data']['access_token'])
+
+            first_user = api_client.get('/api/v1/auth/me', headers=self.bearer_header(tokens[0]))
+            first_user_blocked = api_client.get('/api/v1/auth/me', headers=self.bearer_header(tokens[0]))
+            second_tenant = api_client.get('/api/v1/auth/me', headers=self.bearer_header(tokens[1]))
+            self.assertEqual(first_user.status_code, 200)
+            self.assertEqual(first_user_blocked.status_code, 429)
+            self.assertEqual(second_tenant.status_code, 200)
+        finally:
+            with api_app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+            close_test_log_handlers(api_app)
+            api_temp_dir.cleanup()
 
     def test_api_login_returns_tokens_and_current_tenant_identity(self):
         user, company = self.create_api_user()
@@ -2402,6 +2587,129 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(Sale.query.filter_by(company_id=company.id).count(), 1)
             self.assertEqual(ApiSaleRequest.query.filter_by(company_id=company.id).count(), 1)
             self.assertEqual(db.session.get(Product, product_id).stock_quantity, 2)
+
+    def test_api_sale_cancellation_restores_exact_stock_and_is_idempotent(self):
+        user, company = self.create_api_user(username='api-cancelamento')
+        with self.app.app_context():
+            component = Product(
+                name='Garrafa unitária', company_id=company.id, cost_price=4,
+                sale_price=10, stock_quantity=20, active=True,
+            )
+            kit = Product(
+                name='Kit 3 garrafas', company_id=company.id, cost_price=12,
+                sale_price=25, stock_quantity=0, active=True, is_kit=True,
+                kit_component=component, kit_component_quantity=3,
+            )
+            cash_register = CashRegister(
+                company_id=company.id, user_id=user.id, status='open', opening_amount=50,
+            )
+            db.session.add_all([component, kit, cash_register])
+            db.session.commit()
+            component_id = component.id
+            kit_id = kit.id
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        headers = {**self.bearer_header(token), 'Idempotency-Key': 'sale-to-cancel-001'}
+        created_response = self.client.post('/api/v1/sales', headers=headers, json={
+            'items': [{'product_id': kit_id, 'quantity': 2}],
+            'payments': [{'method': 'pix', 'amount': 50}],
+        })
+        self.assertEqual(created_response.status_code, 201)
+        sale_id = created_response.get_json()['data']['id']
+
+        cancelled_response = self.client.post(
+            f'/api/v1/sales/{sale_id}/cancel',
+            headers=self.bearer_header(token),
+            json={'reason': 'Cliente desistiu antes de retirar.'},
+        )
+        repeated_response = self.client.post(
+            f'/api/v1/sales/{sale_id}/cancel',
+            headers=self.bearer_header(token),
+            json={'reason': 'Tentativa duplicada.'},
+        )
+
+        self.assertEqual(cancelled_response.status_code, 200)
+        cancelled = cancelled_response.get_json()['data']
+        self.assertTrue(cancelled['is_cancelled'])
+        self.assertEqual(cancelled['status'], 'cancelled')
+        self.assertEqual(cancelled['cancellation_reason'], 'Cliente desistiu antes de retirar.')
+        self.assertEqual(cancelled['stock_movements'][0]['quantity'], 6)
+        self.assertEqual(repeated_response.status_code, 409)
+        self.assertEqual(repeated_response.get_json()['errors'][0]['code'], 'sale_already_cancelled')
+
+        with self.app.app_context():
+            sale = db.session.get(Sale, sale_id)
+            self.assertEqual(db.session.get(Product, component_id).stock_quantity, 20)
+            self.assertEqual(Payment.query.filter_by(sale_id=sale_id).count(), 1)
+            self.assertEqual(SaleItem.query.filter_by(sale_id=sale_id).count(), 1)
+            self.assertEqual(
+                StockMovement.query.filter_by(
+                    source_type='sale_cancellation', source_id=sale_id,
+                    movement_type='cancellation',
+                ).count(),
+                1,
+            )
+            self.assertEqual(
+                AuditLog.query.filter_by(action='sale_cancelled', entity_id=sale_id).count(),
+                1,
+            )
+            self.assertIsNotNone(sale.cancelled_at)
+            self.assertEqual(sale.cancelled_by_user_id, user.id)
+
+        report_response = self.client.get('/api/v1/reports/summary', headers=self.bearer_header(token))
+        self.assertEqual(report_response.status_code, 200)
+        self.assertEqual(report_response.get_json()['data']['summary']['sales_count'], 0)
+
+    def test_api_sale_cancellation_requires_explicit_permission(self):
+        user, _ = self.create_api_user(
+            username='api-sem-cancelar', role='operator',
+            can_manage_sales=True, can_cancel_sales=False,
+        )
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.post(
+            '/api/v1/sales/999/cancel',
+            headers=self.bearer_header(token),
+            json={'reason': 'Sem permissão.'},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'permission_denied')
+
+    def test_api_sale_cancellation_is_tenant_scoped(self):
+        attacker, _ = self.create_api_user(username='api-empresa-a', company_name='Empresa A')
+        owner, owner_company = self.create_api_user(username='api-empresa-b', company_name='Empresa B')
+        with self.app.app_context():
+            foreign_sale = Sale(
+                company_id=owner_company.id,
+                user_id=owner.id,
+                status='completed',
+                total_amount=30,
+                final_amount=30,
+                payment_status='paid',
+            )
+            db.session.add(foreign_sale)
+            db.session.commit()
+            foreign_sale_id = foreign_sale.id
+
+        token = self.api_login(attacker.username, 'SenhaApi123').get_json()['data']['access_token']
+        missing_reason_response = self.client.post(
+            f'/api/v1/sales/{foreign_sale_id}/cancel',
+            headers=self.bearer_header(token),
+            json={},
+        )
+        self.assertEqual(missing_reason_response.status_code, 422)
+        self.assertEqual(
+            missing_reason_response.get_json()['errors'][0]['code'],
+            'text_required',
+        )
+        response = self.client.post(
+            f'/api/v1/sales/{foreign_sale_id}/cancel',
+            headers=self.bearer_header(token),
+            json={'reason': 'Tentativa entre empresas.'},
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'sale_not_found')
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Sale, foreign_sale_id).status, 'completed')
 
     def test_api_sale_requires_open_cash_register(self):
         user, company = self.create_api_user()

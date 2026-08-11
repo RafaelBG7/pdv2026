@@ -5,7 +5,6 @@ from pathlib import Path
 import re
 import secrets
 import string
-import time
 
 from flask import Blueprint, current_app, redirect, render_template, request, send_file, session, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -25,6 +24,13 @@ from app.permissions import (
     user_can_override_permission,
 )
 from app.security.passwords import validate_password_strength
+from app.extensions import limiter
+from app.security.rate_limit import (
+    anonymous_identity_key,
+    authenticated_identity_key,
+    configured_limit,
+    login_identity_key,
+)
 from app.services.alert_service import EMAIL_ALERT_TYPES, alert_settings_for_company, parse_recipients
 from app.services.audit_service import record_audit_event
 from app.services.email_service import EmailAuthenticationError, send_email_change_confirmation, send_verification_code_email
@@ -77,9 +83,6 @@ KEY_PRESETS = (
     ('3m', '3 meses', 90),
     ('1y', '1 ano', 365),
 )
-LOGIN_ATTEMPTS = {}
-LOGIN_ATTEMPT_LIMIT = 5
-LOGIN_BLOCK_SECONDS = 15 * 60
 LOGIN_FAILED_MESSAGE = 'Usuário/e-mail ou senha inválidos.'
 VERIFICATION_CODE_TTL_MINUTES = 15
 VERIFICATION_ATTEMPT_LIMIT = 5
@@ -96,6 +99,7 @@ EMPLOYEE_PERMISSIONS = (
     'can_manage_products',
     'can_manage_categories',
     'can_manage_sales',
+    'can_cancel_sales',
     'can_manage_cash_register',
     'can_view_reports',
     'can_manage_payables',
@@ -124,6 +128,7 @@ ROLE_PERMISSION_DEFAULTS = {
         'can_manage_products': False,
         'can_manage_categories': False,
         'can_manage_sales': True,
+        'can_cancel_sales': False,
         'can_manage_cash_register': True,
         'can_view_reports': False,
         'can_manage_payables': False,
@@ -137,6 +142,7 @@ ROLE_PERMISSION_DEFAULTS = {
         'can_manage_products': True,
         'can_manage_categories': True,
         'can_manage_sales': True,
+        'can_cancel_sales': True,
         'can_manage_cash_register': True,
         'can_view_reports': True,
         'can_manage_payables': True,
@@ -291,35 +297,6 @@ def request_email_change(user, new_email):
         current_app.config['TEST_LAST_EMAIL_CHANGE_TOKEN'] = token
         current_app.config['TEST_LAST_EMAIL_CHANGE_URL'] = confirmation_url
     send_email_change_confirmation(user, new_email, confirmation_url)
-
-
-def login_attempt_key(username):
-    remote_addr = request.headers.get('X-Forwarded-For', request.remote_addr) or 'local'
-    return f'{remote_addr.split(",")[0].strip()}:{(username or "").lower()}'
-
-
-def login_is_blocked(username):
-    attempt = LOGIN_ATTEMPTS.get(login_attempt_key(username))
-    if not attempt:
-        return False
-    blocked_until = attempt.get('blocked_until') or 0
-    if blocked_until <= time.time():
-        if blocked_until:
-            LOGIN_ATTEMPTS.pop(login_attempt_key(username), None)
-        return False
-    return True
-
-
-def register_login_failure(username):
-    key = login_attempt_key(username)
-    attempt = LOGIN_ATTEMPTS.setdefault(key, {'count': 0, 'blocked_until': 0})
-    attempt['count'] += 1
-    if attempt['count'] >= LOGIN_ATTEMPT_LIMIT:
-        attempt['blocked_until'] = time.time() + LOGIN_BLOCK_SECONDS
-
-
-def clear_login_failures(username):
-    LOGIN_ATTEMPTS.pop(login_attempt_key(username), None)
 
 
 def normalize_digits(value):
@@ -635,6 +612,18 @@ def render_auth_form(auth_tab='login', form_values=None, field_errors=None):
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit(
+    configured_limit('RATELIMIT_LOGIN', '5 per minute;20 per hour'),
+    key_func=login_identity_key,
+    methods=['POST'],
+    exempt_when=lambda: request.form.get('form_type', 'login') == 'register',
+)
+@limiter.limit(
+    configured_limit('RATELIMIT_REGISTRATION', '3 per hour'),
+    key_func=anonymous_identity_key,
+    methods=['POST'],
+    exempt_when=lambda: request.form.get('form_type', 'login') != 'register',
+)
 def login():
     if current_user.is_authenticated:
         if current_user.role == 'master':
@@ -697,6 +686,8 @@ def login():
             db.session.add(user)
             try:
                 db.session.flush()
+                # Provisiona e migra o banco do novo tenant antes de concluir o cadastro.
+                tenant_engine(company)
                 record_audit_event(
                     'company_created',
                     'company',
@@ -735,16 +726,11 @@ def login():
             flash('Informe a senha para entrar.', 'danger')
             return render_auth_form('login', login_form_values(), {'password': 'Informe a senha.'})
 
-        if login_is_blocked(username):
-            flash('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.', 'danger')
-            return render_auth_form('login', login_form_values(), {'username': 'Muitas tentativas para este acesso.'})
-
         user = User.query.filter(
             (User.username == username) | (User.email == username)
         ).first()
 
         if user and user.check_password(password):
-            clear_login_failures(username)
             if not user.is_active:
                 flash('Este usuário está inativo. Fale com o master da adega.', 'danger')
                 return render_auth_form('login', login_form_values(), {'username': 'Este usuário está inativo.'})
@@ -777,7 +763,6 @@ def login():
                 return redirect(url_for('auth.subscriptions'))
             return redirect(url_for('main.dashboard'))
 
-        register_login_failure(username)
         record_audit_event(
             'login_failed',
             'auth',
@@ -866,6 +851,10 @@ def verify_email():
 
 
 @auth_bp.route('/verify-email/resend', methods=['POST'])
+@limiter.limit(
+    configured_limit('RATELIMIT_EMAIL_RESEND', '3 per 15 minutes'),
+    key_func=anonymous_identity_key,
+)
 def resend_verification_code():
     user = verification_user_from_session()
     if not user:
@@ -882,6 +871,11 @@ def resend_verification_code():
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit(
+    configured_limit('RATELIMIT_PASSWORD_RESET', '3 per 15 minutes'),
+    key_func=login_identity_key,
+    methods=['POST'],
+)
 def forgot_password():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
@@ -1035,6 +1029,11 @@ def permission_unlock():
 
 @auth_bp.route('/assinatura', methods=['GET', 'POST'])
 @login_required
+@limiter.limit(
+    configured_limit('RATELIMIT_ACTIVATION', '5 per 15 minutes'),
+    key_func=authenticated_identity_key,
+    methods=['POST'],
+)
 def subscription_activation():
     if current_user.role == 'master':
         return redirect(url_for('auth.master_dashboard'))
@@ -1314,6 +1313,10 @@ def clear_master_logs():
 
 @auth_bp.route('/master/assinaturas/keys/gerar', methods=['POST'])
 @login_required
+@limiter.limit(
+    configured_limit('RATELIMIT_ADMIN', '30 per hour'),
+    key_func=authenticated_identity_key,
+)
 def generate_master_activation_key():
     if not master_required():
         return redirect(url_for('main.dashboard'))
@@ -1694,6 +1697,12 @@ def delete_company(company_id):
 
 @auth_bp.route('/configuracoes', methods=['GET', 'POST'])
 @login_required
+@limiter.limit(
+    configured_limit('RATELIMIT_BACKUP', '3 per hour'),
+    key_func=authenticated_identity_key,
+    methods=['POST'],
+    exempt_when=lambda: request.form.get('form_type') != 'manual_backup',
+)
 def settings():
     settings_company = current_tenant_company()
     if request.method == 'POST':

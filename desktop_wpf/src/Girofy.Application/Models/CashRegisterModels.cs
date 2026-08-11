@@ -54,6 +54,9 @@ public sealed class CashRegisterRecord
     [JsonPropertyName("sales_count")]
     public int SalesCount { get; init; }
 
+    [JsonPropertyName("cancelled_sales_count")]
+    public int CancelledSalesCount { get; init; }
+
     [JsonPropertyName("opening_amount")]
     public decimal? OpeningAmount { get; init; }
 
@@ -63,8 +66,17 @@ public sealed class CashRegisterRecord
     [JsonPropertyName("sales_total")]
     public decimal? SalesTotal { get; init; }
 
+    [JsonPropertyName("cancelled_sales_total")]
+    public decimal? CancelledSalesTotal { get; init; }
+
+    [JsonPropertyName("valid_sales_total")]
+    public decimal? ValidSalesTotal { get; init; }
+
     [JsonPropertyName("expected_amount")]
     public decimal? ExpectedAmount { get; init; }
+
+    [JsonPropertyName("adjusted_expected_amount")]
+    public decimal? AdjustedExpectedAmount { get; init; }
 
     [JsonPropertyName("difference")]
     public decimal? Difference { get; init; }
@@ -95,6 +107,11 @@ public sealed class CashRegisterRecord
     public string ExpectedAmountText => DashboardFormatting.OptionalMoney(ExpectedAmount);
 
     public string DifferenceText => DashboardFormatting.OptionalMoney(Difference);
+
+    public bool HasCancellationAdjustment => CancelledSalesCount > 0;
+
+    public string CancellationAdjustmentText =>
+        $"{CancelledSalesCount} venda(s) cancelada(s) · {DashboardFormatting.OptionalMoney(CancelledSalesTotal)} · total válido {DashboardFormatting.OptionalMoney(ValidSalesTotal)}";
 }
 
 public sealed class CashRegisterPaymentTotal
@@ -134,6 +151,21 @@ public sealed class CashRegisterTimelineSale
     [JsonPropertyName("payment_status")]
     public string PaymentStatus { get; init; } = string.Empty;
 
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = "completed";
+
+    [JsonPropertyName("is_cancelled")]
+    public bool IsCancelled { get; init; }
+
+    [JsonPropertyName("cancelled_at")]
+    public string? CancelledAt { get; init; }
+
+    [JsonPropertyName("cancelled_by_user_id")]
+    public int? CancelledByUserId { get; init; }
+
+    [JsonPropertyName("cancellation_reason")]
+    public string CancellationReason { get; init; } = string.Empty;
+
     [JsonPropertyName("payments_text")]
     public string PaymentsText { get; init; } = string.Empty;
 
@@ -168,9 +200,11 @@ public sealed class CashRegisterTimelineSale
 
     public string BalanceAfterSaleText => DashboardFormatting.OptionalMoney(BalanceAfterSale);
 
-    public string StatusText => string.Equals(PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase)
-        ? "Pago"
-        : PaymentStatus;
+    public string StatusText => IsCancelled
+        ? "Cancelada"
+        : string.Equals(PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase)
+            ? "Pago"
+            : PaymentStatus;
 
     public bool HasItems => Items.Count > 0;
 

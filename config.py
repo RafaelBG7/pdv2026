@@ -81,6 +81,27 @@ class Config:
         TESTING or ENVIRONMENT == 'development',
     )
     TRUST_PROXY_HEADERS = env_bool('TRUST_PROXY_HEADERS', False)
+    TRUSTED_PROXY_COUNT = int(os.environ.get('TRUSTED_PROXY_COUNT', '1'))
+    RATELIMIT_ENABLED = env_bool('RATELIMIT_ENABLED', True)
+    RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
+    RATELIMIT_HEADERS_ENABLED = True
+    RATELIMIT_SWALLOW_ERRORS = False
+    RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = env_bool(
+        'RATELIMIT_IN_MEMORY_FALLBACK_ENABLED',
+        ENVIRONMENT != 'production',
+    )
+    RATELIMIT_KEY_PREFIX = os.environ.get('RATELIMIT_KEY_PREFIX', 'girofy')
+    RATELIMIT_LOGIN = os.environ.get('RATELIMIT_LOGIN', '5 per minute;20 per hour')
+    RATELIMIT_PASSWORD_RESET = os.environ.get('RATELIMIT_PASSWORD_RESET', '3 per 15 minutes')
+    RATELIMIT_EMAIL_RESEND = os.environ.get('RATELIMIT_EMAIL_RESEND', '3 per 15 minutes')
+    RATELIMIT_REGISTRATION = os.environ.get('RATELIMIT_REGISTRATION', '3 per hour')
+    RATELIMIT_ACTIVATION = os.environ.get('RATELIMIT_ACTIVATION', '5 per 15 minutes')
+    RATELIMIT_REFRESH = os.environ.get('RATELIMIT_REFRESH', '120 per hour')
+    RATELIMIT_API_GENERAL = os.environ.get('RATELIMIT_API_GENERAL', '600 per minute')
+    RATELIMIT_IMPORT = os.environ.get('RATELIMIT_IMPORT', '5 per hour')
+    RATELIMIT_BACKUP = os.environ.get('RATELIMIT_BACKUP', '3 per hour')
+    RATELIMIT_EXPORT = os.environ.get('RATELIMIT_EXPORT', '20 per hour')
+    RATELIMIT_ADMIN = os.environ.get('RATELIMIT_ADMIN', '30 per hour')
     MASTER_DEFAULT_USERNAME = os.environ.get('MASTER_DEFAULT_USERNAME', 'master')
     MASTER_DEFAULT_PASSWORD = os.environ.get('MASTER_DEFAULT_PASSWORD', 'master123')
     PASSWORD_MIN_LENGTH = int(os.environ.get('PASSWORD_MIN_LENGTH', '8'))
@@ -112,8 +133,16 @@ class Config:
     MYSQL_TENANT_DATABASE_URL_TEMPLATE = os.environ.get('MYSQL_TENANT_DATABASE_URL_TEMPLATE', '')
     MYSQL_SERVER_DATABASE_URL = os.environ.get('MYSQL_SERVER_DATABASE_URL', mysql_database_url('mysql'))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SCHEMA_MANAGEMENT_MODE = os.environ.get(
+        'SCHEMA_MANAGEMENT_MODE',
+        'test_create_all' if TESTING else ('verify' if ENVIRONMENT == 'production' else 'upgrade'),
+    ).lower()
 
     if ENVIRONMENT == 'production' and SECRET_KEY == 'adega-jf-secret-key':
         raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em produção.')
     if ENVIRONMENT == 'production' and MASTER_DEFAULT_PASSWORD == 'master123':
         raise RuntimeError('Defina MASTER_DEFAULT_PASSWORD seguro antes de rodar em produção.')
+    if ENVIRONMENT == 'production' and RATELIMIT_ENABLED and RATELIMIT_STORAGE_URI.startswith('memory://'):
+        raise RuntimeError('Configure RATELIMIT_STORAGE_URI com Redis antes de rodar em produção.')
+    if ENVIRONMENT == 'production' and RATELIMIT_IN_MEMORY_FALLBACK_ENABLED:
+        raise RuntimeError('Desative RATELIMIT_IN_MEMORY_FALLBACK_ENABLED em produção.')

@@ -33,6 +33,7 @@ def _item_profit_expression():
 def _period_filters(company_id, start_at, end_at):
     return (
         Sale.company_id == company_id,
+        Sale.valid_filter(),
         Sale.created_at >= start_at,
         Sale.created_at < end_at,
     )
@@ -57,7 +58,7 @@ def _sales_profit(db_session, company_id, start_at=None, end_at=None, cash_regis
     query = (
         db_session.query(func.coalesce(func.sum(_item_profit_expression()), 0.0))
         .join(Sale, Sale.id == SaleItem.sale_id)
-        .filter(Sale.company_id == company_id)
+        .filter(Sale.company_id == company_id, Sale.valid_filter())
     )
     if start_at is not None:
         query = query.filter(Sale.created_at >= start_at)
@@ -153,7 +154,7 @@ def _recent_sales(db_session, company_id):
     sales = (
         db_session.query(Sale)
         .options(selectinload(Sale.payments))
-        .filter(Sale.company_id == company_id)
+        .filter(Sale.company_id == company_id, Sale.valid_filter())
         .order_by(Sale.created_at.desc(), Sale.id.desc())
         .limit(6)
         .all()
@@ -211,6 +212,7 @@ def _current_cash(db_session, company_id, include_reports):
             .filter(
                 Sale.company_id == company_id,
                 Sale.cash_register_id == cash_register.id,
+                Sale.valid_filter(),
             )
             .scalar()
         )

@@ -32,7 +32,7 @@ Implementado:
 
 ## Prioridade Alta
 
-- Evoluir rate limit para Redis ou armazenamento compartilhado.
+- Monitorar e testar o Redis de rate limit sob múltiplas réplicas.
 - Adicionar migrações versionadas com Alembic/Flask-Migrate.
 - Criar fluxo de restauração de backup.
 - Manter `FLASK_DEBUG=0` em ambiente de produção.
@@ -79,7 +79,7 @@ Melhorias recomendadas:
 Melhorias recomendadas:
 
 - HTTPS.
-- Rate limit persistente/distribuído no login.
+- Rate limit persistente/distribuído concluído no login e demais rotas sensíveis.
 - Política de senha mais forte.
 - Proteção do painel master por IP ou segundo fator.
 - Logs externos.

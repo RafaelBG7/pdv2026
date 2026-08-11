@@ -1,5 +1,7 @@
 # 22 - OCI Free Tier
 
+As migrations rodam na rede Docker sem publicar MySQL. O runner gera backup antes do upgrade e a aplicação usa `SCHEMA_MANAGEMENT_MODE=verify`. Veja [29-migracoes-versionadas.md](29-migracoes-versionadas.md).
+
 ## Objetivo
 
 Preparar a hospedagem do Girofy na Oracle Cloud Infrastructure usando apenas recursos candidatos ao Always Free.
@@ -16,6 +18,10 @@ O desenho evita banco gerenciado e load balancer pago:
 - porta pública alta `18080` enquanto não houver domínio/HTTPS.
 
 ## Status do Ambiente Atual
+
+O Compose inclui um Redis interno para rate limit distribuído. Ele não publica a porta 6379,
+possui health check, limite de 96 MB, política `allkeys-lru` e persistência desativada. A aplicação
+usa `redis://redis:6379/0` somente pela rede Docker e aguarda Redis e MySQL ficarem saudáveis.
 
 Em 05/07/2026, a região disponível na conta não tinha capacidade para `VM.Standard.A1.Flex`. O ambiente foi criado com fallback para:
 

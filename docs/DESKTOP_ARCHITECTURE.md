@@ -176,7 +176,12 @@ O contrato de listagem existente é limitado ao dia atual ou ao caixa aberto e n
 parâmetros de filtro, paginação nem total de registros. Por isso o Windows não simula
 filtros ou páginas sobre uma lista baixada integralmente. Período, número, operador, forma
 de pagamento e paginação permanecem indisponíveis até que o backend forneça um contrato
-de consulta apropriado. Cancelamento, estorno e edição continuam fora do escopo.
+de consulta apropriado. O cancelamento completo já é suportado por
+`POST /api/v1/sales/{id}/cancel`; edição e cancelamento parcial continuam fora do escopo.
+
+O modal de cancelamento é nativo WPF e apenas coleta o motivo. O cliente não altera estoque
+nem banco localmente: após confirmação, consome a API, substitui o detalhe pelo retorno do
+servidor e atualiza o histórico. A permissão `can_cancel_sales` controla a visibilidade da ação.
 
 ## Estoque nativo
 

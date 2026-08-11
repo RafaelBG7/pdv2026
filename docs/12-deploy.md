@@ -1,5 +1,9 @@
 # 12 - Deploy
 
+## Deploy com migrations
+
+O deploy OCI executa `backup → migration central → migrations tenants → containers → health checks` e para na primeira falha. Procedimentos operacionais e restauração: [29-migracoes-versionadas.md](29-migracoes-versionadas.md).
+
 ## Status Atual
 
 O Girofy já possui três formas principais de execução:
@@ -223,7 +227,7 @@ Itens ainda recomendados:
 
 - domínio definitivo;
 - HTTPS com Caddy;
-- rate limit persistente para endpoints sensíveis;
+- monitoramento do Redis usado pelo rate limit persistente;
 - Alembic/Flask-Migrate;
 - auditoria de ações de negócio;
 - backup externo fora da VM;

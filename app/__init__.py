@@ -6,11 +6,12 @@ from sqlalchemy import create_engine, inspect, or_, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import joinedload
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-from app.extensions import db, login_manager
+from app.extensions import db, limiter, login_manager, migrate
 from app.error_logging import log_http_error, setup_error_logging
-from app.schema import ensure_performance_indexes
 from app.security.csrf import init_csrf
+from app.security.rate_limit import init_rate_limit_errors
 from config import Config
 
 
@@ -87,6 +88,28 @@ def ensure_sale_discount_columns():
     db.session.commit()
 
 
+def ensure_sale_cancellation_columns():
+    inspector = inspect(db.engine)
+    if 'sales' not in inspector.get_table_names():
+        return
+
+    columns = {column['name'] for column in inspector.get_columns('sales')}
+    migrations = {
+        'status': "ALTER TABLE sales ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'completed'",
+        'cancelled_at': 'ALTER TABLE sales ADD COLUMN cancelled_at DATETIME',
+        'cancelled_by_user_id': 'ALTER TABLE sales ADD COLUMN cancelled_by_user_id INTEGER',
+        'cancellation_reason': "ALTER TABLE sales ADD COLUMN cancellation_reason VARCHAR(500) DEFAULT ''",
+    }
+    for column, statement in migrations.items():
+        if column not in columns:
+            db.session.execute(text(statement))
+
+    db.session.execute(text(
+        "UPDATE sales SET status = 'completed' WHERE status IS NULL OR status = ''"
+    ))
+    db.session.commit()
+
+
 def ensure_sale_item_profit_columns():
     inspector = inspect(db.engine)
     if 'sale_items' not in inspector.get_table_names():
@@ -136,6 +159,7 @@ def ensure_user_permission_columns():
         'can_manage_products': 'ALTER TABLE users ADD COLUMN can_manage_products BOOLEAN DEFAULT 1',
         'can_manage_categories': 'ALTER TABLE users ADD COLUMN can_manage_categories BOOLEAN DEFAULT 1',
         'can_manage_sales': 'ALTER TABLE users ADD COLUMN can_manage_sales BOOLEAN DEFAULT 1',
+        'can_cancel_sales': 'ALTER TABLE users ADD COLUMN can_cancel_sales BOOLEAN DEFAULT 0',
         'can_manage_cash_register': 'ALTER TABLE users ADD COLUMN can_manage_cash_register BOOLEAN DEFAULT 1',
         'can_view_reports': 'ALTER TABLE users ADD COLUMN can_view_reports BOOLEAN DEFAULT 1',
         'can_manage_payables': 'ALTER TABLE users ADD COLUMN can_manage_payables BOOLEAN DEFAULT 1',
@@ -336,17 +360,35 @@ def ensure_company_backup_columns():
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    if app.config.get('TRUST_PROXY_HEADERS', False):
+        trusted_proxy_count = max(1, int(app.config.get('TRUSTED_PROXY_COUNT', 1)))
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=trusted_proxy_count,
+            x_proto=trusted_proxy_count,
+            x_host=trusted_proxy_count,
+            x_port=trusted_proxy_count,
+        )
     environment = (app.config.get('ENVIRONMENT') or app.config.get('APP_ENV') or '').lower()
     if environment == 'production':
         if app.config.get('SECRET_KEY') == 'adega-jf-secret-key':
             raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em produção.')
         if app.config.get('MASTER_DEFAULT_PASSWORD') == 'master123':
             raise RuntimeError('Defina MASTER_DEFAULT_PASSWORD seguro antes de rodar em produção.')
+        if app.config.get('RATELIMIT_ENABLED', True) and str(
+            app.config.get('RATELIMIT_STORAGE_URI', 'memory://')
+        ).startswith('memory://'):
+            raise RuntimeError('Configure RATELIMIT_STORAGE_URI com Redis antes de rodar em produção.')
+        if app.config.get('RATELIMIT_IN_MEMORY_FALLBACK_ENABLED', False):
+            raise RuntimeError('Desative RATELIMIT_IN_MEMORY_FALLBACK_ENABLED em produção.')
     setup_error_logging(app)
     ensure_mysql_database_exists(app.config['SQLALCHEMY_DATABASE_URI'])
 
     db.init_app(app)
+    migrate.init_app(app, db, directory=str(Config.BASE_DIR / 'migrations' / 'central'))
     login_manager.init_app(app)
+    limiter.init_app(app)
+    init_rate_limit_errors(app)
     init_csrf(app)
 
     with app.app_context():
@@ -360,20 +402,17 @@ def create_app(config_class=Config):
         app.register_blueprint(api_v1_bp)
         app.register_blueprint(main_bp)
 
-        db.create_all()
-        ensure_product_kit_columns()
-        ensure_product_stock_columns()
-        ensure_sale_discount_columns()
-        ensure_sale_item_profit_columns()
-        ensure_user_profile_columns()
-        ensure_user_permission_columns()
-        ensure_user_email_security_columns()
-        ensure_company_columns()
-        ensure_company_subscription_columns()
-        ensure_company_card_fee_columns()
-        ensure_company_operation_columns()
-        ensure_company_backup_columns()
-        ensure_performance_indexes(db.engine, app.logger)
+        schema_mode = 'test_create_all' if app.config.get('TESTING') else app.config.get('SCHEMA_MANAGEMENT_MODE', 'verify')
+        if schema_mode == 'test_create_all':
+            db.create_all()
+        elif schema_mode == 'upgrade':
+            from app.services.migration_service import upgrade_database
+            upgrade_database(db.engine, 'central', logger=app.logger)
+        elif schema_mode == 'verify':
+            from app.services.migration_service import assert_database_at_head
+            assert_database_at_head(db.engine, 'central')
+        elif schema_mode != 'off':
+            raise RuntimeError(f'SCHEMA_MANAGEMENT_MODE inválido: {schema_mode}.')
 
         if not User.query.filter_by(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master')).first():
             company = Company.query.filter_by(name='Painel Master').order_by(Company.id.asc()).first()

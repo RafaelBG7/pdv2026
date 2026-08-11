@@ -66,6 +66,7 @@ def cash_register_expected_amount(db_session, company_id, cash_register):
     ).filter(
         Sale.company_id == company_id,
         Sale.cash_register_id == cash_register.id,
+        Sale.valid_filter(),
     ).scalar()
     return money_decimal(cash_register.opening_amount) + money_decimal(sales_total)
 
@@ -193,6 +194,8 @@ def build_cash_register_snapshot(
 
     sales_metrics = {}
     payment_totals = {}
+    valid_payment_totals = {}
+    cancellation_metrics = {}
     if cash_register_ids:
         sales_metrics = {
             cash_register_id: {
@@ -229,6 +232,43 @@ def build_cash_register_snapshot(
         ):
             payment_totals.setdefault(cash_register_id, {})[method] = money_value(amount)
 
+        cancellation_metrics = {
+            cash_register_id: {
+                'sales_count': int(sales_count or 0),
+                'sales_total': money_decimal(sales_total),
+            }
+            for cash_register_id, sales_count, sales_total in (
+                db_session.query(
+                    Sale.cash_register_id,
+                    func.count(Sale.id),
+                    func.coalesce(func.sum(Sale.final_amount), 0.0),
+                )
+                .filter(
+                    Sale.company_id == company_id,
+                    Sale.cash_register_id.in_(cash_register_ids),
+                    Sale.status == 'cancelled',
+                )
+                .group_by(Sale.cash_register_id)
+                .all()
+            )
+        }
+        for cash_register_id, method, amount in (
+            db_session.query(
+                Sale.cash_register_id,
+                Payment.method,
+                func.coalesce(func.sum(Payment.amount), 0.0),
+            )
+            .join(Payment, Payment.sale_id == Sale.id)
+            .filter(
+                Sale.company_id == company_id,
+                Sale.cash_register_id.in_(cash_register_ids),
+                Sale.valid_filter(),
+            )
+            .group_by(Sale.cash_register_id, Payment.method)
+            .all()
+        ):
+            valid_payment_totals.setdefault(cash_register_id, {})[method] = money_value(amount)
+
     user_ids = {item.user_id for item in cash_registers if item.user_id}
     users = {
         user.id: user.full_name or user.username
@@ -243,17 +283,34 @@ def build_cash_register_snapshot(
             'sales_count': 0,
             'sales_total': Decimal('0.00'),
         })
-        sales_total = metrics['sales_total']
+        cancelled = cancellation_metrics.get(cash_register.id, {
+            'sales_count': 0,
+            'sales_total': Decimal('0.00'),
+        })
+        original_sales_total = metrics['sales_total']
+        valid_sales_total = original_sales_total - cancelled['sales_total']
+        preserve_closed_history = cash_register.status == 'closed'
+        sales_total = original_sales_total if preserve_closed_history else valid_sales_total
+        sales_count = (
+            metrics['sales_count']
+            if preserve_closed_history
+            else metrics['sales_count'] - cancelled['sales_count']
+        )
         opening_amount = money_decimal(cash_register.opening_amount)
         expected_amount = opening_amount + sales_total
+        adjusted_expected_amount = opening_amount + valid_sales_total
         closing_amount = money_decimal(cash_register.closing_amount)
+        visible_payment_totals = (
+            payment_totals if preserve_closed_history else valid_payment_totals
+        )
         return {
             'id': cash_register.id,
             'status': cash_register.status,
             'opened_at': timestamp_value(cash_register.opened_at),
             'closed_at': timestamp_value(cash_register.closed_at),
             'responsible_user': users.get(cash_register.user_id, 'Usuário não identificado'),
-            'sales_count': metrics['sales_count'],
+            'sales_count': sales_count,
+            'cancelled_sales_count': cancelled['sales_count'],
             'opening_amount': money_value(opening_amount) if can_view_financials else None,
             'closing_amount': (
                 money_value(closing_amount)
@@ -261,7 +318,14 @@ def build_cash_register_snapshot(
                 else None
             ),
             'sales_total': money_value(sales_total) if can_view_financials else None,
+            'cancelled_sales_total': (
+                money_value(cancelled['sales_total']) if can_view_financials else None
+            ),
+            'valid_sales_total': money_value(valid_sales_total) if can_view_financials else None,
             'expected_amount': money_value(expected_amount) if can_view_financials else None,
+            'adjusted_expected_amount': (
+                money_value(adjusted_expected_amount) if can_view_financials else None
+            ),
             'difference': (
                 money_value(closing_amount - expected_amount)
                 if can_view_financials and cash_register.status == 'closed'
@@ -271,7 +335,7 @@ def build_cash_register_snapshot(
                 {
                     'method': method,
                     'label': label,
-                    'amount': payment_totals.get(cash_register.id, {}).get(method, 0.0),
+                    'amount': visible_payment_totals.get(cash_register.id, {}).get(method, 0.0),
                 }
                 for method, label in PAYMENT_METHODS.items()
             ] if can_view_financials else [],

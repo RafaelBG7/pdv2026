@@ -2,7 +2,7 @@
 
 ## Status Atual
 
-O projeto possui segurança funcional para uso controlado e recebeu uma primeira etapa de hardening de aplicação. A base atual cobre autenticação, permissões, isolamento por adega, CSRF, headers de segurança, cookies por ambiente, logs mascarados e auditoria. Ainda existem pontos de produção pública que exigem próximas etapas, principalmente rate limit persistente, migrações versionadas, reautenticação para operações destrutivas e revisão Docker completa.
+O projeto possui segurança funcional para uso controlado e recebeu hardening de aplicação. A base atual cobre autenticação, permissões, isolamento por adega, CSRF, headers de segurança, cookies por ambiente, logs mascarados, auditoria e rate limit distribuído. Permanecem como próximas etapas migrações versionadas e reautenticação para operações destrutivas.
 
 ## Implementado
 
@@ -208,7 +208,7 @@ Backup por adega existe, mas produção deve enviar cópias para local externo.
 
 ### Rate Limiting de Login
 
-Existe bloqueio simples em memória após tentativas inválidas de login. Ele protege o uso local/controlado, mas em produção deve ser substituído ou complementado por uma solução persistente, como Flask-Limiter com Redis ou outro armazenamento compartilhado.
+Login e demais endpoints sensíveis usam Flask-Limiter. Redis compartilha os contadores em produção; armazenamento em memória é permitido somente no desenvolvimento.
 
 ## Recomendações de Produção
 
@@ -218,12 +218,23 @@ Existe bloqueio simples em memória após tentativas inválidas de login. Ele pr
 - Usar domínio com HTTPS.
 - Criar usuário MySQL dedicado.
 - Restringir painel master.
-- Usar rate limit persistente para `/login` e endpoints sensíveis.
+- Manter o rate limit persistente em Redis para login e demais endpoints sensíveis.
 - Exigir confirmação digitada/reautenticação para excluir adega e operações destrutivas.
 - Adotar Alembic/Flask-Migrate para migrações versionadas.
 - Revisar upload/importação com limites de linhas e validação MIME mais forte.
 - Revisar Docker para usuário não-root e imagem final mínima.
 - Guardar backups fora do servidor.
-- Ampliar auditoria para cancelamentos, estornos e aprovações futuras.
+- Ampliar auditoria para aprovações futuras, sangria, suprimento e estornos externos de pagamento.
+
+O cancelamento de venda já é protegido por `can_cancel_sales`, filtro obrigatório por
+`company_id`, transação com rollback, bloqueio de linha no MySQL e auditoria `sale_cancelled`.
+Tentativas repetidas são recusadas antes de uma nova devolução de estoque.
+
+## Rate limit distribuído
+
+O Girofy centraliza o controle no Flask-Limiter e usa Redis em produção. Antes da autenticação,
+a chave combina IP e identificador normalizado; depois dela, usa token ou empresa+usuário.
+Bloqueios HTTP 429 e falhas do storage são registrados em `security.log`, sem senha, token,
+cookie ou activation key. Consulte `docs/28-rate-limit-redis.md` para limites e operação.
 - Monitorar erros 500 e tentativas negadas.
 - Configurar certificados de assinatura para os instaladores desktop.

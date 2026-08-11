@@ -1,12 +1,20 @@
 from dataclasses import dataclass
-from datetime import timezone
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import selectinload
 
-from app.models import ApiSaleRequest, CashRegister, Payment, Product, Sale, SaleItem
+from app.models import (
+    ApiSaleRequest,
+    CashRegister,
+    Payment,
+    Product,
+    Sale,
+    SaleItem,
+    StockMovement,
+)
 from app.services.audit_service import record_audit_event
-from app.services.stock_service import StockMovementError, decrease_stock
+from app.services.stock_service import StockMovementError, decrease_stock, increase_stock
 
 
 PAYMENT_METHODS = {
@@ -45,6 +53,13 @@ class SaleCreationResult:
     idempotency_key: str
     already_processed: bool = False
     stock_warnings: tuple[str, ...] = ()
+
+
+@dataclass
+class SaleCancellationResult:
+    sale: Sale
+    stock_movements: tuple[StockMovement, ...]
+    cash_register_was_closed: bool
 
 
 def money_decimal(value):
@@ -342,7 +357,7 @@ def create_sale(
         ))
 
     sale_request.sale_id = sale.id
-    record_audit_event(
+    audit_log = record_audit_event(
         'sale_completed',
         'sale',
         sale.id,
@@ -374,11 +389,181 @@ def create_sale(
         user=user,
         db_session=db_session,
     )
+    if audit_log is None:
+        raise SaleOperationError(
+            'Não foi possível registrar a auditoria. O cancelamento foi interrompido.',
+            'sale_cancellation_audit_failed',
+            500,
+        )
     db_session.flush()
     return SaleCreationResult(
         sale=sale,
         idempotency_key=idempotency_key,
         stock_warnings=tuple(stock_warnings),
+    )
+
+
+def cancel_sale(db_session, company, user, sale_id, reason):
+    cancellation_reason = (reason or '').strip()
+    if not cancellation_reason:
+        raise SaleOperationError(
+            'Informe o motivo do cancelamento.',
+            'cancellation_reason_required',
+            422,
+            'reason',
+        )
+    if len(cancellation_reason) > 500:
+        raise SaleOperationError(
+            'O motivo do cancelamento deve ter no máximo 500 caracteres.',
+            'cancellation_reason_too_long',
+            422,
+            'reason',
+        )
+
+    sale_query = (
+        db_session.query(Sale)
+        .options(
+            selectinload(Sale.items).selectinload(SaleItem.product),
+            selectinload(Sale.payments),
+        )
+        .filter(
+            Sale.id == sale_id,
+            Sale.company_id == company.id,
+        )
+    )
+    bind = db_session.get_bind()
+    if bind is not None and bind.dialect.name.startswith('mysql'):
+        sale_query = sale_query.with_for_update()
+    sale = sale_query.first()
+    if sale is None:
+        raise SaleOperationError(
+            'Venda não encontrada nesta adega.',
+            'sale_not_found',
+            404,
+        )
+    if sale.is_cancelled:
+        raise SaleOperationError(
+            'Esta venda já foi cancelada.',
+            'sale_already_cancelled',
+            409,
+        )
+
+    existing_cancellations = db_session.query(StockMovement.id).filter(
+        StockMovement.company_id == company.id,
+        StockMovement.source_type == 'sale_cancellation',
+        StockMovement.source_id == sale.id,
+        StockMovement.movement_type == 'cancellation',
+    ).first()
+    if existing_cancellations is not None:
+        raise SaleOperationError(
+            'Esta venda já possui devolução de estoque registrada.',
+            'sale_cancellation_stock_already_returned',
+            409,
+        )
+
+    original_movements = (
+        db_session.query(StockMovement)
+        .filter(
+            StockMovement.company_id == company.id,
+            StockMovement.source_type == 'sale',
+            StockMovement.source_id == sale.id,
+            StockMovement.movement_type == 'sale',
+        )
+        .order_by(StockMovement.product_id.asc(), StockMovement.id.asc())
+        .all()
+    )
+    if sale.items and not original_movements:
+        raise SaleOperationError(
+            'A movimentação original desta venda não foi encontrada. O cancelamento foi interrompido para proteger o estoque.',
+            'sale_stock_movements_missing',
+            409,
+        )
+
+    quantities_by_product = {}
+    for movement in original_movements:
+        if movement.product_id is None:
+            raise SaleOperationError(
+                'Um produto da movimentação original não está mais disponível.',
+                'sale_stock_product_missing',
+                409,
+            )
+        quantities_by_product[movement.product_id] = (
+            quantities_by_product.get(movement.product_id, 0) + int(movement.quantity or 0)
+        )
+
+    products = {
+        product.id: product
+        for product in db_session.query(Product).filter(
+            Product.company_id == company.id,
+            Product.id.in_(quantities_by_product),
+        ).order_by(Product.id).all()
+    } if quantities_by_product else {}
+    if len(products) != len(quantities_by_product):
+        raise SaleOperationError(
+            'Um produto consumido pela venda não foi encontrado. O estoque não foi alterado.',
+            'sale_stock_product_missing',
+            409,
+        )
+
+    returned_movements = []
+    try:
+        for product_id, quantity in quantities_by_product.items():
+            product = products[product_id]
+            returned_movements.append(increase_stock(
+                db_session,
+                product,
+                quantity,
+                movement_type='cancellation',
+                source_type='sale_cancellation',
+                user_id=user.id,
+                source_id=sale.id,
+                unit_cost=product.cost_price,
+                reason=f'Cancelamento da venda #{sale.id}',
+                notes=cancellation_reason,
+            ))
+    except StockMovementError as error:
+        raise SaleOperationError(
+            str(error),
+            'sale_cancellation_stock_failed',
+            409,
+        ) from error
+
+    cancelled_at = datetime.now(timezone.utc)
+    previous_status = sale.status or 'completed'
+    sale.status = 'cancelled'
+    sale.cancelled_at = cancelled_at
+    sale.cancelled_by_user_id = user.id
+    sale.cancellation_reason = cancellation_reason
+    cash_register_was_closed = bool(
+        sale.cash_register is not None and sale.cash_register.status == 'closed'
+    )
+    record_audit_event(
+        'sale_cancelled',
+        'sale',
+        sale.id,
+        f'Venda #{sale.id} cancelada.',
+        old_values={
+            'status': previous_status,
+            'final_amount': money_value(sale.final_amount),
+            'cash_register_id': sale.cash_register_id,
+        },
+        new_values={
+            'status': sale.status,
+            'cancelled_at': cancelled_at,
+            'cancelled_by_user_id': user.id,
+            'cancellation_reason': cancellation_reason,
+            'cash_register_status': sale.cash_register.status if sale.cash_register else '',
+            'stock_movements': [movement.id for movement in returned_movements],
+        },
+        company_id=company.id,
+        user=user,
+        db_session=db_session,
+    )
+    db_session.flush()
+    return SaleCancellationResult(
+        sale=sale,
+        stock_movements=tuple(returned_movements),
+        cash_register_was_closed=cash_register_was_closed,
     )
 
 
@@ -394,6 +579,11 @@ def serialize_sale_result(result):
         'created_at': timestamp_value(sale.created_at),
         'cash_register_id': sale.cash_register_id,
         'payment_status': sale.payment_status,
+        'status': sale.status or 'completed',
+        'is_cancelled': sale.is_cancelled,
+        'cancelled_at': timestamp_value(sale.cancelled_at),
+        'cancelled_by_user_id': sale.cancelled_by_user_id,
+        'cancellation_reason': sale.cancellation_reason or '',
         'subtotal': money_value(sale.total_amount),
         'discount_amount': money_value(sale.discount_amount),
         'final_amount': money_value(final_amount),

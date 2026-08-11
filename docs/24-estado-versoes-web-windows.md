@@ -1,5 +1,12 @@
 # Estado das Versões Web e Windows
 
+## Banco e migrations
+
+- **Web/API:** proprietária do MySQL central, bancos tenants, Alembic, backups e deploy OCI.
+- **Windows:** não executa migration nem acessa MySQL; esta mudança não exige novo artefato WPF.
+
+Detalhes em [29-migracoes-versionadas.md](29-migracoes-versionadas.md).
+
 Atualizado em: 10/08/2026
 
 ## Objetivo
@@ -210,13 +217,13 @@ Auditoria, logs e backup:
 
 - Domínio próprio e HTTPS definitivo.
 - CSRF explícito em formulários HTML.
-- Rate limit persistente/distribuído para endpoints sensíveis.
+- Rate limit persistente/distribuído implementado para Web e API, compatível com o Windows.
 - Migrações versionadas com Alembic/Flask-Migrate.
 - Restauração guiada de backup pela interface.
 - Cobrança real integrada aos planos Basic/Pro.
 - Emissão de comprovante/impressão fiscal ou não fiscal.
 - Cadastro de clientes.
-- Cancelamento/estorno de venda.
+- Cancelamento parcial por item e estorno automático junto a adquirentes ainda não estão disponíveis.
 - Auditoria mais completa para todas as alterações críticas.
 - Otimização específica da tabela "Vendas do período" em relatórios, sem alterar o restante da tela.
 
@@ -227,6 +234,25 @@ Auditoria, logs e backup:
 A versão Windows é um cliente nativo WPF em desenvolvimento. Ela não substitui a versão
 web e não derruba a aplicação hospedada. O Windows usa a API da versão web e acessa os
 mesmos usuários, adegas, permissões e dados.
+
+### Cancelamento de vendas no Windows
+
+- A venda é cancelada dentro do detalhe expansível do histórico.
+- O botão aparece somente com `can_cancel_sales` e para venda ainda válida.
+- Um modal nativo exige motivo antes da confirmação.
+- O WPF chama exclusivamente `POST /api/v1/sales/{id}/cancel`.
+- O backend devolve estoque, registra auditoria e determina o resultado financeiro.
+- Após o sucesso, o aplicativo atualiza o detalhe e recarrega o histórico.
+- Vendas canceladas continuam visíveis com status, motivo, responsável e data.
+- Caixas fechados exibem ajuste posterior sem reescrever a conferência original.
+
+### Cancelamento de vendas na Web
+
+- A ação fica no detalhe `/vendas/<id>` e usa formulário `POST` protegido por CSRF.
+- A confirmação exige motivo e informa que o estoque será devolvido.
+- A listagem mantém a venda e aplica o badge `CANCELADA`.
+- Dashboard e relatórios ignoram a venda nos indicadores válidos.
+- Itens e pagamentos originais permanecem disponíveis para auditoria.
 
 ### Arquitetura
 

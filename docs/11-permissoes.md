@@ -34,6 +34,7 @@ As permissões ficam no modelo `User`:
 | `can_manage_products` | Criar, editar, importar e alterar produtos. |
 | `can_manage_categories` | Criar, editar e excluir categorias. |
 | `can_manage_sales` | Registrar e consultar vendas. |
+| `can_cancel_sales` | Cancelar vendas, devolver estoque e registrar a justificativa auditável. |
 | `can_manage_cash_register` | Abrir, fechar e consultar caixa. |
 | `can_view_reports` | Acessar relatórios. |
 | `can_manage_payables` | Gerenciar contas a pagar. |

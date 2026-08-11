@@ -52,6 +52,8 @@ def audit_action_for_movement(movement_type):
         return 'stock_import'
     if movement_type == 'return':
         return 'stock_return'
+    if movement_type == 'cancellation':
+        return 'stock_sale_cancellation'
     if movement_type == 'entry':
         return 'stock_entry'
     return 'stock_adjustment'

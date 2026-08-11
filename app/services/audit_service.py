@@ -60,8 +60,10 @@ AUDIT_ACTION_LABELS = {
     'stock_sale': 'Baixa por venda',
     'stock_import': 'Estoque importado',
     'stock_return': 'Devolução ao estoque',
+    'stock_sale_cancellation': 'Estoque devolvido por cancelamento',
     'sale_created': 'Venda criada',
     'sale_completed': 'Venda concluída',
+    'sale_cancelled': 'Venda cancelada',
     'cash_register_opened': 'Caixa aberto',
     'cash_register_closed': 'Caixa fechado',
     'payable_created': 'Conta criada',
@@ -152,11 +154,7 @@ def changed_values(old_values, new_values):
 def request_ip_address():
     if not has_request_context():
         return ''
-    remote_addr = request.remote_addr or ''
-    forwarded_for = request.headers.get('X-Forwarded-For', '')
-    if forwarded_for and remote_addr in {'127.0.0.1', '::1'}:
-        return forwarded_for.split(',', 1)[0].strip()
-    return remote_addr
+    return request.remote_addr or ''
 
 
 def record_audit_event(

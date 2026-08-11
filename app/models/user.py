@@ -26,6 +26,7 @@ class User(db.Model, UserMixin):
     can_manage_products = db.Column(db.Boolean, default=True)
     can_manage_categories = db.Column(db.Boolean, default=True)
     can_manage_sales = db.Column(db.Boolean, default=True)
+    can_cancel_sales = db.Column(db.Boolean, default=False)
     can_manage_cash_register = db.Column(db.Boolean, default=True)
     can_view_reports = db.Column(db.Boolean, default=True)
     can_manage_payables = db.Column(db.Boolean, default=True)

@@ -203,5 +203,5 @@ O sistema bloqueia:
 
 ## Pendências
 
-- Rate limit persistente/distribuído para produção.
+- Rate limit persistente/distribuído ativo via Flask-Limiter e Redis em produção.
 - Reautenticação para operações extremamente críticas.

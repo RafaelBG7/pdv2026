@@ -17,7 +17,7 @@ Esta etapa aplicou um hardening incremental, sem reescrever a arquitetura e sem 
 | Alto | `SECRET_KEY` e senha master padrão em produção | Mitigado com bloqueio de inicialização em `APP_ENV=production`. |
 | Médio | Cookies sem política explícita por ambiente | Mitigado com `HttpOnly`, `SameSite`, `Secure` em produção e tempo de sessão configurável. |
 | Médio | Ausência de CSP e headers complementares | Mitigado com headers centralizados compatíveis com o frontend atual. |
-| Médio | Rate limit em memória | Permanece como risco residual para produção com múltiplos workers. |
+| Resolvido | Rate limit distribuído | Flask-Limiter usa Redis compartilhado entre workers e instâncias. |
 | Médio | Operações destrutivas sem reautenticação | Risco residual. |
 | Médio | Migrações não versionadas | Risco residual. |
 | Médio | Upload/importação precisa de validação mais profunda | Risco residual. |
@@ -247,7 +247,7 @@ OK
 
 ## Itens não concluídos nesta etapa
 
-- Trocar o rate limit em memória por Flask-Limiter/Redis ou armazenamento compartilhado.
+- Monitorar disponibilidade, memória e política de eviction do Redis de rate limit.
 - Reautenticação obrigatória para excluir adega, alterar key e restaurar backup.
 - Migrações versionadas com Alembic/Flask-Migrate.
 - Revisão completa de upload/importação com limite de linhas, MIME e CSV Injection.
@@ -258,7 +258,7 @@ OK
 
 ## Próxima etapa recomendada
 
-1. Implementar rate limit persistente com Redis para login, recuperação, confirmação, importação e backup.
+1. Validar periodicamente o rate limit Redis com múltiplas réplicas em homologação.
 2. Criar confirmação/reautenticação para operações destrutivas.
 3. Adicionar testes IDOR específicos por recurso e por tenant.
 4. Fortalecer importação/exportação contra arquivos malformados e CSV Injection.

@@ -33,6 +33,24 @@ public sealed class SaleReceipt
     [JsonPropertyName("payment_status")]
     public string PaymentStatus { get; init; } = string.Empty;
 
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = "completed";
+
+    [JsonPropertyName("is_cancelled")]
+    public bool IsCancelled { get; init; }
+
+    [JsonPropertyName("cancelled_at")]
+    public string? CancelledAt { get; init; }
+
+    [JsonPropertyName("cancelled_by_user_id")]
+    public int? CancelledByUserId { get; init; }
+
+    [JsonPropertyName("cancelled_by_user_name")]
+    public string CancelledByUserName { get; init; } = string.Empty;
+
+    [JsonPropertyName("cancellation_reason")]
+    public string CancellationReason { get; init; } = string.Empty;
+
     [JsonPropertyName("subtotal")]
     public decimal Subtotal { get; init; }
 
@@ -72,6 +90,10 @@ public sealed class SaleReceipt
     public string CashRegisterText => $"Caixa #{CashRegisterId}";
 
     public bool HasStockWarnings => StockWarnings.Count > 0;
+
+    public string StatusText => IsCancelled ? "CANCELADA" : "CONCLUÍDA";
+
+    public string CancelledAtText => DashboardFormatting.DateTimeText(CancelledAt);
 
     private static string FormatMoney(decimal value) =>
         $"R$ {value.ToString("N2", BrazilianCulture)}";

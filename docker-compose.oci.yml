@@ -19,6 +19,34 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 96mb
+      - --maxmemory-policy
+      - allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - default
+    read_only: true
+    tmpfs:
+      - /data:size=16m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
   app:
     build: .
     restart: unless-stopped
@@ -30,9 +58,17 @@ services:
       MYSQL_HOST: mysql
       MYSQL_PORT: "3306"
       MYSQL_SERVER_DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/mysql?charset=utf8mb4
+      RATELIMIT_ENABLED: "1"
+      RATELIMIT_STORAGE_URI: redis://redis:6379/0
+      RATELIMIT_IN_MEMORY_FALLBACK_ENABLED: "0"
+      TRUST_PROXY_HEADERS: "1"
+      TRUSTED_PROXY_COUNT: "1"
+      SCHEMA_MANAGEMENT_MODE: verify
       PORT: "5003"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ${GIROFY_BACKUP_HOST_DIR:-/opt/girofy/backups}:/app/backups

@@ -10,7 +10,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from app.extensions import db
-from app.schema import ensure_performance_indexes
+from app.services.migration_service import assert_database_at_head, upgrade_database
 
 
 _engines = {}
@@ -120,36 +120,8 @@ def drop_mysql_database(database_name):
 def sync_tenant_reference_data(company, engine):
     from app.models import User
 
-    ensure_performance_indexes(engine, current_app.logger)
-
     users = User.query.filter_by(company_id=company.id).all()
     inspector = inspect(engine)
-    if 'companies' in inspector.get_table_names():
-        columns = {column['name'] for column in inspector.get_columns('companies')}
-        migrations = {
-            'allow_negative_stock': 'ALTER TABLE companies ADD COLUMN allow_negative_stock BOOLEAN DEFAULT 0',
-            'backup_frequency': 'ALTER TABLE companies ADD COLUMN backup_frequency VARCHAR(20) DEFAULT "manual"',
-            'backup_last_at': 'ALTER TABLE companies ADD COLUMN backup_last_at DATETIME',
-            'backup_last_path': 'ALTER TABLE companies ADD COLUMN backup_last_path VARCHAR(255) DEFAULT ""',
-            'backup_last_status': 'ALTER TABLE companies ADD COLUMN backup_last_status VARCHAR(40) DEFAULT ""',
-        }
-        with engine.begin() as connection:
-            for column, statement in migrations.items():
-                if column not in columns:
-                    connection.execute(text(statement))
-
-    if 'users' in inspector.get_table_names():
-        columns = {column['name'] for column in inspector.get_columns('users')}
-        migrations = {
-            'cpf': 'ALTER TABLE users ADD COLUMN cpf VARCHAR(20) DEFAULT ""',
-            'can_view_stock_movements': 'ALTER TABLE users ADD COLUMN can_view_stock_movements BOOLEAN DEFAULT 1',
-            'can_manage_stock': 'ALTER TABLE users ADD COLUMN can_manage_stock BOOLEAN DEFAULT 1',
-            'can_view_audit_logs': 'ALTER TABLE users ADD COLUMN can_view_audit_logs BOOLEAN DEFAULT 1',
-        }
-        with engine.begin() as connection:
-            for column, statement in migrations.items():
-                if column not in columns:
-                    connection.execute(text(statement))
 
     with engine.begin() as connection:
         connection.execute(
@@ -230,7 +202,7 @@ def sync_tenant_reference_data(company, engine):
                         id, username, first_name, last_name, cpf, email, phone,
                         password_hash, role, company_id, is_active,
                         can_view_products, can_manage_products, can_manage_categories,
-                        can_manage_sales, can_manage_cash_register, can_view_reports,
+                        can_manage_sales, can_cancel_sales, can_manage_cash_register, can_view_reports,
                         can_manage_payables, can_manage_settings,
                         can_view_stock_movements, can_manage_stock, can_view_audit_logs,
                         created_at
@@ -239,7 +211,7 @@ def sync_tenant_reference_data(company, engine):
                         :id, :username, :first_name, :last_name, :cpf, :email, :phone,
                         :password_hash, :role, :company_id, :is_active,
                         :can_view_products, :can_manage_products, :can_manage_categories,
-                        :can_manage_sales, :can_manage_cash_register, :can_view_reports,
+                        :can_manage_sales, :can_cancel_sales, :can_manage_cash_register, :can_view_reports,
                         :can_manage_payables, :can_manage_settings,
                         :can_view_stock_movements, :can_manage_stock, :can_view_audit_logs,
                         :created_at
@@ -259,6 +231,7 @@ def sync_tenant_reference_data(company, engine):
                         can_manage_products = VALUES(can_manage_products),
                         can_manage_categories = VALUES(can_manage_categories),
                         can_manage_sales = VALUES(can_manage_sales),
+                        can_cancel_sales = VALUES(can_cancel_sales),
                         can_manage_cash_register = VALUES(can_manage_cash_register),
                         can_view_reports = VALUES(can_view_reports),
                         can_manage_payables = VALUES(can_manage_payables),
@@ -284,6 +257,7 @@ def sync_tenant_reference_data(company, engine):
                     'can_manage_products': user.can_manage_products,
                     'can_manage_categories': user.can_manage_categories,
                     'can_manage_sales': user.can_manage_sales,
+                    'can_cancel_sales': user.can_cancel_sales,
                     'can_manage_cash_register': user.can_manage_cash_register,
                     'can_view_reports': user.can_view_reports,
                     'can_manage_payables': user.can_manage_payables,
@@ -343,10 +317,13 @@ def tenant_engine(company):
     if cache_key not in _engines:
         create_mysql_database_if_needed(identifier)
         engine = create_engine(mysql_tenant_url(identifier))
-        run_with_concurrent_ddl_retry(
-            lambda: db.Model.metadata.create_all(bind=engine),
-            identifier,
-        )
+        schema_mode = current_app.config.get('SCHEMA_MANAGEMENT_MODE', 'verify')
+        if schema_mode == 'upgrade' or not inspect(engine).get_table_names():
+            upgrade_database(engine, 'tenant', logger=current_app.logger)
+        elif schema_mode == 'verify':
+            assert_database_at_head(engine, 'tenant')
+        elif schema_mode != 'off':
+            raise RuntimeError(f'SCHEMA_MANAGEMENT_MODE inválido: {schema_mode}.')
         _engines[cache_key] = engine
     ensure_tenant_reference_data(company, _engines[cache_key], cache_key)
     return _engines[cache_key]

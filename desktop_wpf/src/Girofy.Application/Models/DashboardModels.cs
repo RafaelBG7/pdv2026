@@ -201,6 +201,12 @@ public sealed class DashboardRecentSale
     [JsonPropertyName("payment_status")]
     public string PaymentStatus { get; init; } = string.Empty;
 
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = "completed";
+
+    [JsonPropertyName("is_cancelled")]
+    public bool IsCancelled { get; init; }
+
     [JsonPropertyName("user_name")]
     public string UserName { get; init; } = string.Empty;
 

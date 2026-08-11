@@ -94,6 +94,13 @@ Vendas:
 - Entrada e ajuste manual via serviço de estoque.
 - Bloqueio de ajuste negativo quando a adega não permite estoque negativo.
 - Movimentações de venda e kit vinculadas à venda.
+- Cancelamento lógico sem exclusão de venda, itens ou pagamentos.
+- Motivo obrigatório e permissão `can_cancel_sales`.
+- Devolução exata do estoque originalmente consumido por kits.
+- Recusa de cancelamento duplicado sem nova movimentação.
+- Auditoria `sale_cancelled` e movimento `cancellation`/`sale_cancellation`.
+- Isolamento multitenant ao tentar cancelar venda de outra adega.
+- Exclusão da venda cancelada do resumo financeiro da API.
 
 Caixa:
 

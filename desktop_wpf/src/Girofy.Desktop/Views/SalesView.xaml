@@ -252,9 +252,25 @@
                                                                     <TextBlock Grid.Column="4" FontSize="13"
                                                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                                                Text="{Binding PaymentText}" TextTrimming="CharacterEllipsis" />
-                                                                    <TextBlock Grid.Column="5" FontSize="12" FontWeight="SemiBold"
-                                                                               Foreground="{StaticResource InfoBrush}"
-                                                                               Text="{Binding ExpandHint}" />
+                                                                    <StackPanel Grid.Column="5">
+                                                                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                                                                   Foreground="{StaticResource InfoBrush}"
+                                                                                   Text="{Binding ExpandHint}" />
+                                                                        <TextBlock Margin="0,3,0,0" FontSize="10" FontWeight="Bold"
+                                                                                   Foreground="{StaticResource ErrorBrush}"
+                                                                                   Text="{Binding StatusText}">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsCancelled}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                    </StackPanel>
                                                                 </Grid>
                                                             </Border>
                                                         </Button>
@@ -401,6 +417,30 @@
                                                                     </StackPanel>
 
                                                                     <StackPanel Grid.Row="2">
+                                                                        <Border Margin="0,0,0,14" Padding="12"
+                                                                                Background="#26EF4444" BorderBrush="{StaticResource ErrorBrush}"
+                                                                                BorderThickness="1" CornerRadius="6">
+                                                                            <Border.Style>
+                                                                                <Style TargetType="Border">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsCancelled}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Border.Style>
+                                                                            <StackPanel>
+                                                                                <TextBlock FontWeight="Bold" Foreground="{StaticResource ErrorBrush}" Text="Venda cancelada" />
+                                                                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap">
+                                                                                    <Run Text="Motivo: " /><Run Text="{Binding Detail.CancellationReason, Mode=OneWay}" />
+                                                                                </TextBlock>
+                                                                                <TextBlock Margin="0,2,0,0" FontSize="12" Foreground="{StaticResource TextMutedBrush}">
+                                                                                    <Run Text="Por " /><Run Text="{Binding Detail.CancelledByUserName, Mode=OneWay}" />
+                                                                                    <Run Text=" em " /><Run Text="{Binding Detail.CancelledAtText, Mode=OneWay}" />
+                                                                                </TextBlock>
+                                                                            </StackPanel>
+                                                                        </Border>
                                                                         <TextBlock FontSize="16" FontWeight="Bold"
                                                                                    Foreground="{StaticResource TextPrimaryBrush}"
                                                                                    Text="Pagamento" />
@@ -460,12 +500,31 @@
                                                                                 </Grid>
                                                                             </StackPanel>
                                                                         </Border>
-                                                                        <Button Margin="0,14,0,0"
-                                                                                HorizontalAlignment="Right"
-                                                                                Command="{Binding DataContext.ViewHistoricalReceiptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                                CommandParameter="{Binding}"
-                                                                                Content="Ver comprovante"
-                                                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                                                        <StackPanel Margin="0,14,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                                                                            <Button Margin="0,0,10,0"
+                                                                                    Command="{Binding DataContext.OpenCancellationPopupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                                    CommandParameter="{Binding}"
+                                                                                    Content="Cancelar venda">
+                                                                                <Button.Style>
+                                                                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                                                        <Style.Triggers>
+                                                                                            <MultiDataTrigger>
+                                                                                                <MultiDataTrigger.Conditions>
+                                                                                                    <Condition Binding="{Binding CanBeCancelled}" Value="True" />
+                                                                                                    <Condition Binding="{Binding DataContext.CanCancelSales, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True" />
+                                                                                                </MultiDataTrigger.Conditions>
+                                                                                                <Setter Property="Visibility" Value="Visible" />
+                                                                                            </MultiDataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Button.Style>
+                                                                            </Button>
+                                                                            <Button Command="{Binding DataContext.ViewHistoricalReceiptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                                    CommandParameter="{Binding}"
+                                                                                    Content="Ver comprovante"
+                                                                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                                                        </StackPanel>
                                                                     </StackPanel>
                                                                 </Grid>
                                                             </StackPanel>
@@ -1268,6 +1327,60 @@
                         </Grid>
                     </Grid>
                 </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid Background="#CC000914" Panel.ZIndex="30">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsCancellationPopupOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Border Margin="24" Padding="24" MaxWidth="580"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource ErrorBrush}" BorderThickness="1" CornerRadius="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="{Binding PendingCancellationTitle}" />
+                        <TextBlock Margin="0,6,0,0" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
+                                   Text="Esta ação preserva o registro financeiro, devolve exatamente o estoque movimentado e fica registrada na auditoria." />
+                    </StackPanel>
+                    <StackPanel Grid.Row="2">
+                        <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Motivo obrigatório" />
+                        <TextBox MinHeight="100" MaxLength="500" AcceptsReturn="True" TextWrapping="Wrap"
+                                 VerticalContentAlignment="Top"
+                                 Text="{Binding CancellationReason, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource TextInputStyle}" />
+                        <TextBlock Margin="0,7,0,0" FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                   Text="Descreva o motivo com clareza (máximo de 500 caracteres)." />
+                    </StackPanel>
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Height="46" Command="{Binding CloseCancellationPopupCommand}"
+                                Content="Voltar" Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button Grid.Column="2" Height="46" Command="{Binding ConfirmCancellationCommand}"
+                                Content="Confirmar cancelamento" Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
             </Border>
         </Grid>
 

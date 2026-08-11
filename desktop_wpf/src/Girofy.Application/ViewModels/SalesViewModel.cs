@@ -114,6 +114,9 @@ public sealed class SaleHistoryItemViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(HasDetail));
                 OnPropertyChanged(nameof(DetailPaymentsText));
+                OnPropertyChanged(nameof(IsCancelled));
+                OnPropertyChanged(nameof(StatusText));
+                OnPropertyChanged(nameof(CanBeCancelled));
             }
         }
     }
@@ -137,6 +140,12 @@ public sealed class SaleHistoryItemViewModel : ObservableObject
     public string DetailPaymentsText => Detail is null
         ? string.Empty
         : string.Join(" + ", Detail.Payments.Select(payment => $"{payment.Label}: {payment.AmountText}"));
+
+    public bool IsCancelled => Detail?.IsCancelled ?? Sale.IsCancelled;
+
+    public bool CanBeCancelled => !IsCancelled;
+
+    public string StatusText => IsCancelled ? "CANCELADA" : PaymentStatusText;
 }
 
 public sealed class SalesViewModel : ObservableObject, IDisposable
@@ -176,6 +185,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private bool _isHistoricalReceipt;
     private int _historyPage;
     private bool _hasMoreSales;
+    private bool _isCancellationPopupOpen;
+    private string _cancellationReason = string.Empty;
+    private SaleHistoryItemViewModel? _pendingCancellationSale;
 
     public SalesViewModel(
         IGirofyApiClient apiClient,
@@ -213,6 +225,13 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         ViewHistoricalReceiptCommand = new RelayCommand<SaleHistoryItemViewModel>(
             sale => _ = ViewHistoricalReceiptAsync(sale));
         CloseHistoricalReceiptCommand = new RelayCommand(CloseHistoricalReceipt);
+        OpenCancellationPopupCommand = new RelayCommand<SaleHistoryItemViewModel>(OpenCancellationPopup);
+        CloseCancellationPopupCommand = new RelayCommand(CloseCancellationPopup);
+        ConfirmCancellationCommand = new AsyncRelayCommand(
+            ConfirmCancellationAsync,
+            () => PendingCancellationSale is not null &&
+                !string.IsNullOrWhiteSpace(CancellationReason) &&
+                !IsBusy);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -450,6 +469,52 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
     }
 
+    public bool CanCancelSales
+    {
+        get
+        {
+            var permissions = _sessionContext.Current?.User.Permissions;
+            return permissions is not null &&
+                permissions.TryGetValue("can_cancel_sales", out var allowed) &&
+                allowed;
+        }
+    }
+
+    public bool IsCancellationPopupOpen
+    {
+        get => _isCancellationPopupOpen;
+        private set => SetProperty(ref _isCancellationPopupOpen, value);
+    }
+
+    public string CancellationReason
+    {
+        get => _cancellationReason;
+        set
+        {
+            if (SetProperty(ref _cancellationReason, value))
+            {
+                ConfirmCancellationCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public SaleHistoryItemViewModel? PendingCancellationSale
+    {
+        get => _pendingCancellationSale;
+        private set
+        {
+            if (SetProperty(ref _pendingCancellationSale, value))
+            {
+                OnPropertyChanged(nameof(PendingCancellationTitle));
+                ConfirmCancellationCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string PendingCancellationTitle => PendingCancellationSale is null
+        ? "Cancelar venda"
+        : $"Cancelar venda {PendingCancellationSale.NumberText}";
+
     public string ErrorMessage
     {
         get => _errorMessage;
@@ -609,6 +674,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public RelayCommand CloseHistoricalReceiptCommand { get; }
 
+    public RelayCommand<SaleHistoryItemViewModel> OpenCancellationPopupCommand { get; }
+
+    public RelayCommand CloseCancellationPopupCommand { get; }
+
+    public AsyncRelayCommand ConfirmCancellationCommand { get; }
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_sessionContext.Current is null || !IsAvailable)
@@ -720,6 +791,64 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
         Receipt = null;
         IsHistoricalReceipt = false;
+    }
+
+    private void OpenCancellationPopup(SaleHistoryItemViewModel? sale)
+    {
+        if (sale is null || !CanCancelSales || !sale.CanBeCancelled)
+        {
+            return;
+        }
+        PendingCancellationSale = sale;
+        CancellationReason = string.Empty;
+        IsCancellationPopupOpen = true;
+        ClearMessages();
+    }
+
+    private void CloseCancellationPopup()
+    {
+        IsCancellationPopupOpen = false;
+        PendingCancellationSale = null;
+        CancellationReason = string.Empty;
+    }
+
+    private async Task ConfirmCancellationAsync(CancellationToken cancellationToken)
+    {
+        var sale = PendingCancellationSale;
+        var reason = CancellationReason.Trim();
+        if (sale is null || !CanCancelSales || string.IsNullOrWhiteSpace(reason))
+        {
+            return;
+        }
+
+        var session = RequireSession();
+        IsBusy = true;
+        ConfirmCancellationCommand.NotifyCanExecuteChanged();
+        try
+        {
+            var cancelled = await _apiClient.CancelSaleAsync(
+                session.AccessToken,
+                sale.Id,
+                reason,
+                cancellationToken);
+            if (!IsSameSession(session))
+            {
+                return;
+            }
+            sale.Detail = cancelled;
+            CloseCancellationPopup();
+            SuccessMessage = $"Venda #{sale.Id} cancelada e estoque devolvido.";
+            await LoadTodaySalesAsync(reset: true, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception, "Não foi possível cancelar a venda.");
+        }
+        finally
+        {
+            IsBusy = false;
+            ConfirmCancellationCommand.NotifyCanExecuteChanged();
+        }
     }
 
     private Task RefreshHistoryAsync(CancellationToken cancellationToken) =>
@@ -1414,9 +1543,13 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         HasMoreSales = false;
         HistoryErrorMessage = string.Empty;
         IsHistoryLoading = false;
+        IsCancellationPopupOpen = false;
+        PendingCancellationSale = null;
+        CancellationReason = string.Empty;
         OnPropertyChanged(nameof(HasTodaySales));
         OnPropertyChanged(nameof(HasNoTodaySales));
         OnPropertyChanged(nameof(IsAvailable));
+        OnPropertyChanged(nameof(CanCancelSales));
     }
 
     private void HandleSessionChanged(object? sender, EventArgs e) => ResetAll();

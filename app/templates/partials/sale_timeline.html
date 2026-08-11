@@ -7,6 +7,7 @@
       <span class="sale-timeline-marker">{{ entry.time }}</span>
       <span class="sale-timeline-main">
         <strong>Venda #{{ entry.sale.id }}</strong>
+        {% if entry.sale.is_cancelled %}<span class="badge text-bg-danger ms-2">Cancelada</span>{% endif %}
         <small>{{ entry.date }} · {{ entry.user }}</small>
       </span>
       <span class="sale-timeline-payment">{{ entry.payments_text }}</span>
@@ -14,6 +15,12 @@
     </button>
     <div class="collapse" id="{{ timeline_id }}">
       <div class="sale-timeline-detail">
+        {% if entry.sale.is_cancelled %}
+        <div class="alert alert-danger py-2">
+          <strong>Venda cancelada:</strong> {{ entry.sale.cancellation_reason or 'Motivo não informado' }}.
+          Este lançamento é mantido somente para histórico e auditoria.
+        </div>
+        {% endif %}
         <div class="table-responsive">
           <table class="table table-dark table-hover align-middle mb-0 compact-table timeline-detail-table">
             <thead>

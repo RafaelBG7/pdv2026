@@ -154,6 +154,20 @@
 - Relatório por produto mostra quantidade vendida, faturamento, custo total, lucro estimado, ticket médio e estoque atual.
 - Relatório por produto pode ser filtrado por período, categoria e produto específico.
 - Relatório por produto pode ordenar por mais vendidos, maior faturamento, maior lucro, menor estoque e produtos sem venda.
+- Vendas com `status=cancelled` não entram em faturamento válido, lucro, ticket médio,
+  pagamentos agregados, gráficos ou rankings de produto.
+
+## Cancelamento de venda
+
+- A venda nunca é apagada; itens, pagamentos, valores e autoria original são preservados.
+- Somente usuário com `can_cancel_sales` pode cancelar; administradores são autorizados pelo papel.
+- O motivo é obrigatório e limitado a 500 caracteres.
+- Status, metadados, devolução de estoque e auditoria pertencem à mesma transação.
+- A devolução é o inverso das movimentações originais, inclusive para kits.
+- Uma venda já cancelada não pode gerar uma segunda devolução.
+- Caixa aberto desconsidera imediatamente a venda cancelada nos totais esperados.
+- Caixa fechado preserva a conferência original e mostra um ajuste posterior separado.
+- Pagamento histórico não significa estorno automático na adquirente, banco ou Pix.
 
 ## Notificações
 
@@ -166,7 +180,7 @@
 
 ## Pendências de Negócio
 
-- Cancelamento/estorno de venda.
+- Cancelamento parcial por item e integração de estorno com adquirentes.
 - Sangria e reforço de caixa.
 - Fornecedores e compras.
 - Cobrança real de assinatura.

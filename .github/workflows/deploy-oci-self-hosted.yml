@@ -42,6 +42,13 @@ jobs:
           MAIL_SUPPRESS_SEND: '1'
         run: python -m unittest discover
 
+      - name: Validar árvores de migrations
+        env:
+          TESTING: '1'
+        run: |
+          python scripts/schema_migrate.py --help
+          python -c "from app.services.migration_service import migration_head; assert migration_head('central') == 'central_0002'; assert migration_head('tenant') == 'tenant_0002'"
+
       - name: Sintaxe dos scripts de deploy
         run: |
           bash -n scripts/deploy_self_hosted_app.sh
@@ -71,4 +78,7 @@ jobs:
         run: bash scripts/deploy_self_hosted_app.sh
 
       - name: Health check local
-        run: curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/login" >/dev/null
+        run: |
+          curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/login" >/dev/null
+          curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/health/dependencies" >/dev/null
+          curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/api/v1/health/dependencies" >/dev/null

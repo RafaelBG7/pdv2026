@@ -83,7 +83,7 @@ def error_context():
         # Query parameters are recorded only in the redacted `args` mapping below.
         'full_path': request.path,
         'endpoint': request.endpoint,
-        'remote_addr': request.headers.get('X-Forwarded-For', request.remote_addr),
+        'remote_addr': request.remote_addr,
         'user_agent': request.headers.get('User-Agent'),
         'referrer': request.referrer,
         'args': _redact_mapping(request.args),

@@ -293,6 +293,8 @@ public sealed class CashRegisterViewModelTests
     [Fact]
     public async Task Selecting_another_register_cancels_the_previous_detail_request()
     {
+        var firstRequestStarted = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         var firstRequestCancelled = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var apiClient = new StubApiClient
@@ -309,6 +311,7 @@ public sealed class CashRegisterViewModelTests
             {
                 if (id == 10)
                 {
+                    firstRequestStarted.TrySetResult(true);
                     using var registration = cancellationToken.Register(
                         () => firstRequestCancelled.TrySetResult(true));
                     await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
@@ -325,7 +328,7 @@ public sealed class CashRegisterViewModelTests
 
         viewModel.SelectedRegister = viewModel.RecentRegisters[0];
         var firstLoad = viewModel.LoadSelectedRegisterDetailAsync();
-        await Task.Yield();
+        await firstRequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         viewModel.SelectedRegister = viewModel.RecentRegisters[1];
         await viewModel.LoadSelectedRegisterDetailAsync();
         await firstLoad.WaitAsync(TimeSpan.FromSeconds(5));

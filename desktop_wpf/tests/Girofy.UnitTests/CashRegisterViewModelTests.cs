@@ -325,11 +325,12 @@ public sealed class CashRegisterViewModelTests
 
         viewModel.SelectedRegister = viewModel.RecentRegisters[0];
         var firstLoad = viewModel.LoadSelectedRegisterDetailAsync();
+        await Task.Yield();
         viewModel.SelectedRegister = viewModel.RecentRegisters[1];
         await viewModel.LoadSelectedRegisterDetailAsync();
-        await firstLoad;
+        await firstLoad.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.True(await firstRequestCancelled.Task);
+        Assert.True(await firstRequestCancelled.Task.WaitAsync(TimeSpan.FromSeconds(5)));
         Assert.Equal(20, viewModel.DetailRegister?.Id);
     }
 

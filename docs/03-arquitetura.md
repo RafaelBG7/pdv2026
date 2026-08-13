@@ -1,5 +1,7 @@
 # 03 - Arquitetura
 
+> Atualizado em 13/08/2026. A arquitetura consolidada por plataforma está em [30-versao-atual-13-08-2026.md](30-versao-atual-13-08-2026.md).
+
 ## Visão Arquitetural
 
 O Girofy usa uma arquitetura monolítica web server-side:
@@ -79,7 +81,7 @@ Responsabilidades:
 
 - Criar aplicação e registrar blueprints.
 - Criar banco central e bancos das adegas.
-- Sincronizar tabelas/colunas esperadas.
+- Validar que banco central e tenants estão na revisão Alembic esperada.
 - Autenticar usuários.
 - Bloquear adegas sem assinatura/key ativa.
 - Aplicar permissões por perfil.
@@ -97,7 +99,8 @@ Responsabilidades:
 
 | Arquivo | Função |
 |---|---|
-| `app/tenant.py` | Cria/seleciona banco por adega e abre sessões isoladas. |
+| `app/tenant.py` | Cria/seleciona banco por adega, aplica migrations no provisionamento e abre sessões isoladas. |
+| `app/services/migration_service.py` | Controla baseline, revisão atual, head e upgrade central/tenant. |
 | `app/permissions.py` | Decorator `permission_required` e nomes de permissões. |
 | `app/backup.py` | Gera dump SQL do banco da adega e controla frequência. |
 | `app/error_logging.py` | Registra erros com contexto, request id e dados protegidos. |
@@ -106,13 +109,13 @@ Responsabilidades:
 
 - Manter Flask monolítico para acelerar evolução do produto.
 - Usar MySQL para permitir bancos separados por adega.
-- Evitar API separada neste momento; as telas são renderizadas no servidor.
+- Manter a API REST no mesmo backend Flask; ela atende o aplicativo Windows enquanto as telas Web são renderizadas no servidor.
 - Usar permissões no backend, não apenas esconder botões no frontend.
 - Gerar backups por adega, pois os dados operacionais ficam fora do banco central.
 
 ## Limitações Técnicas
 
-- Ainda não há migração versionada com Alembic.
-- Algumas alterações de schema são feitas por funções de compatibilidade em `app/__init__.py`.
+- Produção exige migrations no head e não usa `create_all()` como fonte de verdade.
+- O `create_all()` permanece apenas no modo isolado de testes.
 - O servidor local só ativa debug quando `FLASK_DEBUG=1`; produção deve usar Gunicorn/Docker.
 - Não há fila/background worker; backups automáticos rodam durante requisições autenticadas elegíveis.

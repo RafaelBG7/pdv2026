@@ -7,7 +7,9 @@
 
 Detalhes em [29-migracoes-versionadas.md](29-migracoes-versionadas.md).
 
-Atualizado em: 10/08/2026
+Atualizado em: 13/08/2026
+
+> Este documento permanece como manual de paridade. O snapshot oficial para continuar o desenvolvimento é [30-versao-atual-13-08-2026.md](30-versao-atual-13-08-2026.md).
 
 ## Objetivo
 
@@ -217,8 +219,8 @@ Auditoria, logs e backup:
 
 - Domínio próprio e HTTPS definitivo.
 - CSRF explícito em formulários HTML.
-- Rate limit persistente/distribuído implementado para Web e API, compatível com o Windows.
-- Migrações versionadas com Alembic/Flask-Migrate.
+- Rate limit persistente/distribuído já está ativo com Redis na OCI.
+- Migrações central e tenant já estão versionadas com Alembic/Flask-Migrate.
 - Restauração guiada de backup pela interface.
 - Cobrança real integrada aos planos Basic/Pro.
 - Emissão de comprovante/impressão fiscal ou não fiscal.

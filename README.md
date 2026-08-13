@@ -1,4 +1,6 @@
-# Girofy - PDV Web
+# Girofy — PDV Web/API e aplicativo Windows
+
+> **Marco documentado:** versão atual em 13/08/2026. O inventário consolidado, a separação entre plataformas e o ponto de continuidade estão em [docs/30-versao-atual-13-08-2026.md](docs/30-versao-atual-13-08-2026.md).
 
 Sistema PDV web para adegas, pequenos mercados e comércios locais. O projeto roda em Flask, usa MySQL como banco relacional, templates HTML/Jinja no frontend e já opera com base multiadega para um modelo SaaS.
 
@@ -65,8 +67,7 @@ Pontos mais maduros:
 
 Pontos que ainda merecem prioridade antes de produção pública:
 
-- rate limit persistente/distribuído já implementado para endpoints sensíveis;
-- migrações versionadas com Alembic/Flask-Migrate;
+- restauração guiada de backup;
 - restauração guiada de backup;
 - cobrança real e regras concretas para Basic/Pro;
 - domínio definitivo com HTTPS;
@@ -164,8 +165,8 @@ pdv-adega-jf/
 
 | Arquivo/Pasta | Função |
 |---|---|
-| `app/__init__.py` | Factory `create_app`, registro de blueprints, criação de tabelas, ajustes manuais de colunas, login manager, bloqueio por assinatura, notificações e handlers de erro. |
-| `app/extensions.py` | Instâncias globais de `SQLAlchemy` e `LoginManager`. |
+| `app/__init__.py` | Factory `create_app`, registro de blueprints, validação da revisão do banco, login manager, bloqueio por assinatura, notificações e handlers de erro. |
+| `app/extensions.py` | Instâncias globais de SQLAlchemy, Flask-Migrate, Flask-Login e Flask-Limiter. |
 | `app/error_logging.py` | Logs detalhados de erro com `request_id`, usuário, endpoint, método, formulário protegido e rotação de arquivo. |
 | `app/permissions.py` | Decorator `permission_required` e nomes das permissões do sistema. |
 | `app/security/` | Validações e proteções de segurança reutilizáveis, incluindo CSRF por sessão e política de senha. |

@@ -6,11 +6,15 @@ Os testes automatizados ficam em:
 
 ```text
 tests/test_routes.py
+tests/test_migrations.py
 ```
 
 Framework:
 
 - `unittest`
+- testes .NET no projeto `desktop_wpf/tests/Girofy.UnitTests`
+
+Em 13/08/2026, a suíte Python de referência possui **200 testes** (194 funcionais/contratuais e 6 dedicados a migrations). O número pode crescer; o critério de aceite é toda a descoberta passar.
 
 Comando recomendado:
 

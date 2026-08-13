@@ -312,9 +312,15 @@ public sealed class CashRegisterViewModelTests
                 if (id == 10)
                 {
                     firstRequestStarted.TrySetResult(true);
-                    using var registration = cancellationToken.Register(
-                        () => firstRequestCancelled.TrySetResult(true));
-                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                    try
+                    {
+                        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        firstRequestCancelled.TrySetResult(true);
+                        throw;
+                    }
                 }
 
                 return new CashRegisterDetailSnapshot

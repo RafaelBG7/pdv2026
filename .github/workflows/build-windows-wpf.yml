@@ -113,7 +113,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $executable = 'desktop_wpf/artifacts/Girofy-Windows-WPF/Girofy.Desktop.exe'
+          $executable = 'desktop_wpf/artifacts/Girofy-Windows-WPF/Girofy.exe'
           if (-not (Test-Path $executable)) {
             throw "Executável não encontrado em $executable"
           }

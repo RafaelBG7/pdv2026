@@ -11,6 +11,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 {
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
+    private readonly IThemeService _themeService;
     private readonly IExternalBrowserService _browserService;
     private readonly IFileSaveService _fileSaveService;
     private readonly IFilePickerService _filePickerService;
@@ -58,10 +59,12 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         IExternalBrowserService browserService,
         IFileSaveService fileSaveService,
         IFilePickerService filePickerService,
-        Uri webSettingsUri)
+        Uri webSettingsUri,
+        IThemeService? themeService = null)
     {
         _apiClient = apiClient;
         _sessionContext = sessionContext;
+        _themeService = themeService ?? NullThemeService.Instance;
         _browserService = browserService;
         _fileSaveService = fileSaveService;
         _filePickerService = filePickerService;
@@ -79,6 +82,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         SaveEmployeeCommand = new AsyncRelayCommand(SaveEmployeeAsync, () => CanManageTeam && HasSelectedEmployee && !IsBusy);
         ClearNewEmployeeCommand = new RelayCommand(ClearNewEmployeeForm);
         OpenWebSettingsCommand = new RelayCommand(() => _browserService.Open(_webSettingsUri));
+        ToggleThemeCommand = new AsyncRelayCommand(ToggleThemeAsync);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -542,8 +546,20 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
     public RelayCommand OpenWebSettingsCommand { get; }
 
+    public AsyncRelayCommand ToggleThemeCommand { get; }
+
+    public string ThemeToggleText => _themeService.IsDarkMode
+        ? "Usar tema claro"
+        : "Usar tema escuro";
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         LoadAsync(cancellationToken);
+
+    private async Task ToggleThemeAsync(CancellationToken cancellationToken)
+    {
+        await _themeService.ToggleAsync(cancellationToken);
+        OnPropertyChanged(nameof(ThemeToggleText));
+    }
 
     private async void HandleSessionChanged(object? sender, EventArgs e)
     {
@@ -1218,4 +1234,15 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     }
 
     public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;
+
+    private sealed class NullThemeService : IThemeService
+    {
+        public static NullThemeService Instance { get; } = new();
+
+        public bool IsDarkMode => true;
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task ToggleAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
 }

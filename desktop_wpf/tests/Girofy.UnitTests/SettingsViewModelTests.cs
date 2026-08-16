@@ -9,6 +9,27 @@ namespace Girofy.UnitTests;
 public sealed class SettingsViewModelTests
 {
     [Fact]
+    public async Task ToggleThemeAsync_changes_theme_and_updates_button_text()
+    {
+        var themeService = new StubThemeService();
+        var viewModel = new SettingsViewModel(
+            new ExportApiClient(),
+            new AppSessionContext(),
+            new StubBrowserService(),
+            new CapturingFileSaveService(),
+            new CapturingFilePickerService(),
+            new Uri("https://girofy.example/configuracoes"),
+            themeService);
+
+        Assert.Equal("Usar tema claro", viewModel.ThemeToggleText);
+
+        await viewModel.ToggleThemeCommand.ExecuteAsync();
+
+        Assert.False(themeService.IsDarkMode);
+        Assert.Equal("Usar tema escuro", viewModel.ThemeToggleText);
+    }
+
+    [Fact]
     public async Task ExportDataAsync_downloads_selected_csv_and_prompts_to_save_for_admin()
     {
         var apiClient = new ExportApiClient();
@@ -408,6 +429,19 @@ public sealed class SettingsViewModelTests
     {
         public void Open(Uri uri)
         {
+        }
+    }
+
+    private sealed class StubThemeService : IThemeService
+    {
+        public bool IsDarkMode { get; private set; } = true;
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task ToggleAsync(CancellationToken cancellationToken = default)
+        {
+            IsDarkMode = !IsDarkMode;
+            return Task.CompletedTask;
         }
     }
 }

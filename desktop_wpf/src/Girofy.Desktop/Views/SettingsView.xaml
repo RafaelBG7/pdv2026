@@ -102,6 +102,8 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock FontSize="27"
@@ -114,6 +116,12 @@
                                Text="Organize perfil, equipe, operação, financeiro e ferramentas da adega." />
                 </StackPanel>
                 <Button Grid.Column="1"
+                        MinWidth="138"
+                        Command="{Binding ToggleThemeCommand}"
+                        Content="{Binding ThemeToggleText}"
+                        ToolTip="Alternar entre os temas claro e escuro"
+                        Style="{StaticResource SecondaryButtonStyle}" />
+                <Button Grid.Column="3"
                         MinWidth="112"
                         Command="{Binding RefreshCommand}"
                         Content="Atualizar"

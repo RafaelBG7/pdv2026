@@ -62,6 +62,7 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<IFilePickerService, WindowsFilePickerService>();
                 services.AddSingleton<ISecureSessionStore, DpapiSessionStore>();
                 services.AddSingleton<IUserPreferencesStore, JsonUserPreferencesStore>();
+                services.AddSingleton<IThemeService, WindowsThemeService>();
                 services.AddSingleton<IAppSessionContext, AppSessionContext>();
                 services.AddHttpClient<IGirofyApiClient, GirofyApiClient>(client =>
                 {
@@ -99,7 +100,8 @@ public partial class App : System.Windows.Application
                     provider.GetRequiredService<IExternalBrowserService>(),
                     provider.GetRequiredService<IFileSaveService>(),
                     provider.GetRequiredService<IFilePickerService>(),
-                    new Uri(serverUri, "configuracoes")));
+                    new Uri(serverUri, "configuracoes"),
+                    provider.GetRequiredService<IThemeService>()));
                 services.AddSingleton(provider => new ConnectionViewModel(
                     provider.GetRequiredService<IGirofyApiClient>(),
                     provider.GetRequiredService<IExternalBrowserService>(),
@@ -138,6 +140,7 @@ public partial class App : System.Windows.Application
         {
             await _host.StartAsync();
             _logger = _host.Services.GetRequiredService<ILogger<App>>();
+            await _host.Services.GetRequiredService<IThemeService>().InitializeAsync();
             _logger.LogInformation("Girofy Windows started.");
             _host.Services.GetRequiredService<MainWindow>().Show();
         }

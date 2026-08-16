@@ -241,11 +241,13 @@ public sealed class LoginViewModel : ObservableObject
                 Password,
                 cancellationToken);
             await _sessionStore.SaveAsync(session, cancellationToken);
+            var currentPreferences = await _preferencesStore.LoadAsync(cancellationToken);
             await _preferencesStore.SaveAsync(
                 new UserPreferences
                 {
                     RememberUsername = RememberUsername,
                     RememberedIdentifier = RememberUsername ? normalizedIdentifier : string.Empty,
+                    Theme = currentPreferences.Theme,
                 },
                 cancellationToken);
             ApplySession(session);
@@ -323,11 +325,13 @@ public sealed class LoginViewModel : ObservableObject
                 normalizedActivationKey,
                 cancellationToken);
             await _sessionStore.SaveAsync(session, cancellationToken);
+            var currentPreferences = await _preferencesStore.LoadAsync(cancellationToken);
             await _preferencesStore.SaveAsync(
                 new UserPreferences
                 {
                     RememberUsername = RememberUsername,
                     RememberedIdentifier = RememberUsername ? normalizedIdentifier : string.Empty,
+                    Theme = currentPreferences.Theme,
                 },
                 cancellationToken);
             RequiresSubscriptionActivation = false;

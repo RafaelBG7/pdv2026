@@ -140,7 +140,14 @@ public partial class App : System.Windows.Application
         {
             await _host.StartAsync();
             _logger = _host.Services.GetRequiredService<ILogger<App>>();
-            await _host.Services.GetRequiredService<IThemeService>().InitializeAsync();
+            try
+            {
+                await _host.Services.GetRequiredService<IThemeService>().InitializeAsync();
+            }
+            catch (Exception themeException)
+            {
+                _logger.LogWarning(themeException, "Saved desktop theme could not be applied; using the default theme.");
+            }
             _logger.LogInformation("Girofy Windows started.");
             _host.Services.GetRequiredService<MainWindow>().Show();
         }

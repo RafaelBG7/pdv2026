@@ -66,7 +66,10 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
     {
         var preferences = await preferencesStore.LoadAsync(cancellationToken);
         IsDarkMode = !string.Equals(preferences.Theme, "light", StringComparison.OrdinalIgnoreCase);
-        ApplyPalette();
+        if (!IsDarkMode)
+        {
+            ApplyPalette();
+        }
     }
 
     public async Task ToggleAsync(CancellationToken cancellationToken = default)
@@ -91,10 +94,8 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
         var palette = IsDarkMode ? DarkPalette : LightPalette;
         foreach (var (key, value) in palette)
         {
-            if (resources[key] is SolidColorBrush brush)
-            {
-                brush.Color = (Color)ColorConverter.ConvertFromString(value);
-            }
+            var color = (Color)ColorConverter.ConvertFromString(value);
+            ReplaceOrUpdateSolidBrush(resources, key, color);
         }
 
         ApplyGradient("HeroGradientBrush", IsDarkMode
@@ -107,14 +108,41 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
 
     private static void ApplyGradient(string key, IReadOnlyList<string> colors)
     {
-        if (System.Windows.Application.Current.Resources[key] is not LinearGradientBrush brush)
+        var resources = System.Windows.Application.Current.Resources;
+        if (resources[key] is not LinearGradientBrush current)
         {
             return;
         }
 
+        var brush = current.IsFrozen ? current.Clone() : current;
         for (var index = 0; index < brush.GradientStops.Count && index < colors.Count; index++)
         {
             brush.GradientStops[index].Color = (Color)ColorConverter.ConvertFromString(colors[index]);
         }
+
+        if (!ReferenceEquals(brush, current))
+        {
+            resources[key] = brush;
+        }
+    }
+
+    private static void ReplaceOrUpdateSolidBrush(
+        System.Windows.ResourceDictionary resources,
+        string key,
+        Color color)
+    {
+        if (resources[key] is not SolidColorBrush current)
+        {
+            resources[key] = new SolidColorBrush(color);
+            return;
+        }
+
+        if (current.IsFrozen)
+        {
+            resources[key] = new SolidColorBrush(color);
+            return;
+        }
+
+        current.Color = color;
     }
 }

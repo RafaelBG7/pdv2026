@@ -44,7 +44,7 @@ on:
       - '.github/workflows/build-windows-wpf.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test-and-build:
@@ -108,14 +108,25 @@ jobs:
           -p:DebugType=None
           --output desktop_wpf/artifacts/Girofy-Windows-WPF
 
-      - name: Package preview
+      - name: Publish executable in Windows Preview release
         shell: pwsh
-        run: Compress-Archive -Path desktop_wpf/artifacts/Girofy-Windows-WPF/* -DestinationPath desktop_wpf/artifacts/Girofy-Windows-WPF-preview.zip -Force
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $executable = 'desktop_wpf/artifacts/Girofy-Windows-WPF/Girofy.Desktop.exe'
+          if (-not (Test-Path $executable)) {
+            throw "Executável não encontrado em $executable"
+          }
 
-      - name: Upload preview artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Girofy-Windows-WPF-preview
-          path: desktop_wpf/artifacts/Girofy-Windows-WPF-preview.zip
-          if-no-files-found: error
-          retention-days: 7
+          gh release view windows-preview --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create windows-preview `
+              --repo $env:GITHUB_REPOSITORY `
+              --title 'Girofy Windows Preview' `
+              --notes 'Versão atual do aplicativo Girofy para Windows.' `
+              --prerelease
+          }
+
+          gh release upload windows-preview $executable `
+            --repo $env:GITHUB_REPOSITORY `
+            --clobber

@@ -37,7 +37,13 @@ public partial class App : System.Windows.Application
             .ConfigureAppConfiguration((_, configuration) =>
             {
                 configuration.SetBasePath(AppContext.BaseDirectory);
-                configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Api:BaseUrl"] = "http://168.75.101.126:18080",
+                    ["Api:AllowInsecureHttp"] = "true",
+                    ["Api:TimeoutSeconds"] = "10",
+                });
+                configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
                 configuration.AddEnvironmentVariables();
             })
             .ConfigureLogging(logging =>

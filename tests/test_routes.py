@@ -169,6 +169,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('data-theme-toggle'.encode(), response.data)
         self.assertIn('aria-label="Ativar tema escuro"'.encode(), response.data)
+        self.assertNotIn('class="user-theme-options"'.encode(), response.data)
 
     def test_health_check_is_public_and_minimal(self):
         response = self.client.get('/health')

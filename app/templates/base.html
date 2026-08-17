@@ -201,17 +201,6 @@
                         <small>@{{ current_user.username }}</small>
                       </div>
                     </div>
-                    <div class="user-menu-section">
-                      <span class="user-menu-label">Aparência</span>
-                      <div class="user-theme-options" role="group" aria-label="Selecionar tema">
-                        <button class="user-theme-choice" type="button" data-settings-theme-choice="light" aria-pressed="false">
-                          <span aria-hidden="true">☀</span> Claro
-                        </button>
-                        <button class="user-theme-choice" type="button" data-settings-theme-choice="dark" aria-pressed="false">
-                          <span aria-hidden="true">☾</span> Escuro
-                        </button>
-                      </div>
-                    </div>
                     <form method="post" action="{{ url_for('auth.logout') }}">
                       <button class="user-menu-logout" type="submit">
                         <span aria-hidden="true">↪</span>

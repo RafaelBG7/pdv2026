@@ -137,6 +137,7 @@ def create_sale(
     payment_inputs,
     discount_amount,
     idempotency_key,
+    client='windows_native',
 ):
     existing = find_completed_sale_request(db_session, company.id, idempotency_key)
     if existing is not None:
@@ -269,7 +270,7 @@ def create_sale(
     discount = money_decimal(discount_amount)
     if discount > subtotal:
         raise SaleOperationError(
-            'O desconto não pode ser maior que o subtotal.',
+            f'O desconto não pode ser maior que o subtotal de R$ {str(subtotal).replace(".", ",")}.',
             'discount_exceeds_subtotal',
             422,
             'discount_amount',
@@ -361,7 +362,7 @@ def create_sale(
         'sale_completed',
         'sale',
         sale.id,
-        f'Venda #{sale.id} concluída pelo aplicativo Windows.',
+        f'Venda #{sale.id} concluída via {"Web" if client == "web" else "aplicativo Windows"}.',
         new_values={
             'sale_id': sale.id,
             'subtotal': money_value(subtotal),
@@ -370,7 +371,7 @@ def create_sale(
             'paid_amount': money_value(paid_amount),
             'cash_register_id': cash_register.id,
             'idempotency_key': idempotency_key,
-            'client': 'windows_native',
+            'client': client,
             'payments': {
                 payment.method: money_value(payment.amount)
                 for payment in normalized_payments
@@ -391,8 +392,8 @@ def create_sale(
     )
     if audit_log is None:
         raise SaleOperationError(
-            'Não foi possível registrar a auditoria. O cancelamento foi interrompido.',
-            'sale_cancellation_audit_failed',
+            'Não foi possível registrar a auditoria. A venda foi interrompida.',
+            'sale_audit_failed',
             500,
         )
     db_session.flush()

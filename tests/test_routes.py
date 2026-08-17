@@ -5160,6 +5160,37 @@ class RouteTestCase(unittest.TestCase):
         with self.app.app_context():
             self.assertEqual(Sale.query.count(), 0)
 
+    def test_web_sale_uses_shared_idempotency_contract(self):
+        self.login()
+        self.open_cash_register(amount='0,00')
+        with self.app.app_context():
+            product = Product(
+                name='Produto idempotente', sale_price=12.50, stock_quantity=3,
+                active=True, company_id=self.master_company_id(),
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        payload = {
+            'idempotency_key': 'web-sale-idempotency-test',
+            'product_id[]': [str(product_id)],
+            'quantity[]': ['1'],
+            'payment_money': '12,50',
+        }
+        first = self.client.post('/vendas/nova', data=payload, follow_redirects=True)
+        second = self.client.post('/vendas/nova', data=payload, follow_redirects=True)
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertIn('Venda já processada.'.encode(), second.data)
+        with self.app.app_context():
+            self.assertEqual(Sale.query.count(), 1)
+            self.assertEqual(ApiSaleRequest.query.count(), 1)
+            self.assertEqual(db.session.get(Product, product_id).stock_quantity, 2)
+            audit = AuditLog.query.filter_by(action='sale_completed').one()
+            self.assertIn('"client": "web"', audit.new_values)
+
     def test_product_can_be_quick_updated_from_expanded_row(self):
         self.login()
 

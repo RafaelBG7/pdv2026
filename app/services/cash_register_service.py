@@ -71,7 +71,7 @@ def cash_register_expected_amount(db_session, company_id, cash_register):
     return money_decimal(cash_register.opening_amount) + money_decimal(sales_total)
 
 
-def open_cash_register(db_session, company_id, user, opening_amount):
+def open_cash_register(db_session, company_id, user, opening_amount, client='windows_native'):
     lock_company_scope(db_session, company_id)
     current = find_open_cash_register(db_session, company_id, for_update=True)
     if current is not None:
@@ -92,11 +92,11 @@ def open_cash_register(db_session, company_id, user, opening_amount):
         'cash_register_opened',
         'cash_register',
         cash_register.id,
-        f'Caixa #{cash_register.id} aberto pelo aplicativo Windows.',
+        f'Caixa #{cash_register.id} aberto via {"Web" if client == "web" else "aplicativo Windows"}.',
         new_values={
             'opening_amount': money_value(opening_amount),
             'status': cash_register.status,
-            'client': 'windows_native',
+            'client': client,
         },
         company_id=company_id,
         user=user,
@@ -113,6 +113,7 @@ def close_cash_register(
     closing_amount,
     can_view_financials,
     closed_at,
+    client='windows_native',
 ):
     lock_company_scope(db_session, company_id)
     cash_register = find_open_cash_register(db_session, company_id, for_update=True)
@@ -157,13 +158,13 @@ def close_cash_register(
         'cash_register_closed',
         'cash_register',
         cash_register.id,
-        f'Caixa #{cash_register.id} fechado pelo aplicativo Windows.',
+        f'Caixa #{cash_register.id} fechado via {"Web" if client == "web" else "aplicativo Windows"}.',
         new_values={
             'closing_amount': money_value(received_amount),
             'expected_amount': money_value(expected_amount),
             'closed_at': closed_at,
             'status': cash_register.status,
-            'client': 'windows_native',
+            'client': client,
         },
         company_id=company_id,
         user=user,

@@ -2,6 +2,8 @@
 
 > **Marco documentado:** versão atual em 13/08/2026. O inventário consolidado, a separação entre plataformas e o ponto de continuidade estão em [docs/30-versao-atual-13-08-2026.md](docs/30-versao-atual-13-08-2026.md).
 
+> **Paridade atual:** consulte o [índice oficial](docs/00-INDEX.md), a [matriz Web/App/Backend](docs/MATRIX.md) e a [análise funcional detalhada](docs/FEATURE_PARITY.md).
+
 Sistema PDV web para adegas, pequenos mercados e comércios locais. O projeto roda em Flask, usa MySQL como banco relacional, templates HTML/Jinja no frontend e já opera com base multiadega para um modelo SaaS.
 
 ## Visão Geral
@@ -67,7 +69,6 @@ Pontos mais maduros:
 
 Pontos que ainda merecem prioridade antes de produção pública:
 
-- restauração guiada de backup;
 - restauração guiada de backup;
 - cobrança real e regras concretas para Basic/Pro;
 - domínio definitivo com HTTPS;

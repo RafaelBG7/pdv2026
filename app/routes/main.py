@@ -1,17 +1,32 @@
 import csv
 import io
+import uuid
 from datetime import date, datetime, time, timedelta, timezone
+from types import SimpleNamespace
 
 from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import func, or_, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
 from app.models import AuditLog, CashRegister, Category, Company, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.permissions import authorize_role_override, has_permission_view_override, permission_required
 from app.services.audit_service import audit_action_label, entity_label, record_audit_event
-from app.services.sale_service import SaleOperationError, cancel_sale
+from app.services.cash_register_service import (
+    CashRegisterOperationError,
+    close_cash_register as close_cash_register_service,
+    open_cash_register as open_cash_register_service,
+)
+from app.services.sale_service import (
+    SaleLineInput,
+    SaleOperationError,
+    SalePaymentInput,
+    cancel_sale,
+    create_sale,
+    find_completed_sale_request,
+)
 from app.security.rate_limit import redis_health_status
 from app.services.stock_service import (
     MOVEMENT_TYPE_LABELS,
@@ -21,7 +36,6 @@ from app.services.stock_service import (
     increase_stock,
     stock_movement_label,
     stock_source_label,
-    decrease_stock,
 )
 from app.tenant import current_tenant_company, tenant_session
 
@@ -211,24 +225,6 @@ def export_payables_rows():
     ]
 
 
-def card_fee_total(company, payments, final_amount, paid_amount):
-    if not company or final_amount <= 0 or paid_amount <= 0:
-        return 0.0
-
-    payment_scale = min(final_amount / paid_amount, 1.0)
-    fee_total = 0.0
-    for method, amount in payments:
-        effective_amount = (amount or 0.0) * payment_scale
-        if method == 'pix' and company.pix_fee_enabled:
-            fee_total += effective_amount * ((company.pix_fee_percent or 0.0) / 100)
-        elif method == 'debit' and company.debit_fee_enabled:
-            fee_total += effective_amount * ((company.debit_fee_percent or 0.0) / 100)
-        elif method == 'credit' and company.credit_fee_enabled:
-            fee_total += effective_amount * ((company.credit_fee_percent or 0.0) / 100)
-
-    return round(fee_total, 2)
-
-
 def parse_quantity(value):
     try:
         return max(int(value or 0), 0)
@@ -269,6 +265,7 @@ def sale_form_state():
             method: request.form.get(f'payment_{method}', '')
             for method in PAYMENT_METHODS
         },
+        'idempotency_key': request.form.get('idempotency_key', '').strip(),
     }
 
 
@@ -499,12 +496,12 @@ def tenant_actor_user_id():
     return current_user.id
 
 
-def stock_source_for_product(product):
-    if product.is_kit:
-        if not product.kit_component or product.kit_component_quantity <= 0:
-            return None, 0
-        return product.kit_component, product.kit_component_quantity
-    return product, 1
+def tenant_actor():
+    return SimpleNamespace(
+        id=tenant_actor_user_id(),
+        username=getattr(current_user, 'username', ''),
+        role=getattr(current_user, 'role', ''),
+    )
 
 
 def sale_item_profit(item):
@@ -1638,6 +1635,7 @@ def new_sale():
         'discount_amount': '',
         'show_payment_step': False,
         'payments': {},
+        'idempotency_key': uuid.uuid4().hex,
     }
 
     def render_sale_form():
@@ -1650,152 +1648,53 @@ def new_sale():
 
     if request.method == 'POST':
         form_state = sale_form_state()
-        product_ids = request.form.getlist('product_id[]')
-        quantities = request.form.getlist('quantity[]')
-        selected_items = []
-        stock_requirements = {}
-        stock_warnings = []
-        total_amount = 0.0
-
-        for product_id, quantity_value in zip(product_ids, quantities):
-            quantity = parse_quantity(quantity_value)
-            if not product_id or quantity <= 0:
+        item_inputs = []
+        for product_id, quantity_value in zip(
+            request.form.getlist('product_id[]'),
+            request.form.getlist('quantity[]'),
+        ):
+            if not product_id:
                 continue
-
             try:
-                product_id_int = int(product_id)
+                item_inputs.append(SaleLineInput(int(product_id), int(quantity_value)))
             except (TypeError, ValueError):
                 flash('Selecione um produto válido para finalizar a venda.', 'danger')
                 return render_sale_form()
-
-            product = tenant_query(Product).filter_by(id=product_id_int).first()
-            if not product or not product.active:
-                continue
-
-            stock_product, units_per_sale = stock_source_for_product(product)
-            if not stock_product:
-                flash(f'Configure o kit do produto {product.name} antes de vender.', 'danger')
-                return render_sale_form()
-
-            stock_requirements[stock_product.id] = stock_requirements.get(stock_product.id, 0) + (units_per_sale * quantity)
-            line_total = round(product.sale_price * quantity, 2)
-            selected_items.append((product, quantity, line_total))
-            total_amount += line_total
-
-        for stock_product_id, required_quantity in stock_requirements.items():
-            stock_product = tenant_query(Product).filter_by(id=stock_product_id).first()
-            if not stock_product:
-                continue
-            if (stock_product.stock_quantity or 0) < required_quantity:
-                if not company.allow_negative_stock:
-                    flash(f'Estoque insuficiente para {stock_product.name}.', 'danger')
-                    return render_sale_form()
-                resulting_stock = (stock_product.stock_quantity or 0) - required_quantity
-                stock_warnings.append(f'{stock_product.name}: {resulting_stock} un.')
-
-        if not selected_items:
-            flash('Adicione pelo menos um produto à venda.', 'danger')
-            return render_sale_form()
-
-        payments = []
-        paid_amount = 0.0
-        for method in PAYMENT_METHODS:
-            amount = parse_money(request.form.get(f'payment_{method}'))
-            if amount > 0:
-                payments.append((method, amount))
-                paid_amount += amount
-
-        total_amount = round(total_amount, 2)
-        requested_discount = parse_money(request.form.get('discount_amount'))
-        if requested_discount > total_amount:
-            flash(f'O desconto não pode ser maior que o subtotal de {format_brl(total_amount)}.', 'danger')
-            return render_sale_form()
-        discount_amount = requested_discount
-        final_amount = round(total_amount - discount_amount, 2)
-        paid_amount = round(paid_amount, 2)
-        if paid_amount < final_amount:
-            missing = final_amount - paid_amount
-            flash(f'Falta pagar {format_brl(missing)}.', 'danger')
-            return render_sale_form()
-
-        machine_fee_total = card_fee_total(company, payments, final_amount, paid_amount)
-
-        sale = Sale(
-            total_amount=total_amount,
-            discount_amount=discount_amount,
-            final_amount=final_amount,
-            payment_status='paid',
-            user_id=tenant_actor_user_id(),
-            company_id=company.id,
-            cash_register_id=cash_register.id,
-        )
+        payment_inputs = [
+            SalePaymentInput(method, parse_money(request.form.get(f'payment_{method}')))
+            for method in PAYMENT_METHODS
+        ]
+        idempotency_key = form_state['idempotency_key'] or uuid.uuid4().hex
+        form_state['idempotency_key'] = idempotency_key
         tenant_db = tenant_session()
-        tenant_db.add(sale)
-        tenant_db.flush()
-
         try:
-            for product, quantity, line_total in selected_items:
-                stock_product, units_per_sale = stock_source_for_product(product)
-                decrease_stock(
-                    tenant_db,
-                    stock_product,
-                    units_per_sale * quantity,
-                    movement_type='sale',
-                    source_type='sale',
-                    user_id=tenant_actor_user_id(),
-                    source_id=sale.id,
-                    unit_cost=stock_product.cost_price,
-                    reason=f'Baixa da venda #{sale.id}',
-                    notes=f'Produto vendido: {product.name}',
-                    allow_negative_stock=company.allow_negative_stock,
-                )
-                unit_cost_price = product.cost_price or 0.0
-                item_fee = machine_fee_total * (line_total / total_amount) if total_amount > 0 else 0.0
-                tenant_db.add(SaleItem(
-                    sale_id=sale.id,
-                    product_id=product.id,
-                    quantity=quantity,
-                    unit_price=product.sale_price,
-                    unit_cost_price=unit_cost_price,
-                    total_price=line_total,
-                    profit_amount=round((((product.sale_price or 0.0) - unit_cost_price) * quantity) - item_fee, 2),
-                ))
-        except StockMovementError as error:
+            result = create_sale(
+                tenant_db, company, tenant_actor(), item_inputs, payment_inputs,
+                parse_money(request.form.get('discount_amount')), idempotency_key,
+                client='web',
+            )
+            tenant_db.commit()
+        except IntegrityError:
             tenant_db.rollback()
-            flash(str(error), 'danger')
+            result = find_completed_sale_request(tenant_db, company.id, idempotency_key)
+            if result is None:
+                flash('Outra tentativa desta venda ainda está sendo processada. Tente novamente.', 'danger')
+                return render_sale_form()
+        except SaleOperationError as error:
+            tenant_db.rollback()
+            flash(error.message, 'danger')
             return render_sale_form()
+        except Exception:
+            tenant_db.rollback()
+            raise
 
-        for method, amount in payments:
-            tenant_db.add(Payment(sale_id=sale.id, method=method, amount=amount))
-
-        record_audit_event(
-            'sale_completed',
-            'sale',
-            sale.id,
-            f'Venda #{sale.id} concluída no valor de {format_brl(final_amount)}.',
-            new_values={
-                'sale_id': sale.id,
-                'subtotal': total_amount,
-                'discount': discount_amount,
-                'final_amount': final_amount,
-                'paid_amount': paid_amount,
-                'cash_register_id': cash_register.id,
-                'payments': {method: amount for method, amount in payments},
-                'items': [
-                    {'product_id': product.id, 'name': product.name, 'quantity': quantity, 'total': line_total}
-                    for product, quantity, line_total in selected_items
-                ],
-            },
-            company_id=company.id,
-            db_session=tenant_db,
-        )
-
-        tenant_db.commit()
-        change_amount = max(paid_amount - final_amount, 0.0)
-        if stock_warnings:
-            flash(f'Estoque insuficiente permitido. Saldo após a venda: {", ".join(stock_warnings)}', 'warning')
-        flash(f'Venda finalizada com sucesso. Troco: {format_brl(change_amount)}.', 'success')
-        return redirect(url_for('main.sale_detail', sale_id=sale.id))
+        paid_amount = sum(payment.amount or 0 for payment in result.sale.payments)
+        change_amount = max(paid_amount - result.sale.final_amount, 0.0)
+        if result.stock_warnings:
+            flash(f'Estoque insuficiente permitido. Saldo após a venda: {", ".join(result.stock_warnings)}', 'warning')
+        message = 'Venda já processada.' if result.already_processed else 'Venda finalizada com sucesso.'
+        flash(f'{message} Troco: {format_brl(change_amount)}', 'success')
+        return redirect(url_for('main.sale_detail', sale_id=result.sale.id))
 
     return render_sale_form()
 
@@ -1948,29 +1847,17 @@ def cash_register_detail(cash_register_id):
 @login_required
 @permission_required('can_manage_cash_register')
 def open_cash_register_route():
-    if open_cash_register():
-        flash('Já existe um caixa aberto.', 'warning')
-        return redirect(safe_local_redirect('main.cash_register'))
-
-    cash_register = CashRegister(
-        opening_amount=parse_money(request.form.get('opening_amount')),
-        status='open',
-        user_id=tenant_actor_user_id(),
-        company_id=current_tenant_company().id,
-    )
     tenant_db = tenant_session()
-    tenant_db.add(cash_register)
-    tenant_db.flush()
-    record_audit_event(
-        'cash_register_opened',
-        'cash_register',
-        cash_register.id,
-        f'Caixa #{cash_register.id} aberto.',
-        new_values={'opening_amount': cash_register.opening_amount, 'status': cash_register.status},
-        company_id=current_tenant_company().id,
-        db_session=tenant_db,
-    )
-    tenant_db.commit()
+    try:
+        open_cash_register_service(
+            tenant_db, current_tenant_company().id, tenant_actor(),
+            parse_money(request.form.get('opening_amount')), client='web',
+        )
+        tenant_db.commit()
+    except CashRegisterOperationError as error:
+        tenant_db.rollback()
+        flash(error.message, 'warning')
+        return redirect(safe_local_redirect('main.cash_register'))
     flash('Caixa aberto com sucesso.', 'success')
     return redirect(safe_local_redirect('main.cash_register'))
 
@@ -1984,35 +1871,17 @@ def close_cash_register_route():
         flash('Não há caixa aberto para fechar.', 'warning')
         return redirect(url_for('main.cash_register'))
 
-    closing_amount = round(parse_money(request.form.get('closing_amount')), 2)
-    expected_amount = cash_register_expected_amount(cash_register)
-    if closing_amount != expected_amount:
-        difference = round(abs(expected_amount - closing_amount), 2)
-        if not can_view_cash_financials():
-            flash('Valor de fechamento não confere. Solicite a conferência de um usuário autorizado.', 'danger')
-        elif closing_amount < expected_amount:
-            flash(f'Falta {format_brl(difference)} para fechar o caixa. Valor esperado: {format_brl(expected_amount)}.', 'danger')
-        else:
-            flash(f'O valor está excedido em {format_brl(difference)}. Valor esperado: {format_brl(expected_amount)}.', 'danger')
+    tenant_db = tenant_session()
+    try:
+        close_cash_register_service(
+            tenant_db, current_tenant_company().id, tenant_actor(), cash_register.id,
+            parse_money(request.form.get('closing_amount')), can_view_cash_financials(),
+            datetime.now(timezone.utc), client='web',
+        )
+        tenant_db.commit()
+    except CashRegisterOperationError as error:
+        tenant_db.rollback()
+        flash(error.message, 'danger')
         return redirect(url_for('main.cash_register'))
-
-    cash_register.closing_amount = closing_amount
-    cash_register.closed_at = datetime.now(timezone.utc)
-    cash_register.status = 'closed'
-    record_audit_event(
-        'cash_register_closed',
-        'cash_register',
-        cash_register.id,
-        f'Caixa #{cash_register.id} fechado.',
-        new_values={
-            'closing_amount': cash_register.closing_amount,
-            'expected_amount': expected_amount,
-            'closed_at': cash_register.closed_at,
-            'status': cash_register.status,
-        },
-        company_id=current_tenant_company().id,
-        db_session=tenant_session(),
-    )
-    tenant_session().commit()
     flash('Caixa fechado com sucesso.', 'success')
     return redirect(url_for('main.cash_register'))

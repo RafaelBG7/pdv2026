@@ -14,7 +14,7 @@ Framework:
 - `unittest`
 - testes .NET no projeto `desktop_wpf/tests/Girofy.UnitTests`
 
-Em 13/08/2026, a suíte Python de referência possui **200 testes** (194 funcionais/contratuais e 6 dedicados a migrations). O número pode crescer; o critério de aceite é toda a descoberta passar.
+A quantidade de testes cresce com o produto e não deve ser usada como critério isolado. O critério de aceite é `python -m unittest discover` concluir integralmente, incluindo testes funcionais/contratuais e as suítes dedicadas a migrations. O estado consolidado atual está em [31-estado-atual-17-08-2026.md](31-estado-atual-17-08-2026.md).
 
 Comando recomendado:
 

@@ -7,9 +7,11 @@
 
 Detalhes em [29-migracoes-versionadas.md](29-migracoes-versionadas.md).
 
-Atualizado em: 13/08/2026
+Atualizado em: 17/08/2026
 
-> Este documento permanece como manual de paridade. O snapshot oficial para continuar o desenvolvimento é [30-versao-atual-13-08-2026.md](30-versao-atual-13-08-2026.md).
+> O snapshot oficial mais recente e detalhado está em [31-estado-atual-17-08-2026.md](31-estado-atual-17-08-2026.md).
+
+> Este documento permanece como manual funcional. O snapshot oficial para continuar o desenvolvimento é [31-estado-atual-17-08-2026.md](31-estado-atual-17-08-2026.md).
 
 ## Objetivo
 

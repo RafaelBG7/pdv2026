@@ -2,6 +2,8 @@
 
 O App é um cliente WPF online. Sua estrutura fica em `desktop_wpf`: Presentation/Desktop, Application/ViewModels e Infrastructure/serviços HTTP.
 
+Estado detalhado e critérios de continuidade: [31-estado-atual-17-08-2026.md](../31-estado-atual-17-08-2026.md).
+
 ## Funções
 
 - login, refresh/logout e recuperação de senha;
@@ -13,6 +15,17 @@ O App é um cliente WPF online. Sua estrutura fica em `desktop_wpf`: Presentatio
 Tokens são protegidos localmente; dados de negócio não são persistidos como banco paralelo. Sem rede, a operação informa indisponibilidade: não existe sincronização offline. ViewModels devem cancelar/reutilizar carregamentos e nunca implementar cálculos financeiros autoritativos.
 
 O App consome `/api/v1`; uma mudança incompatível exige nova versão de API, não alteração silenciosa. Consulte [paridade](../FEATURE_PARITY.md).
+
+## Build e distribuição
+
+- solução: `desktop_wpf/Girofy.Desktop.sln`;
+- runtime: .NET 8, Windows x64;
+- testes: `desktop_wpf/tests/Girofy.UnitTests`;
+- build: self-contained, single-file e comprimido;
+- release: `windows-preview`;
+- executável: `https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/Girofy.exe`.
+
+O App não executa migrations nem inclui MySQL/Python. Assinatura Code Signing e instalador formal ainda são pendências de produção.
 
 ## Tema claro e escuro
 

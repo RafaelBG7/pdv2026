@@ -1,6 +1,6 @@
 # Paridade funcional Web, Windows e Backend
 
-Atualizado em 17/08/2026 a partir das rotas Flask, endpoints `/api/v1`, serviços, modelos, ViewModels WPF e workflows do repositório.
+Atualizado em 17/08/2026 a partir das rotas Flask, endpoints `/api/v1`, serviços, modelos, ViewModels WPF e workflows do repositório. O snapshot narrativo completo está em [31-estado-atual-17-08-2026.md](31-estado-atual-17-08-2026.md).
 
 ## Legenda
 

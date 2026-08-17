@@ -1,6 +1,6 @@
 # Girofy — PDV Web/API e aplicativo Windows
 
-> **Marco documentado:** versão atual em 13/08/2026. O inventário consolidado, a separação entre plataformas e o ponto de continuidade estão em [docs/30-versao-atual-13-08-2026.md](docs/30-versao-atual-13-08-2026.md).
+> **Marco documentado:** estado oficial em 17/08/2026. O inventário completo, a separação entre plataformas e o ponto de continuidade estão em [docs/31-estado-atual-17-08-2026.md](docs/31-estado-atual-17-08-2026.md).
 
 > **Paridade atual:** consulte o [índice oficial](docs/00-INDEX.md), a [matriz Web/App/Backend](docs/MATRIX.md) e a [análise funcional detalhada](docs/FEATURE_PARITY.md).
 

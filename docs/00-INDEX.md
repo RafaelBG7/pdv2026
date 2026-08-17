@@ -2,6 +2,11 @@
 
 Este índice é o ponto inicial oficial. A documentação separa interface Web, aplicativo Windows e regras compartilhadas no servidor.
 
+## Marco atual
+
+- [Estado completo em 17/08/2026](31-estado-atual-17-08-2026.md) — documento oficial para continuidade.
+- [Marco de 13/08/2026](30-versao-atual-13-08-2026.md) — histórico preservado.
+
 ## Visão consolidada
 
 - [Matriz resumida de plataformas](MATRIX.md)
@@ -13,6 +18,11 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 - [API](09-api.md)
 - [Permissões](11-permissoes.md)
 - [Testes](15-testes.md)
+- [Segurança](14-seguranca.md)
+- [Migrations central/tenant](29-migracoes-versionadas.md)
+- [Rate limit Redis](28-rate-limit-redis.md)
+- [Cancelamento de vendas](27-cancelamento-estorno-vendas.md)
+- [Notificações e e-mail](25-notificacoes-web-windows-email.md)
 
 ## Documentação por plataforma
 

@@ -1,5 +1,7 @@
 # Versão atual — 13/08/2026
 
+> Documento histórico. O estado oficial mais recente está em [31-estado-atual-17-08-2026.md](31-estado-atual-17-08-2026.md).
+
 Este é o documento oficial de continuidade do Girofy a partir do commit de marco de 13/08/2026. Ele separa o que pertence ao produto Web/API do que pertence ao aplicativo Windows e registra infraestrutura, segurança, banco, testes, deploy e pendências conhecidas.
 
 ## 1. Regra de separação entre plataformas

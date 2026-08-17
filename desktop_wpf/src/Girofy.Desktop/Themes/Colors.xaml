@@ -31,6 +31,15 @@
     <SolidColorBrush x:Key="ErrorBrush" Color="#FB7185" />
     <SolidColorBrush x:Key="ErrorSurfaceBrush" Color="#321D2A" />
     <SolidColorBrush x:Key="ErrorBorderBrush" Color="#8B4052" />
+    <SolidColorBrush x:Key="AlternatingRowBrush" Color="#102034" />
+    <SolidColorBrush x:Key="TableHeaderBrush" Color="#0F1E32" />
+    <SolidColorBrush x:Key="SelectionSoftBrush" Color="#30245C" />
+    <SolidColorBrush x:Key="OverlayBrush" Color="#CC000914" />
+    <SolidColorBrush x:Key="OverlaySoftBrush" Color="#B8050B16" />
+    <SolidColorBrush x:Key="LogoTileBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="OnAccentTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="WarningSoftBrush" Color="#26F59E0B" />
+    <SolidColorBrush x:Key="ErrorSoftBrush" Color="#26EF4444" />
 
     <LinearGradientBrush x:Key="PrimaryGradientBrush" StartPoint="0,0.5" EndPoint="1,0.5">
         <GradientStop Color="#8B5CF6" Offset="0" />
@@ -404,6 +413,76 @@
         </Setter>
     </Style>
 
+    <Style x:Key="ThemeToggleButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="68" />
+        <Setter Property="Height" Value="38" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="ToolTip" Value="Alternar tema" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid Width="68" Height="38">
+                        <Border x:Name="Track"
+                                Background="{StaticResource SurfaceElevatedBrush}"
+                                BorderBrush="{StaticResource BorderStrongBrush}"
+                                BorderThickness="1"
+                                CornerRadius="19" />
+                        <Path x:Name="SunIcon" Width="16" Height="16" Margin="11,0,0,0"
+                              HorizontalAlignment="Left" VerticalAlignment="Center"
+                              Data="M12,8 A4,4 0 1 1 4,8 A4,4 0 1 1 12,8 M8,0 L8,2 M8,14 L8,16 M0,8 L2,8 M14,8 L16,8 M2.3,2.3 L3.7,3.7 M12.3,12.3 L13.7,13.7 M2.3,13.7 L3.7,12.3 M12.3,3.7 L13.7,2.3"
+                              Stroke="{StaticResource WarningBrush}" StrokeThickness="1.5"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                            <Path.RenderTransform><RotateTransform x:Name="SunRotation" CenterX="8" CenterY="8" /></Path.RenderTransform>
+                        </Path>
+                        <Path x:Name="MoonIcon" Width="16" Height="16" Margin="0,0,11,0"
+                              HorizontalAlignment="Right" VerticalAlignment="Center"
+                              Data="M13.8,10.8 A6,6 0 0 1 5.2,2.2 A6,6 0 1 0 13.8,10.8"
+                              Fill="{StaticResource PrimaryHoverBrush}" Opacity="0.45" />
+                        <Ellipse x:Name="Thumb" Width="28" Height="28"
+                                 HorizontalAlignment="Left" Margin="5,0,0,0"
+                                 Fill="{StaticResource SurfaceBrush}">
+                            <Ellipse.RenderTransform><TranslateTransform x:Name="ThumbTransform" /></Ellipse.RenderTransform>
+                        </Ellipse>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Track" Property="Opacity" Value="0.84" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Value="Usar tema claro">
+                            <Setter TargetName="MoonIcon" Property="Opacity" Value="1" />
+                            <Setter TargetName="SunIcon" Property="Opacity" Value="0.45" />
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="30" Duration="0:0:0.24">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="55" Duration="0:0:0.24" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.24">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="0" Duration="0:0:0.24" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="NavButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
         <Setter Property="Height" Value="46" />
         <Setter Property="Padding" Value="13,0" />
@@ -479,7 +558,7 @@
         <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="VerticalGridLinesBrush" Value="Transparent" />
         <Setter Property="RowBackground" Value="{StaticResource SurfaceRaisedBrush}" />
-        <Setter Property="AlternatingRowBackground" Value="#172840" />
+        <Setter Property="AlternatingRowBackground" Value="{StaticResource AlternatingRowBrush}" />
         <Setter Property="SelectionMode" Value="Single" />
         <Setter Property="GridLinesVisibility" Value="Horizontal" />
         <Setter Property="HeadersVisibility" Value="Column" />
@@ -492,7 +571,7 @@
     </Style>
 
     <Style TargetType="DataGridColumnHeader">
-        <Setter Property="Background" Value="#0F1E32" />
+        <Setter Property="Background" Value="{StaticResource TableHeaderBrush}" />
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />

@@ -19,5 +19,6 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 - [Web](web/README.md): telas Flask/Jinja, sessão no navegador e painel master.
 - [App Windows](app/README.md): cliente WPF, cache de sessão e consumo da API.
 - [Compartilhado](shared/README.md): API, serviços transacionais, banco, tenant, auditoria e erros.
+- [Temas claro e escuro](shared/THEMING.md): tokens, persistência, toggle e validação Web/App.
 
 Os documentos numerados continuam contendo os manuais temáticos e históricos. Em caso de conflito, a matriz de paridade e os documentos por plataforma descrevem o estado atual do código.

@@ -516,7 +516,7 @@
                               HorizontalGridLinesBrush="{StaticResource BorderBrush}"
                               VerticalGridLinesBrush="Transparent"
                               RowBackground="{StaticResource SurfaceBrush}"
-                              AlternatingRowBackground="#102034"
+                          AlternatingRowBackground="{StaticResource AlternatingRowBrush}"
                               RowHeight="52"
                               ColumnHeaderHeight="40">
                         <DataGrid.RowStyle>

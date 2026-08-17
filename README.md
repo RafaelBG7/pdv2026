@@ -4,6 +4,8 @@
 
 > **Paridade atual:** consulte o [índice oficial](docs/00-INDEX.md), a [matriz Web/App/Backend](docs/MATRIX.md) e a [análise funcional detalhada](docs/FEATURE_PARITY.md).
 
+> **Temas:** a arquitetura Light/Dark da Web e do App está documentada em [docs/shared/THEMING.md](docs/shared/THEMING.md).
+
 Sistema PDV web para adegas, pequenos mercados e comércios locais. O projeto roda em Flask, usa MySQL como banco relacional, templates HTML/Jinja no frontend e já opera com base multiadega para um modelo SaaS.
 
 ## Visão Geral

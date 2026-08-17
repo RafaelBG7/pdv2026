@@ -20,6 +20,7 @@ Legenda: `Completo`, `Parcial`, `N/A` (não pertence à plataforma) e `Pendente`
 | Importação/exportação/backup | Completo | Completo | Completo | Restauração guiada continua pendente. |
 | Assinatura e ativação | Completo | Parcial | Completo | App ativa assinatura; administração comercial fica na Web. |
 | Painel SaaS master | Completo | N/A | Completo | Função deliberadamente exclusiva da Web. |
+| Tema claro/escuro | Completo | Completo | N/A | Toggle sol/lua animado, tokens centralizados e persistência local sem flash. |
 | Operação offline/sincronização | N/A | Pendente | N/A | Não faz parte da arquitetura atual; o App é online. |
 
 Detalhes, contratos, evidências e pendências: [FEATURE_PARITY.md](FEATURE_PARITY.md).

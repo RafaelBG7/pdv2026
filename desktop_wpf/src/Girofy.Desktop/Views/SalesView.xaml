@@ -418,7 +418,7 @@
 
                                                                     <StackPanel Grid.Row="2">
                                                                         <Border Margin="0,0,0,14" Padding="12"
-                                                                                Background="#26EF4444" BorderBrush="{StaticResource ErrorBrush}"
+                            Background="{StaticResource ErrorSoftBrush}" BorderBrush="{StaticResource ErrorBrush}"
                                                                                 BorderThickness="1" CornerRadius="6">
                                                                             <Border.Style>
                                                                                 <Style TargetType="Border">
@@ -719,7 +719,7 @@
             </Grid>
         </ScrollViewer>
 
-        <Grid Panel.ZIndex="55" Background="#CC000914">
+        <Grid Panel.ZIndex="55" Background="{StaticResource OverlayBrush}">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -794,7 +794,7 @@
             </Border>
         </Grid>
 
-        <Grid Background="#B8000914">
+        <Grid Background="{StaticResource OverlaySoftBrush}">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -1068,7 +1068,7 @@
                                               HorizontalGridLinesBrush="{StaticResource BorderBrush}"
                                               VerticalGridLinesBrush="Transparent"
                                               RowBackground="{StaticResource SurfaceBrush}"
-                                              AlternatingRowBackground="#102034"
+                                  AlternatingRowBackground="{StaticResource AlternatingRowBrush}"
                                               RowHeight="54" ColumnHeaderHeight="38">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Produto" Binding="{Binding Name}" Width="2*" />
@@ -1330,7 +1330,7 @@
             </Border>
         </Grid>
 
-        <Grid Background="#CC000914" Panel.ZIndex="30">
+        <Grid Background="{StaticResource OverlayBrush}" Panel.ZIndex="30">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -1384,7 +1384,7 @@
             </Border>
         </Grid>
 
-        <Grid Background="#CC000914">
+        <Grid Background="{StaticResource OverlayBrush}">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed" />

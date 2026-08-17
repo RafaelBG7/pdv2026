@@ -157,6 +157,18 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Cadastrar'.encode(), response.data)
         self.assertNotIn('Key de ativação'.encode(), response.data)
         self.assertNotIn('Não tenho key'.encode(), response.data)
+        self.assertIn('data-theme-toggle'.encode(), response.data)
+        self.assertIn("localStorage.getItem('girofy-theme')".encode(), response.data)
+        self.assertIn("prefers-color-scheme: dark".encode(), response.data)
+
+    def test_authenticated_layout_exposes_accessible_theme_toggle(self):
+        self.login()
+
+        response = self.client.get('/dashboard')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-theme-toggle'.encode(), response.data)
+        self.assertIn('aria-label="Ativar tema escuro"'.encode(), response.data)
 
     def test_health_check_is_public_and_minimal(self):
         response = self.client.get('/health')

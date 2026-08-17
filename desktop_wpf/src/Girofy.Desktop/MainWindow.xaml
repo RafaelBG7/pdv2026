@@ -47,8 +47,9 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="76" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <Border Width="62" Height="62" Background="#FFFFFF" CornerRadius="8">
+                            <Border Width="62" Height="62" Background="{StaticResource LogoTileBrush}" CornerRadius="8">
                                 <Image Margin="5" Source="Resources/logo-girofy.png" Stretch="Uniform" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -58,6 +59,12 @@
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            Text="Aplicativo Windows" />
                             </StackPanel>
+                            <Button Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding Settings.ToggleThemeCommand}"
+                                    Tag="{Binding Settings.ThemeToggleText}"
+                                    AutomationProperties.Name="Alternar tema"
+                                    Style="{StaticResource ThemeToggleButtonStyle}" />
                         </Grid>
 
                         <Border Grid.Row="2" Padding="16" BorderThickness="1" CornerRadius="6">
@@ -325,7 +332,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="46" Height="46" Background="#FFFFFF" CornerRadius="6">
+                        <Border Width="46" Height="46" Background="{StaticResource LogoTileBrush}" CornerRadius="6">
                             <Image Margin="4" Source="Resources/logo-girofy.png" Stretch="Uniform" />
                         </Border>
                         <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
@@ -336,6 +343,11 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Margin="0,0,12,0"
+                                Command="{Binding Settings.ToggleThemeCommand}"
+                                Tag="{Binding Settings.ThemeToggleText}"
+                                AutomationProperties.Name="Alternar tema"
+                                Style="{StaticResource ThemeToggleButtonStyle}" />
                         <Button x:Name="NotificationsBellButton" MinWidth="54" Margin="0,0,14,0"
                                 Click="HandleNotificationsBellClick"
                                 ToolTip="Notificações pendentes"
@@ -344,7 +356,7 @@
                                 <TextBlock FontSize="18" Text="🔔" />
                                 <Border Margin="6,0,0,0" Padding="6,2" Background="{StaticResource ErrorBrush}" CornerRadius="9">
                                     <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Notifications.HasUnread}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
-                                    <TextBlock FontSize="10" FontWeight="Bold" Foreground="White" Text="{Binding Notifications.UnreadText}" />
+                                    <TextBlock FontSize="10" FontWeight="Bold" Foreground="{StaticResource OnAccentTextBrush}" Text="{Binding Notifications.UnreadText}" />
                                 </Border>
                             </StackPanel>
                         </Button>
@@ -833,7 +845,7 @@
                                                                 </Trigger>
                                                                 <Trigger Property="IsSelected" Value="True">
                                                                     <Setter TargetName="CategoryItemBorder" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
-                                                                    <Setter TargetName="CategoryItemBorder" Property="Background" Value="#30245C" />
+                                                                    <Setter TargetName="CategoryItemBorder" Property="Background" Value="{StaticResource SelectionSoftBrush}" />
                                                                 </Trigger>
                                                             </ControlTemplate.Triggers>
                                                         </ControlTemplate>
@@ -883,7 +895,7 @@
                                       HorizontalGridLinesBrush="{StaticResource BorderBrush}"
                                       VerticalGridLinesBrush="Transparent"
                                       RowBackground="{StaticResource SurfaceRaisedBrush}"
-                                      AlternatingRowBackground="#102034"
+                                      AlternatingRowBackground="{StaticResource AlternatingRowBrush}"
                                       RowHeight="66" ColumnHeaderHeight="48">
                                 <DataGrid.RowStyle>
                                     <Style TargetType="DataGridRow">
@@ -1037,7 +1049,7 @@
                                     Content="Próxima" Style="{StaticResource SecondaryButtonStyle}" />
                         </Grid>
 
-                        <Grid Grid.RowSpan="9" Panel.ZIndex="20" Background="#B8050B16">
+                        <Grid Grid.RowSpan="9" Panel.ZIndex="20" Background="{StaticResource OverlaySoftBrush}">
                             <Grid.Style>
                                 <Style TargetType="Grid">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -1274,7 +1286,7 @@
                                   HorizontalGridLinesBrush="{StaticResource BorderBrush}"
                                   VerticalGridLinesBrush="Transparent"
                                   RowBackground="{StaticResource SurfaceRaisedBrush}"
-                                  AlternatingRowBackground="#102034"
+                                  AlternatingRowBackground="{StaticResource AlternatingRowBrush}"
                                   RowHeight="50" ColumnHeaderHeight="42">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Categoria" Binding="{Binding Name}" Width="*" />
@@ -1287,7 +1299,7 @@
             </Grid>
         </Grid>
         <Grid Panel.ZIndex="100"
-              Background="#B0050B16"
+              Background="{StaticResource OverlaySoftBrush}"
               PreviewKeyDown="HandleForgotPasswordKeyDown">
             <Grid.Style>
                 <Style TargetType="Grid">

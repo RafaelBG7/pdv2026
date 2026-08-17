@@ -463,7 +463,7 @@
                           HorizontalGridLinesBrush="{StaticResource BorderBrush}"
                           VerticalGridLinesBrush="Transparent"
                           RowBackground="{StaticResource SurfaceRaisedBrush}"
-                          AlternatingRowBackground="#102034"
+                                      AlternatingRowBackground="{StaticResource AlternatingRowBrush}"
                           RowHeight="54" ColumnHeaderHeight="40">
                     <DataGrid.Style>
                         <Style TargetType="DataGrid">
@@ -605,7 +605,7 @@
                                         </UniformGrid>
 
                                         <Border Margin="0,0,0,14" Padding="12"
-                                                Background="#26F59E0B" BorderBrush="#FFF59E0B"
+                                    Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource WarningBrush}"
                                                 BorderThickness="1" CornerRadius="7">
                                             <Border.Style>
                                                 <Style TargetType="Border">
@@ -618,7 +618,7 @@
                                                 </Style>
                                             </Border.Style>
                                             <StackPanel>
-                                                <TextBlock FontWeight="Bold" Foreground="#FFF59E0B"
+                            <TextBlock FontWeight="Bold" Foreground="{StaticResource WarningBrush}"
                                                            Text="Ajuste posterior ao fechamento" />
                                                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextSecondaryBrush}"
                                                            Text="{Binding DetailRegister.CancellationAdjustmentText}" TextWrapping="Wrap" />

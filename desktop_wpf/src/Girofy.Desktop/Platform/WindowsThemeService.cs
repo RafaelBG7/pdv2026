@@ -22,6 +22,14 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
             ["TextPrimaryBrush"] = "#F7FBFF",
             ["TextSecondaryBrush"] = "#B8C7D9",
             ["TextMutedBrush"] = "#8293AA",
+            ["PrimaryBrush"] = "#8B5CF6",
+            ["PrimaryHoverBrush"] = "#A78BFA",
+            ["PrimaryPressedBrush"] = "#6D28D9",
+            ["AccentBrush"] = "#22D3EE",
+            ["InfoBrush"] = "#60A5FA",
+            ["SuccessBrush"] = "#22C55E",
+            ["WarningBrush"] = "#FBBF24",
+            ["ErrorBrush"] = "#FB7185",
             ["AccentSoftBrush"] = "#16394A",
             ["InfoSurfaceBrush"] = "#102A3A",
             ["InfoBorderBrush"] = "#1F6F86",
@@ -31,6 +39,15 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
             ["WarningBorderBrush"] = "#8A6818",
             ["ErrorSurfaceBrush"] = "#321D2A",
             ["ErrorBorderBrush"] = "#8B4052",
+            ["AlternatingRowBrush"] = "#102034",
+            ["TableHeaderBrush"] = "#0F1E32",
+            ["SelectionSoftBrush"] = "#30245C",
+            ["OverlayBrush"] = "#CC000914",
+            ["OverlaySoftBrush"] = "#B8050B16",
+            ["LogoTileBrush"] = "#FFFFFF",
+            ["OnAccentTextBrush"] = "#FFFFFF",
+            ["WarningSoftBrush"] = "#26F59E0B",
+            ["ErrorSoftBrush"] = "#26EF4444",
         };
 
     private static readonly IReadOnlyDictionary<string, string> LightPalette =
@@ -49,6 +66,14 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
             ["TextPrimaryBrush"] = "#172033",
             ["TextSecondaryBrush"] = "#52627A",
             ["TextMutedBrush"] = "#78879A",
+            ["PrimaryBrush"] = "#6D28D9",
+            ["PrimaryHoverBrush"] = "#7C3AED",
+            ["PrimaryPressedBrush"] = "#5B21B6",
+            ["AccentBrush"] = "#0891B2",
+            ["InfoBrush"] = "#2563EB",
+            ["SuccessBrush"] = "#15803D",
+            ["WarningBrush"] = "#D97706",
+            ["ErrorBrush"] = "#DC2626",
             ["AccentSoftBrush"] = "#DDF7FB",
             ["InfoSurfaceBrush"] = "#E8F4FF",
             ["InfoBorderBrush"] = "#8BC5EA",
@@ -58,6 +83,15 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
             ["WarningBorderBrush"] = "#E6C45B",
             ["ErrorSurfaceBrush"] = "#FFF0F3",
             ["ErrorBorderBrush"] = "#E7A0AD",
+            ["AlternatingRowBrush"] = "#F1F5F9",
+            ["TableHeaderBrush"] = "#E8EEF5",
+            ["SelectionSoftBrush"] = "#EEE7FF",
+            ["OverlayBrush"] = "#66071026",
+            ["OverlaySoftBrush"] = "#52071026",
+            ["LogoTileBrush"] = "#FFFFFF",
+            ["OnAccentTextBrush"] = "#FFFFFF",
+            ["WarningSoftBrush"] = "#26D97706",
+            ["ErrorSoftBrush"] = "#26DC2626",
         };
 
     public bool IsDarkMode { get; private set; } = true;
@@ -104,6 +138,9 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
         ApplyGradient("SidebarGradientBrush", IsDarkMode
             ? ["#041421", "#061525", "#120A2A"]
             : ["#F7FAFC", "#F1F7FA", "#F4EFFF"]);
+        ApplyGradient("PrimaryGradientBrush", IsDarkMode
+            ? ["#8B5CF6", "#22D3EE"]
+            : ["#6D28D9", "#0891B2"]);
     }
 
     private static void ApplyGradient(string key, IReadOnlyList<string> colors)

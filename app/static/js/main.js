@@ -70,6 +70,12 @@ document.addEventListener('DOMContentLoaded', function () {
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (button) {
+      const dark = theme === 'dark';
+      button.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      button.setAttribute('aria-label', dark ? 'Ativar tema claro' : 'Ativar tema escuro');
+      button.dataset.themeState = theme;
+    });
   }
 
   const textScaleLabels = {
@@ -359,6 +365,13 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[data-settings-theme-choice]').forEach(function (button) {
     button.addEventListener('click', function () {
       applyTheme(button.dataset.settingsThemeChoice || 'light');
+    });
+  });
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
     });
   });
 

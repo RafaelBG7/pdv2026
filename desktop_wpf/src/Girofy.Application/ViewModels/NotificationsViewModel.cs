@@ -14,7 +14,7 @@ public sealed class NotificationsViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _pollingCancellation;
     private string _category = string.Empty;
     private string _severity = string.Empty;
-    private string _readFilter = string.Empty;
+    private string _readFilter = "false";
     private string _search = string.Empty;
     private string _errorMessage = string.Empty;
     private bool _isBusy;
@@ -95,22 +95,57 @@ public sealed class NotificationsViewModel : ObservableObject, IDisposable
     private async Task MarkReadAsync(NotificationItem item)
     {
         var session = _sessionContext.Current; if (session is null || item.IsRead) return;
-        try { await _apiClient.MarkNotificationReadAsync(session.AccessToken, item.Id, CancellationToken.None); await LoadAsync(CancellationToken.None); }
+        try
+        {
+            await _apiClient.MarkNotificationReadAsync(session.AccessToken, item.Id, CancellationToken.None);
+            RemovePendingItem(item, decrementUnread: true);
+        }
         catch { ErrorMessage = "Não foi possível marcar a notificação como lida."; }
     }
 
     private async Task DismissAsync(NotificationItem item)
     {
         var session = _sessionContext.Current; if (session is null) return;
-        try { await _apiClient.DismissNotificationAsync(session.AccessToken, item.Id, CancellationToken.None); await LoadAsync(CancellationToken.None); }
+        try
+        {
+            await _apiClient.DismissNotificationAsync(session.AccessToken, item.Id, CancellationToken.None);
+            RemovePendingItem(item, decrementUnread: !item.IsRead);
+        }
         catch { ErrorMessage = "Não foi possível dispensar a notificação."; }
     }
 
     private async Task MarkAllReadAsync(CancellationToken cancellationToken)
     {
         var session = _sessionContext.Current; if (session is null) return;
-        await _apiClient.MarkAllNotificationsReadAsync(session.AccessToken, cancellationToken);
-        await LoadAsync(cancellationToken);
+        try
+        {
+            await _apiClient.MarkAllNotificationsReadAsync(session.AccessToken, cancellationToken);
+            Items.Clear();
+            UnreadCount = 0;
+            Total = 0;
+            ErrorMessage = string.Empty;
+            NotifyCollectionStateChanged();
+        }
+        catch
+        {
+            ErrorMessage = "Não foi possível marcar as notificações como lidas.";
+        }
+    }
+
+    private void RemovePendingItem(NotificationItem item, bool decrementUnread)
+    {
+        if (!Items.Remove(item)) return;
+        if (decrementUnread) UnreadCount = Math.Max(0, UnreadCount - 1);
+        Total = Math.Max(0, Total - 1);
+        ErrorMessage = string.Empty;
+        NotifyCollectionStateChanged();
+    }
+
+    private void NotifyCollectionStateChanged()
+    {
+        OnPropertyChanged(nameof(HasItems));
+        OnPropertyChanged(nameof(HasNoItems));
+        OnPropertyChanged(nameof(HasCritical));
     }
 
     private void StartPolling()
@@ -136,7 +171,7 @@ public sealed class NotificationsViewModel : ObservableObject, IDisposable
     private void Reset()
     {
         Items.Clear(); UnreadCount = 0; Total = 0; Page = 1; ErrorMessage = string.Empty; IsBusy = false;
-        OnPropertyChanged(nameof(HasItems)); OnPropertyChanged(nameof(HasNoItems)); OnPropertyChanged(nameof(HasCritical));
+        NotifyCollectionStateChanged();
     }
 
     public void Dispose() { _pollingCancellation?.Cancel(); _pollingCancellation?.Dispose(); _sessionContext.Changed -= HandleSessionChanged; }

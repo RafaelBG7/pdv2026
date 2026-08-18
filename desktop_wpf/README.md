@@ -1,4 +1,4 @@
-# Girofy para Windows - WPF
+# GiroFy para Windows - WPF
 
 Esta pasta contém a aplicação Windows nativa experimental do Girofy. Ela é independente da interface Flask/Jinja e não acessa o MySQL diretamente.
 
@@ -210,7 +210,9 @@ Execute manualmente:
 GitHub > Actions > Build Windows WPF preview > Run workflow
 ```
 
-O artefato `Girofy-Windows-WPF-preview` é self-contained. O cliente final não precisa instalar .NET, Python, MySQL ou ferramentas de desenvolvimento.
+O workflow gera `GiroFy-Windows-0.8.0`, com o executável self-contained, e `GiroFy-Installer-0.8.0`, com `GiroFy-Setup-0.8.0.exe`. O cliente de teste não precisa instalar .NET, Python, MySQL ou ferramentas de desenvolvimento.
+
+O Setup usa Inno Setup, instala por usuário em `%LocalAppData%\Programs\GiroFy`, cria atalho no Menu Iniciar, oferece atalho opcional na Área de Trabalho e registra o desinstalador no Windows. Consulte `docs/WINDOWS_INSTALLER.md` para build local, segurança, upgrade e homologação.
 
 Esta prévia valida a base nativa, o ciclo completo de autenticação, o dashboard operacional,
 a consulta e manutenção básica do catálogo, o fluxo de abertura/fechamento de caixa, o

@@ -202,7 +202,11 @@ O seletor textual duplicado foi removido do menu do usuário; o toggle sol/lua �
 - testes e compilação executados em `windows-latest`;
 - executável atual publicado na release `windows-preview`;
 - download permanente: `https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/Girofy.exe`;
-- assinatura Code Signing e instalador formal continuam pendentes.
+- versão de desenvolvimento definida como `0.8.0` em `Directory.Build.props`;
+- instalador preview Inno Setup preparado como `GiroFy-Setup-0.8.0.exe`;
+- instalação por usuário em `%LocalAppData%\Programs\GiroFy`, com Menu Iniciar, atalho opcional e desinstalador;
+- artifacts do executável e instalador integrados ao workflow/release `windows-preview`;
+- assinatura Code Signing, auto-update e instalador comercial continuam pendentes.
 
 ## 6. BACKEND/API — contratos
 

@@ -55,6 +55,8 @@ public partial class App : System.Windows.Application
             {
                 var apiOptions = ApiOptions.FromConfiguration(context.Configuration);
                 var serverUri = apiOptions.GetValidatedBaseUri();
+                var productVersion = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+                var userAgent = $"GiroFy-Windows/{productVersion}";
 
                 services.AddSingleton(apiOptions);
                 services.AddSingleton<IExternalBrowserService, SystemBrowserService>();
@@ -68,13 +70,13 @@ public partial class App : System.Windows.Application
                 {
                     client.BaseAddress = serverUri;
                     client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
-                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Girofy-Windows/0.1");
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
                 });
                 services.AddHttpClient<IPasswordRecoveryService, PasswordRecoveryService>(client =>
                 {
                     client.BaseAddress = serverUri;
                     client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
-                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Girofy-Windows/0.1");
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
                 });
                 services.AddTransient<ForgotPasswordViewModel>();
                 services.AddSingleton(provider => new LoginViewModel(

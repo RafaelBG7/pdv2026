@@ -6,6 +6,10 @@
     <AssemblyName>Girofy</AssemblyName>
     <RootNamespace>Girofy.Desktop</RootNamespace>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <Product>GiroFy</Product>
+    <Title>GiroFy</Title>
+    <Description>Sistema de gestão e ponto de venda GiroFy</Description>
+    <ApplicationIcon>Resources\Girofy.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +23,7 @@
 
   <ItemGroup>
     <Resource Include="..\..\..\app\static\logo-girofy-v2.png" Link="Resources\logo-girofy.png" />
+    <Resource Include="Resources\Girofy.ico" />
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

@@ -1,0 +1,456 @@
+GIROFY — MEMÓRIA DE CONTINUIDADE E ROADMAP ATÉ A VERSÃO 1.0.0
+================================================================
+
+Registrado em: 17/08/2026
+Natureza: contexto de planejamento; não autoriza implementação automática
+
+
+1. OBJETIVO DESTE ARQUIVO
+-------------------------
+
+Este arquivo preserva o plano de continuidade do GiroFy. Ele deve ser consultado
+antes de futuras tarefas para compreender:
+
+- o estado atual do produto;
+- a etapa em andamento;
+- a ordem planejada das próximas etapas;
+- as dependências entre etapas;
+- o conteúdo esperado para a primeira versão oficial;
+- o que deve permanecer para depois da versão 1.0.0.
+
+Este roadmap é orientação e pode receber pequenos ajustes quando existir uma
+dependência técnica real. Ele não autoriza implementar qualquer etapa sem uma
+solicitação futura explícita.
+
+
+2. ARQUITETURA QUE DEVE SER PRESERVADA
+--------------------------------------
+
+Web:
+
+Flask + Jinja + HTML/CSS/JavaScript
+                |
+                v
+Backend / API REST v1 em Flask
+                |
+                v
+MySQL — banco central e bancos separados por empresa
+
+Windows:
+
+C# + .NET 8 + WPF + MVVM
+                |
+                v
+API REST /api/v1
+                |
+                v
+Backend Flask
+                |
+                v
+MySQL
+
+O aplicativo Windows:
+
+- é nativo;
+- não usa Tauri, Electron ou WebView;
+- não é um wrapper da Web;
+- não acessa o MySQL diretamente;
+- não possui banco operacional local;
+- não executa migrations;
+- usa access token e refresh token;
+- possui armazenamento protegido de sessão;
+- usa %LocalAppData%\Girofy\ para dados locais apropriados;
+- possui Light Mode e Dark Mode;
+- comunica-se exclusivamente pela API.
+
+Princípio permanente:
+
+BACKEND = FONTE DE VERDADE
+
+Web e App compartilham dados, autenticação, permissões, regras financeiras,
+estoque, caixa, vendas, assinatura e isolamento multi-tenant. Regras críticas não
+devem ser duplicadas desnecessariamente no cliente Windows.
+
+
+3. ESTADO FUNCIONAL ATUAL
+-------------------------
+
+Já existem no projeto:
+
+- login, logout, confirmação de e-mail e recuperação de senha;
+- painel master, multiadega, assinatura e keys;
+- produtos, categorias, kits e importação CSV/XLSX;
+- exportação, estoque e movimentações;
+- caixa, vendas, pagamentos mistos, desconto e troco;
+- taxas, lucro e cancelamento lógico;
+- contas a pagar e relatórios;
+- funcionários e permissões;
+- notificações e alertas por e-mail;
+- auditoria;
+- Light/Dark e acessibilidade na Web;
+- API REST v1;
+- rate limit Redis;
+- migrations Alembic;
+- Docker e deploy OCI automatizado;
+- build automatizado do App Windows.
+
+O aplicativo Windows está em estágio avançado, mas sua distribuição ainda é
+PREVIEW / DESENVOLVIMENTO, e não uma versão comercial oficial.
+
+
+4. DISTRIBUIÇÃO WINDOWS ATUAL
+-----------------------------
+
+O pipeline atual gera Girofy.exe com:
+
+- .NET 8;
+- win-x64;
+- self-contained;
+- single-file;
+- compressão habilitada.
+
+O cliente não deve precisar instalar .NET Runtime, .NET SDK, Visual Studio,
+Python, MySQL ou Git. O GitHub Actions já executa build e publicação.
+
+
+5. ORDEM OFICIAL DAS PRÓXIMAS ETAPAS
+------------------------------------
+
+1. Instalador básico 0.8.0
+2. Finalização e revisão Web x App x Backend
+3. Homologação completa em Windows
+4. Concorrência e consistência
+5. Backup e restauração
+6. Feature Freeze 0.9.0
+7. Domínio e HTTPS
+8. Atualização automática
+9. Code Signing
+10. Instalador comercial
+11. Release Candidate
+12. GiroFy 1.0.0
+
+Uma etapa deve avançar para a próxima somente quando seus objetivos forem
+concluídos e os problemas relevantes forem corrigidos.
+
+
+6. ETAPA 1 — INSTALADOR BÁSICO WINDOWS
+--------------------------------------
+
+Versão planejada: GiroFy 0.8.0
+Artefato planejado: GiroFy-Setup-0.8.0.exe
+
+Objetivos:
+
+- instalar o aplicativo;
+- criar atalhos;
+- aparecer na lista de aplicativos instalados;
+- iniciar corretamente;
+- preservar sessão, preferências e logs;
+- desinstalar;
+- reinstalar;
+- gerar o instalador pelo GitHub Actions;
+- validar em Windows sem ambiente de desenvolvimento.
+
+Este é um instalador de desenvolvimento. Nesta etapa ainda não são obrigatórios
+Code Signing comercial, atualização automática completa, domínio, HTTPS ou
+lançamento 1.0.0.
+
+Condição de saída: instalação, execução, desinstalação, reinstalação e geração no
+pipeline funcionando em uma máquina Windows limpa.
+
+
+7. ETAPA 2 — FINALIZAÇÃO WEB X APP
+----------------------------------
+
+Após validar o instalador básico, revisar Web, App Windows e Backend/API.
+
+Prioridades:
+
+- paridade de dados;
+- paridade de regras;
+- paridade das funções essenciais da primeira versão.
+
+As interfaces não precisam ser idênticas. O App pode ter UX própria de desktop e
+a Web pode continuar mais forte em administração. O que não pode divergir são as
+regras e os dados autoritativos.
+
+
+8. ETAPA 3 — HOMOLOGAÇÃO COMPLETA WINDOWS
+-----------------------------------------
+
+Executar testes em Windows real, incluindo:
+
+- instalação limpa e reinstalação/atualização manual;
+- login, logout, recuperação e sessão;
+- permissões;
+- produtos, categorias e kits;
+- estoque;
+- venda, pagamento misto, desconto e troco;
+- cancelamento;
+- caixa;
+- contas a pagar;
+- relatórios e auditoria;
+- notificações;
+- importação, exportação e backup;
+- temas claro e escuro;
+- preferências e logs;
+- API indisponível, timeout e erros;
+- usuário sem permissão;
+- assinatura vencida.
+
+Problemas encontrados devem ser corrigidos antes de avançar.
+
+
+9. ETAPA 4 — CONCORRÊNCIA E CONSISTÊNCIA
+----------------------------------------
+
+Testar operadores simultâneos, especialmente:
+
+- duas vendas ao mesmo tempo;
+- alterações simultâneas de estoque;
+- abertura concorrente de caixa;
+- fechamento concorrente;
+- cancelamento concorrente;
+- idempotência;
+- atualização simultânea de produto;
+- sessões de usuários diferentes;
+- isolamento entre empresas.
+
+As proteções devem permanecer no backend e no MySQL.
+
+
+10. ETAPA 5 — BACKUP E RESTAURAÇÃO
+----------------------------------
+
+Implementar e homologar restauração guiada, segura, validada, auditável e
+compatível com schema/migrations.
+
+Fluxo desejado:
+
+Selecionar backup
+-> validar arquivo
+-> validar empresa
+-> validar schema
+-> criar proteção/backup do estado atual
+-> restaurar
+-> auditar
+-> validar funcionamento
+
+
+11. ETAPA 6 — FEATURE FREEZE
+----------------------------
+
+Versão planejada: GiroFy 0.9.0
+Significado: FEATURE COMPLETE
+
+Depois desse marco, não adicionar funcionalidades grandes antes da 1.0.0, salvo
+algo indispensável. O foco deve passar para bugs, estabilidade, segurança,
+desempenho, UX, distribuição e homologação.
+
+
+12. ETAPA 7 — DOMÍNIO E HTTPS
+-----------------------------
+
+Antes da distribuição comercial:
+
+- configurar domínio oficial;
+- habilitar HTTPS e certificado TLS;
+- usar a API por HTTPS;
+- definir a URL oficial de produção;
+- remover exceções HTTP temporárias;
+- revisar cookies, tokens e configurações de produção.
+
+O gasto com domínio pode ocorrer próximo da primeira venda. Não antecipar custos
+sem necessidade operacional.
+
+
+13. ETAPA 8 — ATUALIZAÇÃO AUTOMÁTICA
+------------------------------------
+
+Implementar somente depois que o instalador básico estiver estável.
+
+Fluxo esperado:
+
+App consulta versão
+-> detecta versão nova
+-> baixa atualização
+-> valida arquivo
+-> atualiza
+-> reinicia
+-> confirma nova versão
+
+O mecanismo deve possuir versionamento, validação, segurança e tratamento de
+falha ou rollback quando aplicável.
+
+
+14. ETAPA 9 — CODE SIGNING
+--------------------------
+
+Antes da distribuição comercial, assinar Girofy.exe e GiroFy-Setup.exe.
+
+Pipeline futuro:
+
+Build
+-> Tests
+-> Publish
+-> Sign Girofy.exe
+-> Generate Installer
+-> Sign Installer
+-> Release
+
+Certificado privado e senha nunca devem ser armazenados diretamente no
+repositório. Usar GitHub Secrets ou mecanismo seguro equivalente.
+
+
+15. ETAPA 10 — INSTALADOR COMERCIAL
+-----------------------------------
+
+Evoluir o instalador básico para uma distribuição profissional com:
+
+- identidade GiroFy;
+- nome, versão, ícone e informações corretas;
+- atalhos adequados;
+- desinstalador;
+- upgrade entre versões;
+- Code Signing;
+- integração com atualização automática;
+- pipeline automatizado;
+- experiência profissional.
+
+
+16. ETAPA 11 — RELEASE CANDIDATE
+--------------------------------
+
+Após o Feature Complete 0.9.0, versões 0.9.1, 0.9.2, 0.9.3 e seguintes podem ser
+usadas para correções. Quando estiver estável, publicar 1.0.0-rc.1 ou estratégia
+equivalente.
+
+O Release Candidate deve ser testado como a versão de um cliente real. O ambiente
+de desenvolvimento não pode ser a única homologação.
+
+
+17. ETAPA 12 — GIROFY 1.0.0
+---------------------------
+
+Somente declarar 1.0.0 quando houver:
+
+- Web funcional;
+- App Windows funcional;
+- API estável;
+- MySQL multi-tenant e isolamento por empresa;
+- autenticação e permissões;
+- vendas, caixa, estoque e relatórios;
+- auditoria;
+- backup e restauração confiáveis;
+- testes;
+- deploy OCI;
+- domínio e HTTPS;
+- instalador;
+- Code Signing;
+- atualização automática;
+- documentação atualizada.
+
+A versão 1.0.0 precisa estar realmente pronta para instalação e uso por cliente.
+
+
+18. FUNCIONALIDADES PÓS-1.0
+---------------------------
+
+Não atrasar a 1.0.0 tentando implementar tudo. Podem ficar para depois:
+
+- cadastro e histórico de clientes;
+- impressão térmica e comprovantes;
+- leitor de código de barras, gaveta, balança e outros periféricos;
+- cobrança automática dos planos GiroFy;
+- cancelamento parcial de itens;
+- pagamentos e estornos integrados com adquirentes.
+
+
+19. OFFLINE — SOMENTE DEPOIS
+----------------------------
+
+O GiroFy atual é online:
+
+App -> API -> Backend -> MySQL
+
+Não criar banco operacional local antes da 1.0.0 sem decisão futura explícita. O
+modo offline exige um projeto próprio para resolver IDs, conflitos de estoque,
+vendas simultâneas, sincronização, reconciliação, cancelamentos, múltiplos
+terminais e timestamps.
+
+
+20. PRINCÍPIO PARA TODA NOVA FUNCIONALIDADE
+-------------------------------------------
+
+1. identificar em qual camada a regra deve ficar;
+2. evitar duplicação;
+3. manter isolamento multi-tenant;
+4. validar permissões no servidor;
+5. atualizar a API quando necessário;
+6. atualizar a Web quando necessário;
+7. atualizar o App quando necessário;
+8. criar migration quando houver mudança de schema;
+9. executar testes;
+10. atualizar documentação.
+
+
+21. REGRAS DE DEPLOY
+--------------------
+
+Mudança apenas no instalador ou App:
+
+- executar build Windows;
+- não executar deploy OCI sem necessidade.
+
+Mudança de API/backend:
+
+- executar testes backend;
+- executar testes de contrato do App;
+- publicar na OCI;
+- confirmar health check.
+
+Web/API e Windows possuem pipelines separados.
+
+
+22. MANUTENÇÃO DA DOCUMENTAÇÃO
+------------------------------
+
+Após mudanças importantes, atualizar a documentação separando claramente:
+
+- Web;
+- App;
+- Backend/API;
+- Database;
+- Infraestrutura.
+
+Registrar versão, funcionalidades, pendências e decisões arquiteturais. Não deixar
+a documentação afirmar que uma função continua pendente depois de implementada.
+
+
+23. RESTRIÇÕES E DECISÕES PRESERVADAS
+-------------------------------------
+
+- não introduzir grandes mudanças arquiteturais sem necessidade;
+- não substituir tecnologias estáveis apenas por preferência;
+- não reintroduzir Tauri;
+- não abandonar WPF sem motivo técnico forte;
+- não criar banco local antecipadamente;
+- não transformar o App em wrapper da Web;
+- não colocar credenciais do banco no cliente;
+- não declarar 1.0.0 antes da prontidão comercial real.
+
+
+24. COMO USAR ESTA MEMÓRIA
+--------------------------
+
+Ao receber uma tarefa futura do GiroFy, consultar este arquivo para responder:
+
+1. onde o projeto está;
+2. qual é o objetivo da etapa atual;
+3. quais dependências precisam estar prontas;
+4. o que vem depois;
+5. o que ainda não deve ser implementado.
+
+No momento deste registro, nenhuma das etapas deste roadmap deve ser iniciada
+automaticamente. A próxima implementação depende de solicitação explícita do
+proprietário do projeto.

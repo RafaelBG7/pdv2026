@@ -1,0 +1,783 @@
+GIROFY — DOCUMENTAÇÃO COMPLETA DO PROJETO
+=========================================
+
+Marco de referência: 17/08/2026
+Repositório: https://github.com/RafaelBG7/pdv2026
+Produto: PDV SaaS Web/API com aplicativo nativo para Windows
+
+
+1. FINALIDADE DESTE DOCUMENTO
+-----------------------------
+
+Este arquivo concentra, em um único lugar, a documentação funcional, técnica e
+operacional do Girofy. A descrição separa claramente:
+
+- WEB: interface executada no navegador com Flask, Jinja, HTML, CSS e JavaScript;
+- APP: aplicativo nativo Windows construído com WPF e .NET 8;
+- BACKEND/API: regras de negócio, autenticação, permissões e contratos REST;
+- BANCO: persistência central e bancos separados por adega;
+- INFRAESTRUTURA: testes, build, GitHub Actions, Docker e publicação na OCI.
+
+Em caso de divergência entre uma tela e uma regra de negócio, o backend é a fonte
+de verdade. O aplicativo Windows não acessa o MySQL diretamente e não mantém um
+banco operacional paralelo.
+
+
+2. RESUMO DO SISTEMA
+--------------------
+
+O Girofy é um sistema de ponto de venda para adegas, pequenos mercados e comércios
+locais. O produto organiza vendas, produtos, categorias, estoque, caixa, contas a
+pagar, relatórios, usuários, permissões, auditoria e notificações.
+
+O projeto foi estruturado como SaaS multiadega. Existe uma camada central para
+empresas, usuários, assinatura e administração global, enquanto cada adega possui
+seu próprio banco operacional. A Web e o App Windows utilizam os mesmos dados e as
+mesmas regras do backend.
+
+Situação atual das plataformas:
+
+- Web: produto principal e interface administrativa completa;
+- API v1: contrato versionado consumido pelo App Windows;
+- Windows: cliente online em estágio avançado, distribuído como Girofy.exe;
+- Backend: Flask com serviços transacionais e isolamento por tenant;
+- Produção: containers publicados em uma VM OCI por GitHub Actions.
+
+Endereço atual do ambiente Web:
+http://168.75.101.126:18080
+
+Executável Windows:
+https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/Girofy.exe
+
+
+3. ARQUITETURA GERAL
+--------------------
+
+3.1 Web
+
+A Web renderiza templates Jinja no servidor. O navegador recebe HTML, CSS e
+JavaScript, mantém a sessão Web e envia formulários ou chamadas assíncronas. Ela é
+responsável por apresentação e interação, mas não deve decidir sozinha cálculos
+financeiros, permissões, saldo de caixa ou baixa de estoque.
+
+3.2 Aplicativo Windows
+
+O App é construído com WPF/.NET 8 e segue separação em camadas:
+
+- Girofy.Desktop: XAML, janela principal, views, recursos e integração Windows;
+- Girofy.Application: modelos, contratos, comandos e ViewModels;
+- Girofy.Infrastructure: HTTP, autenticação, sessão e preferências locais;
+- Girofy.UnitTests: testes de comandos, ViewModels, serviços e contratos.
+
+O App se autentica na API, recebe tokens, consulta e altera dados por HTTPS/HTTP e
+armazena somente sessão e preferências necessárias. Não recebe string de conexão
+do banco e não executa migrations.
+
+3.3 Backend e API
+
+O backend Flask autentica o usuário, resolve a empresa, verifica assinatura e
+permissões, valida os dados, executa serviços de domínio e persiste as mudanças.
+A API é versionada sob o prefixo /api/v1.
+
+3.4 Serviços de domínio
+
+Os principais serviços centralizam regras que precisam funcionar da mesma forma
+na Web e no Windows:
+
+- sale_service: criação e cancelamento de vendas, pagamentos, taxas, lucro,
+  idempotência, estoque e auditoria;
+- cash_register_service: abertura, fechamento, saldo esperado e snapshots;
+- stock_service: entradas, ajustes, baixas e devoluções;
+- product_service e category_service: catálogo isolado por tenant;
+- api_auth_service: access token, refresh token, rotação e revogação;
+- audit_service: trilha de auditoria e proteção de campos sensíveis;
+- alert_service e notification_service: alertas internos e e-mail;
+- migration_service: conferência e aplicação das revisões Alembic.
+
+3.5 Banco de dados
+
+O desenho multi-tenant possui:
+
+- banco central: empresas, usuários, ativação, autenticação e administração SaaS;
+- banco tenant: produtos, categorias, vendas, pagamentos, caixas, estoque, contas,
+  auditoria, notificações e configurações da adega.
+
+Toda entidade recebida do cliente é revalidada dentro da empresa autenticada.
+Permissões são sempre avaliadas no servidor.
+
+
+4. ESTRUTURA PRINCIPAL DO REPOSITÓRIO
+-------------------------------------
+
+app/                  Backend Flask, Web, rotas, serviços, modelos e arquivos estáticos
+desktop_wpf/          Solução e projetos do aplicativo Windows
+docs/                 Documentos técnicos e históricos separados por assunto
+documentacao/         Documento consolidado solicitado pelo proprietário
+migrations/central/   Migrações Alembic do banco central
+migrations/tenant/    Migrações Alembic dos bancos das adegas
+scripts/              Deploy, manutenção, migrations e utilitários
+deploy/               Arquivos auxiliares da infraestrutura publicada
+tests/                 Testes de integração e contrato do backend
+.github/workflows/     Workflows de deploy Web e build Windows
+Dockerfile             Imagem da aplicação Web/backend
+docker-compose.oci.yml Composição dos serviços no ambiente OCI
+app.py                 Ponto de entrada local da aplicação Flask
+config.py              Configurações carregadas por variáveis de ambiente
+requirements.txt       Dependências Python
+
+
+5. FUNCIONALIDADES DA VERSÃO WEB
+--------------------------------
+
+5.1 Login, cadastro e recuperação
+
+A Web oferece:
+
+- login por usuário ou e-mail;
+- opção Lembre de mim;
+- logout por operação POST protegida;
+- cadastro de uma nova adega e do primeiro administrador;
+- política de senha;
+- confirmação de e-mail por código;
+- recuperação e redefinição de senha por link temporário;
+- troca de e-mail com confirmação;
+- bloqueio de usuário inativo;
+- bloqueio de empresa inativa ou assinatura vencida;
+- autorização elevada para ações que exigem credencial superior.
+
+Senhas são armazenadas com hash. Tokens possuem validade e os textos públicos de
+erro evitam revelar indevidamente se um usuário existe.
+
+5.2 Painel master do SaaS
+
+O usuário master do sistema pode:
+
+- visualizar indicadores gerais;
+- listar e editar adegas;
+- ativar ou inativar empresas;
+- acessar temporariamente uma adega para suporte;
+- sair do acesso assistido;
+- gerenciar usuários e assinaturas globais;
+- gerar, renovar e cancelar keys;
+- consultar logs e auditoria master;
+- excluir uma adega dentro das proteções previstas.
+
+Essas funções são exclusivas do papel master e não devem aparecer para operadores
+comuns.
+
+5.3 Produtos e categorias
+
+O catálogo oferece:
+
+- cadastro, edição e atualização rápida de produtos;
+- ativação, inativação e exclusão;
+- categorias isoladas por adega;
+- código de barras único dentro do tenant;
+- custo, preço de venda, margem, estoque e estoque mínimo;
+- busca por nome ou código;
+- filtros por categoria e status;
+- ordenação dos resultados;
+- detalhes expansíveis;
+- produtos kit com consumo de um produto-base;
+- importação de CSV/XLSX;
+- exportação autorizada.
+
+Toda mudança manual de saldo deve gerar movimentação de estoque. Produtos de outra
+adega não podem ser consultados ou utilizados.
+
+5.4 Vendas
+
+O fluxo de venda possui:
+
+- exigência de caixa aberto;
+- múltiplos produtos e quantidades;
+- busca e autocomplete;
+- desconto monetário validado no servidor;
+- dinheiro, Pix, débito e crédito;
+- pagamentos mistos;
+- cálculo de valor faltante e troco;
+- taxas configuráveis por forma de pagamento;
+- custo e lucro líquido por item;
+- baixa de produto normal ou produto-base de kit;
+- estoque negativo conforme configuração da empresa;
+- histórico e detalhe completo;
+- idempotência para impedir venda duplicada em reenvios;
+- cancelamento lógico com motivo, permissão, devolução exata do estoque e auditoria.
+
+Valores monetários críticos são processados com Decimal no servidor. A venda e a
+baixa de estoque fazem parte de uma operação transacional.
+
+5.5 Caixa
+
+O módulo de caixa contém duas áreas principais: Caixa Atual e Caixas Anteriores.
+
+Funções disponíveis:
+
+- abertura com saldo inicial;
+- apenas um caixa aberto por empresa;
+- resumo de total vendido, lucro e saldo esperado;
+- separação por formas de pagamento;
+- linha do tempo das vendas;
+- detalhe expansível de cada venda;
+- saldo existente antes de cada venda;
+- destaque de cancelamentos sem apagar o histórico;
+- consulta detalhada de caixas fechados;
+- fechamento com conferência do valor final;
+- proteção de abertura e fechamento por permissão.
+
+Clicar novamente em um item expandido deve recolher os detalhes.
+
+5.6 Estoque
+
+O estoque oferece:
+
+- entrada manual de mercadoria;
+- ajuste positivo ou negativo com motivo;
+- baixa automática por venda;
+- devolução por cancelamento;
+- saldo anterior e saldo posterior;
+- tipo, origem, observação, usuário e data;
+- custo unitário e total quando aplicável;
+- filtros por produto, categoria, tipo, responsável e período;
+- acompanhamento de estoque baixo, esgotado ou negativo.
+
+5.7 Contas a pagar
+
+O sistema permite criar, listar, pesquisar, filtrar, marcar como paga e reabrir
+contas. Datas de vencimento alimentam alertas internos e, conforme configuração,
+notificações por e-mail.
+
+5.8 Relatórios
+
+Os relatórios incluem:
+
+- seleção de período;
+- visão geral e por produto;
+- quantidade de vendas;
+- faturamento;
+- lucro;
+- descontos;
+- ticket médio;
+- itens vendidos;
+- pagamentos por forma;
+- produtos mais vendidos;
+- vendas e faturamento por horário;
+- listagem das vendas pertencentes ao período.
+
+5.9 Auditoria
+
+A auditoria registra ações críticas com usuário, empresa, ação, entidade, data,
+endereço IP, rota, request ID e diferenças relevantes. Senhas, tokens, secrets e
+keys são mascarados antes da gravação.
+
+5.10 Notificações e e-mail
+
+As notificações incluem estoque baixo/esgotado e contas próximas ou vencidas. Na
+Web, elas aparecem em um popover compacto: um clique abre e outro clique fecha. O
+contador informa pendências e os itens podem direcionar o usuário para a ação.
+
+Preferências de alerta são configuráveis. Entregas por e-mail são registradas para
+reduzir envios duplicados.
+
+5.11 Configurações
+
+As configurações atuais são organizadas em:
+
+- Usuário;
+- Gerar key, quando autorizado;
+- Equipe;
+- Operação;
+- Financeiro;
+- Alertas;
+- Backup;
+- Importação;
+- Exportação;
+- Suporte;
+- Acessibilidade.
+
+Não existe mais uma aba textual chamada Aparência. Também não existe o bloco
+Claro/Escuro dentro do menu do usuário. O tema é alterado pelo botão global com
+ícones de sol/lua presente nas áreas apropriadas da interface.
+
+5.12 Tema e acessibilidade
+
+A Web possui Light Mode e Dark Mode baseados em variáveis CSS. A preferência é
+persistida no localStorage e aplicada no início do carregamento para evitar flash
+de tema incorreto. Sem preferência salva, o navegador respeita
+prefers-color-scheme.
+
+Acessibilidade permite ativar recursos, aumentar o texto, usar negrito e escolher
+níveis de contraste. Animações respeitam prefers-reduced-motion.
+
+
+6. FUNCIONALIDADES DO APLICATIVO WINDOWS
+----------------------------------------
+
+6.1 Autenticação e sessão
+
+O App oferece login, recuperação de senha, renovação de sessão e logout. Utiliza
+access token e refresh token rotacionável. A sessão é protegida por mecanismos do
+Windows e o endereço do servidor pode ser configurado.
+
+6.2 Módulos
+
+O aplicativo contém interfaces para:
+
+- Dashboard;
+- Produtos;
+- Categorias;
+- Vendas e cancelamento;
+- Caixa Atual e Caixas Anteriores;
+- Estoque;
+- Contas a pagar;
+- Relatórios;
+- Auditoria;
+- Notificações;
+- Configurações, perfil, senha, empresa e equipe;
+- importação, exportação e backup por meio da API.
+
+6.3 Experiência e desempenho
+
+O cliente utiliza navegação lateral nativa, comandos assíncronos e carregamento sob
+demanda. Listas extensas devem usar virtualização e recycling. Pesquisas usam
+debounce, cancelamento e descarte de respostas antigas. Comandos são protegidos
+contra execução repetida para evitar travamentos por múltiplos cliques.
+
+Produtos, vendas e caixas possuem detalhes expansíveis. Clicar novamente recolhe o
+item. O aplicativo possui controle de instância única e tratamento global de erro.
+
+Logs locais ficam em:
+%LocalAppData%\Girofy\logs
+
+6.4 Tema Windows
+
+As cores e estilos são centralizados em Themes/Colors.xaml. O
+WindowsThemeService alterna Light/Dark e persiste a preferência em arquivo local.
+A escolha é aplicada antes da janela principal para reduzir flash visual.
+
+Inputs, ComboBox, DatePicker, DataGrid, linhas alternadas, seleção, overlays,
+modais, alertas, botões, tooltips e scrollbars usam tokens de tema. O toggle sol/lua
+é reutilizado no login e nas áreas globais disponíveis.
+
+6.5 Distribuição
+
+O alvo é .NET 8, Windows x64, self-contained e single-file comprimido. Portanto, a
+máquina cliente não precisa instalar previamente o runtime .NET correspondente.
+
+O GiroFy Windows está versionado como 0.8.0 e possui instalador de desenvolvimento
+Inno Setup chamado GiroFy-Setup-0.8.0.exe. Ele instala por usuário em
+%LocalAppData%\Programs\GiroFy, cria atalho no Menu Iniciar, oferece atalho opcional
+na Área de Trabalho e registra o desinstalador em Aplicativos instalados.
+
+O pipeline preserva Girofy.exe e produz também o Setup. O aplicativo ainda não
+possui Code Signing nem auto-update e o instalador não é a distribuição comercial.
+O Windows pode exibir aviso de segurança por se tratar de executável não assinado.
+
+
+7. API REST V1
+--------------
+
+Prefixo principal: /api/v1
+
+Áreas expostas ao App:
+
+- health e dependências;
+- login, refresh, logout e recuperação;
+- usuário autenticado;
+- ativação de assinatura;
+- dashboard;
+- produtos e categorias;
+- vendas e cancelamento;
+- caixa, snapshots e detalhes;
+- estoque;
+- contas a pagar;
+- relatórios;
+- auditoria;
+- notificações;
+- configurações e equipe;
+- importação, exportação e backup.
+
+Sucessos utilizam envelope data. Erros retornam status HTTP, mensagem, código
+estável e, quando aplicável, o campo inválido. O cliente não deve implementar
+lógica dependendo somente do texto humano da mensagem.
+
+A API deve devolver 401 para autenticação ausente/inválida, 403 para falta de
+permissão, 404 para recurso inexistente no tenant, 409 para conflito de estado, 422
+para validação e 429 quando o rate limit for excedido.
+
+
+8. REGRAS DE NEGÓCIO ESSENCIAIS
+-------------------------------
+
+- usuário precisa estar autenticado para áreas internas;
+- assinatura e status da empresa são verificados pelo backend;
+- cada operação pertence à empresa autenticada;
+- nenhuma consulta pode vazar dados entre tenants;
+- venda exige caixa aberto;
+- somente um caixa pode ficar aberto por empresa;
+- venda exige ao menos um item válido e ativo;
+- desconto não pode superar o total;
+- pagamentos não podem ficar abaixo do total final;
+- pagamento excedente gera troco;
+- venda reduz estoque na mesma transação;
+- kit reduz o estoque do produto-base na proporção configurada;
+- toda alteração de saldo gera uma movimentação;
+- falha na baixa de estoque cancela a venda inteira;
+- reenvio com a mesma chave idempotente não duplica venda;
+- cancelamento é lógico, exige permissão e motivo;
+- cancelamento devolve o estoque conforme a movimentação original;
+- dados da venda cancelada permanecem disponíveis para auditoria;
+- caixa fechado preserva a conferência original;
+- permissões são verificadas no servidor, nunca apenas pela interface;
+- valores monetários críticos utilizam Decimal;
+- ações críticas geram auditoria com dados sensíveis protegidos.
+
+
+9. BANCO E MIGRAÇÕES
+--------------------
+
+O projeto já utiliza Flask-Migrate/Alembic. Migrações não são uma funcionalidade
+pendente.
+
+Existem duas árvores independentes:
+
+- migrations/central: schema do banco central;
+- migrations/tenant: schema operacional das adegas.
+
+Heads documentados no marco atual:
+
+- central_0002;
+- tenant_0002.
+
+O ambiente de produção verifica a revisão. O deploy realiza backup antes da etapa
+de migration. Um schema atrasado deve interromper a inicialização ou a publicação
+de forma controlada, em vez de continuar silenciosamente.
+
+
+10. SEGURANÇA
+-------------
+
+Controles implementados:
+
+- hash de senha e política mínima;
+- confirmação de e-mail;
+- tokens temporários para recuperação e troca de e-mail;
+- sessão e cookies protegidos na Web;
+- CSRF em formulários e operações mutáveis;
+- access token e refresh token na API;
+- rotação e revogação de refresh tokens;
+- rate limit persistente e distribuído com Redis em produção;
+- Retry-After em bloqueios HTTP 429;
+- permissões por função e autorização elevada;
+- isolamento multi-tenant;
+- consultas ORM/parametrizadas;
+- request ID e logs estruturados;
+- mascaramento de senha, token, secret e key;
+- headers HTTP de segurança;
+- segredos fornecidos por variáveis de ambiente/GitHub Actions;
+- MySQL e Redis sem exposição pública direta no desenho de produção.
+
+Pendências de segurança operacional:
+
+- domínio definitivo com HTTPS;
+- assinatura digital do executável;
+- testes de concorrência adicionais em MySQL real;
+- revisão periódica de segredos, backups e permissões.
+
+
+11. VARIÁVEIS DE AMBIENTE
+-------------------------
+
+As configurações devem partir do arquivo .env.example. Segredos reais não devem
+ser commitados.
+
+Grupos principais:
+
+- APP_ENV, FLASK_DEBUG e SECRET_KEY;
+- MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD e MYSQL_DATABASE;
+- DATABASE_URL, quando usada como URL completa;
+- configurações do banco central e do template de bancos tenants;
+- REDIS_URL e configuração de rate limit;
+- MAIL_SMTP_SERVER, MAIL_SMTP_PORT, MAIL_SMTP_LOGIN e MAIL_SMTP_PASSWORD;
+- MAIL_FROM_EMAIL, MAIL_FROM_NAME e MAIL_SUPPRESS_SEND;
+- PUBLIC_BASE_URL;
+- MASTER_DEFAULT_USERNAME e MASTER_DEFAULT_PASSWORD;
+- configurações de cookies e duração de sessão;
+- PORT.
+
+Em produção, não podem ser usados SECRET_KEY padrão nem senha master de exemplo.
+
+
+12. EXECUÇÃO LOCAL DA WEB
+-------------------------
+
+Pré-requisitos:
+
+- Python compatível com requirements.txt;
+- MySQL configurado para o modo completo;
+- Redis quando for testar rate limit distribuído;
+- variáveis de ambiente preenchidas.
+
+Fluxo básico:
+
+1. Criar ambiente virtual:
+   python3 -m venv .venv
+
+2. Ativar no macOS/Linux:
+   source .venv/bin/activate
+
+3. Instalar dependências:
+   python -m pip install -r requirements.txt
+
+4. Copiar e configurar .env.example como .env.
+
+5. Aplicar/verificar migrations conforme os scripts do repositório.
+
+6. Iniciar:
+   python app.py
+
+Por padrão histórico, o desenvolvimento usa a porta configurada em PORT, com
+5003 como fallback. Como o servidor escuta em 0.0.0.0, outra máquina na mesma rede
+pode acessar http://IP_DO_SERVIDOR:PORT, desde que firewall e rede permitam.
+
+
+13. EXECUÇÃO E TESTES DO WINDOWS
+--------------------------------
+
+Pré-requisitos de desenvolvimento:
+
+- Windows;
+- SDK .NET 8;
+- acesso ao backend configurado.
+
+Comandos principais:
+
+dotnet restore desktop_wpf/Girofy.Desktop.sln
+dotnet test desktop_wpf/tests/Girofy.UnitTests/Girofy.UnitTests.csproj --configuration Release
+
+O build oficial é executado em runner windows-latest e produz a versão win-x64
+self-contained.
+
+
+14. TESTES E CRITÉRIO DE QUALIDADE
+----------------------------------
+
+Backend/Web:
+
+.venv/bin/python -m unittest tests.test_routes
+
+Última validação local confirmada neste marco:
+
+- 196 testes executados;
+- resultado OK.
+
+A suíte cobre autenticação, rotas Web, API, permissões, tenants, vendas,
+idempotência, caixa, estoque, cancelamento, relatórios, notificações, rate limit,
+CSRF, migrations e logs.
+
+Critério mínimo antes de uma entrega:
+
+1. testes Python aprovados;
+2. árvores de migrations válidas e heads conhecidos;
+3. testes .NET aprovados quando App ou contrato forem alterados;
+4. build Windows aprovado quando o App for afetado;
+5. health check aprovado após deploy Web;
+6. documentação atualizada quando o comportamento mudar;
+7. ausência de segredos e binários indevidos no commit.
+
+
+15. DEPLOY WEB/API
+------------------
+
+O deploy não é apenas futuro: ele já está automatizado.
+
+Workflow principal:
+Deploy OCI Self Hosted
+
+Fluxo resumido:
+
+checkout
+-> configuração Python e dependências
+-> testes automatizados
+-> validação de migrations e scripts
+-> execução no runner da OCI
+-> backup
+-> migrations
+-> atualização dos containers
+-> health check
+
+Infraestrutura existente:
+
+- Dockerfile;
+- docker-compose.oci.yml;
+- scripts de deploy e manutenção;
+- workflows em .github/workflows;
+- VM OCI executando os containers.
+
+Health esperado:
+{"service":"girofy","status":"ok"}
+
+
+16. BUILD E PUBLICAÇÃO DO WINDOWS
+---------------------------------
+
+Workflow:
+Build Windows WPF preview
+
+Fluxo resumido:
+
+validação de bindings XAML
+-> setup .NET e Python
+-> testes de contrato do backend
+-> restore da solução
+-> testes .NET
+-> publish win-x64 self-contained
+-> publicação de Girofy.exe na release windows-preview
+
+Web e Windows são publicados separadamente. Alteração em contrato compartilhado
+deve validar as duas plataformas.
+
+O aviso das actions sobre depreciação do Node 20 não representa, sozinho, falha do
+Girofy. Os runners atuais executam essas actions com Node 24. O resultado final do
+job é o indicador autoritativo.
+
+
+17. BACKUPS, LOGS E OBSERVABILIDADE
+-----------------------------------
+
+O sistema possui:
+
+- backup manual e configuração de periodicidade;
+- backup pré-migration no fluxo de produção;
+- health checks da aplicação e dependências;
+- logs estruturados com request ID;
+- logs de segurança;
+- auditoria tenant e master;
+- logs locais do App Windows;
+- histórico de workflows no GitHub Actions.
+
+Backups devem ser armazenados fora da única máquina de produção. Uma restauração
+deve respeitar a versão do schema e ser registrada. A restauração guiada pela
+interface ainda é uma melhoria pendente.
+
+
+18. FUNCIONALIDADES IMPLEMENTADAS — CHECKLIST
+----------------------------------------------
+
+[OK] Login, logout e lembrar sessão
+[OK] Cadastro de adega e administrador
+[OK] Confirmação de e-mail
+[OK] Recuperação de senha
+[OK] Painel master
+[OK] Multiadega com banco central e tenants
+[OK] Assinatura e keys de ativação
+[OK] Produtos, categorias e kits
+[OK] Importação CSV/XLSX
+[OK] Exportações administrativas
+[OK] Estoque e movimentações
+[OK] Abertura e fechamento de caixa
+[OK] Caixa atual e caixas anteriores
+[OK] Linha do tempo e saldo antes da venda
+[OK] Vendas e pagamentos mistos
+[OK] Desconto, troco, taxas e lucro
+[OK] Cancelamento lógico com devolução de estoque
+[OK] Contas a pagar
+[OK] Relatórios
+[OK] Funcionários e permissões
+[OK] Notificações internas e alertas por e-mail
+[OK] Auditoria
+[OK] Tema claro e escuro na Web e Windows
+[OK] Acessibilidade visual na Web
+[OK] API REST v1
+[OK] Rate limit Redis
+[OK] Migrações Alembic central e tenant
+[OK] Docker e deploy automatizado
+[OK] Build e publicação do Girofy.exe
+
+
+19. PENDÊNCIAS PRIORIZADAS
+--------------------------
+
+Alta prioridade:
+
+1. domínio definitivo e HTTPS;
+2. Code Signing e instalador confiável para Windows;
+3. homologação visual e funcional completa em Windows real;
+4. testes de concorrência com MySQL real;
+5. restauração guiada e auditável de backup.
+
+Média prioridade:
+
+1. cobrança real e regras comerciais dos planos;
+2. impressão de comprovante e integração com periféricos;
+3. cadastro de clientes;
+4. cancelamento parcial por item;
+5. estorno integrado a adquirentes;
+6. política formal de evolução da API;
+7. testes visuais automatizados para Light/Dark.
+
+Não implementado na arquitetura atual:
+
+- modo offline com sincronização;
+- banco operacional local no App;
+- pagamento real com adquirente;
+- assinatura digital do executável.
+
+
+20. ORIENTAÇÃO PARA CONTINUIDADE
+--------------------------------
+
+Toda mudança deve indicar as camadas afetadas:
+
+[WEB] interface do navegador
+[APP] aplicativo Windows
+[BACKEND] API ou regras compartilhadas
+[DATABASE] modelos ou migrations
+
+Ao alterar uma regra compartilhada, Web e App devem continuar recebendo a mesma
+decisão do backend. Mudanças de banco devem ter migration nas árvores corretas.
+Mudanças visuais devem funcionar em Light/Dark e não remover acessibilidade.
+
+Antes de concluir uma tarefa:
+
+- conferir git diff;
+- preservar mudanças não relacionadas do proprietário;
+- executar os testes proporcionais ao risco;
+- atualizar este documento quando houver mudança funcional relevante;
+- fazer commit claro;
+- publicar apenas os workflows necessários;
+- confirmar health check ou release gerada.
+
+
+21. LINKS ÚTEIS
+---------------
+
+Repositório:
+https://github.com/RafaelBG7/pdv2026
+
+Aplicação Web atual:
+http://168.75.101.126:18080
+
+Release Windows:
+https://github.com/RafaelBG7/pdv2026/releases/tag/windows-preview
+
+Download direto do executável:
+https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/Girofy.exe
+
+
+22. CONCLUSÃO
+-------------
+
+O Girofy já possui uma base funcional ampla nas versões Web e Windows. O backend
+centraliza as regras críticas, a API conecta o cliente nativo à mesma fonte de
+verdade, os dados são isolados por adega e o deploy é automatizado. As próximas
+entregas devem priorizar segurança pública, distribuição confiável do executável,
+homologação em Windows real, restauração de backup e recursos comerciais.
+
+Este arquivo deve ser mantido como a documentação consolidada do projeto. Os
+documentos em docs/ permanecem úteis como referências temáticas e histórico de
+decisões, mas alterações importantes também devem ser refletidas aqui.
+
+O planejamento de versões e a ordem de continuidade até a 1.0.0 estão registrados
+separadamente em documentacao/ROADMAP_CONTINUIDADE.txt. Esse roadmap é contexto de
+planejamento e não autoriza iniciar funcionalidades sem solicitação explícita.

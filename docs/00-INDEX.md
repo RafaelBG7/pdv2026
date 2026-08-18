@@ -12,6 +12,7 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 - [Matriz resumida de plataformas](MATRIX.md)
 - [Paridade funcional detalhada](FEATURE_PARITY.md)
 - [Fluxos de build e publicação](WORKFLOWS.md)
+- [Instalador Windows 0.8.0](WINDOWS_INSTALLER.md)
 - [Estado Web e Windows](24-estado-versoes-web-windows.md)
 - [Arquitetura](03-arquitetura.md)
 - [Regras de negócio](05-regras-negocio.md)

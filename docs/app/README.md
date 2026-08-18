@@ -24,8 +24,11 @@ O App consome `/api/v1`; uma mudança incompatível exige nova versão de API, n
 - build: self-contained, single-file e comprimido;
 - release: `windows-preview`;
 - executável: `https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/Girofy.exe`.
+- instalador preview 0.8.0: `GiroFy-Setup-0.8.0.exe`, gerado com Inno Setup;
+- instalação por usuário: `%LocalAppData%\Programs\GiroFy`;
+- documentação: [WINDOWS_INSTALLER.md](../WINDOWS_INSTALLER.md).
 
-O App não executa migrations nem inclui MySQL/Python. Assinatura Code Signing e instalador formal ainda são pendências de produção.
+O App não executa migrations nem inclui MySQL/Python. O Setup 0.8.0 é de desenvolvimento; Code Signing, auto-update e instalador comercial ainda são pendências.
 
 ## Tema claro e escuro
 

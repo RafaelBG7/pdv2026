@@ -11,7 +11,7 @@ public static class DashboardFormatting
 
     public static string OptionalMoney(decimal? value) => value.HasValue ? Money(value.Value) : "Restrito";
 
-    public static string DateTimeText(string? value)
+    public static DateTimeOffset? LocalDateTime(string? value)
     {
         if (DateTimeOffset.TryParse(
                 value,
@@ -19,9 +19,16 @@ public static class DashboardFormatting
                 DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal,
                 out var parsed))
         {
-            return parsed.ToLocalTime().ToString("dd/MM/yyyy HH:mm", BrazilianCulture);
+            return parsed.ToLocalTime();
         }
-        return "Data não informada";
+
+        return null;
+    }
+
+    public static string DateTimeText(string? value)
+    {
+        var parsed = LocalDateTime(value);
+        return parsed?.ToString("dd/MM/yyyy HH:mm", BrazilianCulture) ?? "Data não informada";
     }
 }
 

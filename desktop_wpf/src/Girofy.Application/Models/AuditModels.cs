@@ -102,6 +102,10 @@ public sealed class AuditLogRecord
 
     public string CreatedAtText => DashboardFormatting.DateTimeText(CreatedAt);
 
+    public string CreatedDateText => DashboardFormatting.LocalDateTime(CreatedAt)?.ToString("dd/MM/yyyy") ?? "-";
+
+    public string CreatedTimeText => DashboardFormatting.LocalDateTime(CreatedAt)?.ToString("HH:mm") ?? "";
+
     public string UserNameText => string.IsNullOrWhiteSpace(UserName) ? "Sistema" : UserName;
 
     public string ActionText => string.IsNullOrWhiteSpace(ActionLabel) ? Action : ActionLabel;

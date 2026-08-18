@@ -115,6 +115,8 @@ Comando:
 
 O script lê a versão, encontra o publish, bloqueia arquivos indevidos, compara a versão do executável, encontra `ISCC.exe`, compila o Setup e valida nome/tamanho.
 
+O script `desktop_wpf/installer/test-installer.ps1` executa no runner Windows um ciclo automatizado de instalação silenciosa, conferência do diretório/atalho/registro, abertura do App, instância única, desinstalação, preservação dos dados locais e reinstalação.
+
 Saída:
 
 ```text
@@ -214,6 +216,8 @@ Não implementado em 0.8.0. O `AppId` estável permite que uma evolução baixe 
 - [ ] versão do executável corresponde a 0.8.0;
 - [ ] publish sem arquivos proibidos;
 - [ ] instalador gerado com nome correto e tamanho válido;
+- [ ] instalação, abertura e instância única aprovadas no runner;
+- [ ] desinstalação, preservação de dados e reinstalação aprovadas no runner;
 - [ ] artifacts enviados;
 - [ ] release preview atualizada.
 

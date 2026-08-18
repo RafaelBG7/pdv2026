@@ -130,6 +130,12 @@ jobs:
           ./desktop_wpf/installer/build-installer.ps1
           -Version '${{ steps.version.outputs.version }}'
 
+      - name: Smoke test installer lifecycle
+        shell: pwsh
+        run: >-
+          ./desktop_wpf/installer/test-installer.ps1
+          -Version '${{ steps.version.outputs.version }}'
+
       - name: Upload portable Windows preview artifact
         uses: actions/upload-artifact@v4
         with:

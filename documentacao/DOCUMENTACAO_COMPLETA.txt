@@ -1,7 +1,7 @@
 GIROFY — DOCUMENTAÇÃO COMPLETA DO PROJETO
 =========================================
 
-Marco de referência: 17/08/2026
+Marco de referência: 18/08/2026
 Repositório: https://github.com/RafaelBG7/pdv2026
 Produto: PDV SaaS Web/API com aplicativo nativo para Windows
 
@@ -281,7 +281,9 @@ reduzir envios duplicados.
 
 5.11 Configurações
 
-As configurações atuais são organizadas em:
+Na Web, as configurações são organizadas em uma navegação horizontal por áreas. A
+tela centraliza preferências pessoais e administrativas sem misturar as
+responsabilidades do painel master. As áreas atuais são:
 
 - Usuário;
 - Gerar key, quando autorizado;
@@ -294,6 +296,15 @@ As configurações atuais são organizadas em:
 - Exportação;
 - Suporte;
 - Acessibilidade.
+
+A área Usuário permite consultar e editar o perfil e trocar a senha. Equipe
+administra funcionários, papéis, permissões e situação de acesso, respeitando as
+permissões do usuário conectado. Operação controla a venda com estoque
+insuficiente. Financeiro mantém as taxas de Pix, débito e crédito usadas no cálculo
+de lucro. Alertas direciona as preferências operacionais e de e-mail. Backup,
+Importação e Exportação concentram as ferramentas autorizadas de manutenção de
+dados. Suporte oferece os caminhos de atualização e atendimento. Acessibilidade
+mantém preferências visuais adicionais da versão Web.
 
 Não existe mais uma aba textual chamada Aparência. Também não existe o bloco
 Claro/Escuro dentro do menu do usuário. O tema é alterado pelo botão global com
@@ -336,6 +347,45 @@ O aplicativo contém interfaces para:
 - Configurações, perfil, senha, empresa e equipe;
 - importação, exportação e backup por meio da API.
 
+6.2.1 Configurações no App Windows
+
+A tela nativa de Configurações mantém as mesmas áreas conceituais da Web em abas:
+Usuário, Equipe, Operação, Financeiro, Alertas, Backup, Importação, Exportação,
+Suporte e Acessibilidade. Abas administrativas respeitam a visibilidade calculada
+a partir das permissões devolvidas pela API.
+
+O cabeçalho usa o cartão em gradiente do design system, com título, descrição,
+alternância global de tema e atualização dos dados. As abas usam fundo, borda e
+estado selecionado derivados dos tokens de tema, sem cores fixas que prejudiquem o
+modo claro. Os formulários são agrupados em cards e reutilizam os estilos globais
+de TextBox, PasswordBox, ComboBox, CheckBox e botões.
+
+Funções disponíveis no App:
+
+- editar nome, sobrenome e telefone do usuário conectado;
+- alterar a senha mediante senha atual e confirmação;
+- consultar, criar e editar funcionários conforme autorização;
+- selecionar papel, permissões e estado ativo do funcionário;
+- permitir ou impedir vendas que resultem em estoque negativo;
+- configurar taxas de Pix, débito e crédito;
+- consultar a situação e a frequência de backup;
+- salvar a frequência e solicitar backup manual;
+- importar produtos por planilha CSV/XLSX;
+- exportar dados autorizados em CSV;
+- abrir na Web configurações que ainda dependem da interface Web;
+- atualizar o snapshot de configurações sem reiniciar o aplicativo.
+
+Na aba Operação, “Permitir estoque negativo” determina se uma venda pode ser
+concluída quando a quantidade disponível for insuficiente. Quando habilitada, a
+venda é registrada, o saldo pode ficar negativo e o alerta de estoque insuficiente
+continua ativo. O botão “Salvar regra” persiste a decisão pela API; apenas marcar a
+chave sem salvar não conclui a alteração no servidor.
+
+Mensagens de sucesso e falha são exibidas no próprio conteúdo. Operações de rede
+usam comandos assíncronos e não devem bloquear a janela. A interface Web continua
+sendo a referência visual, mas o App usa componentes WPF nativos e não incorpora a
+página Web.
+
 6.3 Experiência e desempenho
 
 O cliente utiliza navegação lateral nativa, comandos assíncronos e carregamento sob
@@ -373,19 +423,19 @@ O pipeline preserva Girofy.exe e produz também o Setup. O aplicativo ainda não
 possui Code Signing nem auto-update e o instalador não é a distribuição comercial.
 O Windows pode exibir aviso de segurança por se tratar de executável não assinado.
 
-Em 18/08/2026, o workflow Build Windows WPF nº 32086276016 foi concluído com
-sucesso. Foram aprovados 196 testes de contratos do backend, 65 testes .NET,
-publish self-contained/single-file, geração do Setup e o smoke test automatizado
-do ciclo instalar, abrir, impedir segunda instância, desinstalar preservando dados
-locais e reinstalar. Evidência:
-https://github.com/RafaelBG7/pdv2026/actions/runs/32086276016
+Em 18/08/2026, o pipeline Windows já validava testes de contrato do backend,
+testes .NET, publish self-contained/single-file, geração do Setup e smoke test
+automatizado do ciclo instalar, abrir, impedir segunda instância, desinstalar
+preservando dados locais e reinstalar. A execução mais recente fica disponível no
+histórico do workflow:
+https://github.com/RafaelBG7/pdv2026/actions/workflows/build-windows-wpf.yml
 
 Download persistente do instalador validado:
 https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
 
-SHA-256: 22aba860eedc34204d36d6bd1ffb2a4f77abd02c6e308c01dca2e2123f52215b
-
-Essa validação ocorreu em runner Windows do GitHub. A homologação manual em uma
+O hash SHA-256 muda a cada publicação e deve ser consultado ou calculado sobre o
+arquivo efetivamente baixado. A validação automatizada ocorre em runner Windows do
+GitHub. A homologação manual em uma
 VM Windows limpa continua pendente e deve verificar a interface do Setup,
 SmartScreen, login/refresh/logout reais, persistência DPAPI, tema/preferências,
 falhas de rede/API e desinstalação com o aplicativo aberto.

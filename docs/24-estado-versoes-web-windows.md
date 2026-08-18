@@ -7,7 +7,7 @@
 
 Detalhes em [29-migracoes-versionadas.md](29-migracoes-versionadas.md).
 
-Atualizado em: 17/08/2026
+Atualizado em: 18/08/2026
 
 > O snapshot oficial mais recente e detalhado está em [31-estado-atual-17-08-2026.md](31-estado-atual-17-08-2026.md).
 
@@ -406,7 +406,7 @@ Configurações:
 | Contas a pagar | Pronto | Parcial | Validar cadastro, pagamento e reabertura em produção controlada. |
 | Notificações e e-mail | Pronto | Pronto no recorte atual | APP consome notificações; envio de e-mail permanece no backend WEB. |
 | Auditoria | Pronto | Pronto no recorte atual | Validar paginação e expansão com histórico extenso. |
-| Configurações | Pronto | Parcial | Reorganizar UX por abas e validar todas as ações. |
+| Configurações | Pronto | Pronto | UX nativa por abas alinhada à Web; ações condicionadas por permissão. |
 | Backup | Pronto | Parcial | Windows chama API, mas restore guiado ainda falta. |
 | Importação/exportação | Pronto | Parcial | Validar arquivos reais e erros de planilha no Windows. |
 | Acessibilidade | Pronto | Pendente/parcial | Levar controles equivalentes para o app nativo se necessário. |
@@ -831,7 +831,7 @@ interfaces executam a mesma operação, a validação definitiva continua no bac
 | Gerar artifact Windows | Não | Sim, pelo GitHub Actions |
 | Atualizar automaticamente após deploy | Sim, ao recarregar | Não; requer novo binário |
 | Painel master completo | Sim | Não é prioridade atual |
-| Tema claro/escuro completo | Sim | Tema escuro padronizado atual |
+| Tema claro/escuro completo | Sim | Sim; preferência local e tokens dinâmicos |
 | Trabalhar totalmente offline | Não | Não |
 | Fonte oficial das regras | Backend WEB | Não; consome o backend |
 

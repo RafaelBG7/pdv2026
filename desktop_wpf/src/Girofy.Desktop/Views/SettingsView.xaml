@@ -3,14 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
         <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="19" />
+            <Setter Property="FontSize" Value="20" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
 
         <Style x:Key="SettingsSectionDescriptionStyle" TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,4,0,0" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,7,0,0" />
+            <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
@@ -28,32 +28,34 @@
         </Style>
 
         <Style x:Key="SettingsPanelStyle" TargetType="Border">
-            <Setter Property="Padding" Value="18" />
+            <Setter Property="Padding" Value="20" />
             <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="12" />
         </Style>
 
         <Style x:Key="SettingsInnerPanelStyle" TargetType="Border">
-            <Setter Property="Padding" Value="14" />
+            <Setter Property="Padding" Value="18" />
             <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="CornerRadius" Value="10" />
         </Style>
 
         <Style TargetType="TabControl" x:Key="SettingsTabControlStyle">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
         </Style>
 
         <Style TargetType="TabItem" x:Key="SettingsTabItemStyle">
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="16,10" />
-            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="17,11" />
+            <Setter Property="Margin" Value="0,0,5,0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
@@ -62,7 +64,7 @@
                                 Background="Transparent"
                                 BorderBrush="Transparent"
                                 BorderThickness="1"
-                                CornerRadius="7">
+                                CornerRadius="8">
                             <ContentPresenter ContentSource="Header"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
@@ -75,7 +77,7 @@
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource InfoSurfaceBrush}" />
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource InfoBrush}" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -98,7 +100,9 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Grid>
+            <Border Padding="24,20"
+                    Style="{StaticResource HeroCardStyle}">
+                <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -106,14 +110,14 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock FontSize="27"
+                    <TextBlock FontSize="30"
                                FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                Text="Configurações" />
-                    <TextBlock Margin="0,4,0,0"
-                               FontSize="13"
+                    <TextBlock Margin="0,7,0,0"
+                               FontSize="15"
                                Foreground="{DynamicResource TextSecondaryBrush}"
-                               Text="Organize perfil, equipe, operação, financeiro e ferramentas da adega." />
+                               Text="Gerencie os dados do usuário conectado e as preferências da adega." />
                 </StackPanel>
                 <Button Grid.Column="1"
                         Command="{Binding ToggleThemeCommand}"
@@ -125,7 +129,8 @@
                         Command="{Binding RefreshCommand}"
                         Content="Atualizar"
                         Style="{StaticResource SecondaryButtonStyle}" />
-            </Grid>
+                </Grid>
+            </Border>
 
             <StackPanel Grid.Row="2">
                 <Border Padding="12"
@@ -170,7 +175,7 @@
                 </Border>
             </StackPanel>
 
-            <UniformGrid Grid.Row="4" Columns="3">
+            <UniformGrid Grid.Row="4" Columns="3" Visibility="Collapsed">
                 <Border Margin="0,0,10,0"
                         Style="{StaticResource SettingsInnerPanelStyle}">
                     <StackPanel>
@@ -624,45 +629,37 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="16" />
+                                    <RowDefinition Height="18" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="18" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
-                                               Text="Regras de operação" />
+                                               Text="Regras de estoque" />
                                     <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
-                                               Text="Controle como a adega registra vendas quando o estoque estiver zerado ou negativo." />
+                                               Text="Defina se a adega pode concluir vendas quando a quantidade disponível não for suficiente." />
                                 </StackPanel>
 
-                                <UniformGrid Grid.Row="2" Columns="2">
-                                    <Border Margin="0,0,8,0"
-                                            Style="{StaticResource SettingsInnerPanelStyle}">
-                                        <StackPanel>
-                                            <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
-                                                       Text="ESTOQUE" />
-                                            <TextBlock Margin="0,6,0,0"
-                                                       FontSize="18"
-                                                       FontWeight="Bold"
-                                                       Foreground="{DynamicResource TextPrimaryBrush}"
-                                                       Text="{Binding NegativeStockText}" />
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Border Margin="8,0,0,0"
-                                            Style="{StaticResource SettingsInnerPanelStyle}">
-                                        <StackPanel>
-                                            <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
-                                                       Text="USO" />
-                                            <TextBlock Margin="0,6,0,0"
-                                                       FontSize="18"
-                                                       FontWeight="Bold"
-                                                       Foreground="{DynamicResource InfoBrush}"
-                                                       Text="Venda e baixa de estoque" />
-                                        </StackPanel>
-                                    </Border>
-                                </UniformGrid>
+                                <Border Grid.Row="2"
+                                        Padding="16"
+                                        Background="{DynamicResource SurfaceRaisedBrush}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="9">
+                                    <StackPanel>
+                                        <CheckBox FontSize="15"
+                                                  FontWeight="SemiBold"
+                                                  Foreground="{DynamicResource TextPrimaryBrush}"
+                                                  IsChecked="{Binding AllowNegativeStock, UpdateSourceTrigger=PropertyChanged}"
+                                                  Content="Permitir estoque negativo" />
+                                        <TextBlock Margin="28,7,0,0"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="A venda será concluída e a quantidade ficará negativa, mantendo o alerta de estoque insuficiente."
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
 
                                 <Grid Grid.Row="4">
                                     <Grid.ColumnDefinitions>
@@ -670,14 +667,13 @@
                                         <ColumnDefinition Width="12" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <CheckBox VerticalAlignment="Center"
-                                              Foreground="{DynamicResource TextPrimaryBrush}"
-                                              IsChecked="{Binding AllowNegativeStock, UpdateSourceTrigger=PropertyChanged}"
-                                              Content="Permitir vender produto sem estoque e manter estoque negativo" />
+                                    <TextBlock VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Text="{Binding NegativeStockText}" />
                                     <Button Grid.Column="2"
                                             MinWidth="148"
                                             Command="{Binding SaveCompanySettingsCommand}"
-                                            Content="Salvar operação"
+                                            Content="Salvar regra"
                                             Style="{StaticResource PrimaryButtonStyle}" />
                                 </Grid>
                             </Grid>

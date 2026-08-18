@@ -5,52 +5,52 @@
         <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="19" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
 
         <Style x:Key="SettingsSectionDescriptionStyle" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,4,0,0" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
 
         <Style x:Key="SettingsLabelStyle" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,0,0,6" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
 
         <Style x:Key="SettingsSmallLabelStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
         </Style>
 
         <Style x:Key="SettingsPanelStyle" TargetType="Border">
             <Setter Property="Padding" Value="18" />
-            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="8" />
         </Style>
 
         <Style x:Key="SettingsInnerPanelStyle" TargetType="Border">
             <Setter Property="Padding" Value="14" />
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="7" />
         </Style>
 
         <Style TargetType="TabControl" x:Key="SettingsTabControlStyle">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="0" />
         </Style>
 
         <Style TargetType="TabItem" x:Key="SettingsTabItemStyle">
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Padding" Value="16,10" />
             <Setter Property="Margin" Value="0,0,6,0" />
@@ -69,14 +69,14 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceHoverBrush}" />
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource InfoSurfaceBrush}" />
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource InfoBrush}" />
-                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource InfoSurfaceBrush}" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource InfoBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -108,16 +108,16 @@
                 <StackPanel>
                     <TextBlock FontSize="27"
                                FontWeight="Bold"
-                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Text="Configurações" />
                     <TextBlock Margin="0,4,0,0"
                                FontSize="13"
-                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="Organize perfil, equipe, operação, financeiro e ferramentas da adega." />
                 </StackPanel>
                 <Button Grid.Column="1"
                         Command="{Binding ToggleThemeCommand}"
-                        Tag="{Binding ThemeToggleText}"
+                        Tag="{Binding IsDarkMode}"
                         AutomationProperties.Name="Alternar tema"
                         Style="{StaticResource ThemeToggleButtonStyle}" />
                 <Button Grid.Column="3"
@@ -130,8 +130,8 @@
             <StackPanel Grid.Row="2">
                 <Border Padding="12"
                         Margin="0,0,0,8"
-                        Background="{StaticResource ErrorSurfaceBrush}"
-                        BorderBrush="{StaticResource ErrorBorderBrush}"
+                        Background="{DynamicResource ErrorSurfaceBrush}"
+                        BorderBrush="{DynamicResource ErrorBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="5">
                     <Border.Style>
@@ -144,14 +144,14 @@
                             </Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
                                Text="{Binding ErrorMessage}"
                                TextWrapping="Wrap" />
                 </Border>
 
                 <Border Padding="12"
-                        Background="{StaticResource SuccessSurfaceBrush}"
-                        BorderBrush="{StaticResource SuccessBorderBrush}"
+                        Background="{DynamicResource SuccessSurfaceBrush}"
+                        BorderBrush="{DynamicResource SuccessBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="5">
                     <Border.Style>
@@ -164,7 +164,7 @@
                             </Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
                                Text="{Binding SuccessMessage}"
                                TextWrapping="Wrap" />
                 </Border>
@@ -179,11 +179,11 @@
                         <TextBlock Margin="0,6,0,0"
                                    FontSize="21"
                                    FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                    Text="{Binding UsernameText}" />
                         <TextBlock Margin="0,4,0,0"
                                    FontSize="13"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding EmailText}"
                                    TextTrimming="CharacterEllipsis" />
                     </StackPanel>
@@ -197,12 +197,12 @@
                         <TextBlock Margin="0,6,0,0"
                                    FontSize="21"
                                    FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                    Text="{Binding CompanyName}"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Margin="0,4,0,0"
                                    FontSize="13"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding RoleText}" />
                     </StackPanel>
                 </Border>
@@ -215,12 +215,12 @@
                         <TextBlock Margin="0,6,0,0"
                                    FontSize="21"
                                    FontWeight="Bold"
-                                   Foreground="{StaticResource InfoBrush}"
+                                   Foreground="{DynamicResource InfoBrush}"
                                    Text="{Binding PlanText}"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Margin="0,4,0,0"
                                    FontSize="13"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding SubscriptionText}" />
                     </StackPanel>
                 </Border>
@@ -289,10 +289,10 @@
                                             <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
                                                        Text="RESUMO" />
                                             <TextBlock Margin="0,5,0,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
                                                        Text="{Binding NegativeStockText}" />
                                             <TextBlock Margin="0,3,0,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
                                                        Text="{Binding FeeText}"
                                                        TextWrapping="Wrap" />
                                         </StackPanel>
@@ -359,7 +359,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock VerticalAlignment="Center"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                                    Text="Ao alterar a senha, confira se digitou a confirmação corretamente."
                                                    TextWrapping="Wrap" />
                                         <Button Grid.Column="2"
@@ -503,7 +503,7 @@
                                             <RowDefinition Height="*" />
                                         </Grid.RowDefinitions>
                                         <TextBlock FontWeight="Bold"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                                    Text="Buscar funcionário" />
                                         <Grid Grid.Row="2">
                                             <Grid.ColumnDefinitions>
@@ -549,7 +549,7 @@
                                             <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
                                         <TextBlock FontWeight="Bold"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                                    Text="Editar funcionário selecionado" />
 
                                         <Grid Grid.Row="2">
@@ -604,7 +604,7 @@
                                             <CheckBox Grid.Column="6"
                                                       VerticalAlignment="Center"
                                                       Content="Ativo"
-                                                      Foreground="{StaticResource TextPrimaryBrush}"
+                                                      Foreground="{DynamicResource TextPrimaryBrush}"
                                                       IsChecked="{Binding EmployeeIsActive}" />
                                             <Button Grid.Column="8"
                                                     MinWidth="122"
@@ -645,7 +645,7 @@
                                             <TextBlock Margin="0,6,0,0"
                                                        FontSize="18"
                                                        FontWeight="Bold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding NegativeStockText}" />
                                         </StackPanel>
                                     </Border>
@@ -658,7 +658,7 @@
                                             <TextBlock Margin="0,6,0,0"
                                                        FontSize="18"
                                                        FontWeight="Bold"
-                                                       Foreground="{StaticResource InfoBrush}"
+                                                       Foreground="{DynamicResource InfoBrush}"
                                                        Text="Venda e baixa de estoque" />
                                         </StackPanel>
                                     </Border>
@@ -671,7 +671,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <CheckBox VerticalAlignment="Center"
-                                              Foreground="{StaticResource TextPrimaryBrush}"
+                                              Foreground="{DynamicResource TextPrimaryBrush}"
                                               IsChecked="{Binding AllowNegativeStock, UpdateSourceTrigger=PropertyChanged}"
                                               Content="Permitir vender produto sem estoque e manter estoque negativo" />
                                     <Button Grid.Column="2"
@@ -707,7 +707,7 @@
                                             Style="{StaticResource SettingsInnerPanelStyle}">
                                         <StackPanel>
                                             <CheckBox Margin="0,0,0,10"
-                                                      Foreground="{StaticResource TextPrimaryBrush}"
+                                                      Foreground="{DynamicResource TextPrimaryBrush}"
                                                       IsChecked="{Binding PixFeeEnabled, UpdateSourceTrigger=PropertyChanged}"
                                                       Content="Taxa Pix" />
                                             <TextBox Text="{Binding PixFeePercent, UpdateSourceTrigger=PropertyChanged}"
@@ -719,7 +719,7 @@
                                             Style="{StaticResource SettingsInnerPanelStyle}">
                                         <StackPanel>
                                             <CheckBox Margin="0,0,0,10"
-                                                      Foreground="{StaticResource TextPrimaryBrush}"
+                                                      Foreground="{DynamicResource TextPrimaryBrush}"
                                                       IsChecked="{Binding DebitFeeEnabled, UpdateSourceTrigger=PropertyChanged}"
                                                       Content="Taxa débito" />
                                             <TextBox Text="{Binding DebitFeePercent, UpdateSourceTrigger=PropertyChanged}"
@@ -731,7 +731,7 @@
                                             Style="{StaticResource SettingsInnerPanelStyle}">
                                         <StackPanel>
                                             <CheckBox Margin="0,0,0,10"
-                                                      Foreground="{StaticResource TextPrimaryBrush}"
+                                                      Foreground="{DynamicResource TextPrimaryBrush}"
                                                       IsChecked="{Binding CreditFeeEnabled, UpdateSourceTrigger=PropertyChanged}"
                                                       Content="Taxa crédito" />
                                             <TextBox Text="{Binding CreditFeePercent, UpdateSourceTrigger=PropertyChanged}"
@@ -747,7 +747,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock VerticalAlignment="Center"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
                                                Text="{Binding FeeText}"
                                                TextWrapping="Wrap" />
                                     <Button Grid.Column="2"
@@ -812,7 +812,7 @@
                                             <TextBlock Margin="0,6,0,0"
                                                        FontSize="18"
                                                        FontWeight="Bold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding BackupFrequencyText}" />
                                         </StackPanel>
                                     </Border>
@@ -825,7 +825,7 @@
                                             <TextBlock Margin="0,6,0,0"
                                                        FontSize="18"
                                                        FontWeight="Bold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding BackupLastAtText}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
@@ -839,7 +839,7 @@
                                             <TextBlock Margin="0,6,0,0"
                                                        FontSize="18"
                                                        FontWeight="Bold"
-                                                       Foreground="{StaticResource InfoBrush}"
+                                                       Foreground="{DynamicResource InfoBrush}"
                                                        Text="{Binding BackupStatusText}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </StackPanel>

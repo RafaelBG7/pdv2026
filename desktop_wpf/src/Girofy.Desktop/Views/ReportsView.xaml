@@ -6,9 +6,9 @@
             <Setter Property="Height" Value="44" />
             <Setter Property="MinWidth" Value="132" />
             <Setter Property="Padding" Value="18,0" />
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -27,8 +27,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceHoverBrush}" />
-                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -60,10 +60,10 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock FontSize="27" FontWeight="Bold"
-                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Text="Relatórios" />
                     <TextBlock Margin="0,4,0,0" FontSize="13"
-                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="Acompanhe vendas, descontos, pagamentos e lucro por período." />
                     <StackPanel Margin="0,22,0,0" Orientation="Horizontal">
                         <Button Command="{Binding ShowSummaryTabCommand}"
@@ -72,9 +72,9 @@
                                 <Style TargetType="Button" BasedOn="{StaticResource ReportTabButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSummaryTabSelected}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-                                            <Setter Property="Background" Value="{StaticResource PrimaryPressedBrush}" />
-                                            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource PrimaryPressedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -87,9 +87,9 @@
                                 <Style TargetType="Button" BasedOn="{StaticResource ReportTabButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsProductsTabSelected}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-                                            <Setter Property="Background" Value="{StaticResource PrimaryPressedBrush}" />
-                                            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource PrimaryPressedBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -104,8 +104,8 @@
             </Grid>
 
             <Border Grid.Row="2" Padding="12"
-                    Background="{StaticResource ErrorSurfaceBrush}"
-                    BorderBrush="{StaticResource ErrorBorderBrush}"
+                    Background="{DynamicResource ErrorSurfaceBrush}"
+                    BorderBrush="{DynamicResource ErrorBorderBrush}"
                     BorderThickness="1" CornerRadius="5">
                 <Border.Style>
                     <Style TargetType="Border">
@@ -117,13 +117,13 @@
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
                            Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
             </Border>
 
             <Border Grid.Row="4" Padding="18"
-                    Background="{StaticResource SurfaceRaisedBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
+                    Background="{DynamicResource SurfaceRaisedBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="12">
                 <Border.Style>
                     <Style TargetType="Border">
@@ -142,7 +142,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock FontSize="18" FontWeight="Bold"
-                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Text="Filtros do período" />
                     <Grid Grid.Row="2">
                         <Grid.RowDefinitions>
@@ -161,7 +161,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Período" />
                             <ComboBox Height="48" Padding="10,0"
                                       ItemsSource="{Binding PeriodOptions}"
@@ -170,7 +170,7 @@
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Gráfico" />
                             <ComboBox Height="48" Padding="10,0"
                                       ItemsSource="{Binding MetricOptions}"
@@ -179,7 +179,7 @@
                         </StackPanel>
                         <StackPanel Grid.Column="4">
                             <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Data inicial" />
                             <TextBox Text="{Binding StartDateText, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="AAAA-MM-DD"
@@ -187,7 +187,7 @@
                         </StackPanel>
                         <StackPanel Grid.Column="6">
                             <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Data final" />
                             <TextBox Text="{Binding EndDateText, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="AAAA-MM-DD"
@@ -214,63 +214,63 @@
                     </Style>
                 </UniformGrid.Style>
                 <Border Margin="0,0,10,0" Padding="16"
-                        Background="{StaticResource SurfaceRaisedBrush}"
-                        BorderBrush="{StaticResource BorderBrush}"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1" CornerRadius="7">
                     <StackPanel>
                         <TextBlock FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Foreground="{DynamicResource TextMutedBrush}"
                                    Text="VENDAS" />
                         <TextBlock Margin="0,6,0,0" FontSize="22" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                    Text="{Binding Summary.SalesCountText}" />
                         <TextBlock Margin="0,4,0,0" FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding Summary.ItemsCountText}" />
                     </StackPanel>
                 </Border>
                 <Border Margin="0,0,10,0" Padding="16"
-                        Background="{StaticResource SurfaceRaisedBrush}"
-                        BorderBrush="{StaticResource BorderBrush}"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1" CornerRadius="7">
                     <StackPanel>
                         <TextBlock FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Foreground="{DynamicResource TextMutedBrush}"
                                    Text="FATURAMENTO" />
                         <TextBlock Margin="0,6,0,0" FontSize="22" FontWeight="Bold"
-                                   Foreground="{StaticResource InfoBrush}"
+                                   Foreground="{DynamicResource InfoBrush}"
                                    Text="{Binding Summary.FinalText}" />
                         <TextBlock Margin="0,4,0,0" FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding Summary.SubtotalText}" />
                     </StackPanel>
                 </Border>
                 <Border Margin="0,0,10,0" Padding="16"
-                        Background="{StaticResource SurfaceRaisedBrush}"
-                        BorderBrush="{StaticResource BorderBrush}"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1" CornerRadius="7">
                     <StackPanel>
                         <TextBlock FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Foreground="{DynamicResource TextMutedBrush}"
                                    Text="LUCRO" />
                         <TextBlock Margin="0,6,0,0" FontSize="22" FontWeight="Bold"
-                                   Foreground="{StaticResource SuccessBrush}"
+                                   Foreground="{DynamicResource SuccessBrush}"
                                    Text="{Binding Summary.ProfitText}" />
                         <TextBlock Margin="0,4,0,0" FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding Summary.DiscountText}" />
                     </StackPanel>
                 </Border>
                 <Border Padding="16"
-                        Background="{StaticResource SurfaceRaisedBrush}"
-                        BorderBrush="{StaticResource BorderBrush}"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1" CornerRadius="7">
                     <StackPanel>
                         <TextBlock FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Foreground="{DynamicResource TextMutedBrush}"
                                    Text="TICKET MÉDIO" />
                         <TextBlock Margin="0,6,0,0" FontSize="22" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                    Text="{Binding Summary.AverageTicketText}" />
                     </StackPanel>
                 </Border>
@@ -294,8 +294,8 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Padding="18"
-                        Background="{StaticResource SurfaceRaisedBrush}"
-                        BorderBrush="{StaticResource BorderBrush}"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1" CornerRadius="7">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -306,10 +306,10 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <TextBlock FontSize="18" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                    Text="{Binding Snapshot.Chart.MetricLabel}" />
                         <TextBlock Grid.Row="2" FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding Snapshot.Chart.PeakText}" />
                         <ItemsControl Grid.Row="4" ItemsSource="{Binding ChartBuckets}">
                             <ItemsControl.ItemTemplate>
@@ -321,14 +321,14 @@
                                             <ColumnDefinition Width="120" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                                    Text="{Binding Label}" />
                                         <Border Grid.Column="1" Height="14" HorizontalAlignment="Left"
                                                 Width="{Binding BarWidth}"
-                                                Background="{StaticResource InfoBrush}"
+                                                Background="{DynamicResource InfoBrush}"
                                                 CornerRadius="4" />
                                         <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                                                    Text="{Binding AmountText}" />
                                     </Grid>
                                 </DataTemplate>
@@ -339,12 +339,12 @@
 
                 <StackPanel Grid.Column="2">
                     <Border Padding="18"
-                            Background="{StaticResource SurfaceRaisedBrush}"
-                            BorderBrush="{StaticResource BorderBrush}"
+                            Background="{DynamicResource SurfaceRaisedBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1" CornerRadius="7">
                         <StackPanel>
                             <TextBlock FontSize="18" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Formas de pagamento" />
                             <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding PaymentTotals}">
                                 <ItemsControl.ItemTemplate>
@@ -354,10 +354,10 @@
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Foreground="{StaticResource TextSecondaryBrush}"
+                                            <TextBlock Foreground="{DynamicResource TextSecondaryBrush}"
                                                        Text="{Binding Label}" />
                                             <TextBlock Grid.Column="1" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding AmountText}" />
                                         </Grid>
                                     </DataTemplate>
@@ -367,19 +367,19 @@
                     </Border>
 
                     <Border Margin="0,14,0,0" Padding="18"
-                            Background="{StaticResource SurfaceRaisedBrush}"
-                            BorderBrush="{StaticResource BorderBrush}"
+                            Background="{DynamicResource SurfaceRaisedBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1" CornerRadius="7">
                         <StackPanel>
                             <TextBlock FontSize="18" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Produtos mais vendidos" />
                             <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding TopProducts}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,0,10" Padding="12"
-                                                Background="{StaticResource SurfaceBrush}"
-                                                BorderBrush="{StaticResource BorderBrush}"
+                                                Background="{DynamicResource SurfaceBrush}"
+                                                BorderBrush="{DynamicResource BorderBrush}"
                                                 BorderThickness="1" CornerRadius="6">
                                             <Grid>
                                                 <Grid.RowDefinitions>
@@ -388,7 +388,7 @@
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock FontWeight="Bold"
-                                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"
                                                            Text="{Binding Name}"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <Grid Grid.Row="2">
@@ -397,10 +397,10 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock FontSize="12"
-                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"
                                                                Text="{Binding QuantityText}" />
                                                     <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"
                                                                Text="{Binding TotalText}" />
                                                 </Grid>
                                             </Grid>
@@ -414,8 +414,8 @@
             </Grid>
 
             <Border Grid.Row="10" Padding="18"
-                    Background="{StaticResource SurfaceRaisedBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
+                    Background="{DynamicResource SurfaceRaisedBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="12">
                 <Border.Style>
                     <Style TargetType="Border">
@@ -447,14 +447,14 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock FontSize="20" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Relatório por produto" />
                             <TextBlock Margin="0,4,0,0" FontSize="12"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
                                        Text="{Binding ProductSnapshot.PeriodDescription}" />
                         </StackPanel>
                         <TextBlock Grid.Column="1" VerticalAlignment="Center" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding ProductPagination.PageText}" />
                     </Grid>
 
@@ -468,7 +468,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Produto" />
                             <TextBox Text="{Binding ProductSearchText, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="Buscar produto"
@@ -476,7 +476,7 @@
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Margin="0,0,0,6" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Ordenar" />
                             <ComboBox Height="48" Padding="10,0"
                                       ItemsSource="{Binding ProductSortOptions}"
@@ -491,67 +491,67 @@
 
                     <UniformGrid Grid.Row="4" Columns="5">
                         <Border Margin="0,0,10,0" Padding="14"
-                                Background="{StaticResource SurfaceBrush}"
-                                BorderBrush="{StaticResource BorderBrush}"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="7">
                             <StackPanel>
                                 <TextBlock FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
                                            Text="PRODUTOS" />
                                 <TextBlock Margin="0,6,0,0" FontSize="20" FontWeight="Bold"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
                                            Text="{Binding ProductSummary.ProductsText}" />
                             </StackPanel>
                         </Border>
                         <Border Margin="0,0,10,0" Padding="14"
-                                Background="{StaticResource SurfaceBrush}"
-                                BorderBrush="{StaticResource BorderBrush}"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="7">
                             <StackPanel>
                                 <TextBlock FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
                                            Text="QUANTIDADE" />
                                 <TextBlock Margin="0,6,0,0" FontSize="20" FontWeight="Bold"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
                                            Text="{Binding ProductSummary.QuantityText}" />
                             </StackPanel>
                         </Border>
                         <Border Margin="0,0,10,0" Padding="14"
-                                Background="{StaticResource SurfaceBrush}"
-                                BorderBrush="{StaticResource BorderBrush}"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="7">
                             <StackPanel>
                                 <TextBlock FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
                                            Text="FATURAMENTO" />
                                 <TextBlock Margin="0,6,0,0" FontSize="20" FontWeight="Bold"
-                                           Foreground="{StaticResource InfoBrush}"
+                                           Foreground="{DynamicResource InfoBrush}"
                                            Text="{Binding ProductSummary.RevenueText}" />
                             </StackPanel>
                         </Border>
                         <Border Margin="0,0,10,0" Padding="14"
-                                Background="{StaticResource SurfaceBrush}"
-                                BorderBrush="{StaticResource BorderBrush}"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="7">
                             <StackPanel>
                                 <TextBlock FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
                                            Text="CUSTO" />
                                 <TextBlock Margin="0,6,0,0" FontSize="20" FontWeight="Bold"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
                                            Text="{Binding ProductSummary.CostText}" />
                             </StackPanel>
                         </Border>
                         <Border Padding="14"
-                                Background="{StaticResource SurfaceBrush}"
-                                BorderBrush="{StaticResource BorderBrush}"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="7">
                             <StackPanel>
                                 <TextBlock FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
                                            Text="LUCRO" />
                                 <TextBlock Margin="0,6,0,0" FontSize="20" FontWeight="Bold"
-                                           Foreground="{StaticResource SuccessBrush}"
+                                           Foreground="{DynamicResource SuccessBrush}"
                                            Text="{Binding ProductSummary.ProfitText}" />
                             </StackPanel>
                         </Border>
@@ -566,13 +566,13 @@
                               VirtualizingPanel.IsVirtualizing="True"
                               VirtualizingPanel.VirtualizationMode="Recycling"
                               ScrollViewer.CanContentScroll="True"
-                              Background="{StaticResource SurfaceRaisedBrush}"
-                              Foreground="{StaticResource TextPrimaryBrush}"
-                              BorderBrush="{StaticResource BorderBrush}"
-                              HorizontalGridLinesBrush="{StaticResource BorderBrush}"
+                              Background="{DynamicResource SurfaceRaisedBrush}"
+                              Foreground="{DynamicResource TextPrimaryBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}"
+                              HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
                               VerticalGridLinesBrush="Transparent"
-                              RowBackground="{StaticResource SurfaceRaisedBrush}"
-                          AlternatingRowBackground="{StaticResource AlternatingRowBrush}"
+                              RowBackground="{DynamicResource SurfaceRaisedBrush}"
+                          AlternatingRowBackground="{DynamicResource AlternatingRowBrush}"
                               RowHeight="54" ColumnHeaderHeight="42">
                         <DataGrid.Resources>
                             <Style TargetType="TextBlock">
@@ -603,7 +603,7 @@
                                 Content="Anterior"
                                 Style="{StaticResource SecondaryButtonStyle}" />
                         <TextBlock Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding ProductPagination.PageText}" />
                         <Button Grid.Column="2" MinWidth="118"
                                 Command="{Binding NextProductPageCommand}"

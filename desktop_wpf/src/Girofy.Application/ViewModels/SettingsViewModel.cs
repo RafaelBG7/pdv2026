@@ -548,6 +548,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand ToggleThemeCommand { get; }
 
+    public bool IsDarkMode => _themeService.IsDarkMode;
+
     public string ThemeToggleText => _themeService.IsDarkMode
         ? "Usar tema claro"
         : "Usar tema escuro";
@@ -558,6 +560,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     private async Task ToggleThemeAsync(CancellationToken cancellationToken)
     {
         await _themeService.ToggleAsync(cancellationToken);
+        OnPropertyChanged(nameof(IsDarkMode));
         OnPropertyChanged(nameof(ThemeToggleText));
     }
 

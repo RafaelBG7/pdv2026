@@ -24,9 +24,9 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock FontSize="27" FontWeight="Bold"
-                           Foreground="{StaticResource TextPrimaryBrush}" Text="Auditoria" />
+                           Foreground="{DynamicResource TextPrimaryBrush}" Text="Auditoria" />
                 <TextBlock Margin="0,4,0,0" FontSize="13"
-                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
                            Text="Acompanhe ações críticas registradas na adega." />
             </StackPanel>
             <Button Grid.Column="1" MinWidth="112"
@@ -34,8 +34,8 @@
                     Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
         </Grid>
 
-        <Border Grid.Row="2" Padding="12" Background="{StaticResource ErrorSurfaceBrush}"
-                BorderBrush="{StaticResource ErrorBorderBrush}" BorderThickness="1" CornerRadius="5">
+        <Border Grid.Row="2" Padding="12" Background="{DynamicResource ErrorSurfaceBrush}"
+                BorderBrush="{DynamicResource ErrorBorderBrush}" BorderThickness="1" CornerRadius="5">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -46,46 +46,46 @@
                     </Style.Triggers>
                 </Style>
             </Border.Style>
-            <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
                        Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
         </Border>
 
         <UniformGrid Grid.Row="4" Columns="3">
             <Border Margin="0,0,10,0" Padding="16" CornerRadius="8"
-                    Background="{StaticResource SurfaceRaisedBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    Background="{DynamicResource SurfaceRaisedBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <StackPanel>
                     <TextBlock FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="EVENTOS" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="EVENTOS" />
                     <TextBlock Margin="0,5,0,0" FontSize="26" FontWeight="Bold"
-                               Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Summary.CountText}" />
+                               Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.CountText}" />
                 </StackPanel>
             </Border>
             <Border Margin="5,0" Padding="16" CornerRadius="8"
-                    Background="{StaticResource SurfaceRaisedBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    Background="{DynamicResource SurfaceRaisedBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <StackPanel>
                     <TextBlock FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="USUÁRIOS" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="USUÁRIOS" />
                     <TextBlock Margin="0,5,0,0" FontSize="26" FontWeight="Bold"
-                               Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Summary.UsersText}" />
+                               Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.UsersText}" />
                 </StackPanel>
             </Border>
             <Border Margin="10,0,0,0" Padding="16" CornerRadius="8"
-                    Background="{StaticResource SurfaceRaisedBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    Background="{DynamicResource SurfaceRaisedBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <StackPanel>
                     <TextBlock FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="AÇÕES" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="AÇÕES" />
                     <TextBlock Margin="0,5,0,0" FontSize="26" FontWeight="Bold"
-                               Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Summary.ActionsText}" />
+                               Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.ActionsText}" />
                 </StackPanel>
             </Border>
         </UniformGrid>
 
         <Border Grid.Row="6" Padding="14" CornerRadius="8"
-                Background="{StaticResource SurfaceRaisedBrush}"
-                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                Background="{DynamicResource SurfaceRaisedBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -113,15 +113,15 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="Busca" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="Busca" />
                     <TextBlock Grid.Column="2" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="Usuário" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="Usuário" />
                     <TextBlock Grid.Column="4" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="Ação" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="Ação" />
                     <TextBlock Grid.Column="6" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="Módulo" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="Módulo" />
                     <TextBlock Grid.Column="8" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="Método" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="Método" />
 
                     <TextBox Grid.Row="2"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
@@ -145,9 +145,9 @@
                               DisplayMemberPath="Label" />
 
                     <TextBlock Grid.Row="4" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="Data inicial" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="Data inicial" />
                     <TextBlock Grid.Row="4" Grid.Column="2" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Text="Data final" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="Data final" />
 
                     <TextBox Grid.Row="4" Margin="0,24,0,0"
                              Text="{Binding StartDateText, UpdateSourceTrigger=PropertyChanged}"
@@ -174,13 +174,13 @@
                           VirtualizingPanel.IsVirtualizing="True"
                           VirtualizingPanel.VirtualizationMode="Recycling"
                           ScrollViewer.CanContentScroll="True"
-                          Background="{StaticResource SurfaceRaisedBrush}"
-                          Foreground="{StaticResource TextPrimaryBrush}"
-                          BorderBrush="{StaticResource BorderBrush}"
-                          HorizontalGridLinesBrush="{StaticResource BorderBrush}"
+                          Background="{DynamicResource SurfaceRaisedBrush}"
+                          Foreground="{DynamicResource TextPrimaryBrush}"
+                          BorderBrush="{DynamicResource BorderBrush}"
+                          HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
                           VerticalGridLinesBrush="Transparent"
-                          RowBackground="{StaticResource SurfaceRaisedBrush}"
-                  AlternatingRowBackground="{StaticResource AlternatingRowBrush}"
+                          RowBackground="{DynamicResource SurfaceRaisedBrush}"
+                  AlternatingRowBackground="{DynamicResource AlternatingRowBrush}"
                           RowHeight="56" ColumnHeaderHeight="42">
                     <DataGrid.Resources>
                         <Style TargetType="TextBlock">
@@ -200,8 +200,8 @@
                     <DataGrid.RowDetailsTemplate>
                         <DataTemplate DataType="{x:Type models:AuditLogRecord}">
                             <Border Margin="10,0,10,12" Padding="14" CornerRadius="8"
-                                    Background="{StaticResource InfoSurfaceBrush}"
-                                    BorderBrush="{StaticResource InfoBorderBrush}" BorderThickness="1">
+                                    Background="{DynamicResource InfoSurfaceBrush}"
+                                    BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -215,41 +215,41 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock FontSize="11" FontWeight="Bold"
-                                                   Foreground="{StaticResource TextMutedBrush}" Text="ANTES" />
+                                                   Foreground="{DynamicResource TextMutedBrush}" Text="ANTES" />
                                         <TextBlock Margin="0,4,0,0" FontSize="12"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                                    Text="{Binding OldValuesText}" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock FontSize="11" FontWeight="Bold"
-                                                   Foreground="{StaticResource TextMutedBrush}" Text="DEPOIS" />
+                                                   Foreground="{DynamicResource TextMutedBrush}" Text="DEPOIS" />
                                         <TextBlock Margin="0,4,0,0" FontSize="12"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                                    Text="{Binding NewValuesText}" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <UniformGrid Grid.Row="2" Grid.ColumnSpan="3" Columns="4">
                                         <StackPanel Margin="0,0,10,0">
                                             <TextBlock FontSize="11" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextMutedBrush}" Text="ROTA" />
-                                            <TextBlock FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Foreground="{DynamicResource TextMutedBrush}" Text="ROTA" />
+                                            <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding RouteText}" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,10,0">
                                             <TextBlock FontSize="11" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextMutedBrush}" Text="MÉTODO" />
-                                            <TextBlock FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Foreground="{DynamicResource TextMutedBrush}" Text="MÉTODO" />
+                                            <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding MethodText}" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,10,0">
                                             <TextBlock FontSize="11" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextMutedBrush}" Text="REQUEST ID" />
-                                            <TextBlock FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Foreground="{DynamicResource TextMutedBrush}" Text="REQUEST ID" />
+                                            <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding RequestText}" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                         <StackPanel>
                                             <TextBlock FontSize="11" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextMutedBrush}" Text="IP" />
-                                            <TextBlock FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Foreground="{DynamicResource TextMutedBrush}" Text="IP" />
+                                            <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding IpText}" />
                                         </StackPanel>
                                     </UniformGrid>
@@ -262,8 +262,8 @@
         </Border>
 
         <Border Grid.Row="6" Margin="0,136,0,52" Padding="18" CornerRadius="8"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -280,7 +280,7 @@
             <TextBlock HorizontalAlignment="Center"
                        VerticalAlignment="Center"
                        FontSize="14"
-                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
                        Text="Nenhum evento de auditoria encontrado." />
         </Border>
 
@@ -292,7 +292,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock VerticalAlignment="Center" FontSize="12"
-                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
                        Text="{Binding PageSummary}" />
             <Button Grid.Column="1" MinWidth="92"
                     IsEnabled="{Binding CanGoPrevious}"

@@ -77,6 +77,13 @@ jobs:
             throw 'Run.Text bindings must explicitly use Mode=OneWay.'
           }
 
+          $staticThemeBrushes = Get-ChildItem desktop_wpf/src/Girofy.Desktop -Recurse -Filter *.xaml |
+            Select-String -Pattern '\{StaticResource [A-Za-z]+Brush\}'
+          if ($staticThemeBrushes) {
+            $staticThemeBrushes | ForEach-Object { Write-Error "$($_.Path):$($_.LineNumber): $($_.Line.Trim())" }
+            throw 'Theme brushes must use DynamicResource so Light/Dark changes update the open window.'
+          }
+
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:

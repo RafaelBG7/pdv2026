@@ -22,10 +22,12 @@ public sealed class SettingsViewModelTests
             themeService);
 
         Assert.Equal("Usar tema claro", viewModel.ThemeToggleText);
+        Assert.True(viewModel.IsDarkMode);
 
         await viewModel.ToggleThemeCommand.ExecuteAsync();
 
         Assert.False(themeService.IsDarkMode);
+        Assert.False(viewModel.IsDarkMode);
         Assert.Equal("Usar tema escuro", viewModel.ThemeToggleText);
     }
 

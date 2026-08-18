@@ -173,7 +173,15 @@ public sealed class ReportChartBucket
 
     public string AmountText => DashboardFormatting.Money(Total);
 
+    public string TooltipText => $"{Title}\n{SalesCountText} · {AmountText}";
+
     public double BarWidth => Math.Max(6.0, (double)Percent * 2.3);
+
+    public double ChartHeight => Math.Max(4.0, (double)Percent * 2.15);
+
+    public bool ShowAxisLabel => Key.Length != 2 ||
+        !int.TryParse(Key, out var hour) ||
+        hour % 3 == 0;
 }
 
 public sealed record ReportsQuery(

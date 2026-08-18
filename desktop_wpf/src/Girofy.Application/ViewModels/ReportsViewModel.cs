@@ -63,6 +63,12 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
             () => CanViewReports && !IsBusy && ProductSnapshot.Pagination.HasNext);
         ShowSummaryTabCommand = new RelayCommand(() => IsSummaryTabSelected = true);
         ShowProductsTabCommand = new RelayCommand(() => IsSummaryTabSelected = false);
+        SelectRevenueMetricCommand = new AsyncRelayCommand(
+            cancellationToken => SelectMetricAsync("revenue", cancellationToken),
+            () => CanViewReports && !IsBusy);
+        SelectQuantityMetricCommand = new AsyncRelayCommand(
+            cancellationToken => SelectMetricAsync("quantity", cancellationToken),
+            () => CanViewReports && !IsBusy);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -81,8 +87,20 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public CatalogFilterOption SelectedMetric
     {
         get => _selectedMetric;
-        set => SetProperty(ref _selectedMetric, value);
+        set
+        {
+            if (SetProperty(ref _selectedMetric, value))
+            {
+                OnPropertyChanged(nameof(IsRevenueMetricSelected));
+                OnPropertyChanged(nameof(IsQuantityMetricSelected));
+            }
+        }
     }
+
+    public bool IsRevenueMetricSelected =>
+        string.Equals(SelectedMetric.Value, "revenue", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsQuantityMetricSelected => !IsRevenueMetricSelected;
 
     public CatalogFilterOption SelectedProductSort
     {
@@ -196,6 +214,8 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
                 RefreshCommand.NotifyCanExecuteChanged();
                 ApplyFiltersCommand.NotifyCanExecuteChanged();
                 ApplyProductFiltersCommand.NotifyCanExecuteChanged();
+                SelectRevenueMetricCommand.NotifyCanExecuteChanged();
+                SelectQuantityMetricCommand.NotifyCanExecuteChanged();
                 NotifyProductCommands();
             }
         }
@@ -218,6 +238,10 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public RelayCommand ShowSummaryTabCommand { get; }
 
     public RelayCommand ShowProductsTabCommand { get; }
+
+    public AsyncRelayCommand SelectRevenueMetricCommand { get; }
+
+    public AsyncRelayCommand SelectQuantityMetricCommand { get; }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -243,6 +267,20 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
 
     private async Task ApplyFiltersAsync(CancellationToken cancellationToken)
     {
+        _isInitialized = false;
+        await LoadAsync(cancellationToken);
+    }
+
+    private async Task SelectMetricAsync(string metric, CancellationToken cancellationToken)
+    {
+        var option = MetricOptions.First(item =>
+            string.Equals(item.Value, metric, StringComparison.OrdinalIgnoreCase));
+        if (string.Equals(SelectedMetric.Value, option.Value, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        SelectedMetric = option;
         _isInitialized = false;
         await LoadAsync(cancellationToken);
     }

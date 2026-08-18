@@ -138,6 +138,8 @@ concluídos e os problemas relevantes forem corrigidos.
 
 Versão planejada: GiroFy 0.8.0
 Artefato planejado: GiroFy-Setup-0.8.0.exe
+Status da implementação: CONCLUÍDA em 18/08/2026.
+Status da homologação manual: PENDENTE EM VM WINDOWS LIMPA.
 
 Objetivos:
 
@@ -157,6 +159,18 @@ lançamento 1.0.0.
 
 Condição de saída: instalação, execução, desinstalação, reinstalação e geração no
 pipeline funcionando em uma máquina Windows limpa.
+
+Resultado atual:
+
+- implementação, build, instalação silenciosa, abertura, instância única,
+  desinstalação, preservação de dados e reinstalação foram aprovados no runner
+  Windows do GitHub Actions;
+- workflow aprovado: https://github.com/RafaelBG7/pdv2026/actions/runs/32086276016;
+- Setup publicado: https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe;
+- a condição formal de saída ainda depende de homologação interativa em VM limpa,
+  incluindo SmartScreen, atalhos, login real, sessão DPAPI, tema, falhas da API e
+  comportamento com o aplicativo aberto durante a desinstalação;
+- a Etapa 2 não foi iniciada por este trabalho.
 
 
 7. ETAPA 2 — FINALIZAÇÃO WEB X APP

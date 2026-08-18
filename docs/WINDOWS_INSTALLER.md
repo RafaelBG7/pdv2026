@@ -208,20 +208,26 @@ Não implementado em 0.8.0. O `AppId` estável permite que uma evolução baixe 
 
 ### Automatizada no workflow
 
-- [ ] bindings XAML válidos;
-- [ ] contratos backend aprovados;
-- [ ] restore .NET aprovado;
-- [ ] testes .NET aprovados;
-- [ ] publish win-x64 self-contained/single-file aprovado;
-- [ ] versão do executável corresponde a 0.8.0;
-- [ ] publish sem arquivos proibidos;
-- [ ] instalador gerado com nome correto e tamanho válido;
-- [ ] instalação, abertura e instância única aprovadas no runner;
-- [ ] desinstalação, preservação de dados e reinstalação aprovadas no runner;
-- [ ] artifacts enviados;
-- [ ] release preview atualizada.
+- [x] bindings XAML válidos;
+- [x] contratos backend aprovados (196 testes);
+- [x] restore .NET aprovado;
+- [x] testes .NET aprovados (65 testes);
+- [x] publish win-x64 self-contained/single-file aprovado;
+- [x] versão do executável corresponde a 0.8.0;
+- [x] publish sem arquivos proibidos;
+- [x] instalador gerado com nome correto e tamanho válido;
+- [x] instalação, abertura e instância única aprovadas no runner;
+- [x] desinstalação, preservação de dados e reinstalação aprovadas no runner;
+- [x] artifacts enviados;
+- [x] release preview atualizada.
 
-Esses itens só devem ser marcados após um workflow bem-sucedido.
+Evidência: workflow `Build Windows WPF` nº `32086276016`, concluído com sucesso em
+18/08/2026, no commit `957192179b45d4a955a38579a438f0bc9e500b96`:
+https://github.com/RafaelBG7/pdv2026/actions/runs/32086276016
+
+O smoke test foi executado em runner Windows hospedado pelo GitHub. Ele comprova o
+ciclo técnico automatizado, mas não substitui a homologação interativa em uma VM
+Windows limpa representativa do computador do cliente.
 
 ### Manual em VM Windows limpa
 
@@ -255,6 +261,19 @@ Esses itens só devem ser marcados após um workflow bem-sucedido.
 - publicação somente x64;
 - dados locais preservados na desinstalação;
 - release permanece pre-release.
+
+## Artefatos validados em 18/08/2026
+
+- Setup persistente da pre-release:
+  `https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe`;
+- SHA-256 do Setup publicado na release:
+  `22aba860eedc34204d36d6bd1ffb2a4f77abd02c6e308c01dca2e2123f52215b`;
+- tamanho do Setup publicado: `68.844.303` bytes;
+- executável portátil:
+  `https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/Girofy.exe`;
+- SHA-256 do executável portátil:
+  `11d098301de14d85eca259aa9a642f9bf004ebf761a4da5a4a40be56c371db92`;
+- artifacts do workflow expiram em 25/08/2026; a pre-release é o canal persistente.
 
 ## Troubleshooting
 

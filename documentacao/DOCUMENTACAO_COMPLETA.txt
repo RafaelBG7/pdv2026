@@ -373,6 +373,23 @@ O pipeline preserva Girofy.exe e produz também o Setup. O aplicativo ainda não
 possui Code Signing nem auto-update e o instalador não é a distribuição comercial.
 O Windows pode exibir aviso de segurança por se tratar de executável não assinado.
 
+Em 18/08/2026, o workflow Build Windows WPF nº 32086276016 foi concluído com
+sucesso. Foram aprovados 196 testes de contratos do backend, 65 testes .NET,
+publish self-contained/single-file, geração do Setup e o smoke test automatizado
+do ciclo instalar, abrir, impedir segunda instância, desinstalar preservando dados
+locais e reinstalar. Evidência:
+https://github.com/RafaelBG7/pdv2026/actions/runs/32086276016
+
+Download persistente do instalador validado:
+https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
+
+SHA-256: 22aba860eedc34204d36d6bd1ffb2a4f77abd02c6e308c01dca2e2123f52215b
+
+Essa validação ocorreu em runner Windows do GitHub. A homologação manual em uma
+VM Windows limpa continua pendente e deve verificar a interface do Setup,
+SmartScreen, login/refresh/logout reais, persistência DPAPI, tema/preferências,
+falhas de rede/API e desinstalação com o aplicativo aberto.
+
 
 7. API REST V1
 --------------

@@ -87,6 +87,12 @@ from app.services.notification_service import (
     preference_for,
     sync_operational_notifications,
 )
+from app.time_utils import (
+    business_date_range_utc,
+    business_today,
+    to_business_datetime,
+    utc_isoformat,
+)
 from app.services.sale_service import (
     PAYMENT_METHODS,
     SaleLineInput,
@@ -564,7 +570,7 @@ def json_required_date(payload, name):
 
 
 def api_report_period_range(period, start_date=None, end_date=None):
-    today = date.today()
+    today = business_today()
     if period == 'weekly':
         end = end_date or today
         start = start_date or (end - timedelta(days=7))
@@ -589,8 +595,7 @@ def api_report_period_range(period, start_date=None, end_date=None):
         end = start
         label = start.strftime('%d/%m/%Y')
 
-    start_datetime = datetime.combine(start, time.min)
-    end_datetime = datetime.combine(end + timedelta(days=1), time.min)
+    start_datetime, end_datetime = business_date_range_utc(start, end)
     return period, start, end, start_datetime, end_datetime, label
 
 
@@ -869,7 +874,8 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
         bucket_index = {int(bucket['key']): bucket for bucket in buckets}
         for sale in sales:
             if sale.created_at:
-                bucket = bucket_index.get(sale.created_at.hour)
+                local_created_at = to_business_datetime(sale.created_at)
+                bucket = bucket_index.get(local_created_at.hour)
                 if bucket is not None:
                     bucket['sales_count'] += 1
                     bucket['total'] += sale.final_amount or 0.0
@@ -891,7 +897,8 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
         bucket_index = {bucket['key']: bucket for bucket in buckets}
         for sale in sales:
             if sale.created_at:
-                key = f'{sale.created_at.year}-{sale.created_at.month:02d}'
+                local_created_at = to_business_datetime(sale.created_at)
+                key = f'{local_created_at.year}-{local_created_at.month:02d}'
                 if key in bucket_index:
                     bucket_index[key]['sales_count'] += 1
                     bucket_index[key]['total'] += sale.final_amount or 0.0
@@ -909,7 +916,7 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
         bucket_index = {bucket['key']: bucket for bucket in buckets}
         for sale in sales:
             if sale.created_at:
-                key = sale.created_at.date().isoformat()
+                key = to_business_datetime(sale.created_at).date().isoformat()
                 if key in bucket_index:
                     bucket_index[key]['sales_count'] += 1
                     bucket_index[key]['total'] += sale.final_amount or 0.0
@@ -1130,7 +1137,7 @@ def stock_movement_data(movement):
     category = product.category if product is not None else None
     return {
         'id': movement.id,
-        'created_at': movement.created_at.isoformat() if movement.created_at else None,
+        'created_at': utc_isoformat(movement.created_at),
         'product': None if product is None else {
             'id': product.id,
             'name': product.name,
@@ -1166,7 +1173,7 @@ def stock_filter_options(labels):
 
 
 def payable_status_value(payable, today=None):
-    today = today or date.today()
+    today = today or business_today()
     if payable.paid:
         return 'paid'
     if payable.due_date and payable.due_date < today:
@@ -1187,9 +1194,9 @@ def payable_data(payable, today=None):
         'amount': round(float(payable.amount or 0), 2),
         'due_date': payable.due_date.isoformat() if payable.due_date else None,
         'paid': bool(payable.paid),
-        'paid_at': payable.paid_at.isoformat() if payable.paid_at else None,
+        'paid_at': utc_isoformat(payable.paid_at),
         'notes': payable.notes or '',
-        'created_at': payable.created_at.isoformat() if payable.created_at else None,
+        'created_at': utc_isoformat(payable.created_at),
         'status': status,
         'status_label': PAYABLE_STATUS_LABELS.get(status, status),
     }
@@ -1587,11 +1594,7 @@ def api_settings_payload(user):
         'company_settings': None if company is None else {
             'allow_negative_stock': bool(company.allow_negative_stock),
             'backup_frequency': company.backup_frequency or 'manual',
-            'backup_last_at': (
-                company.backup_last_at.isoformat()
-                if company.backup_last_at
-                else None
-            ),
+            'backup_last_at': utc_isoformat(company.backup_last_at),
             'backup_last_status': company.backup_last_status or '',
             'pix_fee_enabled': bool(company.pix_fee_enabled),
             'debit_fee_enabled': bool(company.debit_fee_enabled),
@@ -2235,7 +2238,7 @@ def api_employee_data(user):
         'is_active': bool(user.is_active),
         'is_current_user': user.id == g.api_user.id,
         'permissions': permissions,
-        'created_at': user.created_at.isoformat() if user.created_at else None,
+        'created_at': utc_isoformat(user.created_at),
     }
 
 
@@ -2512,7 +2515,7 @@ def api_run_manual_backup():
             'backup': {
                 'file_name': backup_path.name,
                 'status': company.backup_last_status or 'success',
-                'generated_at': company.backup_last_at.isoformat() if company.backup_last_at else None,
+                'generated_at': utc_isoformat(company.backup_last_at),
             },
         })
     except ApiAuthError as error:
@@ -2920,7 +2923,7 @@ def api_reports_products():
 def audit_log_data(log):
     return {
         'id': log.id,
-        'created_at': log.created_at.isoformat() if log.created_at else None,
+        'created_at': utc_isoformat(log.created_at),
         'user_id': log.user_id,
         'user_name': log.user_name or 'Sistema',
         'user_role': log.user_role or '',
@@ -3373,6 +3376,7 @@ def api_cash_register_detail_data(tenant_db, cash_register, can_view_financials)
     running_balance = money_decimal(cash_register.opening_amount)
     for sale in sales:
         sale_datetime = sale.created_at
+        local_sale_datetime = to_business_datetime(sale_datetime)
         payments = [sale_payment_data(payment) for payment in sale.payments]
         payment_labels = [payment['label'] for payment in payments]
         balance_before_sale = running_balance
@@ -3380,9 +3384,9 @@ def api_cash_register_detail_data(tenant_db, cash_register, can_view_financials)
         timeline.append({
             'id': sale.id,
             'number': f'#{sale.id}',
-            'created_at': sale_datetime.isoformat() if sale_datetime else None,
-            'date': sale_datetime.strftime('%d/%m/%Y') if sale_datetime else '',
-            'time': sale_datetime.strftime('%H:%M') if sale_datetime else '',
+            'created_at': utc_isoformat(sale_datetime),
+            'date': local_sale_datetime.strftime('%d/%m/%Y') if local_sale_datetime else '',
+            'time': local_sale_datetime.strftime('%H:%M') if local_sale_datetime else '',
             'seller': users.get(sale.user_id, 'Usuário não identificado'),
             'payment_status': sale.payment_status,
             'status': sale.status or 'completed',

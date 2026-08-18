@@ -1,10 +1,10 @@
-from datetime import timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import func
 
 from app.models import CashRegister, Company, Payment, Sale, User
 from app.services.audit_service import record_audit_event
+from app.time_utils import utc_isoformat
 
 
 PAYMENT_METHODS = {
@@ -38,11 +38,7 @@ def money_text(value):
 
 
 def timestamp_value(value):
-    if value is None:
-        return None
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.isoformat()
+    return utc_isoformat(value)
 
 
 def lock_company_scope(db_session, company_id):

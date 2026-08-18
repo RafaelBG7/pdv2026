@@ -1,9 +1,10 @@
-from datetime import date, datetime, time, timedelta
+from datetime import timedelta
 
 from sqlalchemy import case, func
 from sqlalchemy.orm import selectinload
 
 from app.models import CashRegister, Payable, Payment, Product, Sale, SaleItem, User
+from app.time_utils import business_date_range_utc, business_today, utc_isoformat
 
 
 PAYMENT_METHODS = {
@@ -170,7 +171,7 @@ def _recent_sales(db_session, company_id):
     return [
         {
             'id': sale.id,
-            'created_at': sale.created_at.isoformat() if sale.created_at else None,
+            'created_at': utc_isoformat(sale.created_at),
             'final_amount': _money(sale.final_amount),
             'payment_status': sale.payment_status or 'pending',
             'user_name': users.get(sale.user_id, 'Usuário não identificado'),
@@ -225,7 +226,7 @@ def _current_cash(db_session, company_id, include_reports):
     return {
         'id': cash_register.id,
         'status': 'open',
-        'opened_at': cash_register.opened_at.isoformat() if cash_register.opened_at else None,
+        'opened_at': utc_isoformat(cash_register.opened_at),
         'opening_amount': _money(cash_register.opening_amount),
         'sales_total': cash_total,
         'profit': cash_profit,
@@ -267,9 +268,8 @@ def build_dashboard_snapshot(
     can_manage_payables,
     today=None,
 ):
-    today = today or date.today()
-    start_at = datetime.combine(today, time.min)
-    end_at = datetime.combine(today + timedelta(days=1), time.min)
+    today = today or business_today()
+    start_at, end_at = business_date_range_utc(today, today)
 
     totals = _sales_totals(db_session, company_id, start_at, end_at)
     profit = _sales_profit(db_session, company_id, start_at, end_at) if can_view_reports else None

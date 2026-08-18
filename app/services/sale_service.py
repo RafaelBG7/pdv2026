@@ -15,6 +15,7 @@ from app.models import (
 )
 from app.services.audit_service import record_audit_event
 from app.services.stock_service import StockMovementError, decrease_stock, increase_stock
+from app.time_utils import utc_isoformat
 
 
 PAYMENT_METHODS = {
@@ -71,11 +72,7 @@ def money_value(value):
 
 
 def timestamp_value(value):
-    if value is None:
-        return None
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.isoformat()
+    return utc_isoformat(value)
 
 
 def stock_source_for_product(product):

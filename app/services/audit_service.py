@@ -8,6 +8,7 @@ from flask_login import current_user
 from app.extensions import db
 from app.models import AuditLog
 from app.tenant import current_tenant_company
+from app.time_utils import utc_isoformat
 
 
 SENSITIVE_KEYS = {
@@ -112,7 +113,9 @@ def mask_sensitive_value(key, value):
 def json_default(value):
     if isinstance(value, Decimal):
         return str(value)
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime):
+        return utc_isoformat(value)
+    if isinstance(value, date):
         return value.isoformat()
     return str(value)
 

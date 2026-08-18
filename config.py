@@ -68,6 +68,7 @@ class Config:
     BACKUP_DIR.mkdir(exist_ok=True)
 
     ENVIRONMENT = os.environ.get('APP_ENV', os.environ.get('FLASK_ENV', 'development')).lower()
+    BUSINESS_TIMEZONE = os.environ.get('BUSINESS_TIMEZONE', 'America/Sao_Paulo')
     TESTING = env_bool('TESTING', False)
     DEBUG = env_bool('FLASK_DEBUG', ENVIRONMENT == 'development')
     SECRET_KEY = os.environ.get('SECRET_KEY', 'adega-jf-secret-key')

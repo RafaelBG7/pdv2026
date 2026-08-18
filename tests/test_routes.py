@@ -2348,7 +2348,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(len(data['timeline']), 2)
         sale_data = data['timeline'][0]
         self.assertEqual(sale_data['id'], sale_id)
-        self.assertEqual(sale_data['time'], '16:15')
+        self.assertEqual(sale_data['time'], '13:15')
+        self.assertEqual(sale_data['created_at'], '2026-07-12T16:15:00Z')
         self.assertEqual(sale_data['seller'], user.username)
         self.assertEqual(sale_data['payments_text'], 'Dinheiro, Pix')
         self.assertEqual(sale_data['final_amount'], 15.0)

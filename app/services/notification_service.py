@@ -5,6 +5,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 
 from app.models import Notification, NotificationPreference, Payable, Product
+from app.time_utils import utc_isoformat
 
 
 SEVERITIES = ('info', 'success', 'warning', 'critical')
@@ -51,12 +52,12 @@ def notification_data(notification):
         'entity_id': notification.entity_id,
         'action_url': notification.action_url or '',
         'is_read': bool(notification.is_read),
-        'read_at': notification.read_at.isoformat() if notification.read_at else None,
+        'read_at': utc_isoformat(notification.read_at),
         'is_dismissed': bool(notification.is_dismissed),
         'email_status': notification.email_status or 'not_requested',
         'metadata': metadata,
-        'created_at': notification.created_at.isoformat() if notification.created_at else None,
-        'expires_at': notification.expires_at.isoformat() if notification.expires_at else None,
+        'created_at': utc_isoformat(notification.created_at),
+        'expires_at': utc_isoformat(notification.expires_at),
     }
 
 

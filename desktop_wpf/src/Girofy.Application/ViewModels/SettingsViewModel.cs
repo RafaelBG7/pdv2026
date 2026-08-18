@@ -500,16 +500,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
                 return "Nenhum backup gerado ainda";
             }
 
-            if (DateTimeOffset.TryParse(
-                rawValue,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal,
-                out var parsed))
-            {
-                return parsed.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.GetCultureInfo("pt-BR"));
-            }
-
-            return rawValue;
+            return DashboardFormatting.DateTimeText(rawValue);
         }
     }
 

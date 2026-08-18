@@ -13,7 +13,11 @@ public static class DashboardFormatting
 
     public static string DateTimeText(string? value)
     {
-        if (DateTimeOffset.TryParse(value, out var parsed))
+        if (DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal,
+                out var parsed))
         {
             return parsed.ToLocalTime().ToString("dd/MM/yyyy HH:mm", BrazilianCulture);
         }

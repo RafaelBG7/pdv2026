@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace Girofy.Application.Models;
@@ -30,8 +29,7 @@ public sealed class NotificationItem
     [JsonPropertyName("created_at")] public string? CreatedAt { get; init; }
     public string SeverityText => Severity switch { "critical" => "Crítica", "warning" => "Atenção", "success" => "Sucesso", _ => "Informação" };
     public string CategoryText => Category switch { "stock" => "Estoque", "payables" => "Contas", "cash_register" => "Caixa", "sales" => "Vendas", "security" => "Segurança", "subscription" => "Assinatura", "backup" => "Backup", _ => "Administração" };
-    public string CreatedAtText => DateTimeOffset.TryParse(CreatedAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var value)
-        ? value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Data indisponível";
+    public string CreatedAtText => DashboardFormatting.DateTimeText(CreatedAt);
     public string ReadText => IsRead ? "Lida" : "Não lida";
 }
 

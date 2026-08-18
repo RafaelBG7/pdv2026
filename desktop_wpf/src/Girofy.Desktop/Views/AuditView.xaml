@@ -17,7 +17,7 @@
     </UserControl.Resources>
 
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                  ScrollViewer.IsDeferredScrollingEnabled="True">
+                  ScrollViewer.IsDeferredScrollingEnabled="False">
         <Grid Margin="0,0,8,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /><RowDefinition Height="16" />

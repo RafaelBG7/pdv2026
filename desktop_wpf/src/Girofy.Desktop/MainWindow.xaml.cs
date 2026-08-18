@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Input;
 using Girofy.Application.ViewModels;
+using Girofy.Desktop.Behaviors;
 using Microsoft.Extensions.Logging;
 
 namespace Girofy.Desktop;
@@ -14,6 +15,7 @@ public partial class MainWindow : Window
     private readonly ILogger<MainWindow> _logger;
     private bool _initialized;
     private bool _syncingPassword;
+    private readonly SmoothScrollController _smoothScrollController;
 
     public MainWindow(ConnectionViewModel viewModel, ILogger<MainWindow> logger)
     {
@@ -21,6 +23,7 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         _logger = logger;
         DataContext = viewModel;
+        _smoothScrollController = new SmoothScrollController(this);
         Loaded += HandleLoaded;
         _viewModel.Login.PropertyChanged += HandleLoginPropertyChanged;
         _viewModel.Login.ForgotPassword.PropertyChanged += HandleForgotPasswordPropertyChanged;
@@ -209,6 +212,7 @@ public partial class MainWindow : Window
         Loaded -= HandleLoaded;
         _viewModel.Login.PropertyChanged -= HandleLoginPropertyChanged;
         _viewModel.Login.ForgotPassword.PropertyChanged -= HandleForgotPasswordPropertyChanged;
+        _smoothScrollController.Dispose();
         base.OnClosed(e);
     }
 }

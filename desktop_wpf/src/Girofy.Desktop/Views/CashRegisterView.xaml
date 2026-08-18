@@ -4,7 +4,7 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto"
                   PanningMode="VerticalOnly"
-                  ScrollViewer.IsDeferredScrollingEnabled="True">
+                  ScrollViewer.IsDeferredScrollingEnabled="False">
         <Grid Margin="0,0,8,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -454,7 +454,7 @@
                           VirtualizingPanel.VirtualizationMode="Recycling"
                           VirtualizingPanel.ScrollUnit="Pixel"
                           ScrollViewer.CanContentScroll="True"
-                          ScrollViewer.IsDeferredScrollingEnabled="True"
+                          ScrollViewer.IsDeferredScrollingEnabled="False"
                           ScrollViewer.VerticalScrollBarVisibility="Auto"
                           ScrollViewer.HorizontalScrollBarVisibility="Auto"
                           Background="{DynamicResource SurfaceRaisedBrush}"
@@ -712,7 +712,7 @@
                                                  Background="Transparent"
                                                  BorderThickness="0"
                                                  ScrollViewer.CanContentScroll="True"
-                                                 ScrollViewer.IsDeferredScrollingEnabled="True"
+                                                 ScrollViewer.IsDeferredScrollingEnabled="False"
                                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                                  VirtualizingPanel.IsVirtualizing="True"

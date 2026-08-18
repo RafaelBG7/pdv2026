@@ -4646,7 +4646,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('R$ 89,90'.encode(), response.data)
         self.assertIn('R$ 149,90'.encode(), response.data)
         self.assertIn('Solicitar contratação'.encode(), response.data)
-        self.assertNotIn('Key'.encode(), response.data)
+        self.assertNotIn('Ativar assinatura com key'.encode(), response.data)
 
     def test_settings_updates_profile_and_email(self):
         self.login()

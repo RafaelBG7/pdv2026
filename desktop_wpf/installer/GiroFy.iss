@@ -30,6 +30,7 @@ OutputDir={#OutputDir}
 OutputBaseFilename=GiroFy-Setup-{#AppVersion}
 SetupIconFile=..\src\Girofy.Desktop\Resources\Girofy.ico
 UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayName=GiroFy
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

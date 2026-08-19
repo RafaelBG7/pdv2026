@@ -21,6 +21,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import tenant as tenant_module
 from app.services import alert_service
 from app.services.notification_service import create_notification
+from app.time_utils import business_date_range_utc, business_today
 
 
 class TestConfig:
@@ -1685,7 +1686,9 @@ class RouteTestCase(unittest.TestCase):
             username='api-dashboard-outra',
             company_name='Outra adega dashboard',
         )
-        today_at_ten = datetime.combine(date.today(), datetime.min.time()).replace(hour=10)
+        today = business_today()
+        today_start_utc, _ = business_date_range_utc(today, today)
+        today_at_ten = today_start_utc + timedelta(hours=10)
         with self.app.app_context():
             product = Product(
                 name='Coca Cola 2L',
@@ -1779,14 +1782,14 @@ class RouteTestCase(unittest.TestCase):
                     company_id=company.id,
                     description='Energia',
                     amount=180,
-                    due_date=date.today() + timedelta(days=2),
+                    due_date=today + timedelta(days=2),
                     paid=False,
                 ),
                 Payable(
                     company_id=other_company.id,
                     description='Conta de outra adega',
                     amount=999,
-                    due_date=date.today(),
+                    due_date=today,
                     paid=False,
                 ),
             ])

@@ -34,6 +34,31 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Quantity_popup_opens_for_selected_product_and_closes_without_adding()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, sessionContext)
+        {
+            SearchText = "coca",
+        };
+
+        await viewModel.SearchCommand.ExecuteAsync();
+        viewModel.QuantityText = "8";
+        viewModel.OpenQuantityPopupCommand.Execute(null);
+
+        Assert.True(viewModel.IsQuantityPopupOpen);
+        Assert.Equal("1", viewModel.QuantityText);
+        Assert.Equal("Coca Cola 2L", viewModel.SelectedSearchProduct?.Name);
+
+        viewModel.CloseQuantityPopupCommand.Execute(null);
+
+        Assert.False(viewModel.IsQuantityPopupOpen);
+        Assert.Null(viewModel.SelectedSearchProduct);
+        Assert.Empty(viewModel.CartItems);
+    }
+
+    [Fact]
     public async Task Typing_searches_products_live_and_orders_suggestions()
     {
         var sessionContext = SessionContext();

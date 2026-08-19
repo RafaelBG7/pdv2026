@@ -99,7 +99,12 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Escape && viewModel.IsSaleEditorOpen)
         {
-            if (viewModel.IsDiscountPopupVisible)
+            if (viewModel.IsQuantityPopupOpen)
+            {
+                ExecuteIfAllowed(viewModel.CloseQuantityPopupCommand);
+                FocusProductSearch();
+            }
+            else if (viewModel.IsDiscountPopupVisible)
             {
                 ExecuteIfAllowed(viewModel.CloseDiscountPopupCommand);
                 FocusPaymentMethod();
@@ -315,6 +320,7 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Escape)
         {
+            ExecuteIfAllowed(viewModel.CloseQuantityPopupCommand);
             FocusProductSearch();
             e.Handled = true;
         }
@@ -527,8 +533,17 @@ public partial class SalesView : UserControl
         }
 
         NormalizeQuantityText(viewModel);
-
+        ExecuteIfAllowed(viewModel.OpenQuantityPopupCommand);
         FocusQuantityInput();
+    }
+
+    private void CloseQuantityPopupButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is SalesViewModel viewModel)
+        {
+            ExecuteIfAllowed(viewModel.CloseQuantityPopupCommand);
+            FocusProductSearch();
+        }
     }
 
     private static void NormalizeQuantityText(SalesViewModel viewModel)

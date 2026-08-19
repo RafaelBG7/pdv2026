@@ -1017,9 +1017,6 @@
                                     <Grid Grid.Row="6">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="130" />
-                                            <ColumnDefinition Width="12" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center">
@@ -1029,18 +1026,9 @@
                                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding SelectedSearchProduct.Name, TargetNullValue='Selecione um resultado'}" />
                                         </StackPanel>
-                                        <TextBox x:Name="QuantityInput"
-                                                 Grid.Column="2" Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="Quantidade"
-                                                 GotKeyboardFocus="QuantityInput_GotKeyboardFocus"
-                                                 LostKeyboardFocus="QuantityInput_LostKeyboardFocus"
-                                                 PreviewKeyDown="QuantityInput_PreviewKeyDown"
-                                                 PreviewTextInput="QuantityInput_PreviewTextInput"
-                                                 DataObject.Pasting="QuantityInput_Pasting"
-                                                 Style="{StaticResource TextInputStyle}" />
-                                        <Button Grid.Column="4" MinWidth="112"
-                                                Click="AddProductButton_Click"
-                                                Content="Adicionar" Style="{StaticResource PrimaryButtonStyle}" />
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                                   FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
+                                                   Text="Selecione um produto para informar a quantidade" />
                                     </Grid>
                                 </Grid>
                             </Border>
@@ -1327,6 +1315,81 @@
                         </Grid>
                     </Grid>
                 </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid Background="{DynamicResource OverlayBrush}" Panel.ZIndex="40">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsQuantityPopupOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Border Width="560" MaxWidth="560" Margin="24" Padding="26"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{DynamicResource SurfaceRaisedBrush}"
+                    BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1" CornerRadius="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="22" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock FontSize="24" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" Text="Quantidade" />
+                            <TextBlock Margin="0,5,0,0" FontSize="15"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Text="{Binding SelectedSearchProduct.Name}" />
+                        </StackPanel>
+                        <Button Grid.Column="1" MinWidth="84" Height="42"
+                                Click="CloseQuantityPopupButton_Click"
+                                Content="Fechar" Style="{StaticResource SecondaryButtonStyle}" />
+                    </Grid>
+                    <Border Grid.Row="2" Padding="15,13" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       Text="{Binding SelectedSearchProduct.SalePriceText}" />
+                            <TextBlock Margin="7,0" FontSize="15"
+                                       Foreground="{DynamicResource TextMutedBrush}" Text="·" />
+                            <TextBlock FontSize="15" Foreground="{DynamicResource TextSecondaryBrush}">
+                                <Run Text="estoque " />
+                                <Run Text="{Binding SelectedSearchProduct.StockText, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Grid.Row="4">
+                        <TextBlock Margin="0,0,0,7" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   Text="Quantidade do produto" />
+                        <TextBox x:Name="QuantityInput" Height="48"
+                                 Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Quantidade do produto"
+                                 GotKeyboardFocus="QuantityInput_GotKeyboardFocus"
+                                 LostKeyboardFocus="QuantityInput_LostKeyboardFocus"
+                                 PreviewKeyDown="QuantityInput_PreviewKeyDown"
+                                 PreviewTextInput="QuantityInput_PreviewTextInput"
+                                 DataObject.Pasting="QuantityInput_Pasting"
+                                 Style="{StaticResource TextInputStyle}" />
+                    </StackPanel>
+                    <Button Grid.Row="6" Height="50" Click="AddProductButton_Click"
+                            Content="Adicionar produto" Style="{StaticResource PrimaryButtonStyle}" />
+                </Grid>
             </Border>
         </Grid>
 

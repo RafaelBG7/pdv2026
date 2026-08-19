@@ -169,6 +169,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private bool _isSearching;
     private bool _isSaleEditorOpen;
     private bool _isPaymentStepOpen;
+    private bool _isQuantityPopupOpen;
     private bool _isDiscountPopupOpen;
     private bool _isOpenCashPromptOpen;
     private bool _updatingPaymentText;
@@ -197,6 +198,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         _sessionContext = sessionContext;
         SearchCommand = new AsyncRelayCommand(SearchAsync);
         AddProductCommand = new RelayCommand(AddSelectedProduct);
+        OpenQuantityPopupCommand = new RelayCommand(OpenQuantityPopup, () => SelectedSearchProduct is not null);
+        CloseQuantityPopupCommand = new RelayCommand(CloseQuantityPopup);
         RemoveItemCommand = new RelayCommand<SaleCartItemViewModel>(RemoveItem);
         IncreaseQuantityCommand = new RelayCommand<SaleCartItemViewModel>(
             item => item.Quantity++);
@@ -264,7 +267,13 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public CatalogProduct? SelectedSearchProduct
     {
         get => _selectedSearchProduct;
-        set => SetProperty(ref _selectedSearchProduct, value);
+        set
+        {
+            if (SetProperty(ref _selectedSearchProduct, value))
+            {
+                OpenQuantityPopupCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     public string QuantityText
@@ -590,6 +599,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     public bool IsProductStepOpen => IsSaleEditorOpen && !IsPaymentStepOpen && !HasReceipt;
 
+    public bool IsQuantityPopupOpen
+    {
+        get => _isQuantityPopupOpen;
+        private set => SetProperty(ref _isQuantityPopupOpen, value);
+    }
+
     public bool IsPaymentStepVisible => IsSaleEditorOpen && IsPaymentStepOpen && !HasReceipt;
 
     public bool IsDiscountPopupOpen
@@ -627,6 +642,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand SearchCommand { get; }
 
     public RelayCommand AddProductCommand { get; }
+
+    public RelayCommand OpenQuantityPopupCommand { get; }
+
+    public RelayCommand CloseQuantityPopupCommand { get; }
 
     public RelayCommand<SaleCartItemViewModel> RemoveItemCommand { get; }
 
@@ -1061,8 +1080,28 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
         SearchText = string.Empty;
         QuantityText = "1";
+        IsQuantityPopupOpen = false;
         ClearSearchResults();
         NotifyCartChanged();
+    }
+
+    private void OpenQuantityPopup()
+    {
+        if (SelectedSearchProduct is null)
+        {
+            return;
+        }
+
+        ClearMessages();
+        QuantityText = "1";
+        IsQuantityPopupOpen = true;
+    }
+
+    private void CloseQuantityPopup()
+    {
+        IsQuantityPopupOpen = false;
+        QuantityText = "1";
+        SelectedSearchProduct = null;
     }
 
     private void RemoveItem(SaleCartItemViewModel item)
@@ -1517,6 +1556,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         DebitText = "0,00";
         CreditText = "0,00";
         OpeningCashText = "0,00";
+        IsQuantityPopupOpen = false;
         IsDiscountPopupOpen = false;
         IsOpenCashPromptOpen = false;
         _idempotencyKey = null;

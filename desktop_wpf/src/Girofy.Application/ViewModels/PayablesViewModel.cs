@@ -48,6 +48,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         ApplyFiltersCommand = new AsyncRelayCommand(LoadAsync, () => IsAvailable && !IsBusy);
         CreatePayableCommand = new AsyncRelayCommand(CreatePayableAsync, () => CanManagePayables && !IsBusy);
         ClearFormCommand = new RelayCommand(ClearForm);
+        FilterByStatusCommand = new RelayCommand<string>(status => _ = FilterByStatusAsync(status));
         PayPayableCommand = new RelayCommand<PayableRecord>(
             payable => _ = PayAsync(payable, CancellationToken.None),
             payable => CanManagePayables && !IsBusy && payable.CanPay);
@@ -78,8 +79,22 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     public CatalogFilterOption SelectedStatus
     {
         get => _selectedStatus;
-        set => SetProperty(ref _selectedStatus, value);
+        set
+        {
+            if (SetProperty(ref _selectedStatus, value))
+            {
+                OnPropertyChanged(nameof(IsPendingFilter));
+                OnPropertyChanged(nameof(IsPaidFilter));
+                OnPropertyChanged(nameof(IsAllFilter));
+            }
+        }
     }
+
+    public bool IsPendingFilter => string.Equals(SelectedStatus.Value, "open", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsPaidFilter => string.Equals(SelectedStatus.Value, "paid", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsAllFilter => string.Equals(SelectedStatus.Value, "all", StringComparison.OrdinalIgnoreCase);
 
     public string SelectedCategory
     {
@@ -183,6 +198,8 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
 
     public RelayCommand ClearFormCommand { get; }
 
+    public RelayCommand<string> FilterByStatusCommand { get; }
+
     public RelayCommand<PayableRecord> PayPayableCommand { get; }
 
     public RelayCommand<PayableRecord> ReopenPayableCommand { get; }
@@ -206,6 +223,24 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     private void HandleSessionChanged(object? sender, EventArgs e) => Reset();
 
     private async Task RefreshAsync(CancellationToken cancellationToken) => await LoadAsync(cancellationToken);
+
+    private async Task FilterByStatusAsync(string status)
+    {
+        if (!IsAvailable || IsBusy || string.IsNullOrWhiteSpace(status))
+        {
+            return;
+        }
+
+        SelectedStatus = StatusOptions.FirstOrDefault(option =>
+            string.Equals(option.Value, status, StringComparison.OrdinalIgnoreCase))
+            ?? new CatalogFilterOption(status, status switch
+            {
+                "paid" => "Pagas",
+                "all" => "Todas",
+                _ => "Pendentes",
+            });
+        await LoadAsync(CancellationToken.None);
+    }
 
     private async Task LoadAsync(CancellationToken cancellationToken)
     {
@@ -485,6 +520,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         RefreshCommand.NotifyCanExecuteChanged();
         ApplyFiltersCommand.NotifyCanExecuteChanged();
         CreatePayableCommand.NotifyCanExecuteChanged();
+        FilterByStatusCommand.NotifyCanExecuteChanged();
         PayPayableCommand.NotifyCanExecuteChanged();
         ReopenPayableCommand.NotifyCanExecuteChanged();
     }

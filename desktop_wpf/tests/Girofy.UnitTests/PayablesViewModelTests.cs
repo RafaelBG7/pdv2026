@@ -120,6 +120,23 @@ public sealed class PayablesViewModelTests
     }
 
     [Fact]
+    public async Task Quick_status_filter_keeps_the_selected_tab_and_queries_the_api()
+    {
+        var sessionContext = CreateSessionContext();
+        var apiClient = new StubApiClient { Snapshot = SnapshotWithItems() };
+        using var viewModel = new PayablesViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.FilterByStatusCommand.Execute("paid");
+        await WaitUntilAsync(() => apiClient.GetCalls == 2);
+
+        Assert.True(viewModel.IsPaidFilter);
+        Assert.False(viewModel.IsPendingFilter);
+        Assert.False(viewModel.IsAllFilter);
+        Assert.Equal("paid", apiClient.LastQuery?.Status);
+    }
+
+    [Fact]
     public async Task Clearing_session_removes_payables_data()
     {
         var sessionContext = CreateSessionContext();
@@ -218,6 +235,8 @@ public sealed class PayablesViewModelTests
 
         public int GetCalls { get; private set; }
 
+        public PayablesQuery? LastQuery { get; private set; }
+
         public int CreateCalls { get; private set; }
 
         public PayableMutationRequest? CreatedRequest { get; private set; }
@@ -233,6 +252,7 @@ public sealed class PayablesViewModelTests
         {
             LastAccessToken = accessToken;
             GetCalls++;
+            LastQuery = query;
             return Task.FromResult(Snapshot);
         }
 

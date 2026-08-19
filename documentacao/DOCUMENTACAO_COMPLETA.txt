@@ -5,7 +5,7 @@ Marco de referência: 19/08/2026
 Repositório: https://github.com/RafaelBG7/pdv2026
 Produto: PDV SaaS Web/API com aplicativo nativo para Windows
 Versão do App documentada: 0.8.0-preview
-Commit de referência: 0d14e87
+Commit-base anterior a este marco: 006544c
 Classificação: documento técnico, funcional, operacional e de segurança
 
 
@@ -448,9 +448,24 @@ com rodapés financeiros fixos e scroll independente nas listas.
 A pesquisa usa debounce, cancelamento e descarte de respostas antigas. A API já
 retorna até 30 candidatos por consulta operacional e o App mantém os 20 resultados
 mais relevantes, em vez do limite anterior de 12. A lista usa linhas compactas de
-aproximadamente 44 px, virtualização e recycling; normalmente exibe de 8 a 15
-produtos ao mesmo tempo conforme resolução/escala, com scroll para excedentes.
-Cada linha prioriza nome, categoria, estoque, preço e código de barras.
+aproximadamente 44 px, virtualização e recycling. Cada linha prioriza nome,
+categoria, estoque, preço e código de barras.
+
+O contêiner visual das sugestões tem altura dinâmica. Com poucos resultados, o
+fundo elevado e sua borda terminam logo depois do último produto, preservando o
+padding do contêiner, os 3 px de margem entre linhas e o padding interno de cada
+item. Portanto, a “sombra” não ocupa mais toda a altura disponível nem cria uma
+grande região vazia. Conforme novos resultados aparecem, o contêiner cresce junto
+com a lista até o limite de 440 px. A partir desse limite, a altura permanece
+estável e somente a lista recebe scroll vertical. Esse comportamento evita tanto
+itens comprimidos quanto expansão excessiva do modal.
+
+O painel esquerdo “Adicionar produto” também se alinha ao topo e mede sua altura
+pelo título, campo de busca e resultados efetivamente visíveis. O painel direito
+“Itens do pedido” continua usando toda a área operacional disponível, pois o
+carrinho precisa comportar linhas, cabeçalho e scroll de forma independente. A
+mudança é exclusivamente de layout no APP; não altera resultados retornados pela
+API, ranking, preço, estoque, permissões nem regras de venda.
 
 Setas para cima/baixo percorrem os resultados, Home/End acessam os extremos,
 Enter confirma e Esc limpa/fecha as sugestões. O primeiro resultado é selecionado
@@ -585,14 +600,14 @@ https://github.com/RafaelBG7/pdv2026/actions/workflows/build-windows-wpf.yml
 Download persistente do instalador validado:
 https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
 
-Publicação de referência deste documento:
+Última publicação concluída antes deste ajuste documental:
 
-- commit: 0d14e87;
-- workflow aprovado: https://github.com/RafaelBG7/pdv2026/actions/runs/32271719374;
+- commit: 006544c;
+- workflow aprovado: https://github.com/RafaelBG7/pdv2026/actions/runs/32310017588;
 - SHA-256 do instalador dessa publicação:
-  29c21a353772bc48e19a37dfe7da284ae03b53eab6fc786fe22539b6e1e770d2;
+  64adc4241c67b9eb341c5e0ae7fc8b776e73d90d2ca97aae7a583b7cdfc6bd9d;
 - SHA-256 do executável portátil dessa publicação:
-  66c5f21db7c0fc0e584f92132fb60833ee123ced20f29f0014b185b5a796b621.
+  3b9ed140fe37adb06e658b4f0d68df7353483831aec11deeb7dc76de4422564b.
 
 O hash SHA-256 muda a cada publicação e deve ser consultado ou calculado sobre o
 arquivo efetivamente baixado. A validação automatizada ocorre em runner Windows do
@@ -616,6 +631,9 @@ Este marco documenta em conjunto:
 - ampliação responsiva do modal de venda, layout resultados x carrinho, até 20
   sugestões ranqueadas, lista compacta virtualizada e navegação integral por
   teclado;
+- altura dinâmica do painel e do contêiner de resultados da venda: crescimento
+  proporcional aos itens, espaçamento preservado, limite de 440 px e scroll
+  somente quando o conteúdo ultrapassa esse limite;
 - manutenção de contraste, recursos dinâmicos e compatibilidade Light/Dark;
 - correção do teste de Dashboard para usar a data comercial de São Paulo durante
   a virada do dia em runners UTC;
@@ -882,6 +900,17 @@ autenticação e 403 para identidade válida sem autorização.
   estoque da movimentação original e registra auditoria;
 - migrations e backup anterior ao upgrade protegem evolução do schema.
 
+No fluxo de busca do APP, altura, sombra, seleção e scroll são exclusivamente
+recursos de apresentação. A quantidade mostrada na tela, a seleção automática ou
+o redimensionamento do contêiner não autorizam nem confirmam uma venda. Ao incluir
+e finalizar um item, o backend volta a resolver o produto dentro da adega
+autenticada e revalida existência, status, preço, estoque, política de estoque
+negativo, caixa, permissão e valores. Isso impede que estado visual desatualizado,
+manipulação do cliente ou resposta antiga de pesquisa substitua a regra segura do
+servidor. Debounce e cancelamento melhoram desempenho, enquanto o descarte de
+respostas antigas reduz o risco operacional de selecionar dados de uma consulta
+anterior; nenhum desses mecanismos substitui autenticação ou autorização.
+
 10.7 Rate limit e proteção contra abuso
 
 - Flask-Limiter aplica limites a rotas sensíveis;
@@ -1024,7 +1053,7 @@ Backend/Web:
 
 Última validação local confirmada neste marco:
 
-- 196 testes executados;
+- 199 testes executados;
 - resultado OK.
 
 A suíte cobre autenticação, rotas Web, API, permissões, tenants, vendas,

@@ -75,7 +75,9 @@ Décimo sétimo corte vertical implementado:
 - totais por forma de pagamento e valores do caixa exibidos apenas para usuários com
   permissão de relatórios;
 - abertura e fechamento registrados na auditoria da adega;
-- tela nativa de Vendas com busca por nome ou código de barras em ordem alfabética;
+- tela nativa de Vendas com busca por nome ou código de barras, resultados
+  ranqueados e contêiner de altura dinâmica: acompanha os itens até 440 px e usa
+  scroll apenas acima desse limite, sem comprimir as linhas nem manter área vazia;
 - carrinho com múltiplos produtos, quantidades ajustáveis, desconto em reais e remoção
   de itens;
 - pagamentos combinados em Dinheiro, Pix, Débito e Crédito, com preenchimento do valor

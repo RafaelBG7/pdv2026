@@ -855,6 +855,7 @@
                             </Grid>
 
                             <Border Grid.Row="2" Grid.Column="0" Padding="16" Background="{DynamicResource SurfaceBrush}"
+                                    VerticalAlignment="Top"
                                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7">
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -862,7 +863,7 @@
                                         <RowDefinition Height="10" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="10" />
-                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <TextBlock FontSize="17" FontWeight="Bold"
                                                Foreground="{DynamicResource TextPrimaryBrush}"
@@ -883,7 +884,7 @@
                                                 Content="Pesquisar" Visibility="Collapsed"
                                                 Style="{StaticResource PrimaryButtonStyle}" />
                                     </Grid>
-                                    <Border Grid.Row="4" MinHeight="280" Padding="4"
+                                    <Border Grid.Row="4" MaxHeight="440" Padding="4"
                                             Background="{DynamicResource SurfaceRaisedBrush}"
                                             BorderBrush="{DynamicResource BorderBrush}"
                                             BorderThickness="1" CornerRadius="8">

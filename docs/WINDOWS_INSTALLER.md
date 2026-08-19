@@ -4,6 +4,10 @@
 
 O GiroFy Windows 0.8.0 é a primeira entrega com instalador reproduzível. Trata-se de uma versão de desenvolvimento/preview, não da distribuição comercial 1.0.0.
 
+O asset da release `windows-preview` é substituído a cada publicação aprovada na
+`main`. Portanto, o nome permanece `GiroFy-Setup-0.8.0.exe`, mas o conteúdo sempre
+corresponde ao commit mais recente que concluiu integralmente o workflow Windows.
+
 O fluxo preserva o publish existente:
 
 ```text
@@ -183,6 +187,12 @@ Artifacts temporários, com retenção de sete dias:
 - `GiroFy-Installer-0.8.0` contendo `GiroFy-Setup-0.8.0.exe`.
 
 Fora de pull requests, os dois arquivos também são enviados para a release pre-release `windows-preview`, que não é uma versão estável.
+
+Download direto do instalador mais recente:
+
+```text
+https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
+```
 
 ## Segurança do pacote
 

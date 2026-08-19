@@ -413,7 +413,7 @@
         </Setter>
     </Style>
 
-    <Style x:Key="ThemeToggleButtonStyle" TargetType="Button">
+    <Style x:Key="ThemeToggleButtonStyle" TargetType="ToggleButton">
         <Setter Property="Width" Value="58" />
         <Setter Property="Height" Value="32" />
         <Setter Property="Padding" Value="0" />
@@ -422,7 +422,7 @@
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="Button">
+                <ControlTemplate TargetType="ToggleButton">
                     <Grid Width="58" Height="32">
                         <Border x:Name="Track"
                                 Background="{DynamicResource SurfaceElevatedBrush}"
@@ -446,10 +446,11 @@
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round">
                             <Path.RenderTransform><RotateTransform x:Name="SunRotation" CenterX="8" CenterY="8" /></Path.RenderTransform>
                         </Path>
-                        <Path x:Name="MoonIcon" Width="13" Height="13" Margin="0,0,9.5,0"
-                              HorizontalAlignment="Right" VerticalAlignment="Center"
-                              Data="M13.8,10.8 A6,6 0 0 1 5.2,2.2 A6,6 0 1 0 13.8,10.8"
-                              Fill="{DynamicResource PrimaryHoverBrush}" Opacity="0.45" />
+                        <TextBlock x:Name="MoonIcon" Width="16" Height="18" Margin="0,0,8,0"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   FontFamily="Segoe UI Symbol" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryHoverBrush}"
+                                   Opacity="0.18" Text="☾" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -458,10 +459,11 @@
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Track" Property="Opacity" Value="0.84" />
                         </Trigger>
-                        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="ToolTip" Value="Ativar tema claro" />
                             <Setter TargetName="MoonIcon" Property="Opacity" Value="1" />
-                            <Setter TargetName="SunIcon" Property="Opacity" Value="0.45" />
-                            <DataTrigger.EnterActions>
+                            <Setter TargetName="SunIcon" Property="Opacity" Value="0.18" />
+                            <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="26" Duration="0:0:0.2">
@@ -470,8 +472,8 @@
                                         <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="45" Duration="0:0:0.2" />
                                     </Storyboard>
                                 </BeginStoryboard>
-                            </DataTrigger.EnterActions>
-                            <DataTrigger.ExitActions>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.2">
@@ -480,8 +482,8 @@
                                         <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="0" Duration="0:0:0.2" />
                                     </Storyboard>
                                 </BeginStoryboard>
-                            </DataTrigger.ExitActions>
-                        </DataTrigger>
+                            </Trigger.ExitActions>
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

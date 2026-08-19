@@ -158,11 +158,11 @@
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="Gerencie os dados do usuário conectado e as preferências da adega." />
                 </StackPanel>
-                <Button Grid.Column="1"
-                        Command="{Binding ToggleThemeCommand}"
-                        Tag="{Binding IsDarkMode}"
-                        AutomationProperties.Name="Alternar tema"
-                        Style="{StaticResource ThemeToggleButtonStyle}" />
+                <ToggleButton Grid.Column="1"
+                              Command="{Binding ToggleThemeCommand}"
+                              IsChecked="{Binding IsDarkMode, Mode=OneWay}"
+                              AutomationProperties.Name="Alternar tema"
+                              Style="{StaticResource ThemeToggleButtonStyle}" />
                 <Button Grid.Column="3"
                         MinWidth="112"
                         Command="{Binding RefreshCommand}"

@@ -12,6 +12,17 @@ Estado detalhado e critérios de continuidade: [31-estado-atual-17-08-2026.md](.
 - equipe, perfil, senha, empresa, importação/exportação e backup;
 - tema claro/escuro e preferências locais.
 
+## Interface atual
+
+- o Dashboard possui a ação primária `Realizar venda — F3`; no Dashboard, F3
+  navega para Vendas e inicia o editor, preservando a exigência de caixa aberto;
+- Produtos e Categorias usam editores em popup com overlay e cartão central;
+- a navbar usa ícones Fluent em molduras arredondadas e nomes equivalentes à Web;
+- o cabeçalho exibe somente logo e nome Girofy;
+- o interruptor de tema desliza entre sol e lua, inverte os destaques conforme o
+  tema e persiste a escolha localmente;
+- os componentes usam recursos dinâmicos para funcionar em Light e Dark Mode.
+
 Tokens são protegidos localmente; dados de negócio não são persistidos como banco paralelo. Sem rede, a operação informa indisponibilidade: não existe sincronização offline. ViewModels devem cancelar/reutilizar carregamentos e nunca implementar cálculos financeiros autoritativos.
 
 O App consome `/api/v1`; uma mudança incompatível exige nova versão de API, não alteração silenciosa. Consulte [paridade](../FEATURE_PARITY.md).
@@ -32,4 +43,4 @@ O App não executa migrations nem inclui MySQL/Python. O Setup 0.8.0 é de desen
 
 ## Tema claro e escuro
 
-O toggle animado sol/lua é reutilizado no login, topbar e configurações. `Colors.xaml` centraliza os recursos Light/Dark; `WindowsThemeService` aplica e persiste a paleta antes da janela aparecer. Detalhes em [THEMING.md](../shared/THEMING.md).
+O toggle animado sol/lua é um `ToggleButton` ligado a `IsDarkMode` e reutilizado no login, topbar e configurações. `Colors.xaml` centraliza os recursos Light/Dark; `WindowsThemeService` aplica e persiste a paleta antes da janela aparecer. Detalhes em [THEMING.md](../shared/THEMING.md).

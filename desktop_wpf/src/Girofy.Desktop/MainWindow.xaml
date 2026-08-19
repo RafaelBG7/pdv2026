@@ -11,6 +11,9 @@
         FontFamily="Segoe UI"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource AppBackgroundBrush}">
+    <Window.InputBindings>
+        <KeyBinding Key="F3" Command="{Binding StartSaleCommand}" />
+    </Window.InputBindings>
     <Grid>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
@@ -56,16 +59,13 @@
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock FontSize="32" FontWeight="Bold"
                                            Foreground="{DynamicResource TextPrimaryBrush}" Text="Girofy" />
-                                <TextBlock Margin="0,3,0,0" FontSize="15"
-                                           Foreground="{DynamicResource TextSecondaryBrush}"
-                                           Text="Aplicativo Windows" />
                             </StackPanel>
-                            <Button Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    Command="{Binding Settings.ToggleThemeCommand}"
-                                    Tag="{Binding Settings.IsDarkMode}"
-                                    AutomationProperties.Name="Alternar tema"
-                                    Style="{StaticResource ThemeToggleButtonStyle}" />
+                            <ToggleButton Grid.Column="2"
+                                          VerticalAlignment="Center"
+                                          Command="{Binding Settings.ToggleThemeCommand}"
+                                          IsChecked="{Binding Settings.IsDarkMode, Mode=OneWay}"
+                                          AutomationProperties.Name="Alternar tema"
+                                          Style="{StaticResource ThemeToggleButtonStyle}" />
                         </Grid>
 
                         <Border Grid.Row="2" Padding="16" BorderThickness="1" CornerRadius="6">
@@ -339,16 +339,14 @@
                         <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBlock FontSize="22" FontWeight="Bold"
                                        Foreground="{DynamicResource TextPrimaryBrush}" Text="Girofy" />
-                            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                                       Text="Aplicativo Windows nativo" />
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Margin="0,0,12,0"
-                                Command="{Binding Settings.ToggleThemeCommand}"
-                                Tag="{Binding Settings.IsDarkMode}"
-                                AutomationProperties.Name="Alternar tema"
-                                Style="{StaticResource ThemeToggleButtonStyle}" />
+                        <ToggleButton Margin="0,0,12,0"
+                                      Command="{Binding Settings.ToggleThemeCommand}"
+                                      IsChecked="{Binding Settings.IsDarkMode, Mode=OneWay}"
+                                      AutomationProperties.Name="Alternar tema"
+                                      Style="{StaticResource ThemeToggleButtonStyle}" />
                         <Button x:Name="NotificationsBellButton" MinWidth="54" Margin="0,0,14,0"
                                 Click="HandleNotificationsBellClick"
                                 ToolTip="Notificações pendentes"
@@ -1237,11 +1235,10 @@
                                         Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
                             </StackPanel>
                         </Grid>
-                        <Border Grid.Row="2" Padding="16" CornerRadius="8"
-                                Background="{DynamicResource SurfaceRaisedBrush}"
-                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                            <Border.Style>
-                                <Style TargetType="Border">
+                        <Grid Grid.RowSpan="5" Panel.ZIndex="20"
+                              Background="{DynamicResource OverlaySoftBrush}">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Catalog.IsCategoryEditorOpen}" Value="True">
@@ -1249,30 +1246,68 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </Border.Style>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextSecondaryBrush}"
-                                               Text="{Binding Catalog.CategoryEditorTitle}" />
-                                    <TextBox Text="{Binding Catalog.CategoryEditorName, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource TextInputStyle}" />
-                                </StackPanel>
-                                <Button Grid.Column="2" MinWidth="100" VerticalAlignment="Bottom"
-                                        Command="{Binding Catalog.CloseCategoryEditorCommand}"
-                                        Content="Cancelar" Style="{StaticResource SecondaryButtonStyle}" />
-                                <Button Grid.Column="4" MinWidth="120" VerticalAlignment="Bottom"
-                                        Command="{Binding Catalog.SaveCategoryCommand}"
-                                        Content="Salvar" Style="{StaticResource PrimaryButtonStyle}" />
-                            </Grid>
-                        </Border>
+                            </Grid.Style>
+                            <Border Width="560" Margin="24" Padding="24" CornerRadius="14"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Background="{DynamicResource HeroGradientBrush}"
+                                    BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="20" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="22" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock FontSize="24" FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       Text="{Binding Catalog.CategoryEditorTitle}" />
+                                            <TextBlock Margin="0,4,0,0" FontSize="13"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       Text="Organize os produtos cadastrando uma categoria." />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" MinWidth="92"
+                                                Command="{Binding Catalog.CloseCategoryEditorCommand}"
+                                                Content="Fechar" Style="{StaticResource SecondaryButtonStyle}" />
+                                    </Grid>
+
+                                    <StackPanel Grid.Row="2">
+                                        <TextBlock Margin="0,0,0,6" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Nome da categoria" />
+                                        <TextBox Text="{Binding Catalog.CategoryEditorName, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource TextInputStyle}" />
+                                        <TextBlock Margin="0,7,0,0" FontSize="11"
+                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                   Text="Use um nome curto e fácil de identificar." />
+                                    </StackPanel>
+
+                                    <Grid Grid.Row="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock VerticalAlignment="Center" FontSize="12"
+                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                   Text="A categoria ficará disponível no cadastro de produtos." />
+                                        <Button Grid.Column="1" MinWidth="104"
+                                                Command="{Binding Catalog.CloseCategoryEditorCommand}"
+                                                Content="Cancelar" Style="{StaticResource SecondaryButtonStyle}" />
+                                        <Button Grid.Column="3" MinWidth="142"
+                                                Command="{Binding Catalog.SaveCategoryCommand}"
+                                                Content="Salvar categoria" Style="{StaticResource PrimaryButtonStyle}" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </Grid>
                         <DataGrid Grid.Row="4" ItemsSource="{Binding Catalog.CategoryRows}"
                                   SelectedItem="{Binding Catalog.SelectedCategoryRow, Mode=TwoWay}"
                                   AutoGenerateColumns="False" IsReadOnly="True"

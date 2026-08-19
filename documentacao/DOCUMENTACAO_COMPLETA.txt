@@ -1,7 +1,7 @@
 GIROFY — DOCUMENTAÇÃO COMPLETA DO PROJETO
 =========================================
 
-Marco de referência: 18/08/2026
+Marco de referência: 19/08/2026
 Repositório: https://github.com/RafaelBG7/pdv2026
 Produto: PDV SaaS Web/API com aplicativo nativo para Windows
 
@@ -347,7 +347,46 @@ O aplicativo contém interfaces para:
 - Configurações, perfil, senha, empresa e equipe;
 - importação, exportação e backup por meio da API.
 
-6.2.1 Configurações no App Windows
+6.2.1 Dashboard e início rápido de venda
+
+O Dashboard apresenta o resumo operacional do dia, incluindo vendas, caixa,
+ticket médio, estoque baixo, formas de pagamento, vendas recentes e produtos mais
+vendidos. A ação primária “Realizar venda — F3” abre o módulo Vendas e inicia o
+fluxo de uma nova venda. O atalho F3 executa essa ação quando o Dashboard está
+ativo. Dentro do módulo Vendas, o mesmo atalho mantém as funções contextuais já
+existentes, como abrir uma venda ou acessar desconto na etapa de pagamento.
+
+Antes de abrir o editor, o App atualiza o módulo e verifica o caixa pela API. Se
+não houver caixa aberto, o fluxo existente solicita a abertura com saldo inicial;
+o App não ignora essa regra para acelerar a navegação.
+
+6.2.2 Produtos e categorias
+
+Produtos possuem pesquisa, filtros, ordenação, paginação, seleção, detalhes
+expansíveis e editor modal para criação ou alteração. O formulário contém nome,
+código, categoria, situação, custo, venda, estoque, estoque mínimo e motivo da
+movimentação quando necessário.
+
+Categorias são listadas separadamente e podem ser criadas, editadas ou excluídas
+conforme permissão. O cadastro e a edição usam popup modal no mesmo padrão de
+Produtos: overlay que bloqueia interação acidental com o conteúdo ao fundo,
+cartão central em gradiente, título contextual, campo de nome, orientação e ações
+Fechar, Cancelar e Salvar categoria. Ao salvar, a categoria passa a ficar
+disponível no cadastro de produtos após a confirmação da API.
+
+6.2.3 Navegação e identidade visual
+
+A barra lateral usa ícones lineares Fluent dentro de molduras arredondadas para
+Dashboard, Produtos, Categorias, Vendas, Caixa, Estoque, Contas a pagar,
+Relatórios, Auditoria e Configurações. O item ativo mantém realce de fundo e borda
+de destaque, e o estado hover também evidencia a moldura do ícone. Os nomes da
+navegação seguem a terminologia da Web.
+
+O cabeçalho de marca exibe somente o logotipo e o nome Girofy. Os antigos textos
+“Aplicativo Windows” e “Aplicativo Windows nativo” foram removidos para reduzir
+ruído visual.
+
+6.2.4 Configurações no App Windows
 
 A tela nativa de Configurações mantém as mesmas áreas conceituais da Web em abas:
 Usuário, Equipe, Operação, Financeiro, Alertas, Backup, Importação, Exportação,
@@ -406,8 +445,12 @@ WindowsThemeService alterna Light/Dark e persiste a preferência em arquivo loca
 A escolha é aplicada antes da janela principal para reduzir flash visual.
 
 Inputs, ComboBox, DatePicker, DataGrid, linhas alternadas, seleção, overlays,
-modais, alertas, botões, tooltips e scrollbars usam tokens de tema. O toggle sol/lua
-é reutilizado no login e nas áreas globais disponíveis.
+modais, alertas, botões, tooltips e scrollbars usam tokens de tema. O interruptor
+sol/lua é reutilizado no login, no cabeçalho global e em Configurações. Ele usa o
+estado real IsDarkMode: no tema claro, o círculo fica do lado do sol, o sol aparece
+com destaque e a lua quase apagada; no tema escuro, o círculo desliza para o lado
+da lua, a lua ganha destaque e o sol reduz a opacidade. A transição é animada e a
+ação continua persistindo a preferência local.
 
 6.5 Distribuição
 
@@ -423,7 +466,7 @@ O pipeline preserva Girofy.exe e produz também o Setup. O aplicativo ainda não
 possui Code Signing nem auto-update e o instalador não é a distribuição comercial.
 O Windows pode exibir aviso de segurança por se tratar de executável não assinado.
 
-Em 18/08/2026, o pipeline Windows já validava testes de contrato do backend,
+Em 19/08/2026, o pipeline Windows já validava testes de contrato do backend,
 testes .NET, publish self-contained/single-file, geração do Setup e smoke test
 automatizado do ciclo instalar, abrir, impedir segunda instância, desinstalar
 preservando dados locais e reinstalar. A execução mais recente fica disponível no
@@ -439,6 +482,21 @@ GitHub. A homologação manual em uma
 VM Windows limpa continua pendente e deve verificar a interface do Setup,
 SmartScreen, login/refresh/logout reais, persistência DPAPI, tema/preferências,
 falhas de rede/API e desinstalação com o aplicativo aberto.
+
+6.6 Entregas incorporadas no marco de 19/08/2026
+
+Este marco documenta em conjunto:
+
+- estilização de Contas a pagar alinhada à versão Web;
+- barra lateral do App com ícones Fluent e nomenclatura padronizada;
+- interruptor Light/Dark compacto, animado e ligado diretamente a IsDarkMode;
+- remoção dos subtítulos redundantes da marca no cabeçalho;
+- botão “Realizar venda — F3” no Dashboard, com navegação e abertura do editor;
+- cadastro e edição de Categorias em popup no padrão visual de Produtos;
+- manutenção de contraste, recursos dinâmicos e compatibilidade Light/Dark;
+- correção do teste de Dashboard para usar a data comercial de São Paulo durante
+  a virada do dia em runners UTC;
+- geração do executável portátil e do instalador pela release windows-preview.
 
 
 7. API REST V1

@@ -9,14 +9,15 @@ Web e App oferecem temas claro e escuro com a mesma identidade visual, mas usam 
 - Sem preferência salva, `prefers-color-scheme` escolhe o estado inicial.
 - O toggle sol/lua fica na topbar e também aparece no login; troca o tema sem reload e persiste em `localStorage`.
 - Movimento do indicador, rotação/fade dos ícones e cores usam transições de 180–240 ms. `prefers-reduced-motion` reduz o efeito por acessibilidade.
-- O seletor textual das configurações e menu do usuário continua sincronizado com o toggle.
+- O tema é controlado pelo toggle global; não existe mais um bloco textual Claro/Escuro no menu do usuário.
 
 ## App Windows
 
 - `Themes/Colors.xaml` é o `ResourceDictionary` único de tokens e estilos compartilhados.
 - `WindowsThemeService` aplica as paletas Light/Dark nos mesmos brushes e salva a escolha no `JsonUserPreferencesStore`.
 - A inicialização carrega a preferência antes de abrir a janela principal; falhas usam o tema escuro padrão sem impedir a abertura.
-- `ThemeToggleButtonStyle` é reutilizado no login, topbar autenticada e configurações. O indicador desliza e o sol gira em 240 ms.
+- `ThemeToggleButtonStyle` é um `ToggleButton` ligado diretamente a `IsDarkMode` e reutilizado no login, topbar autenticada e configurações.
+- A transição dura 200 ms: no Light Mode, o indicador fica sobre o sol, o sol tem opacidade total e a lua fica quase apagada; no Dark Mode, o indicador desliza para a lua, a lua ganha opacidade total e o sol fica quase apagado.
 - DataGrid, cabeçalho, linhas alternadas, seleção, overlays, estados semânticos, inputs, ComboBox, DatePicker, botões e scrollbars usam recursos de tema.
 
 ## Tokens principais

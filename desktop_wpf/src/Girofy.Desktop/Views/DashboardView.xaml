@@ -20,6 +20,8 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock FontSize="27" FontWeight="Bold"
@@ -29,7 +31,11 @@
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="{Binding Snapshot.ReferenceDateText, FallbackValue=Visão da operação da sua adega.}" />
                 </StackPanel>
-                <Button Grid.Column="1" MinWidth="104"
+                <Button Grid.Column="1" MinWidth="170"
+                        Command="{Binding DataContext.StartSaleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Content="Realizar venda — F3"
+                        Style="{StaticResource PrimaryButtonStyle}" />
+                <Button Grid.Column="3" MinWidth="104"
                         Command="{Binding RefreshCommand}"
                         Content="Atualizar"
                         Style="{StaticResource SecondaryButtonStyle}" />

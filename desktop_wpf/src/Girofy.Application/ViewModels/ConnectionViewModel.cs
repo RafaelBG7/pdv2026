@@ -55,6 +55,9 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         ShowCategoriesCommand = new AsyncRelayCommand(ShowCategoriesAsync);
         ShowCashRegisterCommand = new AsyncRelayCommand(ShowCashRegisterAsync);
         ShowSalesCommand = new AsyncRelayCommand(ShowSalesAsync);
+        StartSaleCommand = new AsyncRelayCommand(
+            StartSaleAsync,
+            () => IsDashboardView && Sales.IsAvailable);
         ShowStockCommand = new AsyncRelayCommand(ShowStockAsync);
         ShowPayablesCommand = new AsyncRelayCommand(ShowPayablesAsync);
         ShowReportsCommand = new AsyncRelayCommand(ShowReportsAsync);
@@ -155,6 +158,8 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand ShowSalesCommand { get; }
 
+    public AsyncRelayCommand StartSaleCommand { get; }
+
     public AsyncRelayCommand ShowStockCommand { get; }
 
     public AsyncRelayCommand ShowPayablesCommand { get; }
@@ -191,6 +196,17 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
 
     private Task ShowSalesAsync(CancellationToken cancellationToken) =>
         NavigateAsync("sales", Sales.InitializeAsync, cancellationToken);
+
+    private async Task StartSaleAsync(CancellationToken cancellationToken)
+    {
+        await NavigateAsync("sales", Sales.InitializeAsync, cancellationToken);
+        if (cancellationToken.IsCancellationRequested || !IsSalesView)
+        {
+            return;
+        }
+
+        await Sales.OpenSaleEditorCommand.ExecuteAsync(cancellationToken);
+    }
 
     private Task ShowStockAsync(CancellationToken cancellationToken) =>
         NavigateAsync("stock", Stock.InitializeAsync, cancellationToken);
@@ -260,6 +276,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsAuditView));
         OnPropertyChanged(nameof(IsNotificationsView));
         OnPropertyChanged(nameof(IsSettingsView));
+        StartSaleCommand.NotifyCanExecuteChanged();
     }
 
     private async Task CheckConnectionAsync(CancellationToken cancellationToken)

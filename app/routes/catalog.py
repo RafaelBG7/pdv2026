@@ -16,6 +16,7 @@ from app.security.rate_limit import authenticated_identity_key, configured_limit
 from app.models import Category, Product
 from app.permissions import authorize_permission_override, permission_required
 from app.services.audit_service import changed_values, record_audit_event
+from app.services.product_service import ProductOperationError, delete_product as delete_product_service
 from app.services.stock_service import StockMovementError, adjust_stock, increase_stock, register_stock_movement
 from app.tenant import current_tenant_company, tenant_session
 
@@ -751,19 +752,19 @@ def toggle_product(product_id):
 @login_required
 @permission_required('can_manage_products')
 def delete_product(product_id):
-    product = tenant_get_or_404(Product, product_id)
     tenant_db = tenant_session()
-    record_audit_event(
-        'product_deleted',
-        'product',
-        product.id,
-        f'Produto {product.name} excluído.',
-        old_values=product_audit_values(product),
-        company_id=current_tenant_company().id,
-        db_session=tenant_db,
-    )
-    tenant_db.delete(product)
-    tenant_db.commit()
+    try:
+        delete_product_service(
+            tenant_db,
+            current_tenant_company(),
+            current_user,
+            product_id,
+        )
+        tenant_db.commit()
+    except ProductOperationError as error:
+        tenant_db.rollback()
+        flash(error.message, 'danger')
+        return redirect(url_for('catalog.products', status='all'))
 
     flash('Produto excluído com sucesso.', 'success')
     return redirect(url_for('catalog.products', status='all'))

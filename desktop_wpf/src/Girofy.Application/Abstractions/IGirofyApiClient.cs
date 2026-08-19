@@ -246,6 +246,12 @@ public interface IGirofyApiClient
         CancellationToken cancellationToken) =>
         Task.FromException<CatalogProduct>(new NotSupportedException());
 
+    Task DeleteCatalogProductAsync(
+        string accessToken,
+        int productId,
+        CancellationToken cancellationToken) =>
+        Task.FromException(new NotSupportedException());
+
     Task<StockMovementList> GetStockMovementsAsync(
         string accessToken,
         StockMovementQuery query,

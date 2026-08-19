@@ -1144,6 +1144,7 @@ class RouteTestCase(unittest.TestCase):
             existing.set_password('Senha123')
             db.session.add(existing)
             db.session.commit()
+            existing_id = existing.id
         login_data = self.api_login(admin.username, 'SenhaApi123').get_json()['data']
 
         response = self.client.post(
@@ -1432,6 +1433,75 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(StockMovement.query.filter_by(product_id=product.id).count(), 1)
             self.assertEqual(AuditLog.query.filter_by(action='product_created').count(), 1)
 
+    def test_api_catalog_product_manager_creates_kit_and_validates_component_tenant(self):
+        user, company = self.create_api_user()
+        _, other_company = self.create_api_user(
+            username='api-kit-outra-adega',
+            company_name='Outra adega kit',
+        )
+        with self.app.app_context():
+            component = Product(
+                name='Garrafa base',
+                company_id=company.id,
+                cost_price=4,
+                sale_price=8,
+                stock_quantity=20,
+                active=True,
+            )
+            foreign_component = Product(
+                name='Base de outra adega',
+                company_id=other_company.id,
+                cost_price=3,
+                sale_price=7,
+                stock_quantity=10,
+                active=True,
+            )
+            db.session.add_all([component, foreign_component])
+            db.session.commit()
+            component_id = component.id
+            foreign_component_id = foreign_component.id
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        invalid_response = self.client.post(
+            '/api/v1/catalog/products',
+            headers=self.bearer_header(access_token),
+            json={
+                'name': 'Kit inválido',
+                'sale_price': 20,
+                'stock_quantity': 0,
+                'min_stock_quantity': 0,
+                'is_kit': True,
+                'kit_component_product_id': foreign_component_id,
+                'kit_component_quantity': 2,
+            },
+        )
+        valid_response = self.client.post(
+            '/api/v1/catalog/products',
+            headers=self.bearer_header(access_token),
+            json={
+                'name': 'Kit duas garrafas',
+                'sale_price': 20,
+                'stock_quantity': 0,
+                'min_stock_quantity': 0,
+                'is_kit': True,
+                'kit_component_product_id': component_id,
+                'kit_component_quantity': 2,
+            },
+        )
+
+        self.assertEqual(invalid_response.status_code, 422)
+        self.assertEqual(invalid_response.get_json()['errors'][0]['code'], 'kit_component_not_found')
+        self.assertEqual(valid_response.status_code, 201)
+        data = valid_response.get_json()['data']
+        self.assertTrue(data['is_kit'])
+        self.assertEqual(data['kit_component']['id'], component_id)
+        self.assertEqual(data['kit_component_quantity'], 2)
+        with self.app.app_context():
+            kit = Product.query.filter_by(company_id=company.id, name='Kit duas garrafas').one()
+            self.assertTrue(kit.is_kit)
+            self.assertEqual(kit.kit_component_product_id, component_id)
+            self.assertEqual(kit.kit_component_quantity, 2)
+
     def test_api_catalog_product_update_adjusts_stock_and_rejects_foreign_category(self):
         user, company = self.create_api_user()
         _, other_company = self.create_api_user(
@@ -1504,6 +1574,69 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(StockMovement.query.filter_by(product_id=product_id).count(), 1)
             self.assertEqual(AuditLog.query.filter_by(action='product_updated').count(), 1)
 
+    def test_api_catalog_product_manager_deletes_unreferenced_product(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            product = Product(
+                name='Produto descartável',
+                company_id=company.id,
+                cost_price=1,
+                sale_price=2,
+                stock_quantity=0,
+            )
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.delete(
+            f'/api/v1/catalog/products/{product_id}',
+            headers=self.bearer_header(access_token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['data']['deleted'])
+        with self.app.app_context():
+            self.assertIsNone(db.session.get(Product, product_id))
+            self.assertEqual(AuditLog.query.filter_by(action='product_deleted').count(), 1)
+
+    def test_api_catalog_product_delete_rejects_product_used_by_kit(self):
+        user, company = self.create_api_user()
+        with self.app.app_context():
+            base_product = Product(
+                name='Produto base',
+                company_id=company.id,
+                cost_price=1,
+                sale_price=2,
+                stock_quantity=10,
+            )
+            db.session.add(base_product)
+            db.session.flush()
+            kit = Product(
+                name='Kit dependente',
+                company_id=company.id,
+                cost_price=2,
+                sale_price=5,
+                stock_quantity=0,
+                is_kit=True,
+                kit_component_product_id=base_product.id,
+                kit_component_quantity=2,
+            )
+            db.session.add(kit)
+            db.session.commit()
+            product_id = base_product.id
+
+        access_token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.delete(
+            f'/api/v1/catalog/products/{product_id}',
+            headers=self.bearer_header(access_token),
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'product_used_by_kit')
+        with self.app.app_context():
+            self.assertIsNotNone(db.session.get(Product, product_id))
+
     def test_api_catalog_product_mutation_requires_manager_permission_and_unique_barcode(self):
         manager, company = self.create_api_user()
         operator, _ = self.create_api_user(
@@ -1523,6 +1656,7 @@ class RouteTestCase(unittest.TestCase):
             )
             db.session.add(existing)
             db.session.commit()
+            existing_id = existing.id
 
         manager_token = self.api_login(manager.username, 'SenhaApi123').get_json()['data']['access_token']
         operator_token = self.api_login(operator.username, 'SenhaApi123').get_json()['data']['access_token']
@@ -1551,10 +1685,15 @@ class RouteTestCase(unittest.TestCase):
                 'active': True,
             },
         )
+        forbidden_delete_response = self.client.delete(
+            f'/api/v1/catalog/products/{existing_id}',
+            headers=self.bearer_header(operator_token),
+        )
 
         self.assertEqual(duplicate_response.status_code, 409)
         self.assertEqual(duplicate_response.get_json()['errors'][0]['code'], 'barcode_already_exists')
         self.assertEqual(forbidden_response.status_code, 403)
+        self.assertEqual(forbidden_delete_response.status_code, 403)
 
     def test_api_stock_movements_filters_and_summarizes_company_scope(self):
         user, company = self.create_api_user()

@@ -55,11 +55,20 @@ public sealed class CatalogProduct
     [JsonPropertyName("is_kit")]
     public bool IsKit { get; init; }
 
+    [JsonPropertyName("kit_component")]
+    public CatalogCategoryReference? KitComponent { get; init; }
+
+    [JsonPropertyName("kit_component_quantity")]
+    public int KitComponentQuantity { get; init; }
+
     [JsonPropertyName("cost_price")]
     public decimal? CostPrice { get; init; }
 
     [JsonPropertyName("profit_amount")]
     public decimal? ProfitAmount { get; init; }
+
+    [JsonPropertyName("profit_margin_percent")]
+    public decimal? ProfitMarginPercent { get; init; }
 
     public string CategoryName => Category?.Name ?? "Sem categoria";
 
@@ -72,6 +81,14 @@ public sealed class CatalogProduct
     public string ProfitAmountText => ProfitAmount is decimal profitAmount
         ? $"R$ {profitAmount.ToString("N2", BrazilianCulture)}"
         : "Não disponível";
+
+    public string ProfitMarginText => ProfitMarginPercent is decimal profitMargin
+        ? $"{profitMargin.ToString("N2", BrazilianCulture)}%"
+        : "Não disponível";
+
+    public string KitCompositionText => IsKit && KitComponent is not null && KitComponentQuantity > 0
+        ? $"Baixa {KitComponentQuantity} un. de {KitComponent.Name}"
+        : "Não se aplica";
 
     public string StockText => $"{StockQuantity} un.";
 
@@ -136,7 +153,10 @@ public sealed record CatalogProductMutationRequest(
     [property: JsonPropertyName("stock_quantity")] int StockQuantity,
     [property: JsonPropertyName("min_stock_quantity")] int MinStockQuantity,
     [property: JsonPropertyName("active")] bool Active,
-    [property: JsonPropertyName("stock_reason")] string StockReason);
+    [property: JsonPropertyName("stock_reason")] string StockReason,
+    [property: JsonPropertyName("is_kit")] bool IsKit = false,
+    [property: JsonPropertyName("kit_component_product_id")] int? KitComponentProductId = null,
+    [property: JsonPropertyName("kit_component_quantity")] int KitComponentQuantity = 0);
 
 public sealed record CatalogCategoryMutationRequest(
     [property: JsonPropertyName("name")] string Name);

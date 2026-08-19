@@ -4,6 +4,9 @@ GIROFY — DOCUMENTAÇÃO COMPLETA DO PROJETO
 Marco de referência: 19/08/2026
 Repositório: https://github.com/RafaelBG7/pdv2026
 Produto: PDV SaaS Web/API com aplicativo nativo para Windows
+Versão do App documentada: 0.8.0-preview
+Commit de referência: 0d14e87
+Classificação: documento técnico, funcional, operacional e de segurança
 
 
 1. FINALIDADE DESTE DOCUMENTO
@@ -21,6 +24,13 @@ operacional do Girofy. A descrição separa claramente:
 Em caso de divergência entre uma tela e uma regra de negócio, o backend é a fonte
 de verdade. O aplicativo Windows não acessa o MySQL diretamente e não mantém um
 banco operacional paralelo.
+
+Este é o documento canônico do projeto. Ele reúne também estado de distribuição,
+pendências e roteiro de evolução, para que a continuidade não dependa de arquivos
+separados. “Implementado” significa que há código correspondente no repositório;
+“validado” significa que o comportamento passou por teste automatizado ou
+verificação expressamente indicada; “pendente” não deve ser interpretado como
+autorização para implementação automática.
 
 
 2. RESUMO DO SISTEMA
@@ -124,6 +134,58 @@ docker-compose.oci.yml Composição dos serviços no ambiente OCI
 app.py                 Ponto de entrada local da aplicação Flask
 config.py              Configurações carregadas por variáveis de ambiente
 requirements.txt       Dependências Python
+
+4.1 Tecnologias e versões
+
+Backend, Web e persistência:
+
+- Python e Flask >= 3.0 e < 4.0;
+- Flask-Login >= 0.6 e < 0.7 para sessão Web;
+- Flask-SQLAlchemy >= 3.1 e SQLAlchemy >= 2.0 para ORM e transações;
+- Flask-Migrate >= 4.1 e Alembic para migrations versionadas;
+- Flask-Limiter >= 4.1 com backend Redis para limites distribuídos;
+- Jinja2 >= 3.1 para templates server-side;
+- Werkzeug >= 3.0, incluindo hash scrypt de senha;
+- PyMySQL >= 1.1 como driver MySQL;
+- Gunicorn >= 22 e < 24 no serviço Web em produção;
+- MySQL para o banco central e para os bancos operacionais por tenant;
+- Redis para rate limit persistente, coordenação e prevenção de abuso;
+- HTML5, CSS e JavaScript sem transformar a Web em fonte das regras críticas;
+- tzdata >= 2025.2 e BUSINESS_TIMEZONE=America/Sao_Paulo para a data comercial.
+
+Aplicativo Windows:
+
+- C# com linguagem configurada como latest;
+- .NET 8;
+- WPF nativo em net8.0-windows;
+- MVVM com ObservableObject, RelayCommand e AsyncRelayCommand do próprio projeto;
+- Microsoft.Extensions.Hosting 8.0.1 para composição e ciclo de vida;
+- Microsoft.Extensions.Http 8.0.1 para clientes HTTP;
+- Microsoft.Extensions.Logging.Abstractions 8.0.2;
+- ProtectedData 8.0.0/DPAPI para proteção de credenciais locais;
+- xUnit 2.9.2 e Microsoft.NET.Test.Sdk 17.11.1 nos testes;
+- Inno Setup 6 para o instalador;
+- publicação win-x64, self-contained e single-file.
+
+Infraestrutura e entrega:
+
+- Git e GitHub como controle de versão e hospedagem;
+- GitHub Actions para testes, build, artefatos e release;
+- Docker e Docker Compose no ambiente OCI;
+- VM Oracle Cloud Infrastructure para a publicação atual;
+- scripts de health check, backup e migration usados pelo deploy.
+
+4.2 Princípios arquiteturais obrigatórios
+
+- BACKEND = fonte de verdade para autorização, dinheiro, estoque e tenant;
+- Web e App são clientes diferentes do mesmo domínio;
+- o App é WPF real: não usa Electron, Tauri, WebView ou HTML incorporado;
+- o App não recebe credenciais MySQL e não executa SQL operacional;
+- toda alteração de schema deve ser versionada na árvore Alembic adequada;
+- toda operação crítica deve ser atômica, auditável e vinculada ao tenant;
+- cliente não deve confiar em IDs, preços, permissões ou totais enviados por ele
+  próprio sem revalidação no servidor;
+- mudanças visuais do App devem funcionar nos temas claro e escuro.
 
 
 5. FUNCIONALIDADES DA VERSÃO WEB
@@ -374,7 +436,38 @@ cartão central em gradiente, título contextual, campo de nome, orientação e 
 Fechar, Cancelar e Salvar categoria. Ao salvar, a categoria passa a ficar
 disponível no cadastro de produtos após a confirmação da API.
 
-6.2.3 Navegação e identidade visual
+6.2.3 Vendas, quantidade e pagamento
+
+O editor de venda do App reproduz o fluxo operacional da Web sem incorporar a
+página Web. A pesquisa usa debounce e apresenta sugestões de produtos. Ao
+confirmar um produto, o campo de quantidade não permanece solto no formulário: o
+App abre um popup modal central com overlay, mantendo o restante da venda visível,
+porém bloqueado contra cliques acidentais.
+
+O popup de quantidade exibe:
+
+- título “Quantidade”;
+- nome do produto selecionado;
+- preço unitário formatado em reais;
+- saldo de estoque em unidades;
+- campo “Quantidade do produto”, iniciado em 1 e focado automaticamente;
+- botão “Adicionar produto” com o gradiente primário do design system;
+- botão “Fechar”.
+
+Somente inteiros entre 1 e 100.000 são aceitos. Enter normaliza e adiciona o item;
+Esc ou Fechar cancela o popup sem alterar o carrinho e devolve o foco à pesquisa.
+Erros mantêm o modal aberto para correção. Após sucesso, pesquisa, seleção e
+quantidade são reiniciadas e o foco volta para o próximo produto. A API ainda
+revalida produto, preço, disponibilidade e política de estoque; a validação visual
+do App não substitui a validação no servidor.
+
+O carrinho permite múltiplos itens, alteração de quantidade e remoção. A etapa de
+pagamento oferece dinheiro, Pix, débito e crédito, inclusive composição de mais de
+um meio, valor faltante, troco, desconto e finalização. F2 e F3 mantêm ações
+contextuais, e comandos assíncronos evitam reenvio enquanto uma operação está em
+andamento. A chave idempotente impede que uma tentativa repetida gere duas vendas.
+
+6.2.4 Navegação e identidade visual
 
 A barra lateral usa ícones lineares Fluent dentro de molduras arredondadas para
 Dashboard, Produtos, Categorias, Vendas, Caixa, Estoque, Contas a pagar,
@@ -386,7 +479,7 @@ O cabeçalho de marca exibe somente o logotipo e o nome Girofy. Os antigos texto
 “Aplicativo Windows” e “Aplicativo Windows nativo” foram removidos para reduzir
 ruído visual.
 
-6.2.4 Configurações no App Windows
+6.2.5 Configurações no App Windows
 
 A tela nativa de Configurações mantém as mesmas áreas conceituais da Web em abas:
 Usuário, Equipe, Operação, Financeiro, Alertas, Backup, Importação, Exportação,
@@ -476,6 +569,15 @@ https://github.com/RafaelBG7/pdv2026/actions/workflows/build-windows-wpf.yml
 Download persistente do instalador validado:
 https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
 
+Publicação de referência deste documento:
+
+- commit: 0d14e87;
+- workflow aprovado: https://github.com/RafaelBG7/pdv2026/actions/runs/32271719374;
+- SHA-256 do instalador dessa publicação:
+  29c21a353772bc48e19a37dfe7da284ae03b53eab6fc786fe22539b6e1e770d2;
+- SHA-256 do executável portátil dessa publicação:
+  66c5f21db7c0fc0e584f92132fb60833ee123ced20f29f0014b185b5a796b621.
+
 O hash SHA-256 muda a cada publicação e deve ser consultado ou calculado sobre o
 arquivo efetivamente baixado. A validação automatizada ocorre em runner Windows do
 GitHub. A homologação manual em uma
@@ -493,6 +595,8 @@ Este marco documenta em conjunto:
 - remoção dos subtítulos redundantes da marca no cabeçalho;
 - botão “Realizar venda — F3” no Dashboard, com navegação e abertura do editor;
 - cadastro e edição de Categorias em popup no padrão visual de Produtos;
+- seleção de quantidade da venda em popup modal com produto, preço, estoque,
+  validação, Enter para adicionar e Esc para cancelar;
 - manutenção de contraste, recursos dinâmicos e compatibilidade Light/Dark;
 - correção do teste de Dashboard para usar a data comercial de São Paulo durante
   a virada do dia em runners UTC;
@@ -521,6 +625,56 @@ Prefixo principal: /api/v1
 - notificações;
 - configurações e equipe;
 - importação, exportação e backup.
+
+7.1 Contratos disponíveis por grupo
+
+Saúde e autenticação:
+
+- GET /health e GET /health/dependencies;
+- POST /auth/login, /auth/refresh e /auth/logout;
+- GET /auth/me;
+- POST /auth/password-recovery/request;
+- POST /subscription/activate.
+
+Configurações:
+
+- GET /settings/account;
+- PUT /settings/company, /settings/profile, /settings/password e
+  /settings/backup;
+- POST /settings/backup/run e /settings/import/products;
+- GET /settings/export/<tipo>;
+- GET/POST /settings/team e PUT /settings/team/<id>.
+
+Operação:
+
+- GET /dashboard/summary;
+- GET /reports/summary e /reports/products;
+- GET /audit/logs;
+- GET/POST /payables, POST /payables/<id>/pay e /reopen;
+- GET /cash-registers/summary e /cash-registers/<id>;
+- POST /cash-registers/open e /cash-registers/close;
+- POST /sales, GET /sales/<id>, GET /sales/today e
+  POST /sales/<id>/cancel;
+- GET/POST /catalog/categories, PUT/DELETE /catalog/categories/<id>;
+- GET/POST /catalog/products e PUT /catalog/products/<id>. POST e PUT aceitam
+  is_kit, kit_component_product_id e kit_component_quantity; o backend valida
+  tenant, produto-base ativo, quantidade positiva e impede autorreferência;
+- DELETE /catalog/products/<id>, com bloqueio quando vendas ou kits exigem a
+  preservação do registro;
+- GET /stock/movements, POST /stock/entries e /stock/adjustments.
+
+Notificações:
+
+- GET /notifications e /notifications/unread-count;
+- PUT /notifications/<id>/read, /notifications/read-all e
+  /notifications/<id>/dismiss;
+- GET/PUT /notifications/preferences.
+
+Método, autenticação, permissão, tenant, paginação, limites e payload continuam
+definidos pelo código da API; esta lista serve como mapa funcional, não como
+substituto para validação de contrato.
+
+7.2 Formato e comportamento
 
 Sucessos utilizam envelope data. Erros retornam status HTTP, mensagem, código
 estável e, quando aplicável, o campo inválido. O cliente não deve implementar
@@ -561,6 +715,39 @@ para validação e 429 quando o rate limit for excedido.
 9. BANCO E MIGRAÇÕES
 --------------------
 
+9.1 Entidades centrais e operacionais
+
+Entidades de identidade/SaaS:
+
+- Company: empresa/adega, situação, assinatura e preferências operacionais;
+- User: identidade, hash de senha, papel, permissões e vínculo com a empresa;
+- ActivationKey: chave, plano, ciclo, situação e aplicação na assinatura;
+- EmailVerificationCode: confirmação temporária do e-mail;
+- PasswordResetToken: redefinição temporária de senha;
+- EmailChangeRequest: troca confirmada de endereço;
+- ApiRefreshToken: sessão renovável, hash, validade, rotação e revogação.
+
+Entidades operacionais do tenant:
+
+- Category: agrupamento lógico do catálogo;
+- Product: catálogo, código de barras, preço, custo, estoque, mínimo e kit;
+- StockMovement: razão de cada entrada, saída, ajuste, venda ou devolução;
+- Sale: cabeçalho financeiro, desconto, total, lucro, usuário, caixa e estado;
+- SaleItem: snapshot de produto, quantidade, preço, custo e resultado por item;
+- Payment: meio de pagamento e valor associado à venda;
+- ApiSaleRequest: chave idempotente e resultado de criação pela API;
+- CashRegister: abertura, fechamento, saldos, responsável e conferência;
+- Payable: despesa, categoria, vencimento, pagamento, observação e situação;
+- AuditLog: trilha de ação crítica;
+- Notification e NotificationPreference: caixa de entrada e preferências;
+- EmailAlertSetting e EmailAlertDelivery: regra, deduplicação e entrega de alerta.
+
+Relações financeiras são preservadas como histórico. Excluir/inativar um item de
+catálogo não deve reescrever vendas passadas. Movimentações de estoque explicam o
+saldo e suportam a devolução exata de cancelamentos.
+
+9.2 Migrações
+
 O projeto já utiliza Flask-Migrate/Alembic. Migrações não são uma funcionalidade
 pendente.
 
@@ -582,25 +769,150 @@ de forma controlada, em vez de continuar silenciosamente.
 10. SEGURANÇA
 -------------
 
-Controles implementados:
+10.1 Identidade, senha e recuperação
 
-- hash de senha e política mínima;
-- confirmação de e-mail;
-- tokens temporários para recuperação e troca de e-mail;
-- sessão e cookies protegidos na Web;
-- CSRF em formulários e operações mutáveis;
-- access token e refresh token na API;
-- rotação e revogação de refresh tokens;
-- rate limit persistente e distribuído com Redis em produção;
-- Retry-After em bloqueios HTTP 429;
-- permissões por função e autorização elevada;
-- isolamento multi-tenant;
-- consultas ORM/parametrizadas;
-- request ID e logs estruturados;
-- mascaramento de senha, token, secret e key;
-- headers HTTP de segurança;
-- segredos fornecidos por variáveis de ambiente/GitHub Actions;
-- MySQL e Redis sem exposição pública direta no desenho de produção.
+- senhas nunca são persistidas em texto aberto; User.set_password usa o gerador
+  scrypt do Werkzeug e check_password compara o hash;
+- comprimento mínimo e máximo são configuráveis por PASSWORD_MIN_LENGTH e
+  PASSWORD_MAX_LENGTH;
+- cadastro pode exigir confirmação do endereço de e-mail por código temporário;
+- recuperação de senha e troca de e-mail usam registros temporários, expiração e
+  consumo controlado;
+- mensagens públicas devem evitar enumeração de contas;
+- usuário inativo, empresa inativa e assinatura sem validade são recusados pelo
+  backend, mesmo que o cliente ainda possua dados locais;
+- alteração de senha invalida a credencial anterior e integra a impressão digital
+  da credencial à validação dos tokens de API.
+
+10.2 Sessão Web
+
+- Flask-Login controla a identidade da sessão Web;
+- operações mutáveis usam CSRF quando CSRF_ENABLED está ativo;
+- logout é uma operação POST;
+- SESSION_LIFETIME_HOURS define a expiração operacional;
+- SESSION_COOKIE_SECURE deve ser 1 em HTTPS;
+- SESSION_COOKIE_SAMESITE usa Lax por padrão e reduz envio cross-site;
+- a aplicação não deve aceitar redirect externo arbitrário após autenticação;
+- ações master e administrativas continuam sujeitas à autorização no servidor.
+
+10.3 Sessão da API e App Windows
+
+- login da API emite access token curto e refresh token longo;
+- API_ACCESS_TOKEN_MINUTES tem exemplo de 15 minutos e
+  API_REFRESH_TOKEN_DAYS de 30 dias;
+- o refresh token é aleatório, armazenado no servidor por hash, associado a uma
+  sessão e rotacionado a cada renovação;
+- reutilização de token revogado/expirado é rejeitada;
+- logout revoga a sessão de refresh correspondente;
+- access tokens são enviados no cabeçalho Authorization: Bearer;
+- em produção, autenticação insegura deve permanecer bloqueada por
+  API_ALLOW_INSECURE_AUTH=0; HTTPS é requisito antes da distribuição pública;
+- no Windows, sessão persistida é protegida pela DPAPI e vinculada ao contexto do
+  usuário do Windows; senha digitada não deve ser salva em configuração aberta;
+- instalar o App em outro computador não autentica automaticamente na conta
+  AdegaJF: somente dados locais de sessão válidos naquela instalação/usuário podem
+  restaurar uma sessão;
+- “Lembrar usuário” pode preencher o identificador, mas não deve equivaler a
+  armazenar a senha em texto legível.
+
+10.4 Autorização e papéis
+
+Papéis conhecidos: master, admin, manager e operator. Master e admin possuem
+autorização ampla conforme o modelo atual; demais papéis dependem das flags:
+
+- can_view_products;
+- can_manage_products;
+- can_manage_categories;
+- can_manage_sales;
+- can_cancel_sales;
+- can_manage_cash_register;
+- can_view_reports;
+- can_manage_payables;
+- can_manage_settings;
+- can_view_stock_movements;
+- can_manage_stock;
+- can_view_audit_logs.
+
+Ocultar um botão não concede segurança. Cada rota e serviço deve aplicar a
+permissão correspondente novamente. Respostas usam 401 para ausência ou falha de
+autenticação e 403 para identidade válida sem autorização.
+
+10.5 Isolamento multi-tenant
+
+- a empresa é resolvida a partir do usuário autenticado, não de um company_id
+  livremente confiado ao cliente;
+- consultas operacionais são limitadas ao banco e ao company_id do tenant;
+- IDs de produto, categoria, caixa, venda, conta e usuário são reconsultados no
+  escopo autenticado;
+- o banco central mantém identidades e empresas, enquanto dados operacionais ficam
+  nos bancos tenants;
+- tentativa de acessar um recurso fora do tenant deve resultar em 404/403 sem
+  revelar dados da outra empresa;
+- suporte master assistido deve ficar explícito, limitado e auditado.
+
+10.6 Proteção financeira e consistência
+
+- dinheiro usa Decimal no backend, evitando float binário em cálculos críticos;
+- preço, custo, desconto, taxas, total e formas de pagamento são revalidados;
+- venda, itens, pagamentos e baixa de estoque compartilham uma transação;
+- falha parcial causa rollback;
+- abertura/fechamento de caixa usa bloqueio de escopo para impedir dois caixas
+  concorrentes;
+- idempotência associa requisições de venda repetidas ao resultado original;
+- cancelamento é lógico: preserva a venda, exige motivo/permissão, devolve o
+  estoque da movimentação original e registra auditoria;
+- migrations e backup anterior ao upgrade protegem evolução do schema.
+
+10.7 Rate limit e proteção contra abuso
+
+- Flask-Limiter aplica limites a rotas sensíveis;
+- Redis é o armazenamento distribuído esperado em produção, mantendo contadores
+  consistentes entre processos/containers;
+- API_LOGIN_ATTEMPT_LIMIT e API_LOGIN_BLOCK_SECONDS adicionam bloqueio específico
+  a tentativas de login;
+- respostas 429 incluem Retry-After quando aplicável;
+- fallback em memória existe para desenvolvimento/contingência, mas não substitui
+  Redis em produção com múltiplos processos;
+- tamanho máximo de upload é controlado por MAX_CONTENT_LENGTH, com exemplo de
+  8 MiB no .env.example.
+
+10.8 Entrada, saída e transporte
+
+- SQLAlchemy/ORM e parâmetros evitam interpolação direta de SQL;
+- JSON, datas, inteiros, quantidades e valores monetários possuem parsers com
+  limites explícitos;
+- importação aceita apenas formatos previstos e normaliza cabeçalhos/colunas;
+- templates Jinja escapam conteúdo por padrão; qualquer uso de conteúdo seguro
+  deve ser deliberado;
+- headers HTTP de segurança são configurados pelo backend;
+- TRUST_PROXY_HEADERS só deve ser habilitado atrás de proxy conhecido e com
+  TRUSTED_PROXY_COUNT correto;
+- MySQL e Redis não devem ter portas publicamente expostas;
+- domínio definitivo, certificado TLS e redirecionamento HTTPS são pendências
+  críticas antes da abertura comercial.
+
+10.9 Auditoria, logs e privacidade
+
+- eventos críticos registram usuário, ação, módulo/entidade, data, IP, request ID
+  e descrição disponível;
+- audit_service higieniza payloads e mascara password, token, secret e key;
+- logs estruturados permitem correlacionar uma chamada sem registrar credenciais;
+- App grava diagnóstico em %LocalAppData%\Girofy\logs;
+- logs não substituem auditoria de negócio e não devem conter senha, token bruto,
+  CPF completo desnecessário ou conteúdo secreto;
+- retenção, acesso e descarte de logs/backups devem seguir política operacional e
+  requisitos aplicáveis de privacidade/LGPD.
+
+10.10 Segredos e cadeia de entrega
+
+- SECRET_KEY, API_TOKEN_SECRET, senhas MySQL/Redis/SMTP e chaves OCI pertencem ao
+  ambiente ou aos GitHub Secrets, nunca ao código-fonte;
+- .env.example contém somente exemplos e nomes de variáveis;
+- workflow executa testes antes de publicar;
+- release Windows é gerada por runner Windows, passa por smoke test de instalação
+  e publica hashes SHA-256 fornecidos pelo GitHub;
+- executável e instalador ainda não têm Code Signing; por isso autenticidade deve
+  ser conferida pela release oficial e pelo hash, e o SmartScreen pode alertar.
 
 Pendências de segurança operacional:
 
@@ -804,6 +1116,7 @@ interface ainda é uma melhoria pendente.
 [OK] Caixa atual e caixas anteriores
 [OK] Linha do tempo e saldo antes da venda
 [OK] Vendas e pagamentos mistos
+[OK] Popup de quantidade no App alinhado visualmente à Web
 [OK] Desconto, troco, taxas e lucro
 [OK] Cancelamento lógico com devolução de estoque
 [OK] Contas a pagar
@@ -817,7 +1130,69 @@ interface ainda é uma melhoria pendente.
 [OK] Rate limit Redis
 [OK] Migrações Alembic central e tenant
 [OK] Docker e deploy automatizado
-[OK] Build e publicação do Girofy.exe
+[OK] Build e publicação do Girofy.exe e GiroFy-Setup-0.8.0.exe
+
+
+18.1 AUDITORIA DE PARIDADE WEB x APP x BACKEND — 19/08/2026
+----------------------------------------------------------------
+
+A auditoria comparou 30 módulos/áreas e 73 ações individualizadas. A matriz
+técnica completa está em docs/FEATURE_PARITY.md. O resultado atual é:
+
+- 60 ações equivalentes por regra ou comportamento;
+- 6 diferenças deliberadas, exclusivas ou não aplicáveis;
+- 6 divergências visuais/funcionais ainda documentadas;
+- 1 contrato de filtro ainda ausente;
+- PARIDADE WEB x APP x BACKEND: EM EVOLUÇÃO.
+
+Correções entregues nesta revisão:
+
+1. Exclusão segura de produtos
+   - Web e App usam product_service como regra central;
+   - DELETE /api/v1/catalog/products/<id> exige can_manage_products;
+   - o tenant é validado no servidor;
+   - produto vendido não pode ser removido: deve ser inativado;
+   - produto usado como base de kit não pode ser removido;
+   - exclusão bem-sucedida gera auditoria;
+   - o App confirma a ação destrutiva antes da chamada.
+
+2. Cadastro e edição de kits
+   - POST/PUT de produto aceitam identificação de kit, produto-base e consumo;
+   - componente de outro tenant, inativo ou inexistente é rejeitado;
+   - produto não pode apontar para si mesmo como componente;
+   - quantidade consumida precisa ser inteira e maior que zero;
+   - o editor WPF apresenta os controles correspondentes;
+   - os detalhes expansíveis exibem composição, custo, lucro e margem.
+
+3. Cobertura
+   - foram adicionados testes de rota para exclusão, conflito com kit, tenant e
+     criação válida de kit;
+   - foram adicionados testes do CatalogViewModel para exclusão, serialização de
+     kit, margem e apresentação da composição;
+   - alterações de estoque continuam obrigatoriamente passando por
+     stock_service e gerando movimento.
+
+Pendências exatas que impedem marcar a Etapa 2 como concluída:
+
+- filtros avançados de estoque e faixa de preço ainda não possuem contrato na
+  API nem controles equivalentes no App;
+- ordenação de produtos por data de criação existe na Web, mas não na API/App;
+- pesquisa específica da lista de categorias não está exposta no App;
+- preferências internas de notificações possuem endpoints, mas ainda não estão
+  integradas ao painel Alertas do SettingsViewModel;
+- preferências avançadas de acessibilidade continuam configuráveis na Web; o App
+  somente oferece tema local e acesso ao fluxo Web;
+- gráficos WPF e alguns painéis de suporte possuem divergência visual intencional
+  e precisam de homologação visual, sem alterar seus dados/regras.
+
+Diferenças deliberadas:
+
+- onboarding completo, confirmação/troca de e-mail e administração master ficam
+  na Web por segurança e por serem fluxos administrativos;
+- o App permanece WPF nativo e conectado, sem MySQL, SQLite operacional ou modo
+  offline;
+- paginação e composição visual podem diferir, desde que os dados e decisões do
+  backend sejam os mesmos.
 
 
 19. PENDÊNCIAS PRIORIZADAS
@@ -847,6 +1222,62 @@ Não implementado na arquitetura atual:
 - banco operacional local no App;
 - pagamento real com adquirente;
 - assinatura digital do executável.
+
+19.1 Roadmap consolidado até a versão 1.0.0
+
+Este roteiro substitui a necessidade de consultar um segundo documento para
+entender a ordem planejada. Ele registra intenção, não autorização automática.
+
+Etapa 1 — Instalador básico 0.8.0: IMPLEMENTADA NO PIPELINE.
+O Setup instala por usuário, cria atalhos, registra desinstalação, preserva dados
+locais e passou pelo smoke test automatizado. Permanece pendente homologação
+interativa completa em uma VM Windows limpa.
+
+Etapa 2 — Paridade Web x App x Backend: EM EVOLUÇÃO.
+Revisar módulo por módulo, garantindo as mesmas regras e aproximando o design do
+App ao da Web sem duplicar decisões críticas. Cada diferença deve ser classificada
+como visual, contrato ausente, permissão, regra ou funcionalidade deliberadamente
+exclusiva de uma plataforma.
+
+Etapa 3 — Homologação Windows: PENDENTE.
+Testar instalação, SmartScreen, resolução/escala, Light/Dark, teclado, múltiplos
+cliques, scroll, rede lenta/offline, expiração de token, sessão DPAPI, logs,
+desinstalação e reinstalação em Windows limpo.
+
+Etapa 4 — Concorrência e consistência: PENDENTE.
+Executar cenários simultâneos em MySQL real para venda, estoque, caixa,
+idempotência, cancelamento e refresh token.
+
+Etapa 5 — Backup e restauração: PARCIAL.
+Backup e configuração existem; falta fluxo guiado, validação do arquivo,
+restauração segura, compatibilidade de schema e auditoria ponta a ponta.
+
+Etapa 6 — Feature Freeze 0.9.0: PENDENTE.
+Suspender novas funções, corrigir defeitos, fechar contratos, revisar textos,
+acessibilidade, telemetria permitida e documentação.
+
+Etapa 7 — Domínio e HTTPS: PENDENTE E CRÍTICA.
+Configurar DNS, certificado TLS, proxy reverso, cookies Secure, URL pública,
+redirecionamentos e desabilitar autenticação HTTP insegura.
+
+Etapa 8 — Atualização automática: PENDENTE.
+Definir canal, manifesto assinado, download, verificação de integridade, aplicação
+segura, rollback e comportamento quando o App estiver aberto.
+
+Etapa 9 — Code Signing: PENDENTE.
+Adquirir certificado, proteger a chave, assinar executável e instalador, adicionar
+timestamp e validar reputação/SmartScreen.
+
+Etapa 10 — Instalador comercial: PENDENTE.
+Consolidar identidade, licença, atalhos, upgrade, reparo, desinstalação e suporte.
+
+Etapa 11 — Release Candidate: PENDENTE.
+Publicar versão imutável, executar regressão completa, piloto controlado e corrigir
+somente bloqueadores.
+
+Etapa 12 — Girofy 1.0.0: PENDENTE.
+Publicar Web/API e Windows com HTTPS, assinatura, documentação, suporte, backup e
+critérios de rollback aprovados.
 
 
 20. ORIENTAÇÃO PARA CONTINUIDADE
@@ -899,10 +1330,8 @@ verdade, os dados são isolados por adega e o deploy é automatizado. As próxim
 entregas devem priorizar segurança pública, distribuição confiável do executável,
 homologação em Windows real, restauração de backup e recursos comerciais.
 
-Este arquivo deve ser mantido como a documentação consolidada do projeto. Os
-documentos em docs/ permanecem úteis como referências temáticas e histórico de
-decisões, mas alterações importantes também devem ser refletidas aqui.
-
-O planejamento de versões e a ordem de continuidade até a 1.0.0 estão registrados
-separadamente em documentacao/ROADMAP_CONTINUIDADE.txt. Esse roadmap é contexto de
-planejamento e não autoriza iniciar funcionalidades sem solicitação explícita.
+Este arquivo deve ser mantido como a documentação única e consolidada do projeto.
+Os documentos em docs/ e o arquivo histórico ROADMAP_CONTINUIDADE.txt podem servir
+como registro de decisões anteriores, mas não são necessários para compreender o
+estado atual: funcionalidades, arquitetura, segurança, tecnologias, operação,
+distribuição, pendências e roadmap até a versão 1.0.0 estão reunidos aqui.

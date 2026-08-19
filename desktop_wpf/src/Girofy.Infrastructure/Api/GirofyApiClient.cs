@@ -753,6 +753,19 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<CatalogProduct>(response, cancellationToken);
     }
 
+    public async Task DeleteCatalogProductAsync(
+        string accessToken,
+        int productId,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Delete,
+            $"api/v1/catalog/products/{productId}",
+            accessToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await ReadEnvelopeAsync<JsonElement>(response, cancellationToken);
+    }
+
     public async Task<StockMovementList> GetStockMovementsAsync(
         string accessToken,
         StockMovementQuery query,

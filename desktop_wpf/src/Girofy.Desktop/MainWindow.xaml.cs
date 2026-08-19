@@ -87,6 +87,29 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void DeleteSelectedProduct_Click(object sender, RoutedEventArgs e)
+    {
+        var product = _viewModel.Catalog.SelectedProduct;
+        if (product is null || !_viewModel.Catalog.DeleteProductCommand.CanExecute(null))
+        {
+            return;
+        }
+
+        var confirmation = MessageBox.Show(
+            this,
+            $"Excluir o produto '{product.Name}'?\n\nProdutos com vendas ou usados como base de kit não podem ser excluídos. Nesse caso, inative o produto.",
+            "Confirmar exclusão",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (confirmation != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        await _viewModel.Catalog.DeleteProductCommand.ExecuteAsync();
+    }
+
     private void QueueLoginFocus()
     {
         if (_viewModel.Login.IsAuthenticated)

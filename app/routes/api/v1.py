@@ -64,6 +64,7 @@ from app.services.product_service import (
     ProductInput,
     ProductOperationError,
     create_product,
+    delete_product,
     update_product,
 )
 from app.services.password_recovery_service import request_password_recovery
@@ -984,6 +985,9 @@ def product_input_from_payload(payload):
         min_stock_quantity=json_non_negative_integer(payload, 'min_stock_quantity'),
         active=json_bool(payload, 'active', default=True),
         stock_reason=json_text(payload, 'stock_reason', required=False, max_length=240),
+        is_kit=json_bool(payload, 'is_kit', default=False),
+        kit_component_product_id=json_optional_positive_integer(payload, 'kit_component_product_id'),
+        kit_component_quantity=json_non_negative_integer(payload, 'kit_component_quantity'),
     )
 
 
@@ -1121,6 +1125,11 @@ def catalog_product_data(product, include_cost):
         'min_stock_quantity': int(product.min_stock_quantity or 0),
         'active': bool(product.active),
         'is_kit': bool(product.is_kit),
+        'kit_component': None if product.kit_component is None else {
+            'id': product.kit_component.id,
+            'name': product.kit_component.name,
+        },
+        'kit_component_quantity': int(product.kit_component_quantity or 0),
     }
     if include_cost:
         payload.update({
@@ -4071,6 +4080,38 @@ def api_update_catalog_product(product_id):
                 tenant_db.rollback()
                 raise
         return api_success(response_data)
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except ProductOperationError as error:
+        return api_failure(
+            error.message,
+            error.code,
+            error.status_code,
+            error.field,
+        )
+
+
+@api_v1_bp.delete('/catalog/products/<int:product_id>')
+@api_permission_required('can_manage_products')
+def api_delete_catalog_product(product_id):
+    try:
+        with api_tenant_database(g.api_user) as tenant_db:
+            try:
+                deleted_product_id = delete_product(
+                    tenant_db,
+                    g.api_user.company,
+                    g.api_user,
+                    product_id,
+                )
+                tenant_db.commit()
+            except Exception:
+                tenant_db.rollback()
+                raise
+
+        return api_success({
+            'id': deleted_product_id,
+            'deleted': True,
+        })
     except ApiAuthError as error:
         return api_auth_error_response(error)
     except ProductOperationError as error:

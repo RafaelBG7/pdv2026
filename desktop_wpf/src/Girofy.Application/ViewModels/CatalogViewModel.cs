@@ -28,6 +28,9 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private bool _isProductEditorOpen;
     private bool _isEditingProduct;
     private bool _editorActive = true;
+    private bool _editorIsKit;
+    private CatalogProduct? _editorKitComponent;
+    private string _editorKitComponentQuantity = "0";
     private string _editorTitle = "Novo produto";
     private string _editorName = string.Empty;
     private string _editorBarcode = string.Empty;
@@ -75,6 +78,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         OpenEditProductCommand = new RelayCommand(OpenSelectedProduct, () => CanManageProducts && SelectedProduct is not null && !IsBusy);
         CloseProductEditorCommand = new RelayCommand(CloseProductEditor);
         SaveProductCommand = new AsyncRelayCommand(SaveProductAsync, () => CanManageProducts && IsProductEditorOpen && !IsBusy);
+        DeleteProductCommand = new AsyncRelayCommand(DeleteProductAsync, () => CanManageProducts && IsEditingProduct && SelectedProduct is not null && !IsBusy);
         OpenNewCategoryCommand = new RelayCommand(OpenNewCategory, () => CanManageCategories && !IsBusy);
         OpenEditCategoryCommand = new RelayCommand(OpenSelectedCategory, () => CanManageCategories && SelectedCategoryRow is not null && !IsBusy);
         CloseCategoryEditorCommand = new RelayCommand(CloseCategoryEditor);
@@ -90,6 +94,8 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     public ObservableCollection<CatalogCategory> ProductCategories { get; } = [];
 
     public ObservableCollection<CatalogCategory> CategoryRows { get; } = [];
+
+    public ObservableCollection<CatalogProduct> KitComponentProducts { get; } = [];
 
     public IReadOnlyList<CatalogFilterOption> ActiveFilters { get; }
 
@@ -234,6 +240,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _selectedProduct, value))
             {
                 OpenEditProductCommand.NotifyCanExecuteChanged();
+                DeleteProductCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -246,6 +253,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _isProductEditorOpen, value))
             {
                 SaveProductCommand.NotifyCanExecuteChanged();
+                DeleteProductCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -253,7 +261,13 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     public bool IsEditingProduct
     {
         get => _isEditingProduct;
-        private set => SetProperty(ref _isEditingProduct, value);
+        private set
+        {
+            if (SetProperty(ref _isEditingProduct, value))
+            {
+                DeleteProductCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     public string EditorTitle
@@ -314,6 +328,24 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     {
         get => _editorActive;
         set => SetProperty(ref _editorActive, value);
+    }
+
+    public bool EditorIsKit
+    {
+        get => _editorIsKit;
+        set => SetProperty(ref _editorIsKit, value);
+    }
+
+    public CatalogProduct? EditorKitComponent
+    {
+        get => _editorKitComponent;
+        set => SetProperty(ref _editorKitComponent, value);
+    }
+
+    public string EditorKitComponentQuantity
+    {
+        get => _editorKitComponentQuantity;
+        set => SetProperty(ref _editorKitComponentQuantity, value);
     }
 
     public CatalogCategory? SelectedCategoryRow
@@ -378,6 +410,8 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     public RelayCommand CloseProductEditorCommand { get; }
 
     public AsyncRelayCommand SaveProductCommand { get; }
+
+    public AsyncRelayCommand DeleteProductCommand { get; }
 
     public RelayCommand OpenNewCategoryCommand { get; }
 
@@ -470,6 +504,9 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         EditorMinStockQuantity = "0";
         EditorStockReason = "Cadastro inicial";
         EditorActive = true;
+        EditorIsKit = false;
+        EditorKitComponent = null;
+        EditorKitComponentQuantity = "0";
         ErrorMessage = string.Empty;
         IsProductEditorOpen = true;
     }
@@ -495,6 +532,16 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         EditorMinStockQuantity = product.MinStockQuantity.ToString(CultureInfo.InvariantCulture);
         EditorStockReason = "Ajuste pelo aplicativo Windows";
         EditorActive = product.Active;
+        EditorIsKit = product.IsKit;
+        EditorKitComponent = product.KitComponent is null
+            ? null
+            : KitComponentProducts.FirstOrDefault(candidate => candidate.Id == product.KitComponent.Id)
+                ?? new CatalogProduct { Id = product.KitComponent.Id, Name = product.KitComponent.Name, Active = true };
+        if (EditorKitComponent is not null && KitComponentProducts.All(candidate => candidate.Id != EditorKitComponent.Id))
+        {
+            KitComponentProducts.Add(EditorKitComponent);
+        }
+        EditorKitComponentQuantity = product.KitComponentQuantity.ToString(CultureInfo.InvariantCulture);
         ErrorMessage = string.Empty;
         IsProductEditorOpen = true;
     }
@@ -531,6 +578,38 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             await LoadCatalogAsync(cancellationToken);
             SelectedProduct = Products.FirstOrDefault(product => product.Id == savedProduct.Id);
             IsProductEditorOpen = false;
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception);
+        }
+        finally
+        {
+            IsBusy = false;
+            NotifyNavigationState();
+        }
+    }
+
+    private async Task DeleteProductAsync(CancellationToken cancellationToken)
+    {
+        if (!CanManageProducts || !IsEditingProduct || SelectedProduct is null)
+        {
+            return;
+        }
+
+        var session = RequireSession();
+        var deletedProductId = SelectedProduct.Id;
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
+        {
+            await _apiClient.DeleteCatalogProductAsync(
+                session.AccessToken,
+                deletedProductId,
+                cancellationToken);
+            IsProductEditorOpen = false;
+            SelectedProduct = null;
+            await LoadCatalogAsync(cancellationToken);
         }
         catch (Exception exception)
         {
@@ -738,9 +817,14 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             cancellationToken);
 
         Products.Clear();
+        KitComponentProducts.Clear();
         foreach (var product in result.Items)
         {
             Products.Add(product);
+            if (product.Active && product.Id != SelectedProduct?.Id)
+            {
+                KitComponentProducts.Add(product);
+            }
         }
         SelectedProduct = Products.FirstOrDefault(product => product.Id == SelectedProduct?.Id);
         Page = result.Pagination.Page;
@@ -792,6 +876,15 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             return false;
         }
 
+        var kitComponentQuantity = 0;
+        if (EditorIsKit && (EditorKitComponent is null
+            || !TryParseInteger(EditorKitComponentQuantity, out kitComponentQuantity)
+            || kitComponentQuantity < 1))
+        {
+            ErrorMessage = "Informe o produto base e a quantidade consumida pelo kit.";
+            return false;
+        }
+
         request = new CatalogProductMutationRequest(
             name,
             EditorBarcode.Trim(),
@@ -803,7 +896,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             EditorActive,
             string.IsNullOrWhiteSpace(EditorStockReason)
                 ? "Atualização pelo aplicativo Windows"
-                : EditorStockReason.Trim());
+                : EditorStockReason.Trim(),
+            EditorIsKit,
+            EditorIsKit ? EditorKitComponent?.Id : null,
+            EditorIsKit ? kitComponentQuantity : 0);
         return true;
     }
 
@@ -867,6 +963,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         OpenNewProductCommand.NotifyCanExecuteChanged();
         OpenEditProductCommand.NotifyCanExecuteChanged();
         SaveProductCommand.NotifyCanExecuteChanged();
+        DeleteProductCommand.NotifyCanExecuteChanged();
         OpenNewCategoryCommand.NotifyCanExecuteChanged();
         OpenEditCategoryCommand.NotifyCanExecuteChanged();
         SaveCategoryCommand.NotifyCanExecuteChanged();
@@ -879,6 +976,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         Categories.Clear();
         ProductCategories.Clear();
         CategoryRows.Clear();
+        KitComponentProducts.Clear();
         SearchText = string.Empty;
         ErrorMessage = string.Empty;
         Page = 1;

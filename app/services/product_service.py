@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from app.models import Category, Product
+from app.models import Category, Product, SaleItem
 from app.services.audit_service import changed_values, record_audit_event
 from app.services.stock_service import StockMovementError, adjust_stock
 
@@ -26,6 +26,9 @@ class ProductInput:
     min_stock_quantity: int
     active: bool
     stock_reason: str = ''
+    is_kit: bool = False
+    kit_component_product_id: int | None = None
+    kit_component_quantity: int = 0
 
 
 def product_audit_values(product):
@@ -45,7 +48,7 @@ def product_audit_values(product):
 
 
 def create_product(db_session, company, user, product_input):
-    category = validate_product_input(db_session, company.id, product_input)
+    category, kit_component = validate_product_input(db_session, company.id, product_input)
     product = Product(
         name=product_input.name,
         barcode=product_input.barcode or None,
@@ -56,8 +59,9 @@ def create_product(db_session, company, user, product_input):
         stock_quantity=0,
         min_stock_quantity=product_input.min_stock_quantity,
         active=product_input.active,
-        is_kit=False,
-        kit_component_quantity=0,
+        is_kit=product_input.is_kit,
+        kit_component_product_id=kit_component.id if kit_component else None,
+        kit_component_quantity=product_input.kit_component_quantity if kit_component else 0,
     )
     product.category = category
     db_session.add(product)
@@ -113,7 +117,7 @@ def update_product(db_session, company, user, product_id, product_input):
             404,
         )
 
-    category = validate_product_input(
+    category, kit_component = validate_product_input(
         db_session,
         company.id,
         product_input,
@@ -130,6 +134,10 @@ def update_product(db_session, company, user, product_id, product_input):
     product.sale_price = float(product_input.sale_price)
     product.min_stock_quantity = product_input.min_stock_quantity
     product.active = product_input.active
+    product.is_kit = product_input.is_kit
+    product.kit_component_product_id = kit_component.id if kit_component else None
+    product.kit_component = kit_component
+    product.kit_component_quantity = product_input.kit_component_quantity if kit_component else 0
     db_session.flush()
 
     if product_input.stock_quantity != previous_stock:
@@ -170,6 +178,56 @@ def update_product(db_session, company, user, product_id, product_input):
     return product
 
 
+def delete_product(db_session, company, user, product_id):
+    product = db_session.query(Product).filter(
+        Product.id == product_id,
+        Product.company_id == company.id,
+    ).first()
+    if product is None:
+        raise ProductOperationError(
+            'Produto não encontrado nesta adega.',
+            'product_not_found',
+            404,
+        )
+
+    dependent_kit = db_session.query(Product.id).filter(
+        Product.company_id == company.id,
+        Product.kit_component_product_id == product.id,
+    ).first()
+    if dependent_kit is not None:
+        raise ProductOperationError(
+            'Este produto é base de um kit e não pode ser excluído.',
+            'product_used_by_kit',
+            409,
+        )
+
+    sale_item = db_session.query(SaleItem.id).filter(
+        SaleItem.product_id == product.id,
+    ).first()
+    if sale_item is not None:
+        raise ProductOperationError(
+            'Este produto possui vendas registradas. Inative-o para preservar o histórico.',
+            'product_has_sales',
+            409,
+        )
+
+    old_values = product_audit_values(product)
+    record_audit_event(
+        'product_deleted',
+        'product',
+        product.id,
+        f'Produto {product.name} excluído.',
+        old_values=old_values,
+        company_id=company.id,
+        user=user,
+        db_session=db_session,
+    )
+    deleted_id = product.id
+    db_session.delete(product)
+    db_session.flush()
+    return deleted_id
+
+
 def validate_product_input(db_session, company_id, product_input, product_id=None):
     if not product_input.name:
         raise ProductOperationError(
@@ -193,18 +251,47 @@ def validate_product_input(db_session, company_id, product_input, product_id=Non
             'barcode',
         )
 
-    if product_input.category_id is None:
-        return None
+    category = None
+    if product_input.category_id is not None:
+        category = db_session.query(Category).filter(
+            Category.id == product_input.category_id,
+            Category.company_id == company_id,
+        ).first()
+        if category is None:
+            raise ProductOperationError(
+                'A categoria informada não pertence a esta adega.',
+                'category_not_found',
+                422,
+                'category_id',
+            )
 
-    category = db_session.query(Category).filter(
-        Category.id == product_input.category_id,
-        Category.company_id == company_id,
-    ).first()
-    if category is None:
-        raise ProductOperationError(
-            'A categoria informada não pertence a esta adega.',
-            'category_not_found',
-            422,
-            'category_id',
-        )
-    return category
+    kit_component = None
+    if product_input.is_kit:
+        if product_input.kit_component_product_id is None or product_input.kit_component_quantity < 1:
+            raise ProductOperationError(
+                'Informe o produto base e a quantidade consumida pelo kit.',
+                'kit_component_required',
+                422,
+                'kit_component_product_id',
+            )
+        if product_id is not None and product_input.kit_component_product_id == product_id:
+            raise ProductOperationError(
+                'O produto base do kit não pode ser o próprio kit.',
+                'kit_component_self_reference',
+                422,
+                'kit_component_product_id',
+            )
+        kit_component = db_session.query(Product).filter(
+            Product.id == product_input.kit_component_product_id,
+            Product.company_id == company_id,
+            Product.active.is_(True),
+        ).first()
+        if kit_component is None:
+            raise ProductOperationError(
+                'O produto base informado não pertence a esta adega ou está inativo.',
+                'kit_component_not_found',
+                422,
+                'kit_component_product_id',
+            )
+
+    return category, kit_component

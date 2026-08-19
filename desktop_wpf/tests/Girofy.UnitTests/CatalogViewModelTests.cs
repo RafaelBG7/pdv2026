@@ -40,9 +40,12 @@ public sealed class CatalogViewModelTests
             CostPrice = 40.50m,
             SalePrice = 65m,
             ProfitAmount = 24.50m,
+            ProfitMarginPercent = 37.69m,
             StockQuantity = 2,
             MinStockQuantity = 3,
             IsKit = true,
+            KitComponent = new CatalogCategoryReference { Id = 8, Name = "Vinho Base" },
+            KitComponentQuantity = 2,
             Active = true,
         };
 
@@ -51,6 +54,8 @@ public sealed class CatalogViewModelTests
         Assert.Equal("R$ 40,50", product.CostPriceText);
         Assert.Equal("R$ 65,00", product.SalePriceText);
         Assert.Equal("R$ 24,50", product.ProfitAmountText);
+        Assert.Equal("37,69%", product.ProfitMarginText);
+        Assert.Equal("Baixa 2 un. de Vinho Base", product.KitCompositionText);
         Assert.Equal("2 un.", product.StockText);
         Assert.Equal("3 un.", product.MinStockText);
         Assert.Equal("Kit", product.ProductTypeText);
@@ -67,6 +72,8 @@ public sealed class CatalogViewModelTests
         Assert.Equal("Sem categoria", product.CategoryName);
         Assert.Equal("Não disponível", product.CostPriceText);
         Assert.Equal("Não disponível", product.ProfitAmountText);
+        Assert.Equal("Não disponível", product.ProfitMarginText);
+        Assert.Equal("Não se aplica", product.KitCompositionText);
         Assert.Equal("Produto unitário", product.ProductTypeText);
         Assert.Equal("Sem estoque", product.StockStatusText);
         Assert.Equal("Inativo", product.StatusText);
@@ -163,6 +170,48 @@ public sealed class CatalogViewModelTests
         Assert.Equal(13.50m, apiClient.UpdatedProductRequest.SalePrice);
         Assert.Equal(6, apiClient.UpdatedProductRequest.StockQuantity);
         Assert.False(apiClient.UpdatedProductRequest.Active);
+    }
+
+    [Fact]
+    public async Task Save_new_kit_sends_component_contract()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        var component = viewModel.Products[0];
+
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorName = "Kit Coca Cola";
+        viewModel.EditorSalePrice = "24,00";
+        viewModel.EditorIsKit = true;
+        viewModel.EditorKitComponent = component;
+        viewModel.EditorKitComponentQuantity = "2";
+
+        await viewModel.SaveProductCommand.ExecuteAsync();
+
+        Assert.NotNull(apiClient.CreatedProductRequest);
+        Assert.True(apiClient.CreatedProductRequest.IsKit);
+        Assert.Equal(9, apiClient.CreatedProductRequest.KitComponentProductId);
+        Assert.Equal(2, apiClient.CreatedProductRequest.KitComponentQuantity);
+    }
+
+    [Fact]
+    public async Task Delete_existing_product_calls_api_and_closes_editor()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedProduct = viewModel.Products[0];
+        viewModel.OpenEditProductCommand.Execute(null);
+        await viewModel.DeleteProductCommand.ExecuteAsync();
+
+        Assert.Equal(9, apiClient.DeletedProductId);
+        Assert.False(viewModel.IsProductEditorOpen);
     }
 
     [Fact]
@@ -278,6 +327,8 @@ public sealed class CatalogViewModelTests
         public CatalogProductMutationRequest? UpdatedProductRequest { get; private set; }
 
         public int? UpdatedProductId { get; private set; }
+
+        public int? DeletedProductId { get; private set; }
 
         public CatalogCategoryMutationRequest? CreatedCategoryRequest { get; private set; }
 
@@ -429,6 +480,16 @@ public sealed class CatalogViewModelTests
                 Active = product.Active,
                 CostPrice = product.CostPrice,
             });
+        }
+
+        public Task DeleteCatalogProductAsync(
+            string accessToken,
+            int productId,
+            CancellationToken cancellationToken)
+        {
+            LastAccessToken = accessToken;
+            DeletedProductId = productId;
+            return Task.CompletedTask;
         }
 
         public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken) =>

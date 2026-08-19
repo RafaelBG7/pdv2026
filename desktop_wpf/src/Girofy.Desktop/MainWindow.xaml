@@ -925,7 +925,7 @@
                                                     </Border>
                                                 </Grid>
 
-                                                <UniformGrid Margin="0,18,0,0" Columns="4">
+                                                <UniformGrid Margin="0,18,0,0" Columns="5">
                                                     <StackPanel Margin="0,0,16,14">
                                                         <TextBlock FontSize="11" FontWeight="SemiBold"
                                                                    Foreground="{DynamicResource TextMutedBrush}"
@@ -957,6 +957,14 @@
                                                         <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
                                                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                                                    Text="{Binding StockStatusText}" />
+                                                    </StackPanel>
+                                                    <StackPanel Margin="0,0,0,14">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                                   Text="COMPOSIÇÃO DO KIT" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                   Text="{Binding KitCompositionText}" TextWrapping="Wrap" />
                                                     </StackPanel>
                                                     <StackPanel Margin="0,0,16,0">
                                                         <TextBlock FontSize="11" FontWeight="SemiBold"
@@ -996,6 +1004,14 @@
                                                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                                                        Text="{Binding MinStockText}" />
                                                         </StackPanel>
+                                                    </StackPanel>
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                                   Text="MARGEM" />
+                                                        <TextBlock Margin="0,5,0,0" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                   Text="{Binding ProfitMarginText}" />
                                                     </StackPanel>
                                                 </UniformGrid>
                                             </StackPanel>
@@ -1052,6 +1068,8 @@
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="18" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="14" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="14" />
                                         <RowDefinition Height="Auto" />
@@ -1143,7 +1161,39 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <StackPanel Grid.Row="4">
+                                    <Grid Grid.Row="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="14" />
+                                            <ColumnDefinition Width="1*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" Text="Tipo" />
+                                            <CheckBox Content="Produto kit"
+                                                      IsChecked="{Binding Catalog.EditorIsKit}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" Text="Produto-base" />
+                                            <ComboBox ItemsSource="{Binding Catalog.KitComponentProducts}"
+                                                      SelectedItem="{Binding Catalog.EditorKitComponent}"
+                                                      DisplayMemberPath="Name"
+                                                      IsEnabled="{Binding Catalog.EditorIsKit}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" Text="Quantidade consumida" />
+                                            <TextBox Text="{Binding Catalog.EditorKitComponentQuantity, UpdateSourceTrigger=PropertyChanged}"
+                                                     IsEnabled="{Binding Catalog.EditorIsKit}"
+                                                     ToolTip="Quantidade do produto-base consumida por unidade do kit"
+                                                     Style="{StaticResource TextInputStyle}" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <StackPanel Grid.Row="6">
                                         <TextBlock Margin="0,0,0,5" FontSize="12" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource TextSecondaryBrush}" Text="Motivo do estoque" />
                                         <TextBox Text="{Binding Catalog.EditorStockReason, UpdateSourceTrigger=PropertyChanged}"
@@ -1151,9 +1201,11 @@
                                                  Style="{StaticResource TextInputStyle}" />
                                     </StackPanel>
 
-                                    <Grid Grid.Row="6">
+                                    <Grid Grid.Row="8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="12" />
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="12" />
                                             <ColumnDefinition Width="Auto" />
@@ -1161,10 +1213,25 @@
                                         <TextBlock VerticalAlignment="Center" FontSize="12"
                                                    Foreground="{DynamicResource TextMutedBrush}"
                                                    Text="Os valores usam o mesmo cadastro da versão web." />
-                                        <Button Grid.Column="1" MinWidth="110"
+                                        <Button Grid.Column="1" MinWidth="120"
+                                                Click="DeleteSelectedProduct_Click"
+                                                CommandParameter="{Binding Catalog.SelectedProduct}"
+                                                Content="Excluir produto">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Catalog.IsEditingProduct}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <Button Grid.Column="3" MinWidth="110"
                                                 Command="{Binding Catalog.CloseProductEditorCommand}"
                                                 Content="Cancelar" Style="{StaticResource SecondaryButtonStyle}" />
-                                        <Button Grid.Column="3" MinWidth="130"
+                                        <Button Grid.Column="5" MinWidth="130"
                                                 Command="{Binding Catalog.SaveProductCommand}"
                                                 Content="Salvar produto" Style="{StaticResource PrimaryButtonStyle}" />
                                     </Grid>

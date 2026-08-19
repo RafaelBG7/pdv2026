@@ -178,6 +178,12 @@ public partial class MainWindow : Window
 
     private void HandleLoginPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(LoginViewModel.IsAuthenticated))
+        {
+            ApplyAuthenticationWindowMode();
+            return;
+        }
+
         if (e.PropertyName != nameof(LoginViewModel.Password) || _syncingPassword)
         {
             return;
@@ -205,6 +211,31 @@ public partial class MainWindow : Window
         {
             _syncingPassword = false;
         }
+    }
+
+    private void ApplyAuthenticationWindowMode()
+    {
+        if (_viewModel.Login.IsAuthenticated)
+        {
+            MaxWidth = double.PositiveInfinity;
+            MaxHeight = double.PositiveInfinity;
+            MinWidth = 900;
+            MinHeight = 640;
+            ResizeMode = ResizeMode.CanResize;
+            Width = 1180;
+            Height = 780;
+            return;
+        }
+
+        WindowState = WindowState.Normal;
+        ResizeMode = ResizeMode.CanMinimize;
+        MinWidth = 470;
+        MinHeight = 640;
+        MaxWidth = 470;
+        MaxHeight = 700;
+        Width = 470;
+        Height = 700;
+        QueueLoginFocus();
     }
 
     protected override void OnClosed(EventArgs e)

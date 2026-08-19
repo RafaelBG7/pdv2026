@@ -409,7 +409,7 @@
                         <TextBlock Margin="8" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextMutedBrush}" Text="MENU" />
                         <Button Grid.Row="2" Margin="0,0,0,8" Command="{Binding ShowDashboardCommand}"
-                                Content="▦  Dashboard">
+                                Content="Dashboard" Tag="&#xE80F;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -423,7 +423,7 @@
                             </Button.Style>
                         </Button>
                         <Button Grid.Row="3" Margin="0,0,0,8" Command="{Binding ShowProductsCommand}"
-                                Content="◇  Produtos">
+                                Content="Produtos" Tag="&#xE7BF;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -441,7 +441,7 @@
                             </Button.Style>
                         </Button>
                         <Button Grid.Row="4" Command="{Binding ShowCategoriesCommand}"
-                                Content="□  Categorias">
+                                Content="Categorias" Tag="&#xE8EC;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -461,7 +461,7 @@
                         <Button Grid.Row="5" Margin="0,8,0,0"
                                 IsEnabled="{Binding Sales.IsAvailable}"
                                 Command="{Binding ShowSalesCommand}"
-                                Content="$  Vendas">
+                                Content="Vendas" Tag="&#xE8C7;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -477,7 +477,7 @@
                         <Button Grid.Row="6" Margin="0,8,0,0"
                                 IsEnabled="{Binding CashRegister.IsAvailable}"
                                 Command="{Binding ShowCashRegisterCommand}"
-                                Content="◉  Caixa">
+                                Content="Caixa" Tag="&#xE821;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -493,7 +493,7 @@
                         <Button Grid.Row="7" Margin="0,8,0,0"
                                 IsEnabled="{Binding Stock.CanViewStock}"
                                 Command="{Binding ShowStockCommand}"
-                                Content="▣  Estoque">
+                                Content="Estoque" Tag="&#xE7B8;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -509,7 +509,7 @@
                         <Button Grid.Row="8" Margin="0,8,0,0"
                                 IsEnabled="{Binding Payables.IsAvailable}"
                                 Command="{Binding ShowPayablesCommand}"
-                                Content="▤  Contas">
+                                Content="Contas a pagar" Tag="&#xE787;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -525,7 +525,7 @@
                         <Button Grid.Row="9" Margin="0,8,0,0"
                                 IsEnabled="{Binding Reports.IsAvailable}"
                                 Command="{Binding ShowReportsCommand}"
-                                Content="▥  Relatórios">
+                                Content="Relatórios" Tag="&#xE9D2;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -541,7 +541,7 @@
                         <Button Grid.Row="10" Margin="0,8,0,0"
                                 IsEnabled="{Binding Audit.IsAvailable}"
                                 Command="{Binding ShowAuditCommand}"
-                                Content="◇  Auditoria">
+                                Content="Auditoria" Tag="&#xEA18;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>
@@ -556,7 +556,7 @@
                         </Button>
                         <Button Grid.Row="11" Margin="0,8,0,0"
                                 Command="{Binding ShowSettingsCommand}"
-                                Content="○  Ajustes">
+                                Content="Configurações" Tag="&#xE713;">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                     <Style.Triggers>

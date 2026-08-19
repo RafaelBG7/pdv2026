@@ -414,8 +414,8 @@
     </Style>
 
     <Style x:Key="ThemeToggleButtonStyle" TargetType="Button">
-        <Setter Property="Width" Value="68" />
-        <Setter Property="Height" Value="38" />
+        <Setter Property="Width" Value="58" />
+        <Setter Property="Height" Value="32" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="ToolTip" Value="Alternar tema" />
@@ -423,28 +423,33 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid Width="68" Height="38">
+                    <Grid Width="58" Height="32">
                         <Border x:Name="Track"
                                 Background="{DynamicResource SurfaceElevatedBrush}"
                                 BorderBrush="{DynamicResource BorderStrongBrush}"
                                 BorderThickness="1"
-                                CornerRadius="19" />
-                        <Path x:Name="SunIcon" Width="16" Height="16" Margin="11,0,0,0"
+                                CornerRadius="16" />
+                        <Ellipse x:Name="Thumb" Width="24" Height="24"
+                                 HorizontalAlignment="Left" Margin="4,0,0,0"
+                                 Fill="{DynamicResource SurfaceBrush}"
+                                 Stroke="{DynamicResource BorderBrush}"
+                                 StrokeThickness="1">
+                            <Ellipse.Effect>
+                                <DropShadowEffect BlurRadius="5" Opacity="0.2" ShadowDepth="1" />
+                            </Ellipse.Effect>
+                            <Ellipse.RenderTransform><TranslateTransform x:Name="ThumbTransform" /></Ellipse.RenderTransform>
+                        </Ellipse>
+                        <Path x:Name="SunIcon" Width="13" Height="13" Margin="9.5,0,0,0"
                               HorizontalAlignment="Left" VerticalAlignment="Center"
                               Data="M12,8 A4,4 0 1 1 4,8 A4,4 0 1 1 12,8 M8,0 L8,2 M8,14 L8,16 M0,8 L2,8 M14,8 L16,8 M2.3,2.3 L3.7,3.7 M12.3,12.3 L13.7,13.7 M2.3,13.7 L3.7,12.3 M12.3,3.7 L13.7,2.3"
                               Stroke="{DynamicResource WarningBrush}" StrokeThickness="1.5"
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round">
                             <Path.RenderTransform><RotateTransform x:Name="SunRotation" CenterX="8" CenterY="8" /></Path.RenderTransform>
                         </Path>
-                        <Path x:Name="MoonIcon" Width="16" Height="16" Margin="0,0,11,0"
+                        <Path x:Name="MoonIcon" Width="13" Height="13" Margin="0,0,9.5,0"
                               HorizontalAlignment="Right" VerticalAlignment="Center"
                               Data="M13.8,10.8 A6,6 0 0 1 5.2,2.2 A6,6 0 1 0 13.8,10.8"
                               Fill="{DynamicResource PrimaryHoverBrush}" Opacity="0.45" />
-                        <Ellipse x:Name="Thumb" Width="28" Height="28"
-                                 HorizontalAlignment="Left" Margin="5,0,0,0"
-                                 Fill="{DynamicResource SurfaceBrush}">
-                            <Ellipse.RenderTransform><TranslateTransform x:Name="ThumbTransform" /></Ellipse.RenderTransform>
-                        </Ellipse>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -459,20 +464,20 @@
                             <DataTrigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="30" Duration="0:0:0.24">
+                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="26" Duration="0:0:0.2">
                                             <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
                                         </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="55" Duration="0:0:0.24" />
+                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="45" Duration="0:0:0.2" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </DataTrigger.EnterActions>
                             <DataTrigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.24">
+                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.2">
                                             <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
                                         </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="0" Duration="0:0:0.24" />
+                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="0" Duration="0:0:0.2" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </DataTrigger.ExitActions>
@@ -499,13 +504,26 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="10">
-                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                          VerticalAlignment="Center"
-                                          RecognizesAccessKey="True" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border x:Name="IconFrame"
+                                    Width="28" Height="28" Margin="0,0,11,0"
+                                    Background="{DynamicResource SurfaceElevatedBrush}"
+                                    BorderBrush="{DynamicResource BorderStrongBrush}"
+                                    BorderThickness="1" CornerRadius="8">
+                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="14" FontWeight="Normal"
+                                           Foreground="{TemplateBinding Foreground}"
+                                           Text="{TemplateBinding Tag}" />
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </StackPanel>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="NavBorder" Property="Background" Value="{DynamicResource SidebarRaisedBrush}" />
+                            <Setter TargetName="IconFrame" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">

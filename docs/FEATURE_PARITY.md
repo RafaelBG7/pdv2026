@@ -89,7 +89,7 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Módulo | Ação/recurso | Web | App | Backend/API | Situação | Ação |
 |---|---|---|---|---|---|---|
 | Vendas | exigir caixa aberto | Sim | Sim | sale_service | OK | Nenhuma |
-| Vendas | pesquisa/autocomplete | Sim | Sim com debounce/cancelamento | catálogo tenant | OK | Nenhuma |
+| Vendas | pesquisa/autocomplete | Sim | Até 20 sugestões ranqueadas, densas, virtualizadas, com debounce/cancelamento | catálogo tenant retorna até 30 | OK | Modal responsivo e teclado aprimorados em 19/08/2026 |
 | Vendas | seleção de quantidade | Modal Web | Modal WPF equivalente | valida novamente | OK | Entregue em `0d14e87` |
 | Vendas | múltiplos itens/alteração/remoção | Sim | Sim | itens revalidados | OK | Nenhuma |
 | Vendas | desconto | Sim | Popup | servidor limita | OK | Nenhuma |

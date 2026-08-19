@@ -906,7 +906,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 1,
                 30,
                 cancellationToken);
-            if (!IsSameSession(session))
+            if (!IsSameSession(session)
+                || !string.Equals(SearchText.Trim(), term, StringComparison.Ordinal))
             {
                 return;
             }
@@ -948,7 +949,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             .OrderBy(product => GetProductSearchRank(product, normalizedTerm))
             .ThenBy(product => NormalizeSearchText(product.Name), StringComparer.OrdinalIgnoreCase)
             .ThenBy(product => product.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Take(12);
+            .Take(20);
     }
 
     private static bool ProductMatchesSearch(CatalogProduct product, string normalizedTerm)

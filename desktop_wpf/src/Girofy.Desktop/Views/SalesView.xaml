@@ -806,12 +806,12 @@
                 </Style>
             </Grid.Style>
 
-            <Border Margin="32" Padding="24" MaxWidth="1180" MaxHeight="760"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"
+            <Border Margin="24" Padding="20" MinWidth="720" MinHeight="540"
+                    MaxWidth="1600" MaxHeight="920"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                     Background="{DynamicResource SurfaceRaisedBrush}"
                     BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1" CornerRadius="10">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <Grid>
+                <Grid>
                         <Grid>
                             <Grid.Style>
                                 <Style TargetType="Grid">
@@ -826,14 +826,17 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="16" />
-                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
                                 <RowDefinition Height="14" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="16" />
-                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.18*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="0.82*" />
+                            </Grid.ColumnDefinitions>
 
-                            <Grid>
+                            <Grid Grid.ColumnSpan="3">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
@@ -851,15 +854,13 @@
                                         Content="Fechar" Style="{StaticResource SecondaryButtonStyle}" />
                             </Grid>
 
-                            <Border Grid.Row="2" Padding="16" Background="{DynamicResource SurfaceBrush}"
+                            <Border Grid.Row="2" Grid.Column="0" Padding="16" Background="{DynamicResource SurfaceBrush}"
                                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="10" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="10" />
-                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
                                         <RowDefinition Height="10" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
@@ -882,7 +883,7 @@
                                                 Content="Pesquisar" Visibility="Collapsed"
                                                 Style="{StaticResource PrimaryButtonStyle}" />
                                     </Grid>
-                                    <Border Grid.Row="4" MaxHeight="248" Padding="6"
+                                    <Border Grid.Row="4" MinHeight="280" Padding="4"
                                             Background="{DynamicResource SurfaceRaisedBrush}"
                                             BorderBrush="{DynamicResource BorderBrush}"
                                             BorderThickness="1" CornerRadius="8">
@@ -910,12 +911,15 @@
                                                  BorderThickness="0"
                                                  Foreground="{DynamicResource TextPrimaryBrush}"
                                                  ScrollViewer.CanContentScroll="True"
+                                                 VirtualizingPanel.IsVirtualizing="True"
+                                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                                 VirtualizingPanel.ScrollUnit="Pixel"
                                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
                                             <ListBox.ItemContainerStyle>
                                                 <Style TargetType="ListBoxItem">
                                                     <Setter Property="Padding" Value="0" />
-                                                    <Setter Property="Margin" Value="0,0,0,6" />
+                                                    <Setter Property="Margin" Value="0,0,0,3" />
                                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                                     <Setter Property="Background" Value="Transparent" />
                                                     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -925,7 +929,7 @@
                                                         <Setter.Value>
                                                             <ControlTemplate TargetType="ListBoxItem">
                                                                 <Border x:Name="SuggestionItem"
-                                                                        Padding="12"
+                                                                        Padding="9,7"
                                                                         Background="{TemplateBinding Background}"
                                                                         BorderBrush="Transparent"
                                                                         BorderThickness="1"
@@ -970,7 +974,7 @@
                                             </ListBox.ItemContainerStyle>
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Grid MinHeight="54">
+                                                    <Grid MinHeight="40">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="16" />
@@ -978,20 +982,20 @@
                                                         </Grid.ColumnDefinitions>
                                                         <StackPanel>
                                                             <TextBlock Text="{Binding Name}"
-                                                                       FontSize="15"
+                                                                       FontSize="14"
                                                                        FontWeight="SemiBold"
                                                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                                                        TextTrimming="CharacterEllipsis" />
-                                                            <StackPanel Margin="0,4,0,0"
+                                                            <StackPanel Margin="0,2,0,0"
                                                                         Orientation="Horizontal">
                                                                 <TextBlock Text="{Binding CategoryName}"
-                                                                           FontSize="13"
+                                                                           FontSize="12"
                                                                            Foreground="{DynamicResource TextSecondaryBrush}" />
                                                                 <TextBlock Text=" · "
-                                                                           FontSize="13"
+                                                                           FontSize="12"
                                                                            Foreground="{DynamicResource TextMutedBrush}" />
                                                                 <TextBlock Text="{Binding StockText}"
-                                                                           FontSize="13"
+                                                                           FontSize="12"
                                                                            Foreground="{DynamicResource TextSecondaryBrush}" />
                                                             </StackPanel>
                                                         </StackPanel>
@@ -999,13 +1003,13 @@
                                                                     HorizontalAlignment="Right"
                                                                     VerticalAlignment="Center">
                                                             <TextBlock Text="{Binding SalePriceText}"
-                                                                       FontSize="14"
+                                                                       FontSize="13"
                                                                        FontWeight="Bold"
                                                                        Foreground="{DynamicResource AccentBrush}"
                                                                        TextAlignment="Right" />
-                                                            <TextBlock Margin="0,3,0,0"
-                                                                       Text="{Binding StockText}"
-                                                                       FontSize="12"
+                                                            <TextBlock Margin="0,2,0,0"
+                                                                       Text="{Binding BarcodeText}"
+                                                                       FontSize="11"
                                                                        Foreground="{DynamicResource TextMutedBrush}"
                                                                        TextAlignment="Right" />
                                                         </StackPanel>
@@ -1014,37 +1018,21 @@
                                             </ListBox.ItemTemplate>
                                         </ListBox>
                                     </Border>
-                                    <Grid Grid.Row="6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
-                                                       Text="PRODUTO SELECIONADO" />
-                                            <TextBlock Margin="0,3,0,0" FontSize="15" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource TextPrimaryBrush}"
-                                                       Text="{Binding SelectedSearchProduct.Name, TargetNullValue='Selecione um resultado'}" />
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                                                   FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
-                                                   Text="Selecione um produto para informar a quantidade" />
-                                    </Grid>
                                 </Grid>
                             </Border>
 
-                            <Border Grid.Row="4" Padding="16" Background="{DynamicResource SurfaceBrush}"
+                            <Border Grid.Row="2" Grid.Column="2" Padding="16" Background="{DynamicResource SurfaceBrush}"
                                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="10" />
-                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
                                     <TextBlock FontSize="17" FontWeight="Bold"
                                                Foreground="{DynamicResource TextPrimaryBrush}"
                                                Text="Itens do pedido" />
-                                    <DataGrid Grid.Row="2" MinHeight="112" MaxHeight="250"
+                                    <DataGrid Grid.Row="2" MinHeight="280"
                                               ItemsSource="{Binding CartItems}"
                                               AutoGenerateColumns="False" IsReadOnly="True"
                                               CanUserAddRows="False" CanUserDeleteRows="False"
@@ -1097,7 +1085,7 @@
                                 </Grid>
                             </Border>
 
-                            <Grid Grid.Row="6">
+                            <Grid Grid.Row="4" Grid.ColumnSpan="3">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
@@ -1313,8 +1301,7 @@
                             <Button Grid.Row="4" Height="54" Command="{Binding FinalizeCommand}"
                                     Content="Finalizar venda - F2" Style="{StaticResource PrimaryButtonStyle}" />
                         </Grid>
-                    </Grid>
-                </ScrollViewer>
+                        </Grid>
             </Border>
         </Grid>
 

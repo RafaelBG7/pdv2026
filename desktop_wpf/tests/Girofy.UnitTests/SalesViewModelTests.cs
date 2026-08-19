@@ -75,6 +75,36 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Search_keeps_up_to_twenty_ranked_results_for_dense_picker()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient
+        {
+            CatalogProducts = Enumerable.Range(1, 30)
+                .Select(index => new CatalogProduct
+                {
+                    Id = index,
+                    Name = $"Coca Cola opção {index:00}",
+                    Barcode = $"789{index:000}",
+                    SalePrice = index,
+                    StockQuantity = index,
+                    Active = true,
+                })
+                .ToArray(),
+        };
+        using var viewModel = new SalesViewModel(apiClient, sessionContext)
+        {
+            SearchText = "coca",
+        };
+
+        await viewModel.SearchCommand.ExecuteAsync();
+
+        Assert.Equal(20, viewModel.SearchResults.Count);
+        Assert.Equal(30, apiClient.LastCatalogPerPage);
+        Assert.Equal("Coca Cola opção 01", viewModel.SelectedSearchProduct?.Name);
+    }
+
+    [Fact]
     public async Task Initialize_loads_today_sales_history()
     {
         var sessionContext = SessionContext();
@@ -548,6 +578,10 @@ public sealed class SalesViewModelTests
 
         public IReadOnlyList<DashboardRecentSale> DashboardRecentSales { get; init; } = [];
 
+        public IReadOnlyList<CatalogProduct>? CatalogProducts { get; init; }
+
+        public int LastCatalogPerPage { get; private set; }
+
         public Exception? HistoryException { get; init; }
 
         public int HistoryCalls { get; private set; }
@@ -570,38 +604,42 @@ public sealed class SalesViewModelTests
             string sort,
             int page,
             int perPage,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(new CatalogProductList
+            CancellationToken cancellationToken)
+        {
+            LastCatalogPerPage = perPage;
+            var products = CatalogProducts ??
+            [
+                new CatalogProduct
+                {
+                    Id = 10,
+                    Name = "Coca Zero 2L",
+                    Barcode = "790",
+                    SalePrice = 13m,
+                    StockQuantity = 5,
+                    Active = true,
+                },
+                new CatalogProduct
+                {
+                    Id = 9,
+                    Name = "Coca Cola 2L",
+                    Barcode = "789",
+                    SalePrice = 12m,
+                    StockQuantity = 8,
+                    Active = true,
+                },
+            ];
+            return Task.FromResult(new CatalogProductList
             {
-                Items =
-                [
-                    new CatalogProduct
-                    {
-                        Id = 10,
-                        Name = "Coca Zero 2L",
-                        Barcode = "790",
-                        SalePrice = 13m,
-                        StockQuantity = 5,
-                        Active = true,
-                    },
-                    new CatalogProduct
-                    {
-                        Id = 9,
-                        Name = "Coca Cola 2L",
-                        Barcode = "789",
-                        SalePrice = 12m,
-                        StockQuantity = 8,
-                        Active = true,
-                    },
-                ],
+                Items = products,
                 Pagination = new CatalogPagination
                 {
                     Page = 1,
                     PerPage = 30,
-                    Total = 2,
+                    Total = products.Count,
                     TotalPages = 1,
                 },
             });
+        }
 
         public Task<SaleReceipt> CreateSaleAsync(
             string accessToken,

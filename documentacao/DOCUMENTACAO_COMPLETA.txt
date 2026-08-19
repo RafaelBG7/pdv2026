@@ -439,10 +439,26 @@ disponível no cadastro de produtos após a confirmação da API.
 6.2.3 Vendas, quantidade e pagamento
 
 O editor de venda do App reproduz o fluxo operacional da Web sem incorporar a
-página Web. A pesquisa usa debounce e apresenta sugestões de produtos. Ao
-confirmar um produto, o campo de quantidade não permanece solto no formulário: o
-App abre um popup modal central com overlay, mantendo o restante da venda visível,
-porém bloqueado contra cliques acidentais.
+página Web. O modal principal ocupa a área útil disponível com margem externa de
+24 px, limites de 720 x 540 até 1600 x 920 e alinhamento Stretch; assim ele cresce
+em Full HD sem ficar colado às bordas e continua acessível em notebooks. A etapa
+de produtos é dividida em pesquisa/resultados à esquerda e carrinho à direita,
+com rodapés financeiros fixos e scroll independente nas listas.
+
+A pesquisa usa debounce, cancelamento e descarte de respostas antigas. A API já
+retorna até 30 candidatos por consulta operacional e o App mantém os 20 resultados
+mais relevantes, em vez do limite anterior de 12. A lista usa linhas compactas de
+aproximadamente 44 px, virtualização e recycling; normalmente exibe de 8 a 15
+produtos ao mesmo tempo conforme resolução/escala, com scroll para excedentes.
+Cada linha prioriza nome, categoria, estoque, preço e código de barras.
+
+Setas para cima/baixo percorrem os resultados, Home/End acessam os extremos,
+Enter confirma e Esc limpa/fecha as sugestões. O primeiro resultado é selecionado
+automaticamente. Hover, foco e seleção possuem estados distintos baseados em
+recursos dinâmicos compatíveis com Light/Dark. Ao confirmar um produto, o campo de
+quantidade não permanece solto no formulário: o App abre um popup modal central
+com overlay, mantendo o restante da venda visível, porém bloqueado contra cliques
+acidentais.
 
 O popup de quantidade exibe:
 
@@ -597,6 +613,9 @@ Este marco documenta em conjunto:
 - cadastro e edição de Categorias em popup no padrão visual de Produtos;
 - seleção de quantidade da venda em popup modal com produto, preço, estoque,
   validação, Enter para adicionar e Esc para cancelar;
+- ampliação responsiva do modal de venda, layout resultados x carrinho, até 20
+  sugestões ranqueadas, lista compacta virtualizada e navegação integral por
+  teclado;
 - manutenção de contraste, recursos dinâmicos e compatibilidade Light/Dark;
 - correção do teste de Dashboard para usar a data comercial de São Paulo durante
   a virada do dia em runners UTC;

@@ -799,23 +799,90 @@
                         <Border Margin="0,18,0,0"
                                 Style="{StaticResource SettingsInnerPanelStyle}">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="16" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="18" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="16" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="16" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
-                                               Text="Alertas da adega" />
+                                               Text="Preferências de notificações" />
                                     <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
-                                               Text="A versão Windows mostra os alertas operacionais. A configuração detalhada de envio por e-mail continua disponível na versão web." />
+                                               Text="Defina onde receber alertas, a severidade mínima, o período de silêncio e o resumo diário." />
                                 </StackPanel>
-                                <Button Grid.Column="2"
-                                        MinWidth="168"
-                                        VerticalAlignment="Center"
-                                        Command="{Binding OpenWebSettingsCommand}"
-                                        Content="Configurar na web"
-                                        Style="{StaticResource PrimaryButtonStyle}" />
+
+                                <UniformGrid Grid.Row="2" Columns="3">
+                                    <Border Margin="0,0,8,0" Style="{StaticResource SettingsInnerPanelStyle}">
+                                        <CheckBox Foreground="{DynamicResource TextPrimaryBrush}"
+                                                  IsChecked="{Binding NotificationInAppEnabled}"
+                                                  Content="Alertas dentro do Girofy" />
+                                    </Border>
+                                    <Border Margin="4,0" Style="{StaticResource SettingsInnerPanelStyle}">
+                                        <CheckBox Foreground="{DynamicResource TextPrimaryBrush}"
+                                                  IsChecked="{Binding NotificationDesktopEnabled}"
+                                                  Content="Notificações do Windows" />
+                                    </Border>
+                                    <Border Margin="8,0,0,0" Style="{StaticResource SettingsInnerPanelStyle}">
+                                        <CheckBox Foreground="{DynamicResource TextPrimaryBrush}"
+                                                  IsChecked="{Binding NotificationEmailEnabled}"
+                                                  Content="Enviar também por e-mail" />
+                                    </Border>
+                                </UniformGrid>
+
+                                <Grid Grid.Row="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Severidade mínima" />
+                                        <ComboBox ItemsSource="{Binding NotificationSeverityOptions}"
+                                                  DisplayMemberPath="Label" SelectedValuePath="Value"
+                                                  SelectedValue="{Binding NotificationMinimumSeverity}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Silenciar a partir de" />
+                                        <TextBox Text="{Binding NotificationQuietHoursStart, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="HH:mm, ou deixe vazio" Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Silenciar até" />
+                                        <TextBox Text="{Binding NotificationQuietHoursEnd, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="HH:mm, ou deixe vazio" Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Grid.Row="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Visibility="{Binding NotificationRecipientsVisibility}">
+                                        <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Destinatários de e-mail" />
+                                        <TextBox Text="{Binding NotificationEmailRecipients, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Separe múltiplos e-mails por vírgula" Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <CheckBox Margin="0,0,0,8" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                  IsChecked="{Binding NotificationDailyDigestEnabled}"
+                                                  Content="Resumo diário" />
+                                        <TextBox Text="{Binding NotificationDailyDigestTime, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Horário HH:mm" Style="{StaticResource TextInputStyle}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="4" MinWidth="180" VerticalAlignment="Bottom"
+                                            Command="{Binding SaveNotificationPreferencesCommand}"
+                                            Content="Salvar preferências" Style="{StaticResource PrimaryButtonStyle}" />
+                                </Grid>
                             </Grid>
                         </Border>
                     </TabItem>

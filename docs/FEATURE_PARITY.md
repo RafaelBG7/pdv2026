@@ -71,8 +71,8 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Produtos | listar e paginar | 20/página | 50/página | paginação configurável | OK | Diferença de UX intencional |
 | Produtos | nome/código | Pesquisa única | Pesquisa única | `q` cobre ambos | OK | Nenhuma |
 | Produtos | categoria/status | Filtros | Filtros | suportados | OK | Nenhuma |
-| Produtos | estoque/preço | Filtros completos | Ausentes | API não aceita esses filtros | CONTRATO API AUSENTE | Criar contrato antes da UI |
-| Produtos | ordenação | nome/preço/estoque/criação | nome/preço/estoque | API sem criação | DIVERGÊNCIA FUNCIONAL | Avaliar `created_desc` na API/App |
+| Produtos | estoque/preço | Filtros por disponibilidade, estoque baixo, sem estoque e faixa de preço | Mesmos filtros da Web | `stock`, `min_price` e `max_price` validados e isolados por empresa | OK | Entregue em 20/08/2026 |
+| Produtos | ordenação | nome/preço/estoque/criação | nome/preço/estoque/mais recentes/mais antigos | `created_desc` e `created_asc` com desempate por ID | OK | Entregue em 20/08/2026 |
 | Produtos | detalhes | Expansível | Expansível | payload de catálogo | OK | Nenhuma |
 | Produtos | criar/editar campos básicos | Completo | Modal nativo | POST/PUT products | OK | Nenhuma |
 | Produtos | ativar/inativar | Ação dedicada | campo Ativo no editor | PUT products | OK | UX diferente, regra equivalente |
@@ -81,7 +81,7 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Produtos | kits | Cria/edita base e consumo | Cria/edita base e consumo | POST/PUT validam tenant, atividade, quantidade e autorreferência | OK | Contrato e editor corrigidos nesta auditoria |
 | Produtos | estoque manual | Edição gera movimento | Edição gera movimento | stock_service | OK | Nenhuma |
 | Categorias | listar/criar/editar/excluir | Completo | Completo em popup | CRUD completo | OK | Nenhuma |
-| Categorias | pesquisa | Parâmetro disponível | não possui campo | API aceita `q` | DIVERGÊNCIA FUNCIONAL | Adicionar quando lista crescer |
+| Categorias | pesquisa | Parâmetro disponível | Campo nativo com Pesquisar, Enter e Limpar | API tenant aceita `q` | OK | Entregue no App em 20/08/2026 |
 | Categorias | exclusão com produtos | Rejeita/valida | mostra erro API | category_service | OK | Nenhuma |
 
 ### Vendas e caixa
@@ -128,8 +128,8 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Auditoria | filtros/paginação/detalhe | Sim | Sim | `/audit/logs` | OK | Nenhuma |
 | Auditoria | escopo master | Sim | Não | rotas master | EXCLUSIVO WEB POR DECISÃO | Manter |
 | Notificações | listar/contagem/ler/ler todas/dispensar | Sim | Popover | endpoints dedicados | OK | Nenhuma |
-| Notificações | preferências internas | Sim | cliente possui contrato, sem editor completo | GET/PUT preferences | DIVERGÊNCIA FUNCIONAL | Integrar ao painel Alertas |
-| Alertas por e-mail | configurar destinatários/tipos | Sim | direciona à Web | backend possui settings/delivery | EXCLUSIVO WEB POR DECISÃO | Manter até contrato administrativo ser definido |
+| Notificações | preferências internas | Sim | Editor completo no painel Alertas | GET/PUT preferences | OK | Entregue em 20/08/2026 |
+| Alertas por e-mail | canal, destinatários, severidade e resumo | Sim | Sim, respeitando `can_manage_settings` | backend possui settings/delivery | OK | Destinatários protegidos por permissão |
 | Perfil | nome/sobrenome/telefone | Sim | Sim | `/settings/profile` | OK | Nenhuma |
 | Perfil | troca de e-mail confirmada | Sim | abre Web | token/serviço Web | EXCLUSIVO WEB POR DECISÃO | Manter por segurança |
 | Senha | atual/nova/confirmação | Sim | Sim | `/settings/password` | OK | Nenhuma |
@@ -154,7 +154,7 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 - totalmente equivalentes ou equivalentes por comportamento: 60;
 - diferenças intencionais/exclusivas ou não aplicáveis: 6;
 - divergências visuais/funcionais/campos pendentes: 6;
-- linhas classificadas como contrato ausente: 1; as lacunas restantes abrangem filtros avançados de produto, ordenação por criação, pesquisa de categorias, preferências de notificações no painel nativo e acessibilidade avançada;
+- linhas classificadas como contrato ausente: 1; os contratos de filtros avançados de produto, ordenação por criação, pesquisa de categorias e preferências de notificações nativas foram concluídos em 20/08/2026; a acessibilidade avançada permanece como divergência funcional;
 - status: `PARIDADE WEB × APP × BACKEND: EM EVOLUÇÃO`.
 
 As contagens agrupam linhas relacionadas e devem ser atualizadas quando uma ação mudar de classificação. Não transformar este número em percentual de marketing.

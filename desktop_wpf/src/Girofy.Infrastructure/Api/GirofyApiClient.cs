@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using System.Globalization;
 using System.Text.Json;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Exceptions;
@@ -701,12 +702,38 @@ public sealed class GirofyApiClient(
         int page,
         int perPage,
         CancellationToken cancellationToken)
+        => await GetCatalogProductsAsync(
+            accessToken,
+            search,
+            categoryId,
+            activeFilter,
+            "all",
+            null,
+            null,
+            sort,
+            page,
+            perPage,
+            cancellationToken);
+
+    public async Task<CatalogProductList> GetCatalogProductsAsync(
+        string accessToken,
+        string search,
+        int? categoryId,
+        string activeFilter,
+        string stockFilter,
+        decimal? minPrice,
+        decimal? maxPrice,
+        string sort,
+        int page,
+        int perPage,
+        CancellationToken cancellationToken)
     {
         var query = new List<string>
         {
             $"page={Math.Max(1, page)}",
             $"per_page={Math.Clamp(perPage, 1, 100)}",
             $"active={Uri.EscapeDataString(activeFilter)}",
+            $"stock={Uri.EscapeDataString(stockFilter)}",
             $"sort={Uri.EscapeDataString(sort)}",
         };
         if (!string.IsNullOrWhiteSpace(search))
@@ -716,6 +743,14 @@ public sealed class GirofyApiClient(
         if (categoryId is > 0)
         {
             query.Add($"category_id={categoryId.Value}");
+        }
+        if (minPrice is not null)
+        {
+            query.Add($"min_price={minPrice.Value.ToString("0.00", CultureInfo.InvariantCulture)}");
+        }
+        if (maxPrice is not null)
+        {
+            query.Add($"max_price={maxPrice.Value.ToString("0.00", CultureInfo.InvariantCulture)}");
         }
 
         var path = $"api/v1/catalog/products?{string.Join('&', query)}";

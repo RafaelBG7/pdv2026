@@ -1245,6 +1245,58 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('cost_price', first_data['items'][0])
         self.assertEqual(search_page.get_json()['data']['items'][0]['name'], 'Coca Cola 2L')
 
+    def test_api_catalog_products_supports_stock_price_and_creation_filters(self):
+        user, company = self.create_api_user(role='operator', can_manage_products=False)
+        with self.app.app_context():
+            db.session.add_all([
+                Product(
+                    name='Produto antigo', company_id=company.id,
+                    sale_price=5, stock_quantity=0, min_stock_quantity=2,
+                    created_at=datetime(2026, 1, 1, 10, 0),
+                ),
+                Product(
+                    name='Produto baixo', company_id=company.id,
+                    sale_price=10, stock_quantity=1, min_stock_quantity=3,
+                    created_at=datetime(2026, 2, 1, 10, 0),
+                ),
+                Product(
+                    name='Produto novo', company_id=company.id,
+                    sale_price=20, stock_quantity=8, min_stock_quantity=2,
+                    created_at=datetime(2026, 3, 1, 10, 0),
+                ),
+            ])
+            db.session.commit()
+
+        headers = self.bearer_header(
+            self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token'],
+        )
+        filtered = self.client.get(
+            '/api/v1/catalog/products?active=all&stock=low&min_price=8&max_price=12',
+            headers=headers,
+        )
+        newest = self.client.get(
+            '/api/v1/catalog/products?active=all&sort=created_desc',
+            headers=headers,
+        )
+        oldest = self.client.get(
+            '/api/v1/catalog/products?active=all&sort=created_asc',
+            headers=headers,
+        )
+        invalid_range = self.client.get(
+            '/api/v1/catalog/products?min_price=20&max_price=10',
+            headers=headers,
+        )
+
+        self.assertEqual(filtered.status_code, 200)
+        self.assertEqual(
+            [item['name'] for item in filtered.get_json()['data']['items']],
+            ['Produto baixo'],
+        )
+        self.assertEqual(newest.get_json()['data']['items'][0]['name'], 'Produto novo')
+        self.assertEqual(oldest.get_json()['data']['items'][0]['name'], 'Produto antigo')
+        self.assertEqual(invalid_range.status_code, 422)
+        self.assertEqual(invalid_range.get_json()['errors'][0]['field'], 'min_price')
+
     def test_api_catalog_categories_are_alphabetical_and_company_scoped(self):
         user, company = self.create_api_user()
         with self.app.app_context():
@@ -6936,6 +6988,8 @@ class RouteTestCase(unittest.TestCase):
                 'email_enabled': True,
                 'minimum_severity': 'warning',
                 'email_recipients': 'alertas@girofy.test',
+                'quiet_hours_start': '22:00',
+                'quiet_hours_end': '07:00',
                 'daily_digest_enabled': True,
                 'daily_digest_time': '08:30',
             },
@@ -6944,6 +6998,18 @@ class RouteTestCase(unittest.TestCase):
         preference = preference_response.get_json()['data']
         self.assertEqual(preference['minimum_severity'], 'warning')
         self.assertEqual(preference['email_recipients'], 'alertas@girofy.test')
+        self.assertEqual(preference['quiet_hours_start'], '22:00')
+        self.assertEqual(preference['quiet_hours_end'], '07:00')
+        self.assertTrue(preference['daily_digest_enabled'])
+        self.assertEqual(preference['daily_digest_time'], '08:30')
+
+        invalid_time = self.client.put(
+            '/api/v1/notifications/preferences',
+            headers=self.bearer_header(token),
+            json={'quiet_hours_start': '25:00', 'quiet_hours_end': '07:00'},
+        )
+        self.assertEqual(invalid_time.status_code, 422)
+        self.assertEqual(invalid_time.get_json()['errors'][0]['field'], 'quiet_hours_start')
 
         with self.app.app_context():
             self.assertEqual(NotificationPreference.query.filter_by(

@@ -90,15 +90,99 @@ public sealed class CatalogViewModelTests
         viewModel.SearchText = "coca";
         viewModel.SelectedCategory = viewModel.Categories[1];
         viewModel.SelectedActiveFilter = viewModel.ActiveFilters[1];
-        viewModel.SelectedSort = viewModel.SortOptions[3];
+        viewModel.SelectedStockFilter = viewModel.StockFilters[2];
+        viewModel.MinPriceText = "5,50";
+        viewModel.MaxPriceText = "20,00";
+        viewModel.SelectedSort = viewModel.SortOptions[6];
 
         await viewModel.SearchCommand.ExecuteAsync();
 
         Assert.Equal("coca", apiClient.LastSearch);
         Assert.Equal(7, apiClient.LastCategoryId);
         Assert.Equal("active", apiClient.LastActiveFilter);
-        Assert.Equal("price_desc", apiClient.LastSort);
+        Assert.Equal("low", apiClient.LastStockFilter);
+        Assert.Equal(5.50m, apiClient.LastMinPrice);
+        Assert.Equal(20m, apiClient.LastMaxPrice);
+        Assert.Equal("created_desc", apiClient.LastSort);
         Assert.Equal(1, apiClient.LastPage);
+    }
+
+    [Fact]
+    public async Task Search_rejects_invalid_price_range_before_calling_api()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        var requestsBeforeSearch = apiClient.ProductListRequestCount;
+        viewModel.MinPriceText = "30,00";
+        viewModel.MaxPriceText = "10,00";
+
+        await viewModel.SearchCommand.ExecuteAsync();
+
+        Assert.Equal(requestsBeforeSearch, apiClient.ProductListRequestCount);
+        Assert.Equal("O preço mínimo não pode ser maior que o preço máximo.", viewModel.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Clear_product_filters_restores_defaults_and_reloads_catalog()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.SearchText = "coca";
+        viewModel.SelectedStockFilter = viewModel.StockFilters[3];
+        viewModel.MinPriceText = "5";
+        viewModel.MaxPriceText = "20";
+        viewModel.SelectedSort = viewModel.SortOptions[7];
+
+        await viewModel.ClearProductFiltersCommand.ExecuteAsync();
+
+        Assert.Empty(viewModel.SearchText);
+        Assert.Empty(viewModel.MinPriceText);
+        Assert.Empty(viewModel.MaxPriceText);
+        Assert.Equal("all", apiClient.LastStockFilter);
+        Assert.Null(apiClient.LastMinPrice);
+        Assert.Null(apiClient.LastMaxPrice);
+        Assert.Equal("name", apiClient.LastSort);
+    }
+
+    [Fact]
+    public async Task Category_search_uses_api_query_without_changing_product_category_options()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.CategorySearchText = "refrigerantes";
+
+        await viewModel.SearchCategoriesCommand.ExecuteAsync();
+
+        Assert.Equal("refrigerantes", apiClient.LastCategorySearch);
+        Assert.Single(viewModel.CategoryRows);
+        Assert.Single(viewModel.ProductCategories);
+        Assert.Equal("1 categoria encontrada", viewModel.CategorySummary);
+    }
+
+    [Fact]
+    public async Task Clearing_category_search_restores_unfiltered_query()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.CategorySearchText = "refrigerantes";
+        await viewModel.SearchCategoriesCommand.ExecuteAsync();
+
+        await viewModel.ClearCategorySearchCommand.ExecuteAsync();
+
+        Assert.Empty(viewModel.CategorySearchText);
+        Assert.Empty(apiClient.LastCategorySearch);
     }
 
     [Fact]
@@ -314,13 +398,23 @@ public sealed class CatalogViewModelTests
 
         public string LastSearch { get; private set; } = string.Empty;
 
+        public string LastCategorySearch { get; private set; } = string.Empty;
+
         public int? LastCategoryId { get; private set; }
 
         public string LastActiveFilter { get; private set; } = string.Empty;
 
+        public string LastStockFilter { get; private set; } = string.Empty;
+
+        public decimal? LastMinPrice { get; private set; }
+
+        public decimal? LastMaxPrice { get; private set; }
+
         public string LastSort { get; private set; } = string.Empty;
 
         public int LastPage { get; private set; }
+
+        public int ProductListRequestCount { get; private set; }
 
         public CatalogProductMutationRequest? CreatedProductRequest { get; private set; }
 
@@ -344,6 +438,7 @@ public sealed class CatalogViewModelTests
             CancellationToken cancellationToken)
         {
             LastAccessToken = accessToken;
+            LastCategorySearch = search;
             return Task.FromResult(new CatalogCategoryList
             {
                 Total = 1,
@@ -405,13 +500,42 @@ public sealed class CatalogViewModelTests
             int page,
             int perPage,
             CancellationToken cancellationToken)
+            => GetCatalogProductsAsync(
+                accessToken,
+                search,
+                categoryId,
+                activeFilter,
+                "all",
+                null,
+                null,
+                sort,
+                page,
+                perPage,
+                cancellationToken);
+
+        public Task<CatalogProductList> GetCatalogProductsAsync(
+            string accessToken,
+            string search,
+            int? categoryId,
+            string activeFilter,
+            string stockFilter,
+            decimal? minPrice,
+            decimal? maxPrice,
+            string sort,
+            int page,
+            int perPage,
+            CancellationToken cancellationToken)
         {
             LastAccessToken = accessToken;
             LastSearch = search;
             LastCategoryId = categoryId;
             LastActiveFilter = activeFilter;
+            LastStockFilter = stockFilter;
+            LastMinPrice = minPrice;
+            LastMaxPrice = maxPrice;
             LastSort = sort;
             LastPage = page;
+            ProductListRequestCount++;
             return Task.FromResult(new CatalogProductList
             {
                 Items =

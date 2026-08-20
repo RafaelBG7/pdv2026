@@ -12,12 +12,18 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
     private string _searchText = string.Empty;
+    private string _categorySearchText = string.Empty;
     private string _errorMessage = string.Empty;
     private bool _isBusy;
     private bool _isProductsView = true;
     private CatalogCategory? _selectedCategory;
     private CatalogFilterOption _selectedActiveFilter;
+    private CatalogFilterOption _selectedStockFilter;
     private CatalogFilterOption _selectedSort;
+    private string _minPriceText = string.Empty;
+    private string _maxPriceText = string.Empty;
+    private decimal? _appliedMinPrice;
+    private decimal? _appliedMaxPrice;
     private int _page = 1;
     private int _totalPages;
     private int _totalProducts;
@@ -57,6 +63,13 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             new("active", "Ativos"),
             new("inactive", "Inativos"),
         ];
+        StockFilters =
+        [
+            new("all", "Todos"),
+            new("available", "Com estoque"),
+            new("low", "Estoque baixo"),
+            new("out", "Sem estoque"),
+        ];
         SortOptions =
         [
             new("name", "Nome A-Z"),
@@ -65,10 +78,16 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             new("price_desc", "Maior preço"),
             new("stock", "Menor estoque"),
             new("stock_desc", "Maior estoque"),
+            new("created_desc", "Mais recentes"),
+            new("created_asc", "Mais antigos"),
         ];
         _selectedActiveFilter = ActiveFilters[0];
+        _selectedStockFilter = StockFilters[0];
         _selectedSort = SortOptions[0];
         SearchCommand = new AsyncRelayCommand(SearchAsync);
+        SearchCategoriesCommand = new AsyncRelayCommand(SearchCategoriesAsync);
+        ClearCategorySearchCommand = new AsyncRelayCommand(ClearCategorySearchAsync);
+        ClearProductFiltersCommand = new AsyncRelayCommand(ClearProductFiltersAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync);
         NextPageCommand = new AsyncRelayCommand(NextPageAsync);
@@ -99,6 +118,8 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
     public IReadOnlyList<CatalogFilterOption> ActiveFilters { get; }
 
+    public IReadOnlyList<CatalogFilterOption> StockFilters { get; }
+
     public IReadOnlyList<CatalogFilterOption> SortOptions { get; }
 
     public string SearchText
@@ -106,6 +127,16 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         get => _searchText;
         set => SetProperty(ref _searchText, value);
     }
+
+    public string CategorySearchText
+    {
+        get => _categorySearchText;
+        set => SetProperty(ref _categorySearchText, value);
+    }
+
+    public string CategorySummary => CategoryRows.Count == 1
+        ? "1 categoria encontrada"
+        : $"{CategoryRows.Count} categorias encontradas";
 
     public string ErrorMessage
     {
@@ -165,6 +196,24 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     {
         get => _selectedActiveFilter;
         set => SetProperty(ref _selectedActiveFilter, value);
+    }
+
+    public CatalogFilterOption SelectedStockFilter
+    {
+        get => _selectedStockFilter;
+        set => SetProperty(ref _selectedStockFilter, value);
+    }
+
+    public string MinPriceText
+    {
+        get => _minPriceText;
+        set => SetProperty(ref _minPriceText, value);
+    }
+
+    public string MaxPriceText
+    {
+        get => _maxPriceText;
+        set => SetProperty(ref _maxPriceText, value);
     }
 
     public CatalogFilterOption SelectedSort
@@ -393,6 +442,12 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand SearchCommand { get; }
 
+    public AsyncRelayCommand SearchCategoriesCommand { get; }
+
+    public AsyncRelayCommand ClearCategorySearchCommand { get; }
+
+    public AsyncRelayCommand ClearProductFiltersCommand { get; }
+
     public AsyncRelayCommand RefreshCommand { get; }
 
     public AsyncRelayCommand PreviousPageCommand { get; }
@@ -452,8 +507,51 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
     private async Task SearchAsync(CancellationToken cancellationToken)
     {
+        if (!TryParseOptionalMoney(MinPriceText, out var minPrice))
+        {
+            ErrorMessage = "Informe um preço mínimo válido.";
+            return;
+        }
+        if (!TryParseOptionalMoney(MaxPriceText, out var maxPrice))
+        {
+            ErrorMessage = "Informe um preço máximo válido.";
+            return;
+        }
+        if (minPrice is not null && maxPrice is not null && minPrice > maxPrice)
+        {
+            ErrorMessage = "O preço mínimo não pode ser maior que o preço máximo.";
+            return;
+        }
+        _appliedMinPrice = minPrice;
+        _appliedMaxPrice = maxPrice;
         Page = 1;
         await LoadProductsAsync(cancellationToken);
+    }
+
+    private async Task ClearProductFiltersAsync(CancellationToken cancellationToken)
+    {
+        SearchText = string.Empty;
+        SelectedActiveFilter = ActiveFilters[0];
+        SelectedStockFilter = StockFilters[0];
+        SelectedSort = SortOptions[0];
+        MinPriceText = string.Empty;
+        MaxPriceText = string.Empty;
+        _appliedMinPrice = null;
+        _appliedMaxPrice = null;
+        _suppressCategoryFilter = true;
+        SelectedCategory = Categories.FirstOrDefault();
+        _suppressCategoryFilter = false;
+        Page = 1;
+        await LoadProductsAsync(cancellationToken);
+    }
+
+    private Task SearchCategoriesAsync(CancellationToken cancellationToken) =>
+        LoadCategoryRowsAsync(cancellationToken);
+
+    private async Task ClearCategorySearchAsync(CancellationToken cancellationToken)
+    {
+        CategorySearchText = string.Empty;
+        await LoadCategoryRowsAsync(cancellationToken);
     }
 
     private async Task ApplyCategoryFilterAsync()
@@ -785,22 +883,65 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         {
             Categories.Clear();
             ProductCategories.Clear();
-            CategoryRows.Clear();
             Categories.Add(new CatalogCategory { Id = 0, Name = "Todas", ProductCount = result.Total });
             foreach (var category in result.Items)
             {
                 Categories.Add(category);
                 ProductCategories.Add(category);
-                CategoryRows.Add(category);
             }
             SelectedCategory = Categories.FirstOrDefault(category => category.Id == selectedCategoryId)
                 ?? Categories.FirstOrDefault();
-            SelectedCategoryRow = CategoryRows.FirstOrDefault(category => category.Id == selectedCategoryRowId);
+
+            var categoryRows = string.IsNullOrWhiteSpace(CategorySearchText)
+                ? result
+                : await _apiClient.GetCatalogCategoriesAsync(
+                    session.AccessToken,
+                    CategorySearchText,
+                    cancellationToken);
+            ApplyCategoryRows(categoryRows.Items, selectedCategoryRowId);
         }
         finally
         {
             _suppressCategoryFilter = false;
         }
+    }
+
+    private async Task LoadCategoryRowsAsync(CancellationToken cancellationToken)
+    {
+        var session = RequireSession();
+        var selectedCategoryRowId = SelectedCategoryRow?.Id ?? 0;
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
+        {
+            var result = await _apiClient.GetCatalogCategoriesAsync(
+                session.AccessToken,
+                CategorySearchText,
+                cancellationToken);
+            ApplyCategoryRows(result.Items, selectedCategoryRowId);
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception);
+        }
+        finally
+        {
+            IsBusy = false;
+            NotifyNavigationState();
+        }
+    }
+
+    private void ApplyCategoryRows(
+        IReadOnlyList<CatalogCategory> categories,
+        int selectedCategoryRowId)
+    {
+        CategoryRows.Clear();
+        foreach (var category in categories)
+        {
+            CategoryRows.Add(category);
+        }
+        SelectedCategoryRow = CategoryRows.FirstOrDefault(category => category.Id == selectedCategoryRowId);
+        OnPropertyChanged(nameof(CategorySummary));
     }
 
     private async Task LoadProductsCoreAsync(CancellationToken cancellationToken)
@@ -811,6 +952,9 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             SearchText,
             SelectedCategory is { Id: > 0 } ? SelectedCategory.Id : null,
             SelectedActiveFilter.Value,
+            SelectedStockFilter.Value,
+            _appliedMinPrice,
+            _appliedMaxPrice,
             SelectedSort.Value,
             Page,
             50,
@@ -934,6 +1078,21 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         return amount >= 0;
     }
 
+    private static bool TryParseOptionalMoney(string value, out decimal? amount)
+    {
+        amount = null;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+        if (!TryParseMoney(value, out var parsed))
+        {
+            return false;
+        }
+        amount = parsed;
+        return true;
+    }
+
     private static bool TryParseInteger(string value, out int amount) =>
         int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out amount);
 
@@ -976,8 +1135,17 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         Categories.Clear();
         ProductCategories.Clear();
         CategoryRows.Clear();
+        OnPropertyChanged(nameof(CategorySummary));
         KitComponentProducts.Clear();
         SearchText = string.Empty;
+        MinPriceText = string.Empty;
+        MaxPriceText = string.Empty;
+        _appliedMinPrice = null;
+        _appliedMaxPrice = null;
+        SelectedActiveFilter = ActiveFilters[0];
+        SelectedStockFilter = StockFilters[0];
+        SelectedSort = SortOptions[0];
+        CategorySearchText = string.Empty;
         ErrorMessage = string.Empty;
         Page = 1;
         TotalPages = 0;

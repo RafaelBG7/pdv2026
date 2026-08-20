@@ -31,6 +31,16 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     private bool _creditFeeEnabled;
     private string _creditFeePercent = "0,00";
     private string _backupFrequency = "manual";
+    private bool _notificationInAppEnabled = true;
+    private bool _notificationEmailEnabled;
+    private bool _notificationDesktopEnabled = true;
+    private string _notificationMinimumSeverity = "info";
+    private string _notificationEmailRecipients = string.Empty;
+    private bool _canManageNotificationRecipients;
+    private string _notificationQuietHoursStart = string.Empty;
+    private string _notificationQuietHoursEnd = string.Empty;
+    private bool _notificationDailyDigestEnabled;
+    private string _notificationDailyDigestTime = "08:00";
     private string _selectedExportType = "produtos";
     private string _teamSearch = string.Empty;
     private SettingsEmployee? _selectedEmployee;
@@ -74,6 +84,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         ChangePasswordCommand = new AsyncRelayCommand(ChangePasswordAsync);
         SaveCompanySettingsCommand = new AsyncRelayCommand(SaveCompanySettingsAsync, () => CanManageTeam && !IsBusy);
         SaveBackupSettingsCommand = new AsyncRelayCommand(SaveBackupSettingsAsync, () => CanManageTeam && !IsBusy);
+        SaveNotificationPreferencesCommand = new AsyncRelayCommand(SaveNotificationPreferencesAsync, () => !IsBusy);
         RunManualBackupCommand = new AsyncRelayCommand(RunManualBackupAsync, () => CanManageTeam && !IsBusy);
         ExportDataCommand = new AsyncRelayCommand(ExportDataAsync, () => CanExportData && !IsBusy);
         ImportProductsCommand = new AsyncRelayCommand(ImportProductsAsync, () => CanImportProducts && !IsBusy);
@@ -104,6 +115,14 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         new("vendas", "Vendas"),
         new("caixas", "Caixas"),
         new("contas", "Contas a pagar"),
+    ];
+
+    public ObservableCollection<CatalogFilterOption> NotificationSeverityOptions { get; } =
+    [
+        new("info", "Todas (informação ou superior)"),
+        new("success", "Sucesso ou superior"),
+        new("warning", "Atenção ou crítica"),
+        new("critical", "Somente críticas"),
     ];
 
     public SettingsAccountSnapshot? Snapshot
@@ -269,6 +288,28 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
             }
         }
     }
+
+    public bool NotificationInAppEnabled { get => _notificationInAppEnabled; set => SetProperty(ref _notificationInAppEnabled, value); }
+
+    public bool NotificationEmailEnabled { get => _notificationEmailEnabled; set => SetProperty(ref _notificationEmailEnabled, value); }
+
+    public bool NotificationDesktopEnabled { get => _notificationDesktopEnabled; set => SetProperty(ref _notificationDesktopEnabled, value); }
+
+    public string NotificationMinimumSeverity { get => _notificationMinimumSeverity; set => SetProperty(ref _notificationMinimumSeverity, value); }
+
+    public string NotificationEmailRecipients { get => _notificationEmailRecipients; set => SetProperty(ref _notificationEmailRecipients, value); }
+
+    public bool CanManageNotificationRecipients { get => _canManageNotificationRecipients; private set => SetProperty(ref _canManageNotificationRecipients, value); }
+
+    public string NotificationRecipientsVisibility => CanManageNotificationRecipients ? "Visible" : "Collapsed";
+
+    public string NotificationQuietHoursStart { get => _notificationQuietHoursStart; set => SetProperty(ref _notificationQuietHoursStart, value); }
+
+    public string NotificationQuietHoursEnd { get => _notificationQuietHoursEnd; set => SetProperty(ref _notificationQuietHoursEnd, value); }
+
+    public bool NotificationDailyDigestEnabled { get => _notificationDailyDigestEnabled; set => SetProperty(ref _notificationDailyDigestEnabled, value); }
+
+    public string NotificationDailyDigestTime { get => _notificationDailyDigestTime; set => SetProperty(ref _notificationDailyDigestTime, value); }
 
     public string SelectedExportType
     {
@@ -521,6 +562,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand SaveBackupSettingsCommand { get; }
 
+    public AsyncRelayCommand SaveNotificationPreferencesCommand { get; }
+
     public AsyncRelayCommand RunManualBackupCommand { get; }
 
     public AsyncRelayCommand ExportDataCommand { get; }
@@ -593,6 +636,10 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
             }
 
             ApplySnapshot(snapshot);
+            var notificationPreferences = await _apiClient.GetNotificationPreferencesAsync(
+                session.AccessToken,
+                cancellationToken);
+            ApplyNotificationPreferences(notificationPreferences);
             if (CanManageTeam)
             {
                 await LoadTeamDataAsync(session.AccessToken, cancellationToken);
@@ -797,6 +844,68 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         catch (Exception)
         {
             ErrorMessage = "Não foi possível salvar a configuração de backup. Tente novamente.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task SaveNotificationPreferencesAsync(CancellationToken cancellationToken)
+    {
+        var session = _sessionContext.Current;
+        if (session is null)
+        {
+            return;
+        }
+        if (!IsOptionalTime(NotificationQuietHoursStart) || !IsOptionalTime(NotificationQuietHoursEnd))
+        {
+            ErrorMessage = "Informe o início e o fim do silêncio no formato HH:mm.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(NotificationQuietHoursStart) != string.IsNullOrWhiteSpace(NotificationQuietHoursEnd))
+        {
+            ErrorMessage = "Informe os dois horários do período de silêncio ou deixe ambos vazios.";
+            return;
+        }
+        if (!IsRequiredTime(NotificationDailyDigestTime))
+        {
+            ErrorMessage = "Informe o horário do resumo diário no formato HH:mm.";
+            return;
+        }
+
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        try
+        {
+            var preferences = await _apiClient.UpdateNotificationPreferencesAsync(
+                session.AccessToken,
+                new UpdateNotificationPreferenceRequest(
+                    NotificationInAppEnabled,
+                    NotificationEmailEnabled,
+                    NotificationDesktopEnabled,
+                    NotificationMinimumSeverity,
+                    CanManageNotificationRecipients ? NotificationEmailRecipients.Trim() : string.Empty,
+                    NotificationQuietHoursStart.Trim(),
+                    NotificationQuietHoursEnd.Trim(),
+                    NotificationDailyDigestEnabled,
+                    NotificationDailyDigestTime.Trim()),
+                cancellationToken);
+            ApplyNotificationPreferences(preferences);
+            SuccessMessage = "Preferências de notificações salvas com sucesso.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (GirofyApiException exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Não foi possível salvar as preferências de notificações.";
         }
         finally
         {
@@ -1116,6 +1225,25 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
             : snapshot.CompanySettings.BackupFrequency;
     }
 
+    private void ApplyNotificationPreferences(NotificationPreferenceSnapshot preferences)
+    {
+        NotificationInAppEnabled = preferences.InAppEnabled;
+        NotificationEmailEnabled = preferences.EmailEnabled;
+        NotificationDesktopEnabled = preferences.DesktopEnabled;
+        NotificationMinimumSeverity = NotificationSeverityOptions.Any(option => option.Value == preferences.MinimumSeverity)
+            ? preferences.MinimumSeverity
+            : "info";
+        NotificationEmailRecipients = preferences.EmailRecipients;
+        CanManageNotificationRecipients = preferences.CanManageRecipients;
+        OnPropertyChanged(nameof(NotificationRecipientsVisibility));
+        NotificationQuietHoursStart = preferences.QuietHoursStart;
+        NotificationQuietHoursEnd = preferences.QuietHoursEnd;
+        NotificationDailyDigestEnabled = preferences.DailyDigestEnabled;
+        NotificationDailyDigestTime = string.IsNullOrWhiteSpace(preferences.DailyDigestTime)
+            ? "08:00"
+            : preferences.DailyDigestTime;
+    }
+
     private void Reset()
     {
         Snapshot = null;
@@ -1133,6 +1261,17 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         CreditFeeEnabled = false;
         CreditFeePercent = "0,00";
         BackupFrequency = "manual";
+        NotificationInAppEnabled = true;
+        NotificationEmailEnabled = false;
+        NotificationDesktopEnabled = true;
+        NotificationMinimumSeverity = "info";
+        NotificationEmailRecipients = string.Empty;
+        CanManageNotificationRecipients = false;
+        OnPropertyChanged(nameof(NotificationRecipientsVisibility));
+        NotificationQuietHoursStart = string.Empty;
+        NotificationQuietHoursEnd = string.Empty;
+        NotificationDailyDigestEnabled = false;
+        NotificationDailyDigestTime = "08:00";
         SelectedExportType = "produtos";
         TeamSearch = string.Empty;
         SelectedEmployee = null;
@@ -1171,6 +1310,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     {
         SaveCompanySettingsCommand.NotifyCanExecuteChanged();
         SaveBackupSettingsCommand.NotifyCanExecuteChanged();
+        SaveNotificationPreferencesCommand.NotifyCanExecuteChanged();
         RunManualBackupCommand.NotifyCanExecuteChanged();
         ExportDataCommand.NotifyCanExecuteChanged();
         ImportProductsCommand.NotifyCanExecuteChanged();
@@ -1181,6 +1321,11 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
     private static string FormatFee(bool enabled, decimal percent) =>
         enabled ? $"{percent:0.##}%" : "inativo";
+
+    private static bool IsOptionalTime(string value) => string.IsNullOrWhiteSpace(value) || IsRequiredTime(value);
+
+    private static bool IsRequiredTime(string value) =>
+        TimeOnly.TryParseExact(value?.Trim(), "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
 
     private static string FormatPercentInput(decimal value) =>
         value.ToString("0.##", CultureInfo.GetCultureInfo("pt-BR"));

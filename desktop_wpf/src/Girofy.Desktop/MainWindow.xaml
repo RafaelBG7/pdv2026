@@ -733,6 +733,10 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="8" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="14" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
@@ -760,6 +764,28 @@
                                 <Button Grid.Row="2" Grid.Column="8" MinWidth="120"
                                         Command="{Binding Catalog.OpenEditProductCommand}"
                                         Content="Editar item" Style="{StaticResource SecondaryButtonStyle}" />
+
+                                <TextBlock Grid.Row="4" FontSize="13" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="Estoque" />
+                                <TextBlock Grid.Row="4" Grid.Column="2" FontSize="13" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="Preço mínimo" />
+                                <TextBlock Grid.Row="4" Grid.Column="4" FontSize="13" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="Preço máximo" />
+                                <ComboBox Grid.Row="6"
+                                          ItemsSource="{Binding Catalog.StockFilters}"
+                                          SelectedItem="{Binding Catalog.SelectedStockFilter}"
+                                          DisplayMemberPath="Label" />
+                                <TextBox Grid.Row="6" Grid.Column="2"
+                                         Text="{Binding Catalog.MinPriceText, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Preço mínimo, por exemplo 10,00"
+                                         Style="{StaticResource TextInputStyle}" />
+                                <TextBox Grid.Row="6" Grid.Column="4"
+                                         Text="{Binding Catalog.MaxPriceText, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Preço máximo, por exemplo 100,00"
+                                         Style="{StaticResource TextInputStyle}" />
+                                <Button Grid.Row="6" Grid.Column="6" Grid.ColumnSpan="3" MinWidth="120"
+                                        Command="{Binding Catalog.ClearProductFiltersCommand}"
+                                        Content="Limpar filtros" Style="{StaticResource SecondaryButtonStyle}" />
                             </Grid>
                         </Border>
 
@@ -1291,6 +1317,56 @@
                                         Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
                             </StackPanel>
                         </Grid>
+                        <Border Grid.Row="2" Padding="14"
+                                Background="{DynamicResource SurfaceRaisedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="8">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Margin="0,0,0,7" FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Text="Buscar categoria" />
+                                    <TextBox Text="{Binding Catalog.CategorySearchText, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Digite o nome da categoria"
+                                             Style="{StaticResource TextInputStyle}">
+                                        <TextBox.InputBindings>
+                                            <KeyBinding Key="Enter" Command="{Binding Catalog.SearchCategoriesCommand}" />
+                                        </TextBox.InputBindings>
+                                    </TextBox>
+                                </StackPanel>
+                                <Button Grid.Column="2" MinWidth="112" VerticalAlignment="Bottom"
+                                        Command="{Binding Catalog.SearchCategoriesCommand}"
+                                        Content="Pesquisar" Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button Grid.Column="4" MinWidth="96" VerticalAlignment="Bottom"
+                                        Command="{Binding Catalog.ClearCategorySearchCommand}"
+                                        Content="Limpar" Style="{StaticResource SecondaryButtonStyle}" />
+                                <TextBlock Grid.Row="1" Grid.ColumnSpan="5" Margin="0,9,0,0"
+                                           Foreground="{DynamicResource ErrorBrush}"
+                                           Text="{Binding Catalog.ErrorMessage}" TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Catalog.HasError}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
                         <Grid Grid.RowSpan="5" Panel.ZIndex="20"
                               Background="{DynamicResource OverlaySoftBrush}">
                             <Grid.Style>
@@ -1364,7 +1440,15 @@
                                 </Grid>
                             </Border>
                         </Grid>
-                        <DataGrid Grid.Row="4" ItemsSource="{Binding Catalog.CategoryRows}"
+                        <Grid Grid.Row="4">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Text="{Binding Catalog.CategorySummary}" />
+                        <DataGrid Grid.Row="2" ItemsSource="{Binding Catalog.CategoryRows}"
                                   SelectedItem="{Binding Catalog.SelectedCategoryRow, Mode=TwoWay}"
                                   AutoGenerateColumns="False" IsReadOnly="True"
                                   CanUserAddRows="False" CanUserDeleteRows="False"
@@ -1385,6 +1469,7 @@
                                 <DataGridTextColumn Header="Produtos" Binding="{Binding ProductCount}" Width="180" />
                             </DataGrid.Columns>
                         </DataGrid>
+                        </Grid>
                     </Grid>
                     </Grid>
                 </Border>

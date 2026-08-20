@@ -233,6 +233,28 @@ public interface IGirofyApiClient
         int perPage,
         CancellationToken cancellationToken);
 
+    Task<CatalogProductList> GetCatalogProductsAsync(
+        string accessToken,
+        string search,
+        int? categoryId,
+        string activeFilter,
+        string stockFilter,
+        decimal? minPrice,
+        decimal? maxPrice,
+        string sort,
+        int page,
+        int perPage,
+        CancellationToken cancellationToken) =>
+        GetCatalogProductsAsync(
+            accessToken,
+            search,
+            categoryId,
+            activeFilter,
+            sort,
+            page,
+            perPage,
+            cancellationToken);
+
     Task<CatalogProduct> CreateCatalogProductAsync(
         string accessToken,
         CatalogProductMutationRequest product,

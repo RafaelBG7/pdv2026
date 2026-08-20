@@ -444,6 +444,32 @@ def json_optional_money(payload, name, default='0.00'):
     return json_money(payload, name)
 
 
+def optional_money_argument(name):
+    raw_value = request.args.get(name)
+    if raw_value is None or not raw_value.strip():
+        return None
+    text = raw_value.strip()
+    if ',' in text:
+        text = text.replace('.', '').replace(',', '.')
+    try:
+        value = Decimal(text)
+    except InvalidOperation as error:
+        raise ApiAuthError(
+            f'O parâmetro {name} precisa ser um valor monetário válido.',
+            'invalid_query_parameter',
+            422,
+            name,
+        ) from error
+    if not value.is_finite() or value < 0 or value > Decimal('999999999.99'):
+        raise ApiAuthError(
+            f'O parâmetro {name} está fora do intervalo permitido.',
+            'invalid_query_parameter',
+            422,
+            name,
+        )
+    return value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
 def json_text(payload, name, required=False, max_length=255):
     raw_value = payload.get(name)
     if raw_value is None:
@@ -3950,6 +3976,24 @@ def api_catalog_products():
                 'active',
             )
 
+        stock_filter = (request.args.get('stock') or 'all').strip().casefold()
+        if stock_filter not in {'all', 'available', 'low', 'out'}:
+            raise ApiAuthError(
+                'O filtro de estoque informado é inválido.',
+                'invalid_query_parameter',
+                422,
+                'stock',
+            )
+        min_price = optional_money_argument('min_price')
+        max_price = optional_money_argument('max_price')
+        if min_price is not None and max_price is not None and min_price > max_price:
+            raise ApiAuthError(
+                'O preço mínimo não pode ser maior que o preço máximo.',
+                'invalid_query_parameter',
+                422,
+                'min_price',
+            )
+
         sort = (request.args.get('sort') or 'name').strip().casefold()
         company_id = g.api_user.company_id
         include_cost = g.api_user.has_permission('can_manage_products')
@@ -3976,6 +4020,21 @@ def api_catalog_products():
             elif active_filter == 'inactive':
                 query = query.filter(Product.active.is_(False))
 
+            if stock_filter == 'available':
+                query = query.filter(Product.stock_quantity > 0)
+            elif stock_filter == 'out':
+                query = query.filter(Product.stock_quantity <= 0)
+            elif stock_filter == 'low':
+                query = query.filter(
+                    Product.min_stock_quantity > 0,
+                    Product.stock_quantity >= 0,
+                    Product.stock_quantity <= Product.min_stock_quantity,
+                )
+            if min_price is not None:
+                query = query.filter(Product.sale_price >= min_price)
+            if max_price is not None:
+                query = query.filter(Product.sale_price <= max_price)
+
             ordering = {
                 'name': (func.lower(Product.name), Product.id),
                 'name_desc': (func.lower(Product.name).desc(), Product.id.desc()),
@@ -3983,6 +4042,8 @@ def api_catalog_products():
                 'price_desc': (Product.sale_price.desc(), func.lower(Product.name), Product.id),
                 'stock': (Product.stock_quantity, func.lower(Product.name), Product.id),
                 'stock_desc': (Product.stock_quantity.desc(), func.lower(Product.name), Product.id),
+                'created_desc': (Product.created_at.desc(), Product.id.desc()),
+                'created_asc': (Product.created_at, Product.id),
             }
             if sort not in ordering:
                 raise ApiAuthError(
@@ -4514,6 +4575,27 @@ def api_update_notification_preferences():
         recipient_values = [item.strip() for item in recipients.replace(';', ',').split(',') if item.strip()]
         if any(not EMAIL_PATTERN.match(item) for item in recipient_values):
             raise ApiAuthError('Informe apenas e-mails válidos.', 'invalid_email', 422, 'email_recipients')
+        quiet_hours_start = json_text(payload, 'quiet_hours_start', max_length=5)
+        quiet_hours_end = json_text(payload, 'quiet_hours_end', max_length=5)
+        daily_digest_time = json_text(payload, 'daily_digest_time', max_length=5) or '08:00'
+        if bool(quiet_hours_start) != bool(quiet_hours_end):
+            raise ApiAuthError(
+                'Informe os dois horários do período de silêncio ou deixe ambos vazios.',
+                'invalid_quiet_hours', 422, 'quiet_hours_start',
+            )
+        for field, value in (
+            ('quiet_hours_start', quiet_hours_start),
+            ('quiet_hours_end', quiet_hours_end),
+            ('daily_digest_time', daily_digest_time),
+        ):
+            if value:
+                try:
+                    datetime.strptime(value, '%H:%M')
+                except ValueError as error:
+                    raise ApiAuthError(
+                        'Informe o horário no formato HH:mm.',
+                        'invalid_time', 422, field,
+                    ) from error
 
         with api_tenant_database(g.api_user) as tenant_db:
             preference = preference_for(
@@ -4525,10 +4607,10 @@ def api_update_notification_preferences():
             preference.minimum_severity = minimum_severity
             if g.api_user.has_permission('can_manage_settings'):
                 preference.email_recipients = ', '.join(recipient_values)
-            preference.quiet_hours_start = json_text(payload, 'quiet_hours_start', max_length=5)
-            preference.quiet_hours_end = json_text(payload, 'quiet_hours_end', max_length=5)
+            preference.quiet_hours_start = quiet_hours_start
+            preference.quiet_hours_end = quiet_hours_end
             preference.daily_digest_enabled = json_bool(payload, 'daily_digest_enabled', False)
-            preference.daily_digest_time = json_text(payload, 'daily_digest_time', max_length=5) or '08:00'
+            preference.daily_digest_time = daily_digest_time
             record_audit_event(
                 'notification_preferences_updated', 'notification_preference', preference.id,
                 'Preferências de notificações atualizadas.',

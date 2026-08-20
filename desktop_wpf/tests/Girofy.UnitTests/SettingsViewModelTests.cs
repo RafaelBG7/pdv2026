@@ -8,6 +8,49 @@ namespace Girofy.UnitTests;
 
 public sealed class SettingsViewModelTests
 {
+    private static AppSessionContext CreateAdminSessionContext()
+    {
+        var context = new AppSessionContext();
+        context.Set(new AuthSession
+        {
+            AccessToken = "access-token",
+            RefreshToken = "refresh-token",
+            User = new UserIdentity { Id = 10, Username = "adegajf", Role = "admin", RoleLabel = "Admin" },
+            Company = new CompanyIdentity
+            {
+                Id = 20, Name = "Adega JF", Active = true,
+                SubscriptionPlan = "Pro", SubscriptionValid = true,
+            },
+        });
+        return context;
+    }
+
+    [Fact]
+    public async Task Notification_preferences_are_loaded_and_saved_by_native_settings()
+    {
+        var apiClient = new ExportApiClient();
+        var sessionContext = CreateAdminSessionContext();
+        var viewModel = new SettingsViewModel(
+            apiClient, sessionContext, new StubBrowserService(), new CapturingFileSaveService(),
+            new CapturingFilePickerService(), new Uri("https://girofy.example/configuracoes"));
+
+        await viewModel.InitializeAsync();
+
+        Assert.True(viewModel.NotificationInAppEnabled);
+        Assert.Equal("warning", viewModel.NotificationMinimumSeverity);
+        Assert.Equal("22:00", viewModel.NotificationQuietHoursStart);
+        viewModel.NotificationEmailEnabled = true;
+        viewModel.NotificationDailyDigestEnabled = true;
+        viewModel.NotificationDailyDigestTime = "07:30";
+        await viewModel.SaveNotificationPreferencesCommand.ExecuteAsync();
+
+        Assert.NotNull(apiClient.NotificationPreferenceRequest);
+        Assert.True(apiClient.NotificationPreferenceRequest!.EmailEnabled);
+        Assert.True(apiClient.NotificationPreferenceRequest.DailyDigestEnabled);
+        Assert.Equal("07:30", apiClient.NotificationPreferenceRequest.DailyDigestTime);
+        Assert.Contains("salvas com sucesso", viewModel.SuccessMessage);
+    }
+
     [Fact]
     public async Task ToggleThemeAsync_changes_theme_and_updates_button_text()
     {
@@ -203,6 +246,43 @@ public sealed class SettingsViewModelTests
         public string CompanySettingsAccessToken { get; private set; } = string.Empty;
 
         public UpdateCompanySettingsRequest? CompanySettingsRequest { get; private set; }
+
+        public UpdateNotificationPreferenceRequest? NotificationPreferenceRequest { get; private set; }
+
+        public Task<NotificationPreferenceSnapshot> GetNotificationPreferencesAsync(
+            string accessToken,
+            CancellationToken cancellationToken) => Task.FromResult(new NotificationPreferenceSnapshot
+            {
+                InAppEnabled = true,
+                DesktopEnabled = true,
+                MinimumSeverity = "warning",
+                CanManageRecipients = true,
+                EmailRecipients = "alertas@girofy.test",
+                QuietHoursStart = "22:00",
+                QuietHoursEnd = "07:00",
+                DailyDigestTime = "08:00",
+            });
+
+        public Task<NotificationPreferenceSnapshot> UpdateNotificationPreferencesAsync(
+            string accessToken,
+            UpdateNotificationPreferenceRequest preferences,
+            CancellationToken cancellationToken)
+        {
+            NotificationPreferenceRequest = preferences;
+            return Task.FromResult(new NotificationPreferenceSnapshot
+            {
+                InAppEnabled = preferences.InAppEnabled,
+                EmailEnabled = preferences.EmailEnabled,
+                DesktopEnabled = preferences.DesktopEnabled,
+                MinimumSeverity = preferences.MinimumSeverity,
+                EmailRecipients = preferences.EmailRecipients,
+                CanManageRecipients = true,
+                QuietHoursStart = preferences.QuietHoursStart,
+                QuietHoursEnd = preferences.QuietHoursEnd,
+                DailyDigestEnabled = preferences.DailyDigestEnabled,
+                DailyDigestTime = preferences.DailyDigestTime,
+            });
+        }
 
         public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken) =>
             Task.FromException<HealthStatus>(new NotSupportedException());

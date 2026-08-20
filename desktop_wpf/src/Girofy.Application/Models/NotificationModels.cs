@@ -54,6 +54,10 @@ public sealed class NotificationPreferenceSnapshot
     [JsonPropertyName("minimum_severity")] public string MinimumSeverity { get; init; } = "info";
     [JsonPropertyName("email_recipients")] public string EmailRecipients { get; init; } = string.Empty;
     [JsonPropertyName("can_manage_recipients")] public bool CanManageRecipients { get; init; }
+    [JsonPropertyName("quiet_hours_start")] public string QuietHoursStart { get; init; } = string.Empty;
+    [JsonPropertyName("quiet_hours_end")] public string QuietHoursEnd { get; init; } = string.Empty;
+    [JsonPropertyName("daily_digest_enabled")] public bool DailyDigestEnabled { get; init; }
+    [JsonPropertyName("daily_digest_time")] public string DailyDigestTime { get; init; } = "08:00";
 }
 
 public sealed record UpdateNotificationPreferenceRequest(
@@ -62,5 +66,7 @@ public sealed record UpdateNotificationPreferenceRequest(
     [property: JsonPropertyName("desktop_enabled")] bool DesktopEnabled,
     [property: JsonPropertyName("minimum_severity")] string MinimumSeverity,
     [property: JsonPropertyName("email_recipients")] string EmailRecipients,
+    [property: JsonPropertyName("quiet_hours_start")] string QuietHoursStart = "",
+    [property: JsonPropertyName("quiet_hours_end")] string QuietHoursEnd = "",
     [property: JsonPropertyName("daily_digest_enabled")] bool DailyDigestEnabled = false,
     [property: JsonPropertyName("daily_digest_time")] string DailyDigestTime = "08:00");

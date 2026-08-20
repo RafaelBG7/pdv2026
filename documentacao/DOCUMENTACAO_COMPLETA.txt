@@ -461,6 +461,13 @@ cartão central em gradiente, título contextual, campo de nome, orientação e 
 Fechar, Cancelar e Salvar categoria. Ao salvar, a categoria passa a ficar
 disponível no cadastro de produtos após a confirmação da API.
 
+A aba Categorias possui pesquisa nativa por nome. O operador pode digitar o termo
+e acionar Pesquisar ou Enter; Limpar restaura a listagem completa. O App envia o
+termo pelo contrato GET /api/v1/catalog/categories?q=..., que limita o tamanho da
+consulta, exige can_view_products e aplica o tenant autenticado. A pesquisa altera
+somente a grade visível e o contador de resultados: as listas completas usadas no
+filtro e no editor de Produtos permanecem disponíveis.
+
 6.2.3 Vendas, quantidade e pagamento
 
 O editor de venda do App reproduz o fluxo operacional da Web sem incorporar a
@@ -1274,14 +1281,28 @@ Correções entregues nesta revisão:
    - alterações de estoque continuam obrigatoriamente passando por
      stock_service e gerando movimento.
 
+Recursos de catálogo concluídos em 20/08/2026:
+
+- filtros de Produtos por estoque e preço possuem contrato autenticado na API:
+  `stock=all|available|low|out`, `min_price` e `max_price`. A API valida valores
+  monetários, rejeita faixa invertida, aplica as mesmas regras da Web e mantém o
+  isolamento pela empresa do usuário autenticado. O App apresenta "Todos",
+  "Com estoque", "Estoque baixo" e "Sem estoque", campos de preço mínimo e
+  máximo e a ação para limpar todos os filtros;
+- a ordenação de Produtos por criação está disponível na API e no App pelas
+  opções `created_desc` (mais recentes) e `created_asc` (mais antigos), com ID
+  como desempate para paginação determinística;
+- a lista de Categorias do App possui pesquisa por nome via contrato da API,
+  contador de resultados e ação de limpeza sem reduzir as opções usadas nos
+  formulários e no filtro de Produtos.
+
 Pendências exatas que impedem marcar a Etapa 2 como concluída:
 
-- filtros avançados de estoque e faixa de preço ainda não possuem contrato na
-  API nem controles equivalentes no App;
-- ordenação de produtos por data de criação existe na Web, mas não na API/App;
-- pesquisa específica da lista de categorias não está exposta no App;
-- preferências internas de notificações possuem endpoints, mas ainda não estão
-  integradas ao painel Alertas do SettingsViewModel;
+- o painel Alertas do App Windows carrega e salva as preferências autenticadas de
+  notificações: canal interno, canal Windows, envio por e-mail, severidade mínima,
+  destinatários autorizados, período de silêncio e resumo diário. Destinatários
+  somente ficam editáveis para usuários com `can_manage_settings`; horários são
+  validados em `HH:mm` tanto no App quanto na API, e toda alteração gera auditoria;
 - preferências avançadas de acessibilidade continuam configuráveis na Web; o App
   somente oferece tema local e acesso ao fluxo Web;
 - gráficos WPF e alguns painéis de suporte possuem divergência visual intencional

@@ -1037,7 +1037,7 @@
                                               ItemsSource="{Binding CartItems}"
                                               AutoGenerateColumns="False" IsReadOnly="True"
                                               CanUserAddRows="False" CanUserDeleteRows="False"
-                                              HeadersVisibility="Column" SelectionMode="Single"
+                                              HeadersVisibility="None" SelectionMode="Single"
                                               EnableRowVirtualization="True"
                                               Background="{DynamicResource SurfaceBrush}"
                                               Foreground="{DynamicResource TextPrimaryBrush}"
@@ -1045,39 +1045,81 @@
                                               HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
                                               VerticalGridLinesBrush="Transparent"
                                               RowBackground="{DynamicResource SurfaceBrush}"
-                                  AlternatingRowBackground="{DynamicResource AlternatingRowBrush}"
-                                              RowHeight="54" ColumnHeaderHeight="38">
+                                              AlternatingRowBackground="{DynamicResource AlternatingRowBrush}"
+                                              RowHeight="72"
+                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Produto" Binding="{Binding Name}" Width="2*" />
-                                            <DataGridTextColumn Header="Unitário" Binding="{Binding UnitPriceText}" Width="1*" />
-                                            <DataGridTextColumn Header="Estoque" Binding="{Binding StockText}" Width="0.8*" />
-                                            <DataGridTemplateColumn Header="Quantidade" Width="160">
+                                            <DataGridTemplateColumn Width="*">
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
-                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                            <Button Width="34" Height="32" Content="-"
-                                                                    Command="{Binding DataContext.DecreaseQuantityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        <Grid Margin="10,6">
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="5" />
+                                                                <RowDefinition Height="Auto" />
+                                                            </Grid.RowDefinitions>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBlock MinWidth="0"
+                                                                       VerticalAlignment="Center"
+                                                                       AutomationProperties.Name="Nome do produto"
+                                                                       FontSize="14"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                       Text="{Binding Name}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding Name}" />
+                                                            <Button Grid.Column="1" Width="78" Height="28" Margin="10,0,0,0"
+                                                                    Content="Remover"
+                                                                    Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                     CommandParameter="{Binding}"
-                                                                    Style="{StaticResource SecondaryButtonStyle}" />
-                                                            <TextBlock Width="54" HorizontalAlignment="Center"
-                                                                       VerticalAlignment="Center" TextAlignment="Center"
-                                                                       FontWeight="SemiBold" Text="{Binding Quantity}" />
-                                                            <Button Width="34" Height="32" Content="+"
-                                                                    Command="{Binding DataContext.IncreaseQuantityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                    CommandParameter="{Binding}"
-                                                                    Style="{StaticResource SecondaryButtonStyle}" />
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </DataGridTemplateColumn.CellTemplate>
-                                            </DataGridTemplateColumn>
-                                            <DataGridTextColumn Header="Subtotal" Binding="{Binding LineTotalText}" Width="1*" />
-                                            <DataGridTemplateColumn Header="Ação" Width="128">
-                                                <DataGridTemplateColumn.CellTemplate>
-                                                    <DataTemplate>
-                                                        <Button Height="34" MinWidth="108" Content="Remover"
-                                                                Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                CommandParameter="{Binding}"
-                                                                Style="{StaticResource DangerButtonStyle}" />
+                                                                    Style="{StaticResource DangerButtonStyle}" />
+
+                                                            <Grid Grid.Row="2" Grid.ColumnSpan="2">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock VerticalAlignment="Center"
+                                                                           AutomationProperties.Name="Valor unitário"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                           Text="{Binding UnitPriceText, StringFormat={}{0} un.}" />
+                                                                <StackPanel Grid.Column="1" Margin="12,0"
+                                                                            HorizontalAlignment="Center"
+                                                                            VerticalAlignment="Center"
+                                                                            Orientation="Horizontal">
+                                                                    <TextBlock Margin="0,0,5,0" VerticalAlignment="Center"
+                                                                               Foreground="{DynamicResource TextMutedBrush}"
+                                                                               Text="Qtd." />
+                                                                    <Button Width="28" Height="26" Content="-"
+                                                                            Command="{Binding DataContext.DecreaseQuantityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                            CommandParameter="{Binding}"
+                                                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                                                    <TextBlock MinWidth="34" Margin="4,0"
+                                                                               VerticalAlignment="Center" TextAlignment="Center"
+                                                                               AutomationProperties.Name="Quantidade do item"
+                                                                               FontWeight="SemiBold" Text="{Binding Quantity}" />
+                                                                    <Button Width="28" Height="26" Content="+"
+                                                                            Command="{Binding DataContext.IncreaseQuantityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                            CommandParameter="{Binding}"
+                                                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                                                </StackPanel>
+                                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
+                                                                    <TextBlock Margin="0,0,5,0"
+                                                                               Foreground="{DynamicResource TextMutedBrush}"
+                                                                               Text="Total" />
+                                                                    <TextBlock FontWeight="Bold"
+                                                                               AutomationProperties.Name="Total do item"
+                                                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                               Text="{Binding LineTotalText}" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Grid>
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>

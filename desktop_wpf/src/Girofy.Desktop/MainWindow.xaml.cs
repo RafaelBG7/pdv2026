@@ -49,6 +49,27 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F3 ||
+            !_viewModel.Login.IsAuthenticated ||
+            !_viewModel.IsDashboardView ||
+            !_viewModel.StartSaleCommand.CanExecute(null))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        try
+        {
+            await _viewModel.StartSaleCommand.ExecuteAsync();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "F3 sale shortcut failed.");
+        }
+    }
+
     private async void HandleLoaded(object sender, RoutedEventArgs e)
     {
         if (_initialized)

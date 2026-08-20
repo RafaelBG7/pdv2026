@@ -78,8 +78,9 @@ Décimo sétimo corte vertical implementado:
 - tela nativa de Vendas com busca por nome ou código de barras, resultados
   ranqueados e contêiner de altura dinâmica: acompanha os itens até 440 px e usa
   scroll apenas acima desse limite, sem comprimir as linhas nem manter área vazia;
-- carrinho com múltiplos produtos, quantidades ajustáveis, desconto em reais e remoção
-  de itens;
+- carrinho com múltiplos produtos em linhas compactas: nome priorizado com tooltip,
+  unitário, controles de quantidade e total individual existente, sem scroll
+  horizontal, além de desconto em reais e remoção de itens;
 - pagamentos combinados em Dinheiro, Pix, Débito e Crédito, com preenchimento do valor
   restante, cálculo de falta e troco;
 - registro transacional em `POST /api/v1/sales`, com caixa obrigatório, baixa de estoque,

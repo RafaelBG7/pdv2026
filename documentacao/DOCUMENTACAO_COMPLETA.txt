@@ -492,11 +492,36 @@ quantidade são reiniciadas e o foco volta para o próximo produto. A API ainda
 revalida produto, preço, disponibilidade e política de estoque; a validação visual
 do App não substitui a validação no servidor.
 
-O carrinho permite múltiplos itens, alteração de quantidade e remoção. A etapa de
-pagamento oferece dinheiro, Pix, débito e crédito, inclusive composição de mais de
-um meio, valor faltante, troco, desconto e finalização. F2 e F3 mantêm ações
-contextuais, e comandos assíncronos evitam reenvio enquanto uma operação está em
-andamento. A chave idempotente impede que uma tentativa repetida gere duas vendas.
+O carrinho permite múltiplos itens, alteração de quantidade e remoção. Cada item é
+apresentado em duas linhas compactas, com aproximadamente 72 px de altura. A
+primeira linha reserva todo o espaço flexível ao nome do produto e mantém apenas a
+ação Remover à direita. Nomes que realmente excedam essa largura usam reticências,
+mas o texto completo permanece disponível em tooltip.
+
+A segunda linha reutiliza os dados já calculados pelo SaleCartItemViewModel e
+organiza “R$ 0,00 un.” à esquerda, controles compactos de quantidade no centro e
+“Total R$ 0,00” à direita. O total individual é o binding LineTotalText já
+existente; ele não duplica nem recalcula o subtotal. Valores e quantidades ficam
+associados visualmente ao produto, enquanto o TOTAL DO PEDIDO permanece destacado
+no rodapé fixo e representa a soma geral da venda. A antiga coluna separada de
+estoque foi removida do carrinho para devolver largura ao nome; o estoque continua
+visível na pesquisa e no popup de quantidade, onde é operacionalmente relevante.
+
+O carrinho ocupa a largura adicional do modal, desabilita scroll horizontal, usa
+scroll vertical e virtualização para listas extensas e preserva o total geral fora
+da área rolável. Hover, seleção, linhas alternadas, textos e bordas continuam usando
+os recursos dinâmicos do design system em Light/Dark. Nome, unitário, quantidade e
+total possuem nomes de automação para tecnologias assistivas. Em uma área útil de
+aproximadamente 360 a 500 px de altura, o operador visualiza em torno de cinco a
+sete itens antes do scroll, variando conforme escala e resolução.
+
+A etapa de pagamento oferece dinheiro, Pix, débito e crédito, inclusive composição
+de mais de um meio, valor faltante, troco, desconto e finalização. F2 e F3 mantêm
+ações contextuais, e comandos assíncronos evitam reenvio enquanto uma operação está
+em andamento. No Dashboard, F3 é capturado no PreviewKeyDown da janela autenticada
+antes que o controle focado consuma a tecla; ele só executa com Dashboard ativo,
+permissão de vendas e comando disponível. A chave idempotente impede que uma
+tentativa repetida gere duas vendas.
 
 6.2.4 Navegação e identidade visual
 
@@ -634,6 +659,10 @@ Este marco documenta em conjunto:
 - altura dinâmica do painel e do contêiner de resultados da venda: crescimento
   proporcional aos itens, espaçamento preservado, limite de 440 px e scroll
   somente quando o conteúdo ultrapassa esse limite;
+- carrinho de venda em duas linhas compactas por item, priorizando nome completo,
+  unitário, quantidade e total individual sem scroll horizontal ou novo cálculo;
+- correção do F3 global no Dashboard por captura antecipada da tecla, preservando
+  o comportamento contextual do F3 dentro da tela de Vendas;
 - manutenção de contraste, recursos dinâmicos e compatibilidade Light/Dark;
 - correção do teste de Dashboard para usar a data comercial de São Paulo durante
   a virada do dia em runners UTC;

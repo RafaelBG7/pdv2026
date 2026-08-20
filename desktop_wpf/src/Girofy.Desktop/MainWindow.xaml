@@ -13,10 +13,8 @@
         ResizeMode="CanMinimize"
         FontFamily="Segoe UI"
         WindowStartupLocation="CenterScreen"
+        PreviewKeyDown="MainWindow_PreviewKeyDown"
         Background="{DynamicResource AppBackgroundBrush}">
-    <Window.InputBindings>
-        <KeyBinding Key="F3" Command="{Binding StartSaleCommand}" />
-    </Window.InputBindings>
     <Grid>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">

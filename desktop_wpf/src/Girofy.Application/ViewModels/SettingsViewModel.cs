@@ -1601,7 +1601,11 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
         public bool IsDarkMode => true;
 
-        public event EventHandler? Changed;
+        public event EventHandler? Changed
+        {
+            add { }
+            remove { }
+        }
 
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 

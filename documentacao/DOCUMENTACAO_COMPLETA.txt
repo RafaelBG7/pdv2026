@@ -280,14 +280,39 @@ Funções disponíveis:
 - resumo de total vendido, lucro e saldo esperado;
 - separação por formas de pagamento;
 - linha do tempo das vendas;
-- detalhe expansível de cada venda;
+- detalhe expansível e auditável de cada venda, tanto no caixa atual quanto nos
+  caixas anteriores;
+- carregamento sob demanda do recibo completo pelo endpoint GET /api/v1/sales/{id},
+  sem buscar dezenas de vendas ao abrir a tela;
+- cache em memória por ID durante a sessão da tela, evitando repetir a chamada ao
+  recolher e expandir novamente a mesma venda;
+- cabeçalho do detalhe com número real, data, hora, operador e situação;
+- itens históricos com nome completo/tooltip, valor unitário, quantidade e
+  subtotal persistidos no momento da venda, sem consultar o preço atual do produto;
+- resumo separado com subtotal, desconto e total final;
+- pagamentos individuais, inclusive pagamento misto, valor recebido e troco;
+- lucro total somente quando a permissão financeira do snapshot autoriza e a API
+  fornece os valores dos itens;
 - saldo existente antes de cada venda;
+- saldo posterior à venda em uma seção própria de movimentação do caixa;
 - destaque de cancelamentos sem apagar o histórico;
 - consulta detalhada de caixas fechados;
 - fechamento com conferência do valor final;
 - proteção de abertura e fechamento por permissão.
 
 Clicar novamente em um item expandido deve recolher os detalhes.
+
+No App Windows, a expansão é assíncrona e não bloqueia a janela. Enquanto o recibo
+é consultado, o card exibe estado de carregamento. Falhas HTTP, timeout ou API
+indisponível permanecem isoladas naquela venda e apresentam a ação "Tentar
+novamente"; a aba Caixa e as demais vendas continuam utilizáveis. Vendas com muitos
+itens usam uma lista interna com altura máxima e scroll, preservando o acesso ao
+resumo, pagamentos e saldos. O template usa exclusivamente os brushes dinâmicos do
+design system, portanto funciona nos temas claro e escuro.
+
+O detalhe não recalcula preço, desconto, pagamento, troco, lucro ou saldo. A fonte
+da verdade continua sendo o recibo persistido pelo backend. A API revalida sessão,
+tenant e permissões ao consultar o ID; o App nunca acessa banco de dados diretamente.
 
 5.6 Estoque
 
@@ -1191,7 +1216,7 @@ interface ainda é uma melhoria pendente.
 [OK] Estoque e movimentações
 [OK] Abertura e fechamento de caixa
 [OK] Caixa atual e caixas anteriores
-[OK] Linha do tempo e saldo antes da venda
+[OK] Linha do tempo com detalhe completo sob demanda, cache e saldo antes/depois
 [OK] Vendas e pagamentos mistos
 [OK] Popup de quantidade no App alinhado visualmente à Web
 [OK] Desconto, troco, taxas e lucro

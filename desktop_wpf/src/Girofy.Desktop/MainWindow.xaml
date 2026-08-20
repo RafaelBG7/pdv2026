@@ -865,6 +865,7 @@
                                       HeadersVisibility="Column" CanUserAddRows="False"
                                       CanUserDeleteRows="False" CanUserReorderColumns="False"
                                       CanUserResizeRows="False" SelectionMode="Single"
+                                      PreviewMouseLeftButtonDown="ProductsGrid_PreviewMouseLeftButtonDown"
                                       SelectedItem="{Binding Catalog.SelectedProduct, Mode=TwoWay}"
                                       RowDetailsVisibilityMode="VisibleWhenSelected"
                                       EnableRowVirtualization="True" EnableColumnVirtualization="True"
@@ -883,6 +884,11 @@
                                     <Style TargetType="DataGridRow">
                                         <Setter Property="Cursor" Value="Hand" />
                                         <Setter Property="ToolTip" Value="Clique para expandir os detalhes do produto" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="ToolTip" Value="Clique novamente para recolher os detalhes do produto" />
+                                            </Trigger>
+                                        </Style.Triggers>
                                     </Style>
                                 </DataGrid.RowStyle>
                                 <DataGrid.Columns>

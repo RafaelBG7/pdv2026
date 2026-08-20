@@ -24,6 +24,9 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     private bool _isCurrentRegisterTabSelected = true;
     private int _detailRequestVersion;
     private CancellationTokenSource? _detailCancellation;
+    private readonly Dictionary<int, SaleReceipt> _saleDetailCache = [];
+    private IReadOnlyList<CashRegisterTimelineSaleViewModel> _currentTimeline = [];
+    private IReadOnlyList<CashRegisterTimelineSaleViewModel> _timeline = [];
 
     public CashRegisterViewModel(
         IGirofyApiClient apiClient,
@@ -84,6 +87,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         {
             if (SetProperty(ref _currentDetailSnapshot, value))
             {
+                CurrentTimeline = CreateTimeline(value?.Timeline ?? []);
                 OnPropertyChanged(nameof(CurrentTimeline));
                 OnPropertyChanged(nameof(HasCurrentTimeline));
                 OnPropertyChanged(nameof(HasNoCurrentTimeline));
@@ -91,8 +95,11 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         }
     }
 
-    public IReadOnlyList<CashRegisterTimelineSale> CurrentTimeline =>
-        CurrentDetailSnapshot?.Timeline ?? [];
+    public IReadOnlyList<CashRegisterTimelineSaleViewModel> CurrentTimeline
+    {
+        get => _currentTimeline;
+        private set => SetProperty(ref _currentTimeline, value);
+    }
 
     public bool HasCurrentTimeline => CurrentTimeline.Count > 0;
 
@@ -137,6 +144,7 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
             {
                 return;
             }
+            Timeline = CreateTimeline(value?.Timeline ?? []);
             OnPropertyChanged(nameof(DetailRegister));
             OnPropertyChanged(nameof(Timeline));
             OnPropertyChanged(nameof(HasDetail));
@@ -147,7 +155,11 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
 
     public CashRegisterRecord? DetailRegister => DetailSnapshot?.CashRegister;
 
-    public IReadOnlyList<CashRegisterTimelineSale> Timeline => DetailSnapshot?.Timeline ?? [];
+    public IReadOnlyList<CashRegisterTimelineSaleViewModel> Timeline
+    {
+        get => _timeline;
+        private set => SetProperty(ref _timeline, value);
+    }
 
     public bool HasDetail => DetailSnapshot?.CashRegister is not null;
 
@@ -448,6 +460,61 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         SuccessMessage = string.Empty;
     }
 
+    public Task LoadSaleDetailAsync(
+        CashRegisterTimelineSaleViewModel sale,
+        CancellationToken cancellationToken = default) =>
+        sale.EnsureDetailLoadedAsync(cancellationToken);
+
+    private IReadOnlyList<CashRegisterTimelineSaleViewModel> CreateTimeline(
+        IReadOnlyList<CashRegisterTimelineSale> sales) =>
+        sales.Select(summary => new CashRegisterTimelineSaleViewModel(
+            summary,
+            CanViewFinancials,
+            FetchSaleDetailAsync)).ToArray();
+
+    private async Task FetchSaleDetailAsync(
+        CashRegisterTimelineSaleViewModel sale,
+        CancellationToken cancellationToken)
+    {
+        if (_saleDetailCache.TryGetValue(sale.Id, out var cached))
+        {
+            sale.ApplyDetail(cached);
+            return;
+        }
+
+        var session = RequireSession();
+        try
+        {
+            var detail = await _apiClient.GetSaleDetailAsync(
+                session.AccessToken,
+                sale.Id,
+                cancellationToken);
+            if (!string.Equals(
+                    _sessionContext.Current?.AccessToken,
+                    session.AccessToken,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _saleDetailCache[sale.Id] = detail;
+            sale.ApplyDetail(detail);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            sale.ApplyError(exception switch
+            {
+                GirofyApiException apiException => apiException.Message,
+                TaskCanceledException => "O servidor demorou para responder. Tente novamente.",
+                HttpRequestException => "Não foi possível carregar os detalhes desta venda.",
+                _ => "Não foi possível carregar os detalhes desta venda.",
+            });
+        }
+    }
+
     private Task ClearRegisterDetailAsync(CancellationToken cancellationToken)
     {
         CollapseSelectedRegisterDetail();
@@ -518,6 +585,9 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
         IsBusy = false;
         IsDetailLoading = false;
         IsCurrentRegisterTabSelected = true;
+        CurrentTimeline = [];
+        Timeline = [];
+        _saleDetailCache.Clear();
         _detailRequestVersion++;
         _detailCancellation?.Cancel();
     }

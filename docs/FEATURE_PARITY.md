@@ -101,8 +101,9 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Vendas | cancelamento/motivo/permissão | Sim | Sim | `/cancel`, rollback de estoque e auditoria | OK | Nenhuma |
 | Caixa | abrir/fechar/único aberto | Sim | Sim | cash_register_service | OK | Nenhuma |
 | Caixa | atual/resumo/pagamentos | Sim | Sim | snapshot comum | OK | Nenhuma |
-| Caixa | anteriores/detalhe/timeline | Sim | Sim, expansível | summary/detail | OK | Nenhuma |
-| Caixa | saldo antes da venda | Sim | Sim | detail calcula sequência | OK | Nenhuma |
+| Caixa | anteriores/detalhe/timeline | Sim | Sim, expansível com o mesmo template do caixa atual | summary/detail + `/sales/<id>` sob demanda | OK | Detalhe completo entregue em 19/08/2026 |
+| Caixa | detalhe auditável da venda | Sim | itens históricos, unitário, quantidade, subtotal, desconto, total, pagamentos, troco, operador, status e cancelamento | `/sales/<id>` revalida sessão e tenant | OK | Cache por ID e erro/retry local no App |
+| Caixa | saldo antes/depois da venda | Sim | Sim, separado do resumo da venda | detail calcula sequência | OK | Nenhuma |
 | Caixa | conferência e diferença | Sim | Sim | servidor calcula | OK | Nenhuma |
 
 ### Estoque, contas e relatórios

@@ -359,6 +359,137 @@ public sealed class CashRegisterViewModelTests
         Assert.False(viewModel.IsAvailable);
     }
 
+    [Fact]
+    public async Task Expanding_timeline_sale_loads_complete_detail_once_and_reuses_cache()
+    {
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = OpenSnapshot(42, expectedAmount: 50m),
+            DetailResult = new CashRegisterDetailSnapshot
+            {
+                CashRegister = new CashRegisterRecord { Id = 42, Status = "open" },
+                Timeline = [new CashRegisterTimelineSale { Id = 501, Number = "#501" }],
+            },
+            SaleDetailResult = CompleteSale(501),
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
+        await viewModel.InitializeAsync();
+        var sale = viewModel.CurrentTimeline.Single();
+
+        await viewModel.LoadSaleDetailAsync(sale);
+        await viewModel.LoadSaleDetailAsync(sale);
+
+        Assert.True(sale.HasDetail);
+        Assert.Equal(2, sale.Items.Count);
+        Assert.Equal(2, sale.Payments.Count);
+        Assert.Equal("R$ 90,00", sale.FinalAmountText);
+        Assert.Equal("R$ 10,00", sale.DiscountAmountText);
+        Assert.Equal("R$ 5,00", sale.ChangeAmountText);
+        Assert.Equal(1, apiClient.SaleDetailRequestCount);
+    }
+
+    [Fact]
+    public async Task Previous_register_sale_uses_same_complete_detail_contract()
+    {
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = new CashRegisterSnapshot
+            {
+                Permissions = new CashRegisterPermissions { CanViewFinancials = true },
+                RecentRegisters = [new CashRegisterRecord { Id = 77, Status = "closed" }],
+            },
+            DetailResult = new CashRegisterDetailSnapshot
+            {
+                CashRegister = new CashRegisterRecord { Id = 77, Status = "closed" },
+                Timeline = [new CashRegisterTimelineSale { Id = 502, Number = "#502" }],
+            },
+            SaleDetailResult = CompleteSale(502),
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
+        await viewModel.InitializeAsync();
+        viewModel.SelectedRegister = viewModel.RecentRegisters.Single();
+        await viewModel.LoadSelectedRegisterDetailAsync();
+
+        var sale = viewModel.Timeline.Single();
+        await viewModel.LoadSaleDetailAsync(sale);
+
+        Assert.True(sale.HasDetail);
+        Assert.Equal("Coca-Cola 2L", sale.Items[0].Name);
+        Assert.Equal("Pix", sale.Payments[1].Label);
+    }
+
+    [Fact]
+    public async Task Failed_sale_detail_isolated_to_sale_and_can_be_retried()
+    {
+        var attempts = 0;
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = OpenSnapshot(42, expectedAmount: 50m),
+            DetailResult = new CashRegisterDetailSnapshot
+            {
+                CashRegister = new CashRegisterRecord { Id = 42, Status = "open" },
+                Timeline = [new CashRegisterTimelineSale { Id = 503, Number = "#503" }],
+            },
+            SaleDetailHandler = (_, _) => ++attempts == 1
+                ? Task.FromException<SaleReceipt>(new HttpRequestException())
+                : Task.FromResult(CompleteSale(503)),
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
+        await viewModel.InitializeAsync();
+        var sale = viewModel.CurrentTimeline.Single();
+
+        await viewModel.LoadSaleDetailAsync(sale);
+        Assert.True(sale.HasError);
+        Assert.False(viewModel.HasError);
+
+        await sale.RetryCommand.ExecuteAsync();
+        Assert.True(sale.HasDetail);
+        Assert.False(sale.HasError);
+        Assert.Equal(2, attempts);
+    }
+
+    [Fact]
+    public async Task Cancelled_sale_keeps_original_items_and_exposes_audit_information()
+    {
+        var receipt = CompleteSale(504);
+        var apiClient = new StubApiClient
+        {
+            SummaryResult = OpenSnapshot(42, expectedAmount: 50m),
+            DetailResult = new CashRegisterDetailSnapshot
+            {
+                CashRegister = new CashRegisterRecord { Id = 42, Status = "open" },
+                Timeline = [new CashRegisterTimelineSale { Id = 504, Number = "#504", IsCancelled = true }],
+            },
+            SaleDetailResult = new SaleReceipt
+            {
+                Id = receipt.Id,
+                CashRegisterId = receipt.CashRegisterId,
+                IsCancelled = true,
+                CancelledByUserName = "Rafael",
+                CancelledAt = "2026-08-19T19:05:00-03:00",
+                CancellationReason = "Produto lançado incorretamente",
+                Subtotal = receipt.Subtotal,
+                DiscountAmount = receipt.DiscountAmount,
+                FinalAmount = receipt.FinalAmount,
+                PaidAmount = receipt.PaidAmount,
+                ChangeAmount = receipt.ChangeAmount,
+                Items = receipt.Items,
+                Payments = receipt.Payments,
+            },
+        };
+        using var viewModel = new CashRegisterViewModel(apiClient, CreateSessionContext());
+        await viewModel.InitializeAsync();
+        var sale = viewModel.CurrentTimeline.Single();
+
+        await viewModel.LoadSaleDetailAsync(sale);
+
+        Assert.True(sale.IsCancelled);
+        Assert.Equal("CANCELADA", sale.StatusText);
+        Assert.Equal("Rafael", sale.CancelledByText);
+        Assert.Equal("Produto lançado incorretamente", sale.CancellationReasonText);
+        Assert.Equal(2, sale.Items.Count);
+    }
+
     private static AppSessionContext CreateSessionContext()
     {
         var context = new AppSessionContext();
@@ -395,6 +526,27 @@ public sealed class CashRegisterViewModelTests
         },
     };
 
+    private static SaleReceipt CompleteSale(int id) => new()
+    {
+        Id = id,
+        CashRegisterId = 42,
+        Subtotal = 100m,
+        DiscountAmount = 10m,
+        FinalAmount = 90m,
+        PaidAmount = 95m,
+        ChangeAmount = 5m,
+        Items =
+        [
+            new SaleReceiptItem { Name = "Coca-Cola 2L", Quantity = 2, UnitPrice = 12.50m, Subtotal = 25m, ProfitAmount = 8m },
+            new SaleReceiptItem { Name = "Heineken 330ml", Quantity = 5, UnitPrice = 15m, Subtotal = 75m, ProfitAmount = 20m },
+        ],
+        Payments =
+        [
+            new SaleReceiptPayment { Method = "cash", Label = "Dinheiro", Amount = 50m },
+            new SaleReceiptPayment { Method = "pix", Label = "Pix", Amount = 45m },
+        ],
+    };
+
     private sealed class StubApiClient : IGirofyApiClient
     {
         public CashRegisterSnapshot SummaryResult { get; init; } = new();
@@ -406,6 +558,12 @@ public sealed class CashRegisterViewModelTests
         public CashRegisterDetailSnapshot DetailResult { get; init; } = new();
 
         public Func<int, CancellationToken, Task<CashRegisterDetailSnapshot>>? DetailHandler { get; init; }
+
+        public SaleReceipt SaleDetailResult { get; init; } = new();
+
+        public Func<int, CancellationToken, Task<SaleReceipt>>? SaleDetailHandler { get; init; }
+
+        public int SaleDetailRequestCount { get; private set; }
 
         public Exception? CloseException { get; init; }
 
@@ -460,6 +618,17 @@ public sealed class CashRegisterViewModelTests
             LastDetailCashRegisterId = cashRegisterId;
             return DetailHandler?.Invoke(cashRegisterId, cancellationToken) ??
                 Task.FromResult(DetailResult);
+        }
+
+        public Task<SaleReceipt> GetSaleDetailAsync(
+            string accessToken,
+            int saleId,
+            CancellationToken cancellationToken)
+        {
+            LastAccessToken = accessToken;
+            SaleDetailRequestCount++;
+            return SaleDetailHandler?.Invoke(saleId, cancellationToken) ??
+                Task.FromResult(SaleDetailResult);
         }
 
         public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken) =>

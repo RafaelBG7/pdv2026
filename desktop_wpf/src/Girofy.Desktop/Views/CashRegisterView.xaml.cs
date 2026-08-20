@@ -38,6 +38,15 @@ public partial class CashRegisterView : UserControl
         }
     }
 
+    private async void TimelineSaleExpander_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (sender is Expander { DataContext: CashRegisterTimelineSaleViewModel sale } &&
+            DataContext is CashRegisterViewModel viewModel)
+        {
+            await viewModel.LoadSaleDetailAsync(sale);
+        }
+    }
+
     private static T? FindVisualAncestor<T>(DependencyObject? element) where T : DependencyObject
     {
         while (element is not null)

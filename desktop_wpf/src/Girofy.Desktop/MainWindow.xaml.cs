@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Input;
+using System.Windows.Media;
 using Girofy.Application.ViewModels;
 using Girofy.Desktop.Behaviors;
 using Microsoft.Extensions.Logging;
@@ -129,6 +130,39 @@ public partial class MainWindow : Window
         }
 
         await _viewModel.Catalog.DeleteProductCommand.ExecuteAsync();
+    }
+
+    private void ProductsGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var cell = FindVisualAncestor<DataGridCell>(e.OriginalSource as DependencyObject);
+        var row = FindVisualAncestor<DataGridRow>(cell);
+        if (sender is not DataGrid productsGrid ||
+            cell is null ||
+            row is not { IsSelected: true })
+        {
+            return;
+        }
+
+        e.Handled = true;
+        productsGrid.SelectedItem = null;
+        _viewModel.Catalog.SelectedProduct = null;
+    }
+
+    private static T? FindVisualAncestor<T>(DependencyObject? element) where T : DependencyObject
+    {
+        while (element is not null)
+        {
+            if (element is T match)
+            {
+                return match;
+            }
+
+            element = element is Visual
+                ? VisualTreeHelper.GetParent(element)
+                : LogicalTreeHelper.GetParent(element);
+        }
+
+        return null;
     }
 
     private void QueueLoginFocus()

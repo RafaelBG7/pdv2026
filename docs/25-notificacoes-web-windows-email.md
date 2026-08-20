@@ -35,7 +35,8 @@ Estados suportados:
 - `PUT /api/v1/notifications/{id}/read`: marca uma notificação como lida;
 - `PUT /api/v1/notifications/read-all`: marca todas como lidas e grava auditoria;
 - `PUT /api/v1/notifications/{id}/dismiss`: dispensa uma notificação;
-- `GET|PUT /api/v1/notifications/preferences`: preferências do usuário e validação de destinatários.
+- `GET|PUT /api/v1/notifications/preferences`: preferências pessoais da central;
+- `GET|PUT /api/v1/notifications/email-alert-settings`: configuração em lote, por adega, dos cinco alertas por e-mail e seus destinatários.
 
 Filtros disponíveis: categoria, severidade, estado de leitura, período, texto, página e tamanho da página. Antes da leitura, o backend materializa os alertas atuais de estoque e contas usando as mesmas regras da Web.
 
@@ -45,9 +46,17 @@ O cabeçalho possui um sino com badge de não lidas. Ao clicar, ele abre um pain
 
 Após autenticação, o aplicativo atualiza a central e inicia polling a cada 60 segundos. O polling possui cancelamento por sessão: sair ou trocar de usuário interrompe a tarefa anterior, limpa os dados e evita requisições concorrentes antigas. As chamadas são assíncronas e não bloqueiam a interface.
 
+## Preferências de e-mail no Windows
+
+O App administra as mesmas regras disponíveis na Web em **Configurações > Alertas**. Cada evento aparece em um cartão independente, com chave de ativação, campo de e-mail, inclusão por `+` ou Enter e remoção por chip. O painel lateral explica o comportamento de estoque, contas, assinatura e deduplicação.
+
+O `GET /email-alert-settings` devolve tipos suportados, habilitação, destinatários e metadados de apresentação. O `PUT` valida o lote inteiro antes de persistir, rejeita tipos desconhecidos e registra auditoria. Ambos exigem autenticação, `can_manage_settings` e usam a empresa resolvida pela sessão; o cliente não escolhe livremente um `company_id`.
+
+O aplicativo nunca recebe senha SMTP e não envia e-mail diretamente. Sua responsabilidade termina na administração das preferências confirmadas pela API.
+
 ## Entrega por e-mail
 
-As opções continuam em **Configurações > Alertas por e-mail** na versão Web. Cada tipo possui habilitação e lista de destinatários. Se a lista estiver vazia, o alerta não é enviado.
+As opções existem em **Configurações > Alertas por e-mail** na Web e em **Configurações > Alertas** no Windows. Cada tipo possui habilitação e lista de destinatários. Se a lista estiver vazia, o alerta não é enviado.
 
 O servidor aplica três proteções:
 
@@ -63,4 +72,4 @@ O ambiente precisa fornecer servidor SMTP, porta, usuário, senha, remetente e p
 
 ## Validação e evolução
 
-Há cobertura automatizada para isolamento entre empresas, paginação/listagem, leitura, dispensa, deduplicação, preferências, materialização de alertas de estoque/contas e envio único por e-mail. A evolução natural é adicionar toast nativo do Windows e administrar todas as preferências de e-mail diretamente no desktop; a central e os contratos já foram preparados para isso.
+Há cobertura automatizada para isolamento entre empresas, paginação/listagem, leitura, dispensa, deduplicação, preferências pessoais, contrato em lote de alertas por e-mail, permissão administrativa, validação de destinatários, materialização de alertas de estoque/contas e envio único por e-mail. A administração completa de preferências já está disponível no desktop; uma evolução futura possível é adicionar toast nativo do Windows.

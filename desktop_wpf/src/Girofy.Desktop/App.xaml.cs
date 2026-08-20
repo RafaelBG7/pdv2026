@@ -65,6 +65,8 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<ISecureSessionStore, DpapiSessionStore>();
                 services.AddSingleton<IUserPreferencesStore, JsonUserPreferencesStore>();
                 services.AddSingleton<IThemeService, WindowsThemeService>();
+                services.AddSingleton<IAccessibilityService, AccessibilityService>();
+                services.AddSingleton<WindowsAccessibilityResourceAdapter>();
                 services.AddSingleton<IAppSessionContext, AppSessionContext>();
                 services.AddHttpClient<IGirofyApiClient, GirofyApiClient>(client =>
                 {
@@ -103,7 +105,8 @@ public partial class App : System.Windows.Application
                     provider.GetRequiredService<IFileSaveService>(),
                     provider.GetRequiredService<IFilePickerService>(),
                     new Uri(serverUri, "configuracoes"),
-                    provider.GetRequiredService<IThemeService>()));
+                    provider.GetRequiredService<IThemeService>(),
+                    provider.GetRequiredService<IAccessibilityService>()));
                 services.AddSingleton(provider => new ConnectionViewModel(
                     provider.GetRequiredService<IGirofyApiClient>(),
                     provider.GetRequiredService<IExternalBrowserService>(),
@@ -145,6 +148,8 @@ public partial class App : System.Windows.Application
             try
             {
                 await _host.Services.GetRequiredService<IThemeService>().InitializeAsync();
+                await _host.Services.GetRequiredService<IAccessibilityService>().InitializeAsync();
+                _host.Services.GetRequiredService<WindowsAccessibilityResourceAdapter>().Apply();
             }
             catch (Exception themeException)
             {

@@ -3,14 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
         <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeCardTitle}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
 
         <Style x:Key="SettingsSectionDescriptionStyle" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,7,0,0" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeLabel}" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
@@ -22,7 +22,7 @@
         </Style>
 
         <Style x:Key="SettingsSmallLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
         </Style>
@@ -31,7 +31,7 @@
             <Setter Property="Padding" Value="20" />
             <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AccessibilityBorderThickness}" />
             <Setter Property="CornerRadius" Value="12" />
         </Style>
 
@@ -39,7 +39,7 @@
             <Setter Property="Padding" Value="18" />
             <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AccessibilityBorderThickness}" />
             <Setter Property="CornerRadius" Value="10" />
         </Style>
 
@@ -72,7 +72,7 @@
                             <Border Padding="5"
                                     Background="{DynamicResource SurfaceBrush}"
                                     BorderBrush="{DynamicResource BorderBrush}"
-                                    BorderThickness="1"
+                                    BorderThickness="{DynamicResource AccessibilityBorderThickness}"
                                     CornerRadius="10">
                                 <ItemsPresenter x:Name="HeaderPanel"
                                                 KeyboardNavigation.DirectionalNavigation="Contained"
@@ -92,7 +92,7 @@
         <Style TargetType="TabItem" x:Key="SettingsTabItemStyle">
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeLabel}" />
             <Setter Property="Padding" Value="17,11" />
             <Setter Property="Margin" Value="3" />
             <Setter Property="Template">
@@ -102,7 +102,7 @@
                                 Padding="{TemplateBinding Padding}"
                                 Background="Transparent"
                                 BorderBrush="Transparent"
-                                BorderThickness="1"
+                                BorderThickness="{DynamicResource AccessibilityBorderThickness}"
                                 CornerRadius="8">
                             <ContentPresenter ContentSource="Header"
                                               HorizontalAlignment="Center"
@@ -149,12 +149,12 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock FontSize="30"
+                    <TextBlock FontSize="{DynamicResource FontSizeHero}"
                                FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                Text="Configurações" />
                     <TextBlock Margin="0,7,0,0"
-                               FontSize="15"
+                               FontSize="{DynamicResource FontSizeInput}"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="Gerencie os dados do usuário conectado e as preferências da adega." />
                 </StackPanel>
@@ -176,7 +176,7 @@
                         Margin="0,0,0,8"
                         Background="{DynamicResource ErrorSurfaceBrush}"
                         BorderBrush="{DynamicResource ErrorBorderBrush}"
-                        BorderThickness="1"
+                        BorderThickness="{DynamicResource AccessibilityBorderThickness}"
                         CornerRadius="5">
                     <Border.Style>
                         <Style TargetType="Border">
@@ -196,7 +196,7 @@
                 <Border Padding="12"
                         Background="{DynamicResource SuccessSurfaceBrush}"
                         BorderBrush="{DynamicResource SuccessBorderBrush}"
-                        BorderThickness="1"
+                        BorderThickness="{DynamicResource AccessibilityBorderThickness}"
                         CornerRadius="5">
                     <Border.Style>
                         <Style TargetType="Border">
@@ -221,12 +221,12 @@
                         <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
                                    Text="USUÁRIO" />
                         <TextBlock Margin="0,6,0,0"
-                                   FontSize="21"
+                                   FontSize="{DynamicResource FontSizeCardTitle}"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                    Text="{Binding UsernameText}" />
                         <TextBlock Margin="0,4,0,0"
-                                   FontSize="13"
+                                   FontSize="{DynamicResource FontSizeBody}"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding EmailText}"
                                    TextTrimming="CharacterEllipsis" />
@@ -239,13 +239,13 @@
                         <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
                                    Text="ADEGA" />
                         <TextBlock Margin="0,6,0,0"
-                                   FontSize="21"
+                                   FontSize="{DynamicResource FontSizeCardTitle}"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                    Text="{Binding CompanyName}"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Margin="0,4,0,0"
-                                   FontSize="13"
+                                   FontSize="{DynamicResource FontSizeBody}"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding RoleText}" />
                     </StackPanel>
@@ -257,13 +257,13 @@
                         <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
                                    Text="ASSINATURA" />
                         <TextBlock Margin="0,6,0,0"
-                                   FontSize="21"
+                                   FontSize="{DynamicResource FontSizeCardTitle}"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource InfoBrush}"
                                    Text="{Binding PlanText}"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Margin="0,4,0,0"
-                                   FontSize="13"
+                                   FontSize="{DynamicResource FontSizeBody}"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding SubscriptionText}" />
                     </StackPanel>
@@ -684,16 +684,16 @@
                                         Padding="16"
                                         Background="{DynamicResource SurfaceRaisedBrush}"
                                         BorderBrush="{DynamicResource BorderBrush}"
-                                        BorderThickness="1"
+                                        BorderThickness="{DynamicResource AccessibilityBorderThickness}"
                                         CornerRadius="9">
                                     <StackPanel>
-                                        <CheckBox FontSize="15"
-                                                  FontWeight="SemiBold"
+                                        <CheckBox FontSize="{DynamicResource FontSizeInput}"
+                                                  FontWeight="{DynamicResource FontWeightStrong}"
                                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                                   IsChecked="{Binding AllowNegativeStock, UpdateSourceTrigger=PropertyChanged}"
                                                   Content="Permitir estoque negativo" />
                                         <TextBlock Margin="28,7,0,0"
-                                                   FontSize="13"
+                                                   FontSize="{DynamicResource FontSizeBody}"
                                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                                    Text="A venda será concluída e a quantidade ficará negativa, mantendo o alerta de estoque insuficiente."
                                                    TextWrapping="Wrap" />
@@ -825,7 +825,7 @@
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                                 <StackPanel>
-                                                                    <TextBlock FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Label}" />
+                                                                    <TextBlock FontSize="{DynamicResource FontSizeSubtitle}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Label}" />
                                                                     <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding Description}" TextWrapping="Wrap" />
                                                                 </StackPanel>
                                                                 <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0"
@@ -844,9 +844,9 @@
                                                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                                                 <ItemsControl.ItemTemplate>
                                                                     <DataTemplate>
-                                                                        <Border Margin="0,0,8,8" Padding="10,6" CornerRadius="14" Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                                                                        <Border Margin="0,0,8,8" Padding="10,6" CornerRadius="14" Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}">
                                                                             <StackPanel Orientation="Horizontal">
-                                                                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding}" />
+                                                                                <TextBlock VerticalAlignment="Center" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding}" />
                                                                                 <Button Margin="8,0,0,0" Padding="3,0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" Content="×"
                                                                                         Command="{Binding DataContext.RemoveRecipientCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
                                                                             </StackPanel>
@@ -855,7 +855,7 @@
                                                                 </ItemsControl.ItemTemplate>
                                                             </ItemsControl>
                                                             <TextBlock Foreground="{DynamicResource ErrorBrush}" Text="{Binding ValidationMessage}" />
-                                                            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Text="Adicione um e-mail por vez. Use o botão + ou Enter." />
+                                                            <TextBlock Margin="0,5,0,0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" Text="Adicione um e-mail por vez. Use o botão + ou Enter." />
                                                         </StackPanel>
                                                     </Border>
                                                 </DataTemplate>
@@ -906,7 +906,7 @@
                                             <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
                                                        Text="FREQUÊNCIA" />
                                             <TextBlock Margin="0,6,0,0"
-                                                       FontSize="18"
+                                                       FontSize="{DynamicResource FontSizeSection}"
                                                        FontWeight="Bold"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding BackupFrequencyText}" />
@@ -919,7 +919,7 @@
                                             <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
                                                        Text="ÚLTIMO BACKUP" />
                                             <TextBlock Margin="0,6,0,0"
-                                                       FontSize="18"
+                                                       FontSize="{DynamicResource FontSizeSection}"
                                                        FontWeight="Bold"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                                        Text="{Binding BackupLastAtText}"
@@ -933,7 +933,7 @@
                                             <TextBlock Style="{StaticResource SettingsSmallLabelStyle}"
                                                        Text="STATUS" />
                                             <TextBlock Margin="0,6,0,0"
-                                                       FontSize="18"
+                                                       FontSize="{DynamicResource FontSizeSection}"
                                                        FontWeight="Bold"
                                                        Foreground="{DynamicResource InfoBrush}"
                                                        Text="{Binding BackupStatusText}"
@@ -1075,28 +1075,125 @@
                     </TabItem>
 
                     <TabItem Header="Acessibilidade">
-                        <Border Margin="0,18,0,0"
-                                Style="{StaticResource SettingsInnerPanelStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="16" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                        <Grid Margin="0,18,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.35*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel>
+                                <Border Style="{StaticResource SettingsInnerPanelStyle}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
+                                                   Text="Acessibilidade visual" />
+                                        <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
+                                                   Text="Ajuste a leitura e o movimento do Girofy. As mudanças aparecem imediatamente e permanecem neste computador após salvar." />
+
+                                        <Grid Margin="0,20,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="14" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Style="{StaticResource SettingsLabelStyle}"
+                                                           Text="Tamanho do texto" />
+                                                <ComboBox MinHeight="48"
+                                                          ItemsSource="{Binding AccessibilityTextSizeOptions}"
+                                                          DisplayMemberPath="Label"
+                                                          SelectedValuePath="Value"
+                                                          SelectedValue="{Binding AccessibilityTextSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          AutomationProperties.Name="Tamanho do texto" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Style="{StaticResource SettingsLabelStyle}"
+                                                           Text="Contraste" />
+                                                <ComboBox MinHeight="48"
+                                                          ItemsSource="{Binding AccessibilityContrastOptions}"
+                                                          DisplayMemberPath="Label"
+                                                          SelectedValuePath="Value"
+                                                          SelectedValue="{Binding AccessibilityContrast, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          AutomationProperties.Name="Nível de contraste" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <CheckBox Margin="0,20,0,0"
+                                                  IsChecked="{Binding AccessibilityReinforcedText}"
+                                                  AutomationProperties.Name="Reforçar textos"
+                                                  Content="Reforçar textos principais" />
+                                        <TextBlock Margin="28,5,0,0"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Aumenta o peso de textos e labels sem remover a hierarquia visual."
+                                                   TextWrapping="Wrap" />
+
+                                        <CheckBox Margin="0,18,0,0"
+                                                  IsChecked="{Binding AccessibilityReduceMotion}"
+                                                  AutomationProperties.Name="Reduzir animações"
+                                                  Content="Reduzir animações" />
+                                        <TextBlock Margin="28,5,0,0"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Remove transições decorativas e preserva feedback funcional."
+                                                   TextWrapping="Wrap" />
+
+                                        <StackPanel Margin="0,22,0,0" Orientation="Horizontal">
+                                            <Button MinWidth="160"
+                                                    Command="{Binding SaveAccessibilityCommand}"
+                                                    AutomationProperties.Name="Salvar preferências de acessibilidade"
+                                                    Content="Salvar preferências"
+                                                    Style="{StaticResource PrimaryButtonStyle}" />
+                                            <Button MinWidth="150"
+                                                    Margin="10,0,0,0"
+                                                    Command="{Binding ResetAccessibilityCommand}"
+                                                    AutomationProperties.Name="Restaurar acessibilidade padrão"
+                                                    Content="Restaurar padrão"
+                                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <Border Grid.Column="2" Style="{StaticResource SettingsInnerPanelStyle}">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
-                                               Text="Acessibilidade visual" />
+                                               Text="Pré-visualização" />
                                     <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
-                                               Text="As preferências detalhadas de tamanho, contraste e negrito ainda ficam na versão web. O aplicativo Windows vai herdar esse painel em uma próxima etapa." />
+                                               Text="O exemplo usa os mesmos recursos dinâmicos das telas do aplicativo." />
+                                    <Border Margin="0,18,0,0"
+                                            Padding="16"
+                                            Background="{DynamicResource SurfaceRaisedBrush}"
+                                            BorderBrush="{DynamicResource BorderStrongBrush}"
+                                            BorderThickness="{DynamicResource AccessibilityBorderThickness}"
+                                            CornerRadius="10">
+                                        <StackPanel>
+                                            <TextBlock FontSize="{DynamicResource FontSizeSmall}"
+                                                       FontWeight="{DynamicResource FontWeightLabel}"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       Text="PRODUTO" />
+                                            <TextBlock Margin="0,6,0,0"
+                                                       FontSize="{DynamicResource FontSizeSection}"
+                                                       FontWeight="{DynamicResource FontWeightStrong}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       Text="Coca-Cola 2L" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       FontSize="{DynamicResource FontSizeBody}"
+                                                       FontWeight="{DynamicResource FontWeightBody}"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       Text="Preço · R$ 12,90" />
+                                            <Button Margin="0,16,0,0"
+                                                    HorizontalAlignment="Left"
+                                                    AutomationProperties.Name="Botão de exemplo da pré-visualização"
+                                                    Content="Botão de exemplo"
+                                                    Style="{StaticResource PrimaryButtonStyle}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock Margin="0,18,0,0"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Text="Tema claro/escuro e acessibilidade são independentes. Alto contraste funciona nos dois temas."
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
-                                <Button Grid.Column="2"
-                                        MinWidth="176"
-                                        VerticalAlignment="Center"
-                                        Command="{Binding OpenWebSettingsCommand}"
-                                        Content="Ajustar na web"
-                                        Style="{StaticResource PrimaryButtonStyle}" />
-                            </Grid>
-                        </Border>
+                            </Border>
+                        </Grid>
                     </TabItem>
                 </TabControl>
             </Border>

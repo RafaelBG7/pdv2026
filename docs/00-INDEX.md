@@ -5,7 +5,7 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 ## Marco atual
 
 - [Documentação consolidada atual](../documentacao/DOCUMENTACAO_COMPLETA.txt) —
-  fonte completa atualizada em 19/08/2026, separando Web, App, API e infraestrutura.
+  fonte completa atualizada em 20/08/2026, separando Web, App, API e infraestrutura.
 - [Estado completo em 17/08/2026](31-estado-atual-17-08-2026.md) — marco histórico detalhado.
 - [Marco de 13/08/2026](30-versao-atual-13-08-2026.md) — histórico preservado.
 

@@ -12,6 +12,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
     private readonly IThemeService _themeService;
+    private readonly IAccessibilityService _accessibilityService;
     private readonly IExternalBrowserService _browserService;
     private readonly IFileSaveService _fileSaveService;
     private readonly IFilePickerService _filePickerService;
@@ -64,6 +65,11 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     private string _errorMessage = string.Empty;
     private string _successMessage = string.Empty;
     private bool _isBusy;
+    private string _accessibilityTextSize = "standard";
+    private bool _accessibilityReinforcedText;
+    private string _accessibilityContrast = "standard";
+    private bool _accessibilityReduceMotion;
+    private bool? _accessibilityReduceMotionOverride;
 
     public SettingsViewModel(
         IGirofyApiClient apiClient,
@@ -72,11 +78,13 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         IFileSaveService fileSaveService,
         IFilePickerService filePickerService,
         Uri webSettingsUri,
-        IThemeService? themeService = null)
+        IThemeService? themeService = null,
+        IAccessibilityService? accessibilityService = null)
     {
         _apiClient = apiClient;
         _sessionContext = sessionContext;
         _themeService = themeService ?? NullThemeService.Instance;
+        _accessibilityService = accessibilityService ?? NullAccessibilityService.Instance;
         _browserService = browserService;
         _fileSaveService = fileSaveService;
         _filePickerService = filePickerService;
@@ -97,6 +105,9 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         ClearNewEmployeeCommand = new RelayCommand(ClearNewEmployeeForm);
         OpenWebSettingsCommand = new RelayCommand(() => _browserService.Open(_webSettingsUri));
         ToggleThemeCommand = new AsyncRelayCommand(ToggleThemeAsync);
+        SaveAccessibilityCommand = new AsyncRelayCommand(SaveAccessibilityAsync, () => !IsBusy);
+        ResetAccessibilityCommand = new AsyncRelayCommand(ResetAccessibilityAsync, () => !IsBusy);
+        LoadAccessibilityState(_accessibilityService.Current);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -128,6 +139,21 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         new("success", "Sucesso ou superior"),
         new("warning", "Atenção ou crítica"),
         new("critical", "Somente críticas"),
+    ];
+
+    public ObservableCollection<CatalogFilterOption> AccessibilityTextSizeOptions { get; } =
+    [
+        new("standard", "Padrão — 100%"),
+        new("medium", "Médio — 110%"),
+        new("large", "Grande — 120%"),
+        new("xlarge", "Muito grande — 130%"),
+    ];
+
+    public ObservableCollection<CatalogFilterOption> AccessibilityContrastOptions { get; } =
+    [
+        new("standard", "Padrão"),
+        new("high", "Alto"),
+        new("very_high", "Muito alto"),
     ];
 
     public SettingsAccountSnapshot? Snapshot
@@ -595,11 +621,64 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand ToggleThemeCommand { get; }
 
+    public AsyncRelayCommand SaveAccessibilityCommand { get; }
+
+    public AsyncRelayCommand ResetAccessibilityCommand { get; }
+
     public bool IsDarkMode => _themeService.IsDarkMode;
 
     public string ThemeToggleText => _themeService.IsDarkMode
         ? "Usar tema claro"
         : "Usar tema escuro";
+
+    public string AccessibilityTextSize
+    {
+        get => _accessibilityTextSize;
+        set
+        {
+            if (SetProperty(ref _accessibilityTextSize, value))
+            {
+                PreviewAccessibility();
+            }
+        }
+    }
+
+    public bool AccessibilityReinforcedText
+    {
+        get => _accessibilityReinforcedText;
+        set
+        {
+            if (SetProperty(ref _accessibilityReinforcedText, value))
+            {
+                PreviewAccessibility();
+            }
+        }
+    }
+
+    public string AccessibilityContrast
+    {
+        get => _accessibilityContrast;
+        set
+        {
+            if (SetProperty(ref _accessibilityContrast, value))
+            {
+                PreviewAccessibility();
+            }
+        }
+    }
+
+    public bool AccessibilityReduceMotion
+    {
+        get => _accessibilityReduceMotion;
+        set
+        {
+            if (SetProperty(ref _accessibilityReduceMotion, value))
+            {
+                _accessibilityReduceMotionOverride = value;
+                PreviewAccessibility();
+            }
+        }
+    }
 
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         LoadAsync(cancellationToken);
@@ -609,6 +688,79 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         await _themeService.ToggleAsync(cancellationToken);
         OnPropertyChanged(nameof(IsDarkMode));
         OnPropertyChanged(nameof(ThemeToggleText));
+    }
+
+    private void PreviewAccessibility() =>
+        _accessibilityService.Preview(BuildAccessibilityPreferences());
+
+    private async Task SaveAccessibilityAsync(CancellationToken cancellationToken)
+    {
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        try
+        {
+            await _accessibilityService.SaveAsync(BuildAccessibilityPreferences(), cancellationToken);
+            SuccessMessage = "Preferências de acessibilidade salvas.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Não foi possível salvar as preferências de acessibilidade.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ResetAccessibilityAsync(CancellationToken cancellationToken)
+    {
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        try
+        {
+            await _accessibilityService.ResetAsync(cancellationToken);
+            LoadAccessibilityState(_accessibilityService.Current);
+            SuccessMessage = "Preferências de acessibilidade restauradas para o padrão.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Não foi possível restaurar as preferências de acessibilidade.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private AccessibilityPreferences BuildAccessibilityPreferences() => new()
+    {
+        TextSize = AccessibilityTextSize,
+        ReinforcedText = AccessibilityReinforcedText,
+        Contrast = AccessibilityContrast,
+        ReduceMotion = _accessibilityReduceMotionOverride,
+    };
+
+    private void LoadAccessibilityState(AccessibilityPreferences preferences)
+    {
+        _accessibilityTextSize = preferences.TextSize;
+        _accessibilityReinforcedText = preferences.ReinforcedText;
+        _accessibilityContrast = preferences.Contrast;
+        _accessibilityReduceMotionOverride = preferences.ReduceMotion;
+        _accessibilityReduceMotion = preferences.ReduceMotion ?? false;
+        OnPropertyChanged(nameof(AccessibilityTextSize));
+        OnPropertyChanged(nameof(AccessibilityReinforcedText));
+        OnPropertyChanged(nameof(AccessibilityContrast));
+        OnPropertyChanged(nameof(AccessibilityReduceMotion));
     }
 
     private async void HandleSessionChanged(object? sender, EventArgs e)
@@ -1384,6 +1536,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         RefreshTeamCommand.NotifyCanExecuteChanged();
         CreateEmployeeCommand.NotifyCanExecuteChanged();
         SaveEmployeeCommand.NotifyCanExecuteChanged();
+        SaveAccessibilityCommand.NotifyCanExecuteChanged();
+        ResetAccessibilityCommand.NotifyCanExecuteChanged();
     }
 
     private static string FormatFee(bool enabled, decimal percent) =>
@@ -1447,8 +1601,43 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
         public bool IsDarkMode => true;
 
+        public event EventHandler? Changed;
+
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task ToggleAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public void Apply()
+        {
+        }
+    }
+
+    private sealed class NullAccessibilityService : IAccessibilityService
+    {
+        public static NullAccessibilityService Instance { get; } = new();
+
+        public AccessibilityPreferences Current { get; private set; } = AccessibilityPreferences.Default;
+
+        public event EventHandler? Changed;
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public void Preview(AccessibilityPreferences preferences)
+        {
+            Current = preferences;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        public Task SaveAsync(AccessibilityPreferences preferences, CancellationToken cancellationToken = default)
+        {
+            Preview(preferences);
+            return Task.CompletedTask;
+        }
+
+        public Task ResetAsync(CancellationToken cancellationToken = default)
+        {
+            Preview(AccessibilityPreferences.Default);
+            return Task.CompletedTask;
+        }
     }
 }

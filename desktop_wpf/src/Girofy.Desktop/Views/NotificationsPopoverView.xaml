@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Width="540" MaxHeight="460">
     <Border Padding="20" Background="{DynamicResource SurfaceRaisedBrush}"
-            BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1" CornerRadius="12">
+            BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="12">
         <Border.Effect>
             <DropShadowEffect BlurRadius="22" Opacity="0.42" ShadowDepth="8" Color="#020617" />
         </Border.Effect>
@@ -21,9 +21,9 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Alertas" />
+                <TextBlock FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Alertas" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Margin="0,0,12,0" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}">
+                    <TextBlock Margin="0,0,12,0" FontSize="{DynamicResource FontSizeLabel}" Foreground="{DynamicResource TextSecondaryBrush}">
                         <Run Text="{Binding UnreadCount, Mode=OneWay}" /><Run Text=" pendentes" />
                     </TextBlock>
                     <Button Padding="9,5" Command="{Binding MarkAllReadCommand}" Content="Marcar lidas"
@@ -42,7 +42,7 @@
                     <TextBlock MaxWidth="420" Foreground="{DynamicResource ErrorBrush}" Text="{Binding ErrorMessage}" TextAlignment="Center" TextWrapping="Wrap" />
                     <Button Margin="0,10,0,0" Command="{Binding RefreshCommand}" Content="Tentar novamente" Style="{StaticResource SecondaryButtonStyle}" />
                 </StackPanel>
-                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"
+                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{DynamicResource FontSizeSubtitle}"
                            Foreground="{DynamicResource TextSecondaryBrush}" Text="Nenhuma alteração necessária agora.">
                     <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding HasNoItems}" Value="True"/><Condition Binding="{Binding HasError}" Value="False"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible"/></MultiDataTrigger></Style.Triggers></Style></TextBlock.Style>
                 </TextBlock>
@@ -52,7 +52,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Margin="0,0,0,8" Padding="12" Background="{DynamicResource SurfaceBrush}"
-                                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="7" />
@@ -62,10 +62,10 @@
                                         </Grid.ColumnDefinitions>
                                         <Border Background="{DynamicResource InfoBrush}" CornerRadius="4" />
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Title}" />
+                                            <TextBlock FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Title}" />
                                             <TextBlock Margin="0,4,0,0" MaxWidth="365" Foreground="{DynamicResource TextSecondaryBrush}"
                                                        Text="{Binding Message}" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
-                                            <TextBlock Margin="0,5,0,0" FontSize="11" Foreground="{DynamicResource TextMutedBrush}">
+                                            <TextBlock Margin="0,5,0,0" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource TextMutedBrush}">
                                                 <Run Text="{Binding CategoryText, Mode=OneWay}" /><Run Text=" • " /><Run Text="{Binding CreatedAtText, Mode=OneWay}" />
                                             </TextBlock>
                                         </StackPanel>

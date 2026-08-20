@@ -31,8 +31,8 @@
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock FontSize="30" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Auditoria" />
-                        <TextBlock Margin="0,7,0,0" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"
+                        <TextBlock FontSize="{DynamicResource FontSizeHero}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Auditoria" />
+                        <TextBlock Margin="0,7,0,0" FontSize="{DynamicResource FontSizeLabel}" Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="Consulte ações críticas registradas na adega." />
                     </StackPanel>
                     <Button Grid.Column="1" MinWidth="112" VerticalAlignment="Center" Command="{Binding RefreshCommand}"
@@ -41,7 +41,7 @@
             </Border>
 
             <Border Grid.Row="2" Padding="12" Background="{DynamicResource ErrorSurfaceBrush}"
-                    BorderBrush="{DynamicResource ErrorBorderBrush}" BorderThickness="1" CornerRadius="8">
+                    BorderBrush="{DynamicResource ErrorBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="8">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -59,8 +59,8 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="6" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Border Background="{DynamicResource AccentBrush}" CornerRadius="12,0,0,12" />
                         <StackPanel Grid.Column="1" Margin="22,18" VerticalAlignment="Center">
-                            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Text="Eventos" />
-                            <TextBlock Margin="0,5,0,0" FontSize="27" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.Count}" />
+                            <TextBlock FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextSecondaryBrush}" Text="Eventos" />
+                            <TextBlock Margin="0,5,0,0" FontSize="{DynamicResource FontSizePageTitle}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.Count}" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -69,8 +69,8 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="6" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Border Background="{DynamicResource InfoBrush}" CornerRadius="12,0,0,12" />
                         <StackPanel Grid.Column="1" Margin="22,18" VerticalAlignment="Center">
-                            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Text="Usuários envolvidos" />
-                            <TextBlock Margin="0,5,0,0" FontSize="27" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.Users}" />
+                            <TextBlock FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextSecondaryBrush}" Text="Usuários envolvidos" />
+                            <TextBlock Margin="0,5,0,0" FontSize="{DynamicResource FontSizePageTitle}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.Users}" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -79,8 +79,8 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="6" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Border Background="{DynamicResource WarningBrush}" CornerRadius="12,0,0,12" />
                         <StackPanel Grid.Column="1" Margin="22,18" VerticalAlignment="Center">
-                            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Text="Ações diferentes" />
-                            <TextBlock Margin="0,5,0,0" FontSize="27" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.Actions}" />
+                            <TextBlock FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextSecondaryBrush}" Text="Ações diferentes" />
+                            <TextBlock Margin="0,5,0,0" FontSize="{DynamicResource FontSizePageTitle}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Summary.Actions}" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -101,19 +101,19 @@
                         <RowDefinition Height="48" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Busca" />
-                    <TextBlock Grid.Column="2" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Usuário" />
-                    <TextBlock Grid.Column="4" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Ação" />
-                    <TextBlock Grid.Column="6" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Módulo" />
+                    <TextBlock FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="Busca" />
+                    <TextBlock Grid.Column="2" FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="Usuário" />
+                    <TextBlock Grid.Column="4" FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="Ação" />
+                    <TextBlock Grid.Column="6" FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="Módulo" />
                     <TextBox Grid.Row="2" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="Buscar auditoria" Style="{StaticResource TextInputStyle}" />
                     <ComboBox Grid.Row="2" Grid.Column="2" ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" DisplayMemberPath="Label" />
                     <ComboBox Grid.Row="2" Grid.Column="4" ItemsSource="{Binding Actions}" SelectedItem="{Binding SelectedAction}" DisplayMemberPath="Label" />
                     <ComboBox Grid.Row="2" Grid.Column="6" ItemsSource="{Binding Entities}" SelectedItem="{Binding SelectedEntity}" DisplayMemberPath="Label" />
 
-                    <TextBlock Grid.Row="4" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Método" />
-                    <TextBlock Grid.Row="4" Grid.Column="2" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Data inicial" />
-                    <TextBlock Grid.Row="4" Grid.Column="4" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Data final" />
+                    <TextBlock Grid.Row="4" FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="Método" />
+                    <TextBlock Grid.Row="4" Grid.Column="2" FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="Data inicial" />
+                    <TextBlock Grid.Row="4" Grid.Column="4" FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="Data final" />
                     <ComboBox Grid.Row="6" ItemsSource="{Binding Methods}" SelectedItem="{Binding SelectedMethod}" DisplayMemberPath="Label" />
                     <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding StartDateText, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="dd/mm/aaaa" Style="{StaticResource TextInputStyle}" />
@@ -151,8 +151,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding CreatedDateText}" />
-                                            <TextBlock Margin="0,3,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding CreatedTimeText}" />
+                                            <TextBlock FontSize="{DynamicResource FontSizeLabel}" FontWeight="Bold" Text="{Binding CreatedDateText}" />
+                                            <TextBlock Margin="0,3,0,0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding CreatedTimeText}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -162,8 +162,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Style="{StaticResource AuditPillStyle}" Background="{DynamicResource WarningSurfaceBrush}"
-                                                BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1">
-                                            <TextBlock MaxWidth="175" FontSize="12" FontWeight="SemiBold"
+                                                BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}">
+                                            <TextBlock MaxWidth="175" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource WarningBrush}" Text="{Binding ActionText}" />
                                         </Border>
                                     </DataTemplate>
@@ -173,8 +173,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Style="{StaticResource AuditPillStyle}" Background="{DynamicResource InfoSurfaceBrush}"
-                                                BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1">
-                                            <TextBlock MaxWidth="120" FontSize="12" FontWeight="SemiBold"
+                                                BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}">
+                                            <TextBlock MaxWidth="120" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource AccentBrush}" Text="{Binding EntityText}" />
                                         </Border>
                                     </DataTemplate>
@@ -186,23 +186,23 @@
                         <DataGrid.RowDetailsTemplate>
                             <DataTemplate DataType="{x:Type models:AuditLogRecord}">
                                 <Border Margin="12,0,12,12" Padding="16" CornerRadius="9"
-                                        Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1">
+                                        Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}">
                                     <Grid>
                                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="ANTES" />
-                                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding OldValuesText}" TextWrapping="Wrap" />
+                                            <TextBlock FontSize="{DynamicResource FontSizeSmall}" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="ANTES" />
+                                            <TextBlock Margin="0,4,0,0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding OldValuesText}" TextWrapping="Wrap" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="DEPOIS" />
-                                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding NewValuesText}" TextWrapping="Wrap" />
+                                            <TextBlock FontSize="{DynamicResource FontSizeSmall}" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="DEPOIS" />
+                                            <TextBlock Margin="0,4,0,0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding NewValuesText}" TextWrapping="Wrap" />
                                         </StackPanel>
                                         <UniformGrid Grid.Row="2" Grid.ColumnSpan="3" Columns="4">
-                                            <StackPanel Margin="0,0,10,0"><TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="ROTA" /><TextBlock FontSize="12" Text="{Binding RouteText}" /></StackPanel>
-                                            <StackPanel Margin="0,0,10,0"><TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="MÉTODO" /><TextBlock FontSize="12" Text="{Binding MethodText}" /></StackPanel>
-                                            <StackPanel Margin="0,0,10,0"><TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="REQUEST ID" /><TextBlock FontSize="12" Text="{Binding RequestText}" TextTrimming="CharacterEllipsis" /></StackPanel>
-                                            <StackPanel><TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="IP" /><TextBlock FontSize="12" Text="{Binding IpText}" /></StackPanel>
+                                            <StackPanel Margin="0,0,10,0"><TextBlock FontSize="{DynamicResource FontSizeSmall}" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="ROTA" /><TextBlock FontSize="{DynamicResource FontSizeCaption}" Text="{Binding RouteText}" /></StackPanel>
+                                            <StackPanel Margin="0,0,10,0"><TextBlock FontSize="{DynamicResource FontSizeSmall}" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="MÉTODO" /><TextBlock FontSize="{DynamicResource FontSizeCaption}" Text="{Binding MethodText}" /></StackPanel>
+                                            <StackPanel Margin="0,0,10,0"><TextBlock FontSize="{DynamicResource FontSizeSmall}" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="REQUEST ID" /><TextBlock FontSize="{DynamicResource FontSizeCaption}" Text="{Binding RequestText}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                            <StackPanel><TextBlock FontSize="{DynamicResource FontSizeSmall}" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Text="IP" /><TextBlock FontSize="{DynamicResource FontSizeCaption}" Text="{Binding IpText}" /></StackPanel>
                                         </UniformGrid>
                                     </Grid>
                                 </Border>
@@ -225,7 +225,7 @@
 
                     <Grid Grid.Row="1" Margin="18,14,18,16">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <TextBlock VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding PageSummary}" />
+                        <TextBlock VerticalAlignment="Center" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding PageSummary}" />
                         <Button Grid.Column="1" MinWidth="96" IsEnabled="{Binding CanGoPrevious}" Command="{Binding PreviousPageCommand}" Content="Anterior" Style="{StaticResource SecondaryButtonStyle}" />
                         <Button Grid.Column="3" MinWidth="96" IsEnabled="{Binding CanGoNext}" Command="{Binding NextPageCommand}" Content="Próxima" Style="{StaticResource SecondaryButtonStyle}" />
                     </Grid>

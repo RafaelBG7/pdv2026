@@ -559,12 +559,19 @@ public sealed class SettingsViewModelTests
     {
         public bool IsDarkMode { get; private set; } = true;
 
+        public event EventHandler? Changed;
+
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task ToggleAsync(CancellationToken cancellationToken = default)
         {
             IsDarkMode = !IsDarkMode;
+            Changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
+        }
+
+        public void Apply()
+        {
         }
     }
 }

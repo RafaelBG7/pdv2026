@@ -8,17 +8,17 @@
         </Style>
         <Style x:Key="PayablesLabelStyle" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,0,0,7" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
         <Style x:Key="PayablesMetricLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeLabel}" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
         </Style>
         <Style x:Key="PayablesMetricValueStyle" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,9,0,0" />
-            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeTitle}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
@@ -26,7 +26,7 @@
             <Setter Property="MinWidth" Value="104" />
             <Setter Property="Height" Value="48" />
             <Setter Property="Margin" Value="7,0,0,0" />
-            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeInput}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource PrimaryGradientBrush}" />
@@ -51,8 +51,8 @@
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock FontSize="30" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Contas a pagar" />
-                    <TextBlock Margin="0,7,0,0" FontSize="15" Foreground="{DynamicResource TextSecondaryBrush}"
+                    <TextBlock FontSize="{DynamicResource FontSizeHero}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Contas a pagar" />
+                    <TextBlock Margin="0,7,0,0" FontSize="{DynamicResource FontSizeInput}" Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="Cadastre despesas como aluguel, luz e fornecedores." />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -67,14 +67,14 @@
 
             <StackPanel Grid.Row="2">
                 <Border Padding="12" Margin="0,0,0,8" Background="{DynamicResource ErrorSurfaceBrush}"
-                        BorderBrush="{DynamicResource ErrorBorderBrush}" BorderThickness="1" CornerRadius="8">
+                        BorderBrush="{DynamicResource ErrorBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="8">
                     <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers><DataTrigger Binding="{Binding HasError}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                     </Style></Border.Style>
                     <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
                 </Border>
                 <Border Padding="12" Background="{DynamicResource SuccessSurfaceBrush}"
-                        BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="8">
+                        BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="8">
                     <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers><DataTrigger Binding="{Binding HasSuccess}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                     </Style></Border.Style>
@@ -86,7 +86,7 @@
                 <Border Margin="0,0,8,0" Style="{StaticResource PayablesCardStyle}"><StackPanel>
                     <TextBlock Style="{StaticResource PayablesMetricLabelStyle}" Text="Total pendente" />
                     <TextBlock Style="{StaticResource PayablesMetricValueStyle}" Text="{Binding Summary.OpenAmountText}" />
-                    <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding Summary.OpenCountText}" />
+                    <TextBlock Margin="0,5,0,0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding Summary.OpenCountText}" />
                 </StackPanel></Border>
                 <Border Margin="4,0" Style="{StaticResource PayablesCardStyle}"><StackPanel>
                     <TextBlock Style="{StaticResource PayablesMetricLabelStyle}" Text="Vencidas" />
@@ -102,7 +102,7 @@
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="18" /><RowDefinition Height="Auto" />
                         <RowDefinition Height="14" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <TextBlock FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Nova conta" />
+                    <TextBlock FontSize="{DynamicResource FontSizeCardTitle}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Nova conta" />
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1*" />
                             <ColumnDefinition Width="12" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1*" /></Grid.ColumnDefinitions>
@@ -132,8 +132,8 @@
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="14" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel><TextBlock FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Pesquisa e filtros" />
-                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Text="Refine por texto, categoria ou período." /></StackPanel>
+                        <StackPanel><TextBlock FontSize="{DynamicResource FontSizeSection}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Pesquisa e filtros" />
+                            <TextBlock Margin="0,4,0,0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Text="Refine por texto, categoria ou período." /></StackPanel>
                         <Button Grid.Column="1" MinWidth="108" Command="{Binding RefreshCommand}" Content="Atualizar" Style="{StaticResource SecondaryButtonStyle}" />
                     </Grid>
                     <Grid Grid.Row="2">
@@ -179,7 +179,7 @@
                             </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
-                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15"
+                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{DynamicResource FontSizeInput}"
                                Foreground="{DynamicResource TextSecondaryBrush}" Text="Nenhuma conta encontrada.">
                         <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible" />
                             <Style.Triggers><DataTrigger Binding="{Binding HasItems}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>

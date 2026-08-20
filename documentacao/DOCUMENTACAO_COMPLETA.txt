@@ -1,11 +1,11 @@
 GIROFY — DOCUMENTAÇÃO COMPLETA DO PROJETO
 =========================================
 
-Marco de referência: 19/08/2026
+Marco de referência: 20/08/2026
 Repositório: https://github.com/RafaelBG7/pdv2026
 Produto: PDV SaaS Web/API com aplicativo nativo para Windows
 Versão do App documentada: 0.8.0-preview
-Commit-base anterior a este marco: 006544c
+Commit-base deste marco: 966562f
 Classificação: documento técnico, funcional, operacional e de segurança
 
 
@@ -58,6 +58,9 @@ http://168.75.101.126:18080
 
 Executável Windows:
 https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/Girofy.exe
+
+Instalador Windows:
+https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
 
 
 3. ARQUITETURA GERAL
@@ -363,8 +366,22 @@ As notificações incluem estoque baixo/esgotado e contas próximas ou vencidas.
 Web, elas aparecem em um popover compacto: um clique abre e outro clique fecha. O
 contador informa pendências e os itens podem direcionar o usuário para a ação.
 
-Preferências de alerta são configuráveis. Entregas por e-mail são registradas para
-reduzir envios duplicados.
+Preferências de alerta são configuráveis por adega e por tipo de evento. O painel
+Web de Alertas permite ativar ou desativar cada regra e manter uma lista própria de
+destinatários para:
+
+- produto esgotado;
+- estoque baixo, quando a quantidade fica igual ou abaixo do mínimo;
+- conta a pagar com vencimento no dia;
+- conta a pagar vencida;
+- assinatura próxima do vencimento.
+
+Cada endereço é normalizado e validado antes de ser persistido. A configuração
+SMTP pertence ao ambiente do backend; senhas e credenciais de envio não são
+expostas na interface nem devolvidas pela API. O registro EmailAlertDelivery
+controla a deduplicação: o mesmo alerta não é reenviado continuamente enquanto a
+situação que o originou permanecer igual. Quando a condição é resolvida e ocorre
+novamente, uma nova entrega pode ser produzida conforme a regra do serviço.
 
 5.11 Configurações
 
@@ -433,6 +450,35 @@ O aplicativo contém interfaces para:
 - Notificações;
 - Configurações, perfil, senha, empresa e equipe;
 - importação, exportação e backup por meio da API.
+
+6.2.0 Notificações e preferências de alertas
+
+O sino do cabeçalho abre um painel compacto de notificações. O contador representa
+somente itens não lidos. Marcar uma notificação como lida ou marcar todas como
+lidas atualiza a coleção e o contador local imediatamente após a confirmação da
+API; itens dispensados deixam de aparecer na caixa de entrada aplicável.
+
+Em Configurações > Alertas, o App Windows oferece a mesma administração funcional
+da versão Web para alertas por e-mail. A tela é composta por cartões independentes,
+um para cada tipo de alerta, e um painel lateral explicando quando cada evento é
+enviado. Em cada cartão, um usuário autorizado pode:
+
+- ativar ou desativar o envio daquele tipo;
+- adicionar um destinatário pelo botão “+” ou pela tecla Enter;
+- visualizar destinatários como chips;
+- remover um destinatário pelo “x” do chip;
+- salvar todas as preferências em uma única operação consistente.
+
+Os cinco tipos disponíveis são produto esgotado, estoque baixo, conta vencendo
+hoje, conta vencida e assinatura próxima do vencimento. O App não envia e-mail
+diretamente e não armazena credenciais SMTP: ele apenas lê e altera preferências
+por meio da API autenticada. A entrega, deduplicação e auditoria permanecem sob
+responsabilidade do backend.
+
+Para evitar perda acidental de configuração, o ViewModel mantém uma cópia editável
+dos dados carregados, valida endereços e impede salvamento concorrente enquanto a
+requisição está em andamento. Erros de autorização, validação, rede ou servidor
+são apresentados sem substituir silenciosamente o estado confirmado anteriormente.
 
 6.2.1 Dashboard e início rápido de venda
 
@@ -592,7 +638,8 @@ Funções disponíveis no App:
 - salvar a frequência e solicitar backup manual;
 - importar produtos por planilha CSV/XLSX;
 - exportar dados autorizados em CSV;
-- abrir na Web configurações que ainda dependem da interface Web;
+- configurar acessibilidade visual diretamente no App;
+- abrir na Web somente configurações que ainda dependem da interface Web;
 - atualizar o snapshot de configurações sem reiniciar o aplicativo.
 
 Na aba Operação, “Permitir estoque negativo” determina se uma venda pode ser
@@ -605,6 +652,45 @@ Mensagens de sucesso e falha são exibidas no próprio conteúdo. Operações de
 usam comandos assíncronos e não devem bloquear a janela. A interface Web continua
 sendo a referência visual, mas o App usa componentes WPF nativos e não incorpora a
 página Web.
+
+6.2.6 Acessibilidade nativa no App Windows
+
+A aba Configurações > Acessibilidade é nativa e não redireciona mais o usuário
+para ajustar as preferências visuais principais na Web. Ela oferece:
+
+- tamanho de texto em quatro escalas controladas: padrão (100%), médio (110%),
+  grande (120%) e muito grande (130%);
+- reforço seletivo do peso tipográfico, preservando a diferença entre corpo,
+  labels, textos fortes e títulos;
+- contraste padrão, alto e muito alto;
+- redução de animações decorativas;
+- pré-visualização imediata com texto, preço, borda e botão reais do design system;
+- salvamento local e restauração completa dos padrões.
+
+AccessibilityService, na camada Application, normaliza os valores aceitos,
+mantém o estado atual, persiste por IUserPreferencesStore e publica o evento
+Changed. WindowsAccessibilityResourceAdapter, na camada Desktop, transforma esse
+estado em recursos WPF dinâmicos de tipografia, pesos, bordas, cores e duração de
+animações. Essa divisão mantém a regra testável sem acoplar o ViewModel a
+System.Windows e evita lógica dispersa em code-behind.
+
+As preferências ficam no mesmo arquivo JSON local usado pelo tema e pelo usuário
+lembrado. Não são segredos e não usam DPAPI; tokens de sessão continuam protegidos
+separadamente. Login e alternância de tema preservam o bloco de acessibilidade ao
+reescrever o arquivo, impedindo perda de configuração entre sessões.
+
+As alterações são aplicadas em tempo real por DynamicResource, sem recarregar
+ViewModels, sessão ou dados da API. Fontes fixas das telas principais foram
+substituídas por tokens semânticos, de FontSizeTiny a FontSizeHero. Alto contraste
+é composto sobre Light/Dark, portanto não cria temas paralelos. Quando não existe
+uma escolha local explícita para movimento, o adaptador respeita
+SystemParameters.ClientAreaAnimation do Windows; ao ativar redução, as durações
+decorativas passam a zero, mantendo estados funcionais e foco.
+
+Controles críticos de venda, quantidade, remoção de item, finalização e abertura
+ou fechamento de caixa possuem nomes de automação compreensíveis. TextBox,
+ComboBox, CheckBox, botões e navegação mantêm foco visível pelos estilos globais.
+Mensagens de sucesso ou falha continuam textuais e não dependem apenas de cor.
 
 6.3 Experiência e desempenho
 
@@ -647,7 +733,7 @@ O pipeline preserva Girofy.exe e produz também o Setup. O aplicativo ainda não
 possui Code Signing nem auto-update e o instalador não é a distribuição comercial.
 O Windows pode exibir aviso de segurança por se tratar de executável não assinado.
 
-Em 19/08/2026, o pipeline Windows já validava testes de contrato do backend,
+Em 20/08/2026, o pipeline Windows validava testes de contrato do backend,
 testes .NET, publish self-contained/single-file, geração do Setup e smoke test
 automatizado do ciclo instalar, abrir, impedir segunda instância, desinstalar
 preservando dados locais e reinstalar. A execução mais recente fica disponível no
@@ -657,14 +743,14 @@ https://github.com/RafaelBG7/pdv2026/actions/workflows/build-windows-wpf.yml
 Download persistente do instalador validado:
 https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
 
-Última publicação concluída antes deste ajuste documental:
+Publicação correspondente ao estado funcional deste documento:
 
-- commit: 006544c;
-- workflow aprovado: https://github.com/RafaelBG7/pdv2026/actions/runs/32310017588;
+- commit: 966562f49e227fb83a25b95a8d83c37e10e919de;
+- workflow aprovado: https://github.com/RafaelBG7/pdv2026/actions/runs/32417393569;
 - SHA-256 do instalador dessa publicação:
-  64adc4241c67b9eb341c5e0ae7fc8b776e73d90d2ca97aae7a583b7cdfc6bd9d;
+  0cb84ad01c3cc349bb1918dad6fa2663281def8abccd24480ced6ce714103ebb;
 - SHA-256 do executável portátil dessa publicação:
-  3b9ed140fe37adb06e658b4f0d68df7353483831aec11deeb7dc76de4422564b.
+  8becbd211a4cb1a83f27108eee43acf52eb845632882aaff9c9b0dbad3e0f988.
 
 O hash SHA-256 muda a cada publicação e deve ser consultado ou calculado sobre o
 arquivo efetivamente baixado. A validação automatizada ocorre em runner Windows do
@@ -673,7 +759,7 @@ VM Windows limpa continua pendente e deve verificar a interface do Setup,
 SmartScreen, login/refresh/logout reais, persistência DPAPI, tema/preferências,
 falhas de rede/API e desinstalação com o aplicativo aberto.
 
-6.6 Entregas incorporadas no marco de 19/08/2026
+6.6 Entregas incorporadas até o marco de 20/08/2026
 
 Este marco documenta em conjunto:
 
@@ -698,7 +784,13 @@ Este marco documenta em conjunto:
 - manutenção de contraste, recursos dinâmicos e compatibilidade Light/Dark;
 - correção do teste de Dashboard para usar a data comercial de São Paulo durante
   a virada do dia em runners UTC;
-- geração do executável portátil e do instalador pela release windows-preview.
+- geração do executável portátil e do instalador pela release windows-preview;
+- preferências completas de alertas por e-mail no App Windows, com cartões por
+  evento, chaves de ativação, destinatários editáveis e painel explicativo;
+- contrato batch GET/PUT de preferências de alertas por e-mail, compartilhando as
+  regras já utilizadas pela versão Web;
+- validação, auditoria, autorização e isolamento por adega no gerenciamento das
+  preferências de alerta.
 
 
 7. API REST V1
@@ -766,7 +858,17 @@ Notificações:
 - GET /notifications e /notifications/unread-count;
 - PUT /notifications/<id>/read, /notifications/read-all e
   /notifications/<id>/dismiss;
-- GET/PUT /notifications/preferences.
+- GET/PUT /notifications/preferences;
+- GET/PUT /notifications/email-alert-settings.
+
+O endpoint /notifications/email-alert-settings usa um contrato em lote. GET
+retorna os tipos suportados, estado de ativação, destinatários e metadados de
+apresentação necessários ao App. PUT recebe o conjunto editado, valida todos os
+itens antes da persistência e registra a alteração na auditoria. A empresa é
+obtida da identidade autenticada; não é aceito company_id livre fornecido pelo
+cliente. Leitura e alteração exigem a permissão administrativa correspondente
+(can_manage_settings), e IDs ou chaves não reconhecidas são rejeitados sem revelar
+configurações de outra adega.
 
 Método, autenticação, permissão, tenant, paginação, limites e payload continuam
 definidos pelo código da API; esta lista serve como mapa funcional, não como
@@ -1234,7 +1336,7 @@ interface ainda é uma melhoria pendente.
 [OK] Notificações internas e alertas por e-mail
 [OK] Auditoria
 [OK] Tema claro e escuro na Web e Windows
-[OK] Acessibilidade visual na Web
+[OK] Acessibilidade visual na Web e nativa no Windows
 [OK] API REST v1
 [OK] Rate limit Redis
 [OK] Migrações Alembic central e tenant
@@ -1242,7 +1344,7 @@ interface ainda é uma melhoria pendente.
 [OK] Build e publicação do Girofy.exe e GiroFy-Setup-0.8.0.exe
 
 
-18.1 AUDITORIA DE PARIDADE WEB x APP x BACKEND — 19/08/2026
+18.1 AUDITORIA DE PARIDADE WEB x APP x BACKEND — 20/08/2026
 ----------------------------------------------------------------
 
 A auditoria comparou 30 módulos/áreas e 73 ações individualizadas. A matriz
@@ -1250,8 +1352,8 @@ técnica completa está em docs/FEATURE_PARITY.md. O resultado atual é:
 
 - 60 ações equivalentes por regra ou comportamento;
 - 6 diferenças deliberadas, exclusivas ou não aplicáveis;
-- 6 divergências visuais/funcionais ainda documentadas;
-- 1 contrato de filtro ainda ausente;
+- acessibilidade avançada nativa concluída no Windows;
+- homologação visual de gráficos WPF e painéis de suporte ainda pendente;
 - PARIDADE WEB x APP x BACKEND: EM EVOLUÇÃO.
 
 Correções entregues nesta revisão:
@@ -1310,8 +1412,6 @@ Pendências exatas que impedem marcar a Etapa 2 como concluída:
   e persistência tenant-aware nos registros `EmailAlertSetting`. O endpoint em
   lote exige `can_manage_settings`, valida todos os e-mails, rejeita tipos ausentes,
   desconhecidos ou duplicados e registra a alteração na auditoria;
-- preferências avançadas de acessibilidade continuam configuráveis na Web; o App
-  somente oferece tema local e acesso ao fluxo Web;
 - gráficos WPF e alguns painéis de suporte possuem divergência visual intencional
   e precisam de homologação visual, sem alterar seus dados/regras.
 

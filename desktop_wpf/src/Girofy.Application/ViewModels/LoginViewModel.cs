@@ -248,6 +248,7 @@ public sealed class LoginViewModel : ObservableObject
                     RememberUsername = RememberUsername,
                     RememberedIdentifier = RememberUsername ? normalizedIdentifier : string.Empty,
                     Theme = currentPreferences.Theme,
+                    Accessibility = currentPreferences.Accessibility,
                 },
                 cancellationToken);
             ApplySession(session);
@@ -332,6 +333,7 @@ public sealed class LoginViewModel : ObservableObject
                     RememberUsername = RememberUsername,
                     RememberedIdentifier = RememberUsername ? normalizedIdentifier : string.Empty,
                     Theme = currentPreferences.Theme,
+                    Accessibility = currentPreferences.Accessibility,
                 },
                 cancellationToken);
             RequiresSubscriptionActivation = false;

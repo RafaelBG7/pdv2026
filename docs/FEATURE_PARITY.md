@@ -1,6 +1,6 @@
 # Paridade funcional Web, Windows e Backend
 
-Atualizado em 19/08/2026 a partir das rotas Flask, endpoints `/api/v1`, serviços, modelos, ViewModels WPF, XAML e testes do repositório. Esta matriz registra comportamento comprovado no código; tela parecida não é considerada paridade por si só. A documentação canônica está em `documentacao/DOCUMENTACAO_COMPLETA.txt`.
+Atualizado em 20/08/2026 a partir das rotas Flask, endpoints `/api/v1`, serviços, modelos, ViewModels WPF, XAML e testes do repositório. Esta matriz registra comportamento comprovado no código; tela parecida não é considerada paridade por si só. A documentação canônica está em `documentacao/DOCUMENTACAO_COMPLETA.txt`.
 
 ## Legenda
 
@@ -36,7 +36,7 @@ O Flask/API é a fonte de verdade. Dados globais de empresas, usuários e assina
 | Contas a pagar | `[WEB_APP]` | tela e filtros | PayablesViewModel | endpoints payables | Paridade |
 | Relatórios | `[WEB_APP]` | gráficos/tabelas | ReportsViewModel | endpoints summary/products | Paridade de dados |
 | Auditoria | `[WEB_APP]` | tenant e master | AuditViewModel | audit_service | Paridade no tenant |
-| Notificações e e-mail | `[WEB_APP]` | menu compacto | NotificationsViewModel | alert/notification services | Paridade |
+| Notificações e e-mail | `[WEB_APP]` | menu compacto e preferências por evento | popover e Configurações > Alertas | alert/notification services + contrato batch | Paridade |
 | Configurações/equipe | `[WEB_APP]` | configurações | SettingsViewModel | settings/team API | Paridade principal, com exceções abaixo |
 | Tema claro/escuro | `[WEB_APP]` | localStorage/CSS | preferência local WPF | não altera regra de negócio | Paridade visual |
 | DPAPI para tokens | `[APP_ONLY]` | N/A | armazenamento protegido | Windows Credential/Data Protection | Implementado |
@@ -141,7 +141,7 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Importação | CSV/XLSX e erros | Sim | Seletor nativo | API import | OK | Nenhuma |
 | Exportação | tipos/permissão/download | Sim | Salva arquivo | API export | OK | Nenhuma |
 | Suporte | informações completas | Sim | atalhos/abre Web | sem regra crítica | DIVERGÊNCIA VISUAL | Intencional |
-| Acessibilidade | fonte/negrito/contraste | Sim | direciona à Web | preferência Web | DIVERGÊNCIA FUNCIONAL | Implementar localmente antes do freeze ou documentar exclusão |
+| Acessibilidade | fonte, peso, contraste, movimento e restauração | Sim | Editor nativo com aplicação imediata e persistência local | serviço local + tokens WPF; sem regra de negócio | OK | Entregue em 20/08/2026 |
 | Tema | claro/escuro persistente | Sim | Sim, animado | local por cliente | OK | Nenhuma |
 | Rede | timeout/indisponível/cancelamento | navegador | mensagens e async | códigos estruturados | OK | Ampliar testes de integração |
 | Rede | 401/refresh | sessão Web | renovação automática | auth service | OK | Nenhuma |
@@ -153,8 +153,9 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 - ações/recursos explicitamente classificados nesta matriz: 73;
 - totalmente equivalentes ou equivalentes por comportamento: 60;
 - diferenças intencionais/exclusivas ou não aplicáveis: 6;
-- divergências visuais/funcionais/campos pendentes: 6;
-- linhas classificadas como contrato ausente: 1; os contratos de filtros avançados de produto, ordenação por criação, pesquisa de categorias e preferências de notificações nativas foram concluídos em 20/08/2026; a acessibilidade avançada permanece como divergência funcional;
+- divergências funcionais de acessibilidade pendentes: 0;
+- os contratos de filtros avançados de produto, ordenação por criação, pesquisa de categorias e preferências de notificações nativas foram concluídos em 20/08/2026;
+- pendência restante da Etapa 2: homologação visual dos gráficos WPF e painéis de suporte;
 - status: `PARIDADE WEB × APP × BACKEND: EM EVOLUÇÃO`.
 
 As contagens agrupam linhas relacionadas e devem ser atualizadas quando uma ação mudar de classificação. Não transformar este número em percentual de marketing.

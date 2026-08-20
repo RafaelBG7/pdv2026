@@ -96,6 +96,8 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
 
     public bool IsDarkMode { get; private set; } = true;
 
+    public event EventHandler? Changed;
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         var preferences = await preferencesStore.LoadAsync(cancellationToken);
@@ -104,6 +106,8 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
         {
             ApplyPalette();
         }
+
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task ToggleAsync(CancellationToken cancellationToken = default)
@@ -118,9 +122,13 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
                 RememberUsername = current.RememberUsername,
                 RememberedIdentifier = current.RememberedIdentifier,
                 Theme = IsDarkMode ? "dark" : "light",
+                Accessibility = current.Accessibility,
             },
             cancellationToken);
+        Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    public void Apply() => ApplyPalette();
 
     private void ApplyPalette()
     {

@@ -70,3 +70,27 @@ public sealed record UpdateNotificationPreferenceRequest(
     [property: JsonPropertyName("quiet_hours_end")] string QuietHoursEnd = "",
     [property: JsonPropertyName("daily_digest_enabled")] bool DailyDigestEnabled = false,
     [property: JsonPropertyName("daily_digest_time")] string DailyDigestTime = "08:00");
+
+public sealed class EmailAlertSettingsSnapshot
+{
+    [JsonPropertyName("company_name")] public string CompanyName { get; init; } = string.Empty;
+    [JsonPropertyName("smtp_configured")] public bool SmtpConfigured { get; init; }
+    [JsonPropertyName("items")] public IReadOnlyList<EmailAlertSettingItem> Items { get; init; } = [];
+}
+
+public sealed class EmailAlertSettingItem
+{
+    [JsonPropertyName("alert_type")] public string AlertType { get; init; } = string.Empty;
+    [JsonPropertyName("label")] public string Label { get; init; } = string.Empty;
+    [JsonPropertyName("description")] public string Description { get; init; } = string.Empty;
+    [JsonPropertyName("enabled")] public bool Enabled { get; init; }
+    [JsonPropertyName("recipients")] public IReadOnlyList<string> Recipients { get; init; } = [];
+}
+
+public sealed record UpdateEmailAlertSettingsRequest(
+    [property: JsonPropertyName("items")] IReadOnlyList<UpdateEmailAlertSettingItem> Items);
+
+public sealed record UpdateEmailAlertSettingItem(
+    [property: JsonPropertyName("alert_type")] string AlertType,
+    [property: JsonPropertyName("enabled")] bool Enabled,
+    [property: JsonPropertyName("recipients")] string Recipients);

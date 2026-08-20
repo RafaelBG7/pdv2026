@@ -796,95 +796,89 @@
                     </TabItem>
 
                     <TabItem Header="Alertas">
-                        <Border Margin="0,18,0,0"
-                                Style="{StaticResource SettingsInnerPanelStyle}">
+                        <StackPanel Margin="0,18,0,0">
                             <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="18" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="16" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="16" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
-                                               Text="Preferências de notificações" />
-                                    <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
-                                               Text="Defina onde receber alertas, a severidade mínima, o período de silêncio e o resumo diário." />
-                                </StackPanel>
-
-                                <UniformGrid Grid.Row="2" Columns="3">
-                                    <Border Margin="0,0,8,0" Style="{StaticResource SettingsInnerPanelStyle}">
-                                        <CheckBox Foreground="{DynamicResource TextPrimaryBrush}"
-                                                  IsChecked="{Binding NotificationInAppEnabled}"
-                                                  Content="Alertas dentro do Girofy" />
-                                    </Border>
-                                    <Border Margin="4,0" Style="{StaticResource SettingsInnerPanelStyle}">
-                                        <CheckBox Foreground="{DynamicResource TextPrimaryBrush}"
-                                                  IsChecked="{Binding NotificationDesktopEnabled}"
-                                                  Content="Notificações do Windows" />
-                                    </Border>
-                                    <Border Margin="8,0,0,0" Style="{StaticResource SettingsInnerPanelStyle}">
-                                        <CheckBox Foreground="{DynamicResource TextPrimaryBrush}"
-                                                  IsChecked="{Binding NotificationEmailEnabled}"
-                                                  Content="Enviar também por e-mail" />
-                                    </Border>
-                                </UniformGrid>
-
-                                <Grid Grid.Row="4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="1.5*" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3*" />
+                                    <ColumnDefinition Width="18" />
+                                    <ColumnDefinition Width="1.15*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource SettingsInnerPanelStyle}">
                                     <StackPanel>
-                                        <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Severidade mínima" />
-                                        <ComboBox ItemsSource="{Binding NotificationSeverityOptions}"
-                                                  DisplayMemberPath="Label" SelectedValuePath="Value"
-                                                  SelectedValue="{Binding NotificationMinimumSeverity}" />
+                                        <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Alertas por e-mail" />
+                                        <Grid Margin="0,16,0,18">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="Adega" />
+                                                <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Envio" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                <TextBlock HorizontalAlignment="Right" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding EmailAlertCompanyName}" />
+                                                <TextBlock Margin="0,12,0,0" HorizontalAlignment="Right" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding EmailAlertSmtpText}" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{Binding EmailAlertSettings}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,0,14" Style="{StaticResource SettingsInnerPanelStyle}">
+                                                        <StackPanel>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                                <StackPanel>
+                                                                    <TextBlock FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Label}" />
+                                                                    <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding Description}" TextWrapping="Wrap" />
+                                                                </StackPanel>
+                                                                <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0"
+                                                                          Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                          IsChecked="{Binding Enabled}" Content="Enviar" />
+                                                            </Grid>
+                                                            <TextBlock Margin="0,16,0,7" Style="{StaticResource SettingsLabelStyle}" Text="E-mails que recebem este alerta" />
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                                <TextBox Text="{Binding RecipientDraft, UpdateSourceTrigger=PropertyChanged}" ToolTip="email@exemplo.com" Style="{StaticResource TextInputStyle}">
+                                                                    <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding AddRecipientCommand}"/></TextBox.InputBindings>
+                                                                </TextBox>
+                                                                <Button Grid.Column="2" Width="48" Command="{Binding AddRecipientCommand}" Content="+" Style="{StaticResource PrimaryButtonStyle}" />
+                                                            </Grid>
+                                                            <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding Recipients}">
+                                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Border Margin="0,0,8,8" Padding="10,6" CornerRadius="14" Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                                                                            <StackPanel Orientation="Horizontal">
+                                                                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding}" />
+                                                                                <Button Margin="8,0,0,0" Padding="3,0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" Content="×"
+                                                                                        Command="{Binding DataContext.RemoveRecipientCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                            <TextBlock Foreground="{DynamicResource ErrorBrush}" Text="{Binding ValidationMessage}" />
+                                                            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Text="Adicione um e-mail por vez. Use o botão + ou Enter." />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Button HorizontalAlignment="Left" MinWidth="160" Command="{Binding SaveEmailAlertSettingsCommand}" Content="Salvar alertas" Style="{StaticResource PrimaryButtonStyle}" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Silenciar a partir de" />
-                                        <TextBox Text="{Binding NotificationQuietHoursStart, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="HH:mm, ou deixe vazio" Style="{StaticResource TextInputStyle}" />
+                                </Border>
+                                <Border Grid.Column="2" VerticalAlignment="Top" Style="{StaticResource SettingsInnerPanelStyle}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Como funciona" />
+                                        <TextBlock Margin="0,18,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Sem repetição" />
+                                        <TextBlock Margin="0,5,0,14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="O mesmo alerta só é enviado uma vez enquanto a situação não mudar." TextWrapping="Wrap" />
+                                        <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="Estoque" />
+                                        <TextBlock Margin="0,5,0,14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Envia quando esgota ou fica abaixo do mínimo." TextWrapping="Wrap" />
+                                        <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="Contas" />
+                                        <TextBlock Margin="0,5,0,14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Envia no vencimento e quando estiver vencida." TextWrapping="Wrap" />
+                                        <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="Assinatura" />
+                                        <TextBlock Margin="0,5,0,0" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Envia quando faltarem até 3 dias para vencer." TextWrapping="Wrap" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="4">
-                                        <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Silenciar até" />
-                                        <TextBox Text="{Binding NotificationQuietHoursEnd, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="HH:mm, ou deixe vazio" Style="{StaticResource TextInputStyle}" />
-                                    </StackPanel>
-                                </Grid>
-
-                                <Grid Grid.Row="6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Visibility="{Binding NotificationRecipientsVisibility}">
-                                        <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Destinatários de e-mail" />
-                                        <TextBox Text="{Binding NotificationEmailRecipients, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="Separe múltiplos e-mails por vírgula" Style="{StaticResource TextInputStyle}" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <CheckBox Margin="0,0,0,8" Foreground="{DynamicResource TextPrimaryBrush}"
-                                                  IsChecked="{Binding NotificationDailyDigestEnabled}"
-                                                  Content="Resumo diário" />
-                                        <TextBox Text="{Binding NotificationDailyDigestTime, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="Horário HH:mm" Style="{StaticResource TextInputStyle}" />
-                                    </StackPanel>
-                                    <Button Grid.Column="4" MinWidth="180" VerticalAlignment="Bottom"
-                                            Command="{Binding SaveNotificationPreferencesCommand}"
-                                            Content="Salvar preferências" Style="{StaticResource PrimaryButtonStyle}" />
-                                </Grid>
+                                </Border>
                             </Grid>
-                        </Border>
+                        </StackPanel>
                     </TabItem>
 
                     <TabItem Header="Backup" Visibility="{Binding BackupVisibility}">

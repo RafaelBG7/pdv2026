@@ -1303,6 +1303,13 @@ Pendências exatas que impedem marcar a Etapa 2 como concluída:
   destinatários autorizados, período de silêncio e resumo diário. Destinatários
   somente ficam editáveis para usuários com `can_manage_settings`; horários são
   validados em `HH:mm` tanto no App quanto na API, e toda alteração gera auditoria;
+- o mesmo painel também reproduz a gestão de alertas por e-mail da Web com cartões
+  separados para produto esgotado, estoque baixo, conta vencendo hoje, conta
+  vencida e assinatura próxima do vencimento. Cada cartão possui ativação e lista
+  própria de destinatários, com inclusão por Enter ou botão `+`, remoção em chips
+  e persistência tenant-aware nos registros `EmailAlertSetting`. O endpoint em
+  lote exige `can_manage_settings`, valida todos os e-mails, rejeita tipos ausentes,
+  desconhecidos ou duplicados e registra a alteração na auditoria;
 - preferências avançadas de acessibilidade continuam configuráveis na Web; o App
   somente oferece tema local e acesso ao fluxo Web;
 - gráficos WPF e alguns painéis de suporte possuem divergência visual intencional

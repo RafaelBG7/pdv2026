@@ -129,7 +129,7 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Auditoria | escopo master | Sim | Não | rotas master | EXCLUSIVO WEB POR DECISÃO | Manter |
 | Notificações | listar/contagem/ler/ler todas/dispensar | Sim | Popover | endpoints dedicados | OK | Nenhuma |
 | Notificações | preferências internas | Sim | Editor completo no painel Alertas | GET/PUT preferences | OK | Entregue em 20/08/2026 |
-| Alertas por e-mail | canal, destinatários, severidade e resumo | Sim | Sim, respeitando `can_manage_settings` | backend possui settings/delivery | OK | Destinatários protegidos por permissão |
+| Alertas por e-mail | tipos, ativação e destinatários individuais | Cartões por tipo | Cartões nativos equivalentes, com chips de e-mail | GET/PUT em lote, `EmailAlertSetting` e delivery sem repetição | OK | Protegido por `can_manage_settings` |
 | Perfil | nome/sobrenome/telefone | Sim | Sim | `/settings/profile` | OK | Nenhuma |
 | Perfil | troca de e-mail confirmada | Sim | abre Web | token/serviço Web | EXCLUSIVO WEB POR DECISÃO | Manter por segurança |
 | Senha | atual/nova/confirmação | Sim | Sim | `/settings/password` | OK | Nenhuma |

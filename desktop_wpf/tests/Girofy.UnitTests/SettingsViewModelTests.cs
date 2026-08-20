@@ -249,6 +249,47 @@ public sealed class SettingsViewModelTests
 
         public UpdateNotificationPreferenceRequest? NotificationPreferenceRequest { get; private set; }
 
+        public UpdateEmailAlertSettingsRequest? EmailAlertSettingsRequest { get; private set; }
+
+        public Task<EmailAlertSettingsSnapshot> GetEmailAlertSettingsAsync(
+            string accessToken,
+            CancellationToken cancellationToken) => Task.FromResult(CreateEmailAlertSnapshot());
+
+        public Task<EmailAlertSettingsSnapshot> UpdateEmailAlertSettingsAsync(
+            string accessToken,
+            UpdateEmailAlertSettingsRequest settings,
+            CancellationToken cancellationToken)
+        {
+            EmailAlertSettingsRequest = settings;
+            return Task.FromResult(new EmailAlertSettingsSnapshot
+            {
+                CompanyName = "Adega JF",
+                SmtpConfigured = true,
+                Items = settings.Items.Select(item => new EmailAlertSettingItem
+                {
+                    AlertType = item.AlertType,
+                    Label = item.AlertType,
+                    Enabled = item.Enabled,
+                    Recipients = item.Recipients.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                }).ToArray(),
+            });
+        }
+
+        private static EmailAlertSettingsSnapshot CreateEmailAlertSnapshot() => new()
+        {
+            CompanyName = "Adega JF",
+            SmtpConfigured = true,
+            Items =
+            [
+                new EmailAlertSettingItem
+                {
+                    AlertType = "product_out_of_stock", Label = "Produto esgotado",
+                    Description = "Quando chegar a zero.", Enabled = true,
+                    Recipients = ["alertas@girofy.test"],
+                },
+            ],
+        };
+
         public Task<NotificationPreferenceSnapshot> GetNotificationPreferencesAsync(
             string accessToken,
             CancellationToken cancellationToken) => Task.FromResult(new NotificationPreferenceSnapshot

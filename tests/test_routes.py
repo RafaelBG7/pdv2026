@@ -7016,6 +7016,37 @@ class RouteTestCase(unittest.TestCase):
                 company_id=company.id, user_id=user.id,
             ).count(), 1)
 
+    def test_email_alert_settings_api_matches_web_contract(self):
+        user, company = self.create_api_user(username='email-alert-settings')
+        token = self.api_login('email-alert-settings', 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+
+        response = self.client.get('/api/v1/notifications/email-alert-settings', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['company_name'], 'Adega API')
+        self.assertEqual(len(data['items']), 5)
+
+        items = data['items']
+        items[0]['enabled'] = True
+        items[0]['recipients'] = 'primeiro@girofy.test, segundo@girofy.test'
+        update = self.client.put(
+            '/api/v1/notifications/email-alert-settings',
+            headers=headers,
+            json={'items': items},
+        )
+        self.assertEqual(update.status_code, 200)
+        updated = update.get_json()['data']['items'][0]
+        self.assertTrue(updated['enabled'])
+        self.assertEqual(updated['recipients'], ['primeiro@girofy.test', 'segundo@girofy.test'])
+
+        with self.app.app_context():
+            saved = EmailAlertSetting.query.filter_by(
+                company_id=company.id,
+                alert_type=items[0]['alert_type'],
+            ).one()
+            self.assertEqual(saved.recipient_list, ['primeiro@girofy.test', 'segundo@girofy.test'])
+
     def test_notification_api_materializes_web_stock_and_payable_alerts(self):
         user, company = self.create_api_user(username='notify-operational')
         token = self.api_login('notify-operational', 'SenhaApi123').get_json()['data']['access_token']

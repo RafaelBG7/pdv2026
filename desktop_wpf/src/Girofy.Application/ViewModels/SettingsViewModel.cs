@@ -41,6 +41,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     private string _notificationQuietHoursEnd = string.Empty;
     private bool _notificationDailyDigestEnabled;
     private string _notificationDailyDigestTime = "08:00";
+    private string _emailAlertCompanyName = string.Empty;
+    private bool _emailAlertSmtpConfigured;
     private string _selectedExportType = "produtos";
     private string _teamSearch = string.Empty;
     private SettingsEmployee? _selectedEmployee;
@@ -85,6 +87,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         SaveCompanySettingsCommand = new AsyncRelayCommand(SaveCompanySettingsAsync, () => CanManageTeam && !IsBusy);
         SaveBackupSettingsCommand = new AsyncRelayCommand(SaveBackupSettingsAsync, () => CanManageTeam && !IsBusy);
         SaveNotificationPreferencesCommand = new AsyncRelayCommand(SaveNotificationPreferencesAsync, () => !IsBusy);
+        SaveEmailAlertSettingsCommand = new AsyncRelayCommand(SaveEmailAlertSettingsAsync, () => CanManageTeam && !IsBusy);
         RunManualBackupCommand = new AsyncRelayCommand(RunManualBackupAsync, () => CanManageTeam && !IsBusy);
         ExportDataCommand = new AsyncRelayCommand(ExportDataAsync, () => CanExportData && !IsBusy);
         ImportProductsCommand = new AsyncRelayCommand(ImportProductsAsync, () => CanImportProducts && !IsBusy);
@@ -98,6 +101,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     }
 
     public ObservableCollection<SettingsEmployee> Employees { get; } = [];
+
+    public ObservableCollection<EmailAlertSettingViewModel> EmailAlertSettings { get; } = [];
 
     public ObservableCollection<SettingsEmployeeRoleOption> RoleOptions { get; } = [];
 
@@ -310,6 +315,12 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     public bool NotificationDailyDigestEnabled { get => _notificationDailyDigestEnabled; set => SetProperty(ref _notificationDailyDigestEnabled, value); }
 
     public string NotificationDailyDigestTime { get => _notificationDailyDigestTime; set => SetProperty(ref _notificationDailyDigestTime, value); }
+
+    public string EmailAlertCompanyName { get => _emailAlertCompanyName; private set => SetProperty(ref _emailAlertCompanyName, value); }
+
+    public bool EmailAlertSmtpConfigured { get => _emailAlertSmtpConfigured; private set { if (SetProperty(ref _emailAlertSmtpConfigured, value)) OnPropertyChanged(nameof(EmailAlertSmtpText)); } }
+
+    public string EmailAlertSmtpText => EmailAlertSmtpConfigured ? "SMTP configurado" : "SMTP ainda não configurado";
 
     public string SelectedExportType
     {
@@ -564,6 +575,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand SaveNotificationPreferencesCommand { get; }
 
+    public AsyncRelayCommand SaveEmailAlertSettingsCommand { get; }
+
     public AsyncRelayCommand RunManualBackupCommand { get; }
 
     public AsyncRelayCommand ExportDataCommand { get; }
@@ -642,6 +655,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
             ApplyNotificationPreferences(notificationPreferences);
             if (CanManageTeam)
             {
+                var emailAlerts = await _apiClient.GetEmailAlertSettingsAsync(session.AccessToken, cancellationToken);
+                ApplyEmailAlertSettings(emailAlerts);
                 await LoadTeamDataAsync(session.AccessToken, cancellationToken);
             }
         }
@@ -906,6 +921,43 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         catch (Exception)
         {
             ErrorMessage = "Não foi possível salvar as preferências de notificações.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task SaveEmailAlertSettingsAsync(CancellationToken cancellationToken)
+    {
+        var session = _sessionContext.Current;
+        if (session is null || !CanManageTeam)
+        {
+            return;
+        }
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        try
+        {
+            var snapshot = await _apiClient.UpdateEmailAlertSettingsAsync(
+                session.AccessToken,
+                new UpdateEmailAlertSettingsRequest(EmailAlertSettings.Select(item => item.ToRequest()).ToArray()),
+                cancellationToken);
+            ApplyEmailAlertSettings(snapshot);
+            SuccessMessage = "Alertas por e-mail atualizados com sucesso.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (GirofyApiException exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Não foi possível salvar os alertas por e-mail.";
         }
         finally
         {
@@ -1244,6 +1296,17 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
             : preferences.DailyDigestTime;
     }
 
+    private void ApplyEmailAlertSettings(EmailAlertSettingsSnapshot snapshot)
+    {
+        EmailAlertCompanyName = snapshot.CompanyName;
+        EmailAlertSmtpConfigured = snapshot.SmtpConfigured;
+        EmailAlertSettings.Clear();
+        foreach (var item in snapshot.Items)
+        {
+            EmailAlertSettings.Add(new EmailAlertSettingViewModel(item));
+        }
+    }
+
     private void Reset()
     {
         Snapshot = null;
@@ -1272,6 +1335,9 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         NotificationQuietHoursEnd = string.Empty;
         NotificationDailyDigestEnabled = false;
         NotificationDailyDigestTime = "08:00";
+        EmailAlertCompanyName = string.Empty;
+        EmailAlertSmtpConfigured = false;
+        EmailAlertSettings.Clear();
         SelectedExportType = "produtos";
         TeamSearch = string.Empty;
         SelectedEmployee = null;
@@ -1311,6 +1377,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         SaveCompanySettingsCommand.NotifyCanExecuteChanged();
         SaveBackupSettingsCommand.NotifyCanExecuteChanged();
         SaveNotificationPreferencesCommand.NotifyCanExecuteChanged();
+        SaveEmailAlertSettingsCommand.NotifyCanExecuteChanged();
         RunManualBackupCommand.NotifyCanExecuteChanged();
         ExportDataCommand.NotifyCanExecuteChanged();
         ImportProductsCommand.NotifyCanExecuteChanged();

@@ -18,6 +18,10 @@ public interface IGirofyApiClient
         Task.FromException<NotificationPreferenceSnapshot>(new NotSupportedException());
     Task<NotificationPreferenceSnapshot> UpdateNotificationPreferencesAsync(string accessToken, UpdateNotificationPreferenceRequest preferences, CancellationToken cancellationToken) =>
         Task.FromException<NotificationPreferenceSnapshot>(new NotSupportedException());
+    Task<EmailAlertSettingsSnapshot> GetEmailAlertSettingsAsync(string accessToken, CancellationToken cancellationToken) =>
+        Task.FromException<EmailAlertSettingsSnapshot>(new NotSupportedException());
+    Task<EmailAlertSettingsSnapshot> UpdateEmailAlertSettingsAsync(string accessToken, UpdateEmailAlertSettingsRequest settings, CancellationToken cancellationToken) =>
+        Task.FromException<EmailAlertSettingsSnapshot>(new NotSupportedException());
 
     Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken);
 

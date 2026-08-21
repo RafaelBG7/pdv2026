@@ -231,6 +231,24 @@ public sealed class CatalogViewModelTests
     }
 
     [Fact]
+    public async Task Barcode_input_accepts_manual_or_scanner_text_and_commits_without_saving()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorBarcode = "  7894900011517\r\n";
+        viewModel.CommitEditorBarcodeInput();
+
+        Assert.Equal("7894900011517", viewModel.EditorBarcode);
+        Assert.Null(apiClient.CreatedProductRequest);
+        Assert.True(viewModel.IsProductEditorOpen);
+    }
+
+    [Fact]
     public async Task Save_existing_product_sends_update_request()
     {
         var sessionContext = new AppSessionContext();

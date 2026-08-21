@@ -1147,9 +1147,17 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
-                                                       Foreground="{DynamicResource TextSecondaryBrush}" Text="Código" />
-                                            <TextBox Text="{Binding Catalog.EditorBarcode, UpdateSourceTrigger=PropertyChanged}"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" Text="Código de barras" />
+                                            <TextBox x:Name="ProductBarcodeInput"
+                                                     Text="{Binding Catalog.EditorBarcode, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="Digite o código ou escaneie com o leitor."
+                                                     AutomationProperties.Name="Código de barras do produto"
+                                                     PreviewKeyDown="ProductBarcodeInput_PreviewKeyDown"
                                                      Style="{StaticResource TextInputStyle}" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       FontSize="{DynamicResource FontSizeTiny}"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       Text="Digite o código ou escaneie com o leitor." />
                                         </StackPanel>
                                         <StackPanel Grid.Column="4">
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"

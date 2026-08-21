@@ -71,6 +71,18 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ProductBarcodeInput_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not TextBox textBox)
+        {
+            return;
+        }
+
+        _viewModel.Catalog.CommitEditorBarcodeInput();
+        textBox.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+        e.Handled = true;
+    }
+
     private async void HandleLoaded(object sender, RoutedEventArgs e)
     {
         if (_initialized)

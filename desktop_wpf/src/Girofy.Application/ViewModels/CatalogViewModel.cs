@@ -337,6 +337,11 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         set => SetProperty(ref _editorBarcode, value);
     }
 
+    public void CommitEditorBarcodeInput()
+    {
+        EditorBarcode = (EditorBarcode ?? string.Empty).Trim();
+    }
+
     public CatalogCategory? EditorCategory
     {
         get => _editorCategory;
@@ -1031,7 +1036,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
         request = new CatalogProductMutationRequest(
             name,
-            EditorBarcode.Trim(),
+            (EditorBarcode ?? string.Empty).Trim(),
             EditorCategory is { Id: > 0 } ? EditorCategory.Id : null,
             costPrice,
             salePrice,

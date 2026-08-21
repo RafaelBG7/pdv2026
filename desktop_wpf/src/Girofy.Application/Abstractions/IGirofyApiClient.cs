@@ -259,6 +259,12 @@ public interface IGirofyApiClient
             perPage,
             cancellationToken);
 
+    Task<CatalogProduct?> GetCatalogProductByBarcodeAsync(
+        string accessToken,
+        string barcode,
+        CancellationToken cancellationToken) =>
+        Task.FromException<CatalogProduct?>(new NotSupportedException());
+
     Task<CatalogProduct> CreateCatalogProductAsync(
         string accessToken,
         CatalogProductMutationRequest product,

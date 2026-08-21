@@ -59,6 +59,40 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Exact_barcode_opens_quantity_and_consecutive_scans_merge_the_cart_line()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+
+        Assert.True(await viewModel.SelectExactBarcodeAsync(" 789 ", showNotFound: true));
+        Assert.True(viewModel.IsQuantityPopupOpen);
+        Assert.Equal("Coca Cola 2L", viewModel.SelectedSearchProduct?.Name);
+
+        viewModel.QuantityText = "2";
+        viewModel.AddProductCommand.Execute(null);
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.QuantityText = "1";
+        viewModel.AddProductCommand.Execute(null);
+
+        Assert.Single(viewModel.CartItems);
+        Assert.Equal(3, viewModel.CartItems[0].Quantity);
+    }
+
+    [Fact]
+    public async Task Barcode_lookup_reports_missing_and_inactive_products()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+
+        Assert.False(await viewModel.SelectExactBarcodeAsync("missing", showNotFound: true));
+        Assert.Contains("não encontrado", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+
+        Assert.False(await viewModel.SelectExactBarcodeAsync("inactive", showNotFound: true));
+        Assert.Contains("inativo", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(viewModel.CartItems);
+    }
+
+    [Fact]
     public async Task Typing_searches_products_live_and_orders_suggestions()
     {
         var sessionContext = SessionContext();
@@ -639,6 +673,31 @@ public sealed class SalesViewModelTests
                     TotalPages = 1,
                 },
             });
+        }
+
+        public Task<CatalogProduct?> GetCatalogProductByBarcodeAsync(
+            string accessToken,
+            string barcode,
+            CancellationToken cancellationToken)
+        {
+            if (string.Equals(barcode, "inactive", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<CatalogProduct?>(new CatalogProduct
+                {
+                    Id = 99,
+                    Name = "Produto inativo",
+                    Barcode = "inactive",
+                    Active = false,
+                });
+            }
+
+            var products = CatalogProducts ??
+            [
+                new CatalogProduct { Id = 10, Name = "Coca Zero 2L", Barcode = "790", SalePrice = 13m, StockQuantity = 5, Active = true },
+                new CatalogProduct { Id = 9, Name = "Coca Cola 2L", Barcode = "789", SalePrice = 12m, StockQuantity = 8, Active = true },
+            ];
+            return Task.FromResult<CatalogProduct?>(products.SingleOrDefault(
+                product => string.Equals(product.Barcode, barcode, StringComparison.Ordinal)));
         }
 
         public Task<SaleReceipt> CreateSaleAsync(

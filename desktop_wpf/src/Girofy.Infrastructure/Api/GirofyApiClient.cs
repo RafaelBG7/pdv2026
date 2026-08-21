@@ -777,6 +777,22 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<CatalogProductList>(response, cancellationToken);
     }
 
+    public async Task<CatalogProduct?> GetCatalogProductByBarcodeAsync(
+        string accessToken,
+        string barcode,
+        CancellationToken cancellationToken)
+    {
+        var normalized = barcode.Trim();
+        var path = $"api/v1/catalog/products?barcode={Uri.EscapeDataString(normalized)}&active=all&per_page=2";
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, path, accessToken);
+        using var response = await httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        var result = await ReadEnvelopeAsync<CatalogProductList>(response, cancellationToken);
+        return result.Items.SingleOrDefault();
+    }
+
     public async Task<CatalogProduct> CreateCatalogProductAsync(
         string accessToken,
         CatalogProductMutationRequest product,

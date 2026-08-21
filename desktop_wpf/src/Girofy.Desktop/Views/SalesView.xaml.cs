@@ -9,6 +9,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using Girofy.Application.Models;
+using Girofy.Application.Services;
 using Girofy.Application.ViewModels;
 
 namespace Girofy.Desktop.Views;
@@ -17,6 +18,7 @@ public partial class SalesView : UserControl
 {
     private static readonly CultureInfo BrazilianCulture = new("pt-BR");
     private static readonly Regex DigitsOnlyRegex = new(@"^\d+$", RegexOptions.Compiled);
+    private readonly BarcodeScannerInputService _barcodeScanner = new();
 
     public SalesView()
     {
@@ -118,6 +120,14 @@ public partial class SalesView : UserControl
             return;
         }
 
+        if (e.Key == Key.Enter && CanCaptureScannerGlobally(viewModel)
+            && _barcodeScanner.TryComplete(DateTimeOffset.UtcNow, out var barcode))
+        {
+            _ = SelectScannedBarcodeAsync(viewModel, barcode);
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.F3)
         {
             if (viewModel.IsPaymentStepVisible)
@@ -154,6 +164,35 @@ public partial class SalesView : UserControl
         }
     }
 
+    private void SalesView_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (DataContext is not SalesViewModel viewModel || !CanCaptureScannerGlobally(viewModel))
+        {
+            _barcodeScanner.Reset();
+            return;
+        }
+
+        _barcodeScanner.Append(e.Text, DateTimeOffset.UtcNow);
+        e.Handled = true;
+    }
+
+    private static bool CanCaptureScannerGlobally(SalesViewModel viewModel) =>
+        viewModel.IsProductStepOpen
+        && !viewModel.IsQuantityPopupOpen
+        && !viewModel.IsDiscountPopupVisible
+        && !IsTextInputFocused();
+
+    private async Task SelectScannedBarcodeAsync(SalesViewModel viewModel, string barcode)
+    {
+        if (await viewModel.SelectExactBarcodeAsync(barcode, showNotFound: true))
+        {
+            FocusQuantityInput();
+            return;
+        }
+
+        FocusProductSearch();
+    }
+
     private async void ProductSearchInput_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (DataContext is not SalesViewModel viewModel)
@@ -185,6 +224,16 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Enter)
         {
+            var exactMatch = await viewModel.SelectExactBarcodeAsync(
+                viewModel.SearchText,
+                showNotFound: false);
+            if (exactMatch)
+            {
+                FocusQuantityInput();
+                e.Handled = true;
+                return;
+            }
+
             if (!viewModel.HasSearchResults && viewModel.SearchCommand.CanExecute(null))
             {
                 await viewModel.SearchCommand.ExecuteAsync();

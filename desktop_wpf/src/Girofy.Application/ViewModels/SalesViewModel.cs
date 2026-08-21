@@ -175,6 +175,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private bool _updatingPaymentText;
     private string _openingCashText = "0,00";
     private CancellationTokenSource? _searchDebounceCts;
+    private CancellationTokenSource? _barcodeLookupCts;
     private string? _idempotencyKey;
     private SaleReceipt? _receipt;
     private readonly HashSet<string> _manualPaymentMethods = [];
@@ -712,6 +713,77 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private Task SearchAsync(CancellationToken cancellationToken) =>
         SearchProductsAsync(showMessages: true, cancellationToken);
+
+    public async Task<bool> SelectExactBarcodeAsync(
+        string barcode,
+        bool showNotFound,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = barcode.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return false;
+        }
+
+        CancelPendingSearch();
+        _barcodeLookupCts?.Cancel();
+        _barcodeLookupCts?.Dispose();
+        _barcodeLookupCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var lookupCts = _barcodeLookupCts;
+        var session = RequireSession();
+        IsSearching = true;
+        ClearMessages();
+        try
+        {
+            var product = await _apiClient.GetCatalogProductByBarcodeAsync(
+                session.AccessToken,
+                normalized,
+                lookupCts.Token);
+            if (!ReferenceEquals(_barcodeLookupCts, lookupCts) || !IsSameSession(session))
+            {
+                return false;
+            }
+
+            ClearSearchResults();
+            if (product is null)
+            {
+                if (showNotFound)
+                {
+                    ErrorMessage = $"Produto não encontrado para o código {normalized}.";
+                }
+                return false;
+            }
+            if (!product.Active)
+            {
+                ErrorMessage = "Produto inativo e indisponível para venda.";
+                return false;
+            }
+
+            SetProperty(ref _searchText, normalized, nameof(SearchText));
+            SelectedSearchProduct = product;
+            QuantityText = "1";
+            IsQuantityPopupOpen = true;
+            return true;
+        }
+        catch (OperationCanceledException) when (lookupCts.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception exception)
+        {
+            SetSafeError(exception, "Não foi possível consultar o código de barras agora.");
+            return false;
+        }
+        finally
+        {
+            if (ReferenceEquals(_barcodeLookupCts, lookupCts))
+            {
+                _barcodeLookupCts = null;
+                IsSearching = false;
+            }
+            lookupCts.Dispose();
+        }
+    }
 
     private async Task ToggleTodaySaleAsync(SaleHistoryItemViewModel? sale)
     {
@@ -1569,6 +1641,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private void ResetAll()
     {
+        _barcodeLookupCts?.Cancel();
+        _barcodeLookupCts?.Dispose();
+        _barcodeLookupCts = null;
         _historyCts?.Cancel();
         _detailCts?.Cancel();
         Receipt = null;
@@ -1743,6 +1818,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         CancelPendingSearch();
+        _barcodeLookupCts?.Cancel();
+        _barcodeLookupCts?.Dispose();
         _historyCts?.Cancel();
         _historyCts?.Dispose();
         _detailCts?.Cancel();

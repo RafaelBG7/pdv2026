@@ -1177,9 +1177,7 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="18" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="18" />
-                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
 
                             <Grid>
@@ -1205,25 +1203,27 @@
                                         Content="Fechar" Style="{StaticResource SecondaryButtonStyle}" />
                             </Grid>
 
-                            <Grid Grid.Row="2">
+                            <ScrollViewer Grid.Row="2"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                            <Grid x:Name="PaymentContentGrid" SizeChanged="PaymentContentGrid_SizeChanged">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition x:Name="PaymentPrimaryRow" Height="Auto" />
+                                    <RowDefinition x:Name="PaymentContentGapRow" Height="0" />
+                                    <RowDefinition x:Name="PaymentSecondaryRow" Height="0" />
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.05*" />
-                                    <ColumnDefinition Width="18" />
-                                    <ColumnDefinition Width="0.95*" />
+                                    <ColumnDefinition x:Name="PaymentPrimaryColumn" Width="1.05*" />
+                                    <ColumnDefinition x:Name="PaymentContentGapColumn" Width="18" />
+                                    <ColumnDefinition x:Name="PaymentSecondaryColumn" Width="0.95*" />
                                 </Grid.ColumnDefinitions>
 
-                                <Border Padding="18" Background="{DynamicResource SurfaceBrush}"
+                                <Border x:Name="PaymentMethodsPanel" Padding="18" Background="{DynamicResource SurfaceBrush}"
                                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="7">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="12" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="10" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="10" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="10" />
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="14" />
                                             <RowDefinition Height="Auto" />
@@ -1231,7 +1231,18 @@
                                         <TextBlock FontSize="{DynamicResource FontSizeSection}" FontWeight="Bold"
                                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                                    Text="Formas de pagamento" />
-                                        <StackPanel Grid.Row="2">
+                                        <Grid Grid.Row="2">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="10" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                        <StackPanel>
                                             <TextBlock Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Dinheiro" />
                                             <TextBox x:Name="MoneyInput"
                                                      Tag="money"
@@ -1243,7 +1254,7 @@
                                                      Text="{Binding MoneyText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
-                                        <StackPanel Grid.Row="4">
+                                        <StackPanel Grid.Column="2">
                                             <TextBlock Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Pix" />
                                             <TextBox x:Name="PixInput"
                                                      Tag="pix"
@@ -1255,7 +1266,7 @@
                                                      Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
-                                        <StackPanel Grid.Row="6">
+                                        <StackPanel Grid.Row="2">
                                             <TextBlock Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Débito" />
                                             <TextBox x:Name="DebitInput"
                                                      Tag="debit"
@@ -1267,7 +1278,7 @@
                                                      Text="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
-                                        <StackPanel Grid.Row="8">
+                                        <StackPanel Grid.Row="2" Grid.Column="2">
                                             <TextBlock Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Crédito" />
                                             <TextBox x:Name="CreditInput"
                                                      Tag="credit"
@@ -1279,7 +1290,8 @@
                                                      Text="{Binding CreditText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
-                                        <Button Grid.Row="10" Height="42"
+                                        </Grid>
+                                        <Button Grid.Row="4" MinHeight="42"
                                                 Command="{Binding OpenDiscountPopupCommand}"
                                                 Click="OpenDiscountPopupButton_Click"
                                                 Content="Desconto - F3"
@@ -1287,7 +1299,7 @@
                                     </Grid>
                                 </Border>
 
-                                <Border Grid.Column="2" Padding="20" Background="{DynamicResource InfoSurfaceBrush}"
+                                <Border x:Name="PaymentSummaryPanel" Grid.Column="2" Padding="20" Background="{DynamicResource InfoSurfaceBrush}"
                                         BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="7">
                                     <Grid>
                                         <Grid.RowDefinitions>
@@ -1366,6 +1378,7 @@
                                     </Grid>
                                 </Border>
                             </Grid>
+                            </ScrollViewer>
                         </Grid>
                         </Grid>
             </Border>

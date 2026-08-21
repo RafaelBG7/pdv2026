@@ -17,6 +17,7 @@ namespace Girofy.Desktop.Views;
 public partial class SalesView : UserControl
 {
     private const double CompactSaleEditorWidth = 1100d;
+    private const double CompactPaymentWidth = 900d;
     private static readonly CultureInfo BrazilianCulture = new("pt-BR");
     private static readonly Regex DigitsOnlyRegex = new(@"^\d+$", RegexOptions.Compiled);
     private readonly BarcodeScannerInputService _barcodeScanner = new();
@@ -46,6 +47,26 @@ public partial class SalesView : UserControl
         Grid.SetColumn(ProductSearchPanel, 0);
         Grid.SetRow(CartItemsPanel, compact ? 2 : 0);
         Grid.SetColumn(CartItemsPanel, compact ? 0 : 2);
+    }
+
+    private void PaymentContentGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var compact = e.NewSize.Width < CompactPaymentWidth;
+
+        PaymentPrimaryColumn.Width = new GridLength(1.05, GridUnitType.Star);
+        PaymentContentGapColumn.Width = compact ? new GridLength(0) : new GridLength(18);
+        PaymentSecondaryColumn.Width = compact
+            ? new GridLength(0)
+            : new GridLength(0.95, GridUnitType.Star);
+
+        PaymentPrimaryRow.Height = GridLength.Auto;
+        PaymentContentGapRow.Height = compact ? new GridLength(12) : new GridLength(0);
+        PaymentSecondaryRow.Height = compact ? GridLength.Auto : new GridLength(0);
+
+        Grid.SetRow(PaymentMethodsPanel, 0);
+        Grid.SetColumn(PaymentMethodsPanel, 0);
+        Grid.SetRow(PaymentSummaryPanel, compact ? 2 : 0);
+        Grid.SetColumn(PaymentSummaryPanel, compact ? 0 : 2);
     }
 
     private void SalesView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

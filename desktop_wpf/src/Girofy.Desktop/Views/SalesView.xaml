@@ -807,13 +807,13 @@
                 </Style>
             </Grid.Style>
 
-            <Border Margin="24" Padding="20" MinWidth="720" MinHeight="540"
+            <Border Margin="12" Padding="20" MinWidth="0" MinHeight="0"
                     MaxWidth="1600" MaxHeight="920"
                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                     Background="{DynamicResource SurfaceRaisedBrush}"
                     BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="10">
                 <Grid>
-                        <Grid>
+                        <Grid x:Name="ProductStepRoot" SizeChanged="ProductStepRoot_SizeChanged">
                             <Grid.Style>
                                 <Style TargetType="Grid">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -855,7 +855,22 @@
                                         Content="Fechar" Style="{StaticResource SecondaryButtonStyle}" />
                             </Grid>
 
-                            <Border Grid.Row="2" Grid.Column="0" Padding="16" Background="{DynamicResource SurfaceBrush}"
+                            <ScrollViewer Grid.Row="2" Grid.ColumnSpan="3"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                            <Grid x:Name="ProductColumnsGrid">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition x:Name="ProductPrimaryRow" Height="*" />
+                                    <RowDefinition x:Name="ProductContentGapRow" Height="0" />
+                                    <RowDefinition x:Name="ProductSecondaryRow" Height="0" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition x:Name="ProductPrimaryColumn" Width="1.18*" />
+                                    <ColumnDefinition x:Name="ProductContentGapColumn" Width="16" />
+                                    <ColumnDefinition x:Name="ProductSecondaryColumn" Width="0.82*" />
+                                </Grid.ColumnDefinitions>
+
+                            <Border x:Name="ProductSearchPanel" Grid.Row="0" Grid.Column="0" Padding="16" Background="{DynamicResource SurfaceBrush}"
                                     VerticalAlignment="Top"
                                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="7">
                                 <Grid>
@@ -1023,7 +1038,7 @@
                                 </Grid>
                             </Border>
 
-                            <Border Grid.Row="2" Grid.Column="2" Padding="16" Background="{DynamicResource SurfaceBrush}"
+                            <Border x:Name="CartItemsPanel" Grid.Row="0" Grid.Column="2" Padding="16" Background="{DynamicResource SurfaceBrush}"
                                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="7">
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -1034,7 +1049,7 @@
                                     <TextBlock FontSize="{DynamicResource FontSizeSection}" FontWeight="Bold"
                                                Foreground="{DynamicResource TextPrimaryBrush}"
                                                Text="Itens do pedido" />
-                                    <DataGrid Grid.Row="2" MinHeight="280"
+                                    <DataGrid Grid.Row="2" MinHeight="240" MinRowHeight="72"
                                               ItemsSource="{Binding CartItems}"
                                               AutoGenerateColumns="False" IsReadOnly="True"
                                               CanUserAddRows="False" CanUserDeleteRows="False"
@@ -1047,8 +1062,7 @@
                                               VerticalGridLinesBrush="Transparent"
                                               RowBackground="{DynamicResource SurfaceBrush}"
                                               AlternatingRowBackground="{DynamicResource AlternatingRowBrush}"
-                                              RowHeight="72"
-                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                               ScrollViewer.VerticalScrollBarVisibility="Auto">
                                         <DataGrid.Columns>
                                             <DataGridTemplateColumn Width="*">
@@ -1074,7 +1088,7 @@
                                                                        Text="{Binding Name}"
                                                                        TextTrimming="CharacterEllipsis"
                                                                        ToolTip="{Binding Name}" />
-                                                            <Button Grid.Column="1" Width="78" Height="28" Margin="10,0,0,0"
+                                                            <Button Grid.Column="1" MinWidth="92" Height="30" Margin="10,0,0,0"
                                                                     Content="Remover"
                                                                     AutomationProperties.Name="Remover item do pedido"
                                                                     Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -1129,6 +1143,8 @@
                                     </DataGrid>
                                 </Grid>
                             </Border>
+                            </Grid>
+                            </ScrollViewer>
 
                             <Grid Grid.Row="4" Grid.ColumnSpan="3">
                                 <Grid.ColumnDefinitions>

@@ -16,6 +16,7 @@ namespace Girofy.Desktop.Views;
 
 public partial class SalesView : UserControl
 {
+    private const double CompactSaleEditorWidth = 1100d;
     private static readonly CultureInfo BrazilianCulture = new("pt-BR");
     private static readonly Regex DigitsOnlyRegex = new(@"^\d+$", RegexOptions.Compiled);
     private readonly BarcodeScannerInputService _barcodeScanner = new();
@@ -25,6 +26,26 @@ public partial class SalesView : UserControl
         InitializeComponent();
         DataContextChanged += SalesView_DataContextChanged;
         Unloaded += SalesView_Unloaded;
+    }
+
+    private void ProductStepRoot_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var compact = e.NewSize.Width < CompactSaleEditorWidth;
+
+        ProductPrimaryColumn.Width = new GridLength(1.18, GridUnitType.Star);
+        ProductContentGapColumn.Width = compact ? new GridLength(0) : new GridLength(16);
+        ProductSecondaryColumn.Width = compact
+            ? new GridLength(0)
+            : new GridLength(0.82, GridUnitType.Star);
+
+        ProductPrimaryRow.Height = compact ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
+        ProductContentGapRow.Height = compact ? new GridLength(12) : new GridLength(0);
+        ProductSecondaryRow.Height = compact ? GridLength.Auto : new GridLength(0);
+
+        Grid.SetRow(ProductSearchPanel, 0);
+        Grid.SetColumn(ProductSearchPanel, 0);
+        Grid.SetRow(CartItemsPanel, compact ? 2 : 0);
+        Grid.SetColumn(CartItemsPanel, compact ? 0 : 2);
     }
 
     private void SalesView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

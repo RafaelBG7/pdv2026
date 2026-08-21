@@ -64,6 +64,12 @@ public partial class SalesView : UserControl
         if (e.PropertyName == nameof(SalesViewModel.IsProductStepOpen) && viewModel.IsProductStepOpen)
         {
             FocusProductSearch();
+            return;
+        }
+
+        if (e.PropertyName == nameof(SalesViewModel.IsSaleEditorOpen) && !viewModel.IsSaleEditorOpen)
+        {
+            _barcodeScanner.Reset();
         }
     }
 
@@ -99,9 +105,19 @@ public partial class SalesView : UserControl
             }
         }
 
+        if (viewModel.IsDiscardConfirmationOpen && e.Key != Key.Escape)
+        {
+            return;
+        }
+
         if (e.Key == Key.Escape && viewModel.IsSaleEditorOpen)
         {
-            if (viewModel.IsQuantityPopupOpen)
+            if (viewModel.IsDiscardConfirmationOpen)
+            {
+                ExecuteIfAllowed(viewModel.ContinueSaleCommand);
+                FocusProductSearch();
+            }
+            else if (viewModel.IsQuantityPopupOpen)
             {
                 ExecuteIfAllowed(viewModel.CloseQuantityPopupCommand);
                 FocusProductSearch();
@@ -180,6 +196,7 @@ public partial class SalesView : UserControl
         viewModel.IsProductStepOpen
         && !viewModel.IsQuantityPopupOpen
         && !viewModel.IsDiscountPopupVisible
+        && !viewModel.IsDiscardConfirmationOpen
         && !IsTextInputFocused();
 
     private async Task SelectScannedBarcodeAsync(SalesViewModel viewModel, string barcode)

@@ -479,6 +479,94 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Closing_empty_sale_discards_immediately_and_reopens_empty()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        viewModel.SearchText = "temporary";
+        viewModel.CloseSaleEditorCommand.Execute(null);
+
+        Assert.False(viewModel.IsSaleEditorOpen);
+        Assert.False(viewModel.IsDiscardConfirmationOpen);
+        Assert.Empty(viewModel.SearchText);
+        Assert.Empty(apiClient.IdempotencyKeys);
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.Empty(viewModel.CartItems);
+        Assert.Equal("R$ 0,00", viewModel.TotalText);
+    }
+
+    [Fact]
+    public async Task Closing_sale_with_items_requires_confirmation_and_discard_clears_all_draft_state()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.QuantityText = "2";
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.DiscountText = "2,00";
+        viewModel.MoneyText = "5,00";
+        viewModel.PixText = "17,00";
+
+        viewModel.CloseSaleEditorCommand.Execute(null);
+
+        Assert.True(viewModel.IsDiscardConfirmationOpen);
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.Single(viewModel.CartItems);
+
+        viewModel.ContinueSaleCommand.Execute(null);
+        Assert.False(viewModel.IsDiscardConfirmationOpen);
+        Assert.Single(viewModel.CartItems);
+
+        viewModel.CloseSaleEditorCommand.Execute(null);
+        viewModel.ConfirmDiscardSaleCommand.Execute(null);
+
+        Assert.False(viewModel.IsSaleEditorOpen);
+        Assert.Empty(viewModel.CartItems);
+        Assert.Empty(viewModel.SearchText);
+        Assert.Equal("1", viewModel.QuantityText);
+        Assert.Equal("0,00", viewModel.DiscountText);
+        Assert.Equal("0,00", viewModel.MoneyText);
+        Assert.Equal("0,00", viewModel.PixText);
+        Assert.Equal("0,00", viewModel.DebitText);
+        Assert.Equal("0,00", viewModel.CreditText);
+        Assert.Empty(apiClient.IdempotencyKeys);
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.Empty(viewModel.CartItems);
+    }
+
+    [Fact]
+    public async Task Discard_after_failed_finalize_creates_a_new_idempotency_key_for_next_sale()
+    {
+        var apiClient = new StubApiClient { FailFirstSaleAttempt = true };
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.MoneyText = "12,00";
+
+        await viewModel.FinalizeCommand.ExecuteAsync();
+        Assert.Single(apiClient.IdempotencyKeys);
+
+        viewModel.CloseSaleEditorCommand.Execute(null);
+        viewModel.ConfirmDiscardSaleCommand.Execute(null);
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.MoneyText = "12,00";
+        await viewModel.FinalizeCommand.ExecuteAsync();
+
+        Assert.Equal(2, apiClient.IdempotencyKeys.Count);
+        Assert.NotEqual(apiClient.IdempotencyKeys[0], apiClient.IdempotencyKeys[1]);
+    }
+
+    [Fact]
     public async Task Payment_autocomplete_moves_untouched_value_and_keeps_manual_amounts()
     {
         var sessionContext = SessionContext();

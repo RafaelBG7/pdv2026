@@ -1482,6 +1482,56 @@
             </Border>
         </Grid>
 
+        <Grid Background="{DynamicResource OverlayBrush}" Panel.ZIndex="40">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsDiscardConfirmationOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Border Margin="24" Padding="24" MaxWidth="520"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{DynamicResource SurfaceRaisedBrush}"
+                    BorderBrush="{DynamicResource WarningBrush}"
+                    BorderThickness="{DynamicResource AccessibilityBorderThickness}"
+                    CornerRadius="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="22" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               Text="Descartar venda?" />
+                    <TextBlock Grid.Row="2" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="Os itens, desconto e pagamentos informados serão removidos. Esta venda ainda não foi registrada." />
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Height="46" Command="{Binding ContinueSaleCommand}"
+                                Content="Continuar venda"
+                                AutomationProperties.Name="Continuar venda sem descartar"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button Grid.Column="2" Height="46" Command="{Binding ConfirmDiscardSaleCommand}"
+                                Content="Descartar"
+                                AutomationProperties.Name="Descartar venda não finalizada"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
         <Grid Background="{DynamicResource OverlayBrush}">
             <Grid.Style>
                 <Style TargetType="Grid">

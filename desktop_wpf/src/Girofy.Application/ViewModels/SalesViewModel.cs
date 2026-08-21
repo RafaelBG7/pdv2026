@@ -172,6 +172,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private bool _isQuantityPopupOpen;
     private bool _isDiscountPopupOpen;
     private bool _isOpenCashPromptOpen;
+    private bool _isDiscardConfirmationOpen;
     private bool _updatingPaymentText;
     private string _openingCashText = "0,00";
     private CancellationTokenSource? _searchDebounceCts;
@@ -214,6 +215,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         FinalizeCommand = new AsyncRelayCommand(FinalizeAsync);
         OpenSaleEditorCommand = new AsyncRelayCommand(OpenSaleEditorAsync);
         CloseSaleEditorCommand = new RelayCommand(CloseSaleEditor);
+        ContinueSaleCommand = new RelayCommand(ContinueSale);
+        ConfirmDiscardSaleCommand = new RelayCommand(ConfirmDiscardSale);
         ConfirmOpenCashBeforeSaleCommand = new AsyncRelayCommand(ConfirmOpenCashBeforeSaleAsync, () => !IsBusy);
         CancelOpenCashBeforeSaleCommand = new RelayCommand(CancelOpenCashBeforeSale);
         OpenPaymentStepCommand = new RelayCommand(OpenPaymentStep, () => HasCart && !IsBusy);
@@ -628,6 +631,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _isOpenCashPromptOpen, value);
     }
 
+    public bool IsDiscardConfirmationOpen
+    {
+        get => _isDiscardConfirmationOpen;
+        private set => SetProperty(ref _isDiscardConfirmationOpen, value);
+    }
+
     public string OpeningCashText
     {
         get => _openingCashText;
@@ -667,6 +676,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand OpenSaleEditorCommand { get; }
 
     public RelayCommand CloseSaleEditorCommand { get; }
+
+    public RelayCommand ContinueSaleCommand { get; }
+
+    public RelayCommand ConfirmDiscardSaleCommand { get; }
 
     public AsyncRelayCommand ConfirmOpenCashBeforeSaleCommand { get; }
 
@@ -1478,7 +1491,34 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private void CloseSaleEditor()
     {
+        if (HasCart)
+        {
+            IsDiscardConfirmationOpen = true;
+            return;
+        }
+
+        DiscardCurrentSale();
+    }
+
+    private void ContinueSale()
+    {
+        IsDiscardConfirmationOpen = false;
+    }
+
+    private void ConfirmDiscardSale()
+    {
+        DiscardCurrentSale();
+    }
+
+    private void DiscardCurrentSale()
+    {
+        CancelPendingSearch();
+        _barcodeLookupCts?.Cancel();
         ClearMessages();
+        ResetDraftAfterSuccess();
+        Receipt = null;
+        IsHistoricalReceipt = false;
+        IsDiscardConfirmationOpen = false;
         IsDiscountPopupOpen = false;
         IsPaymentStepOpen = false;
         IsOpenCashPromptOpen = false;
@@ -1632,6 +1672,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         IsQuantityPopupOpen = false;
         IsDiscountPopupOpen = false;
         IsOpenCashPromptOpen = false;
+        IsDiscardConfirmationOpen = false;
         _idempotencyKey = null;
         _manualPaymentMethods.Clear();
         _autoPaymentMethods.Clear();

@@ -1,6 +1,8 @@
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -12,6 +14,8 @@ namespace Girofy.Desktop;
 
 public partial class MainWindow : Window
 {
+    private const uint MonitorDefaultToNearest = 2;
+
     private readonly ConnectionViewModel _viewModel;
     private readonly ILogger<MainWindow> _logger;
     private bool _initialized;
@@ -305,27 +309,99 @@ public partial class MainWindow : Window
 
     private void ApplyAuthenticationWindowMode()
     {
+        var workArea = GetCurrentMonitorWorkArea();
+
         if (_viewModel.Login.IsAuthenticated)
         {
+            WindowState = WindowState.Normal;
             MaxWidth = double.PositiveInfinity;
             MaxHeight = double.PositiveInfinity;
-            MinWidth = 900;
-            MinHeight = 640;
+            MinWidth = Math.Min(900, workArea.Width);
+            MinHeight = Math.Min(640, workArea.Height);
             ResizeMode = ResizeMode.CanResize;
-            Width = 1180;
-            Height = 780;
+            Width = Math.Min(1180, workArea.Width);
+            Height = Math.Min(780, workArea.Height);
+            CenterInside(workArea);
             return;
         }
 
         WindowState = WindowState.Normal;
         ResizeMode = ResizeMode.CanMinimize;
-        MinWidth = 470;
-        MinHeight = 640;
-        MaxWidth = 470;
-        MaxHeight = 700;
-        Width = 470;
-        Height = 700;
+        var loginWidth = Math.Min(470, workArea.Width);
+        var loginHeight = Math.Min(700, workArea.Height);
+        MinWidth = loginWidth;
+        MinHeight = Math.Min(640, workArea.Height);
+        MaxWidth = loginWidth;
+        MaxHeight = loginHeight;
+        Width = loginWidth;
+        Height = loginHeight;
+        CenterInside(workArea);
         QueueLoginFocus();
+    }
+
+    private Rect GetCurrentMonitorWorkArea()
+    {
+        try
+        {
+            var handle = new WindowInteropHelper(this).Handle;
+            if (handle == IntPtr.Zero)
+            {
+                return SystemParameters.WorkArea;
+            }
+
+            var monitor = MonitorFromWindow(handle, MonitorDefaultToNearest);
+            var monitorInfo = new MonitorInfo
+            {
+                Size = Marshal.SizeOf<MonitorInfo>()
+            };
+
+            if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref monitorInfo))
+            {
+                return SystemParameters.WorkArea;
+            }
+
+            var source = PresentationSource.FromVisual(this);
+            var fromDevice = source?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+            var topLeft = fromDevice.Transform(new Point(monitorInfo.WorkArea.Left, monitorInfo.WorkArea.Top));
+            var bottomRight = fromDevice.Transform(new Point(monitorInfo.WorkArea.Right, monitorInfo.WorkArea.Bottom));
+            return new Rect(topLeft, bottomRight);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Current monitor work area could not be resolved; using the primary monitor.");
+            return SystemParameters.WorkArea;
+        }
+    }
+
+    private void CenterInside(Rect workArea)
+    {
+        Left = workArea.Left + Math.Max(0, (workArea.Width - Width) / 2);
+        Top = workArea.Top + Math.Max(0, (workArea.Height - Height) / 2);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitorHandle, ref MonitorInfo monitorInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect WorkArea;
+        public uint Flags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
     }
 
     protected override void OnClosed(EventArgs e)

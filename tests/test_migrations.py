@@ -21,7 +21,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
             central = self.engine(directory, 'central.db')
             tenant = self.engine(directory, 'tenant.db')
             self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0002')
-            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0002')
+            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0003')
             self.assertEqual(assert_database_at_head(central, 'central'), migration_head('central'))
             self.assertEqual(assert_database_at_head(tenant, 'tenant'), migration_head('tenant'))
             self.assertIn('sales', inspect(tenant).get_table_names())

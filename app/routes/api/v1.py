@@ -68,6 +68,7 @@ from app.services.product_service import (
     ProductOperationError,
     create_product,
     delete_product,
+    normalize_product_barcode,
     update_product,
 )
 from app.services.password_recovery_service import request_password_recovery
@@ -3965,6 +3966,21 @@ def api_catalog_products():
                 422,
                 'q',
             )
+        barcode = normalize_product_barcode(request.args.get('barcode'))
+        if 'barcode' in request.args and not barcode:
+            raise ApiAuthError(
+                'Informe o código de barras para a busca exata.',
+                'invalid_query_parameter',
+                422,
+                'barcode',
+            )
+        if len(barcode) > 80:
+            raise ApiAuthError(
+                'O código de barras excede o tamanho permitido.',
+                'query_too_long',
+                422,
+                'barcode',
+            )
 
         category_id = None
         if (request.args.get('category_id') or '').strip():
@@ -4016,6 +4032,8 @@ def api_catalog_products():
                     Product.name.ilike(pattern),
                     Product.barcode.ilike(pattern),
                 ))
+            if barcode:
+                query = query.filter(Product.barcode == barcode)
             if category_id is not None:
                 query = query.filter(Product.category_id == category_id)
             if active_filter == 'active':

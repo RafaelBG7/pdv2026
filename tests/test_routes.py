@@ -1297,6 +1297,97 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(invalid_range.status_code, 422)
         self.assertEqual(invalid_range.get_json()['errors'][0]['field'], 'min_price')
 
+    def test_api_catalog_product_barcode_contract_is_exact_normalized_and_tenant_scoped(self):
+        manager, company = self.create_api_user()
+        other_manager, other_company = self.create_api_user(
+            username='api-barcode-outra-adega',
+            company_name='Outra adega barcode',
+        )
+        with self.app.app_context():
+            inactive = Product(
+                name='Produto inativo',
+                barcode='INATIVO-01',
+                company_id=company.id,
+                sale_price=4,
+                active=False,
+            )
+            external = Product(
+                name='Produto externo',
+                barcode='EXTERNO-01',
+                company_id=other_company.id,
+                sale_price=5,
+                active=True,
+            )
+            shared_other = Product(
+                name='Mesmo código em outro tenant',
+                barcode='7894900011517',
+                company_id=other_company.id,
+                sale_price=6,
+                active=True,
+            )
+            db.session.add_all([inactive, external, shared_other])
+            db.session.commit()
+
+        manager_headers = self.bearer_header(
+            self.api_login(manager.username, 'SenhaApi123').get_json()['data']['access_token'],
+        )
+        created = self.client.post(
+            '/api/v1/catalog/products',
+            headers=manager_headers,
+            json={
+                'name': 'Coca-Cola',
+                'barcode': '  7894900011517\r\n',
+                'cost_price': 5,
+                'sale_price': 10,
+                'stock_quantity': 3,
+                'min_stock_quantity': 1,
+                'active': True,
+            },
+        )
+        exact = self.client.get(
+            '/api/v1/catalog/products?barcode=%207894900011517%20&active=all',
+            headers=manager_headers,
+        )
+        partial = self.client.get(
+            '/api/v1/catalog/products?barcode=789490001151&active=all',
+            headers=manager_headers,
+        )
+        inactive_hidden = self.client.get(
+            '/api/v1/catalog/products?barcode=INATIVO-01&active=active',
+            headers=manager_headers,
+        )
+        inactive_visible = self.client.get(
+            '/api/v1/catalog/products?barcode=INATIVO-01&active=all',
+            headers=manager_headers,
+        )
+        cross_tenant = self.client.get(
+            '/api/v1/catalog/products?barcode=EXTERNO-01&active=all',
+            headers=manager_headers,
+        )
+        not_found = self.client.get(
+            '/api/v1/catalog/products?barcode=NAO-EXISTE&active=all',
+            headers=manager_headers,
+        )
+
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.get_json()['data']['barcode'], '7894900011517')
+        self.assertEqual(exact.status_code, 200)
+        self.assertEqual([item['name'] for item in exact.get_json()['data']['items']], ['Coca-Cola'])
+        self.assertEqual(partial.get_json()['data']['items'], [])
+        self.assertEqual(inactive_hidden.get_json()['data']['items'], [])
+        self.assertEqual(inactive_visible.get_json()['data']['items'][0]['name'], 'Produto inativo')
+        self.assertEqual(cross_tenant.get_json()['data']['items'], [])
+        self.assertEqual(not_found.get_json()['data']['items'], [])
+
+        other_headers = self.bearer_header(
+            self.api_login(other_manager.username, 'SenhaApi123').get_json()['data']['access_token'],
+        )
+        other_exact = self.client.get(
+            '/api/v1/catalog/products?barcode=7894900011517&active=all',
+            headers=other_headers,
+        )
+        self.assertEqual(other_exact.get_json()['data']['items'][0]['name'], 'Mesmo código em outro tenant')
+
     def test_api_catalog_categories_are_alphabetical_and_company_scoped(self):
         user, company = self.create_api_user()
         with self.app.app_context():

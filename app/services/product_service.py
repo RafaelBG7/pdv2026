@@ -31,6 +31,13 @@ class ProductInput:
     kit_component_quantity: int = 0
 
 
+def normalize_product_barcode(value):
+    """Remove only accidental surrounding whitespace and line endings."""
+    if value is None:
+        return ''
+    return str(value).strip()
+
+
 def product_audit_values(product):
     return {
         'name': product.name,
@@ -48,6 +55,12 @@ def product_audit_values(product):
 
 
 def create_product(db_session, company, user, product_input):
+    product_input = ProductInput(
+        **{
+            **product_input.__dict__,
+            'barcode': normalize_product_barcode(product_input.barcode),
+        },
+    )
     category, kit_component = validate_product_input(db_session, company.id, product_input)
     product = Product(
         name=product_input.name,
@@ -102,6 +115,12 @@ def create_product(db_session, company, user, product_input):
 
 
 def update_product(db_session, company, user, product_id, product_input):
+    product_input = ProductInput(
+        **{
+            **product_input.__dict__,
+            'barcode': normalize_product_barcode(product_input.barcode),
+        },
+    )
     query = db_session.query(Product).filter(
         Product.id == product_id,
         Product.company_id == company.id,

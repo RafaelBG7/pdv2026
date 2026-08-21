@@ -26,6 +26,7 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 - [Rate limit Redis](28-rate-limit-redis.md)
 - [Cancelamento de vendas](27-cancelamento-estorno-vendas.md)
 - [Notificações e e-mail](25-notificacoes-web-windows-email.md)
+- [Acessibilidade nativa Windows](32-acessibilidade-windows.md)
 
 ## Documentação por plataforma
 

@@ -5,7 +5,7 @@ Marco de referência: 20/08/2026
 Repositório: https://github.com/RafaelBG7/pdv2026
 Produto: PDV SaaS Web/API com aplicativo nativo para Windows
 Versão do App documentada: 0.8.0-preview
-Commit-base deste marco: 966562f
+Commit-base deste marco funcional: 95c9803
 Classificação: documento técnico, funcional, operacional e de segurança
 
 
@@ -238,6 +238,8 @@ O catálogo oferece:
 - ativação, inativação e exclusão;
 - categorias isoladas por adega;
 - código de barras único dentro do tenant;
+- entrada manual ou por leitor USB/HID no mesmo campo `barcode`;
+- busca exata autenticada por `GET /api/v1/catalog/products?barcode=...`;
 - custo, preço de venda, margem, estoque e estoque mínimo;
 - busca por nome ou código;
 - filtros por categoria e status;
@@ -250,6 +252,14 @@ O catálogo oferece:
 Toda mudança manual de saldo deve gerar movimentação de estoque. Produtos de outra
 adega não podem ser consultados ou utilizados.
 
+O código de barras não é limitado a EAN-13: o contrato aceita EAN-8, EAN-13, UPC
+e códigos internos alfanuméricos de até 80 caracteres. A normalização remove
+somente espaços e quebras de linha acidentais nas extremidades, sem modificar o
+conteúdo significativo. O backend revalida o valor, filtra por `company_id` e a
+constraint `uq_products_company_barcode` garante unicidade por tenant. A migration
+`tenant_0003` verifica duplicidades legadas antes de criar a constraint; se houver
+conflito, interrompe com diagnóstico em vez de apagar ou escolher dados.
+
 5.4 Vendas
 
 O fluxo de venda possui:
@@ -257,6 +267,7 @@ O fluxo de venda possui:
 - exigência de caixa aberto;
 - múltiplos produtos e quantidades;
 - busca e autocomplete;
+- seleção rápida por leitor de código de barras USB/HID;
 - desconto monetário validado no servidor;
 - dinheiro, Pix, débito e crédito;
 - pagamentos mistos;
@@ -271,6 +282,12 @@ O fluxo de venda possui:
 
 Valores monetários críticos são processados com Decimal no servidor. A venda e a
 baixa de estoque fazem parte de uma operação transacional.
+
+Uma venda não finalizada existe somente na memória da interface. Fechar Realizar
+Venda por X/botão Fechar ou por Esc descarta o estado temporário depois de pedir
+confirmação quando houver itens. Ao abrir novamente, o pedido começa vazio, sem
+produto, quantidade, desconto, pagamento ou chave idempotente anterior. Pedidos
+suspensos, rascunhos, comandas e pré-vendas não fazem parte desta versão.
 
 5.5 Caixa
 
@@ -497,8 +514,15 @@ o App não ignora essa regra para acelerar a navegação.
 
 Produtos possuem pesquisa, filtros, ordenação, paginação, seleção, detalhes
 expansíveis e editor modal para criação ou alteração. O formulário contém nome,
-código, categoria, situação, custo, venda, estoque, estoque mínimo e motivo da
+código de barras, categoria, situação, custo, venda, estoque, estoque mínimo e motivo da
 movimentação quando necessário.
+
+O campo “Código de barras” aceita digitação e leitores USB comuns em modo HID ou
+keyboard wedge. O leitor escreve no mesmo TextBox e normalmente encerra com Enter.
+Esse Enter apenas normaliza o texto e move o foco; ele nunca salva sozinho um
+produto incompleto. A orientação “Digite o código ou escaneie com o leitor” fica
+junto ao campo. Duplicidade é apresentada com a mensagem devolvida pela API e não
+é decidida apenas pelo cliente.
 
 Categorias são listadas separadamente e podem ser criadas, editadas ou excluídas
 conforme permissão. O cadastro e a edição usam popup modal no mesmo padrão de
@@ -528,6 +552,20 @@ retorna até 30 candidatos por consulta operacional e o App mantém os 20 result
 mais relevantes, em vez do limite anterior de 12. A lista usa linhas compactas de
 aproximadamente 44 px, virtualização e recycling. Cada linha prioriza nome,
 categoria, estoque, preço e código de barras.
+
+Ao abrir Realizar Venda por F3, o foco retorna automaticamente à pesquisa. Um
+scanner HID pode operar sem clique. Um código completo tem prioridade: o App
+consulta o parâmetro exato `barcode`; quando encontra um produto ativo, abre
+diretamente o popup de quantidade, sem exibir a lista de autocomplete. Um produto
+inexistente gera mensagem compacta com o código; um produto inativo é rejeitado
+explicitamente. Em ambos os casos, a venda permanece aberta para nova leitura.
+
+Existe também captura encapsulada para o caso de o foco ter saído da pesquisa.
+`BarcodeScannerInputService` acumula caracteres rápidos, encerra no Enter, limita
+o buffer e o limpa após timeout ou conclusão. A captura global só funciona na
+etapa de produtos e é desativada quando quantidade, desconto, pagamento, outro
+campo textual ou confirmação de descarte está ativo. Não há driver proprietário
+nem acesso USB direto.
 
 O contêiner visual das sugestões tem altura dinâmica. Com poucos resultados, o
 fundo elevado e sua borda terminam logo depois do último produto, preservando o
@@ -570,6 +608,12 @@ quantidade são reiniciadas e o foco volta para o próximo produto. A API ainda
 revalida produto, preço, disponibilidade e política de estoque; a validação visual
 do App não substitui a validação no servidor.
 
+Scans consecutivos repetem esse ciclo. Se o produto já estiver no carrinho, a
+quantidade confirmada é somada à linha existente, seguindo a mesma regra da busca
+manual. A pesquisa por nome ou código parcial mantém autocomplete, setas, Home,
+End e Enter. O scan altera somente a identificação do produto; venda, preço,
+caixa, estoque, kits, permissões e pagamentos continuam no fluxo central.
+
 O carrinho permite múltiplos itens, alteração de quantidade e remoção. Cada item é
 apresentado em duas linhas compactas, com aproximadamente 72 px de altura. A
 primeira linha reserva todo o espaço flexível ao nome do produto e mantém apenas a
@@ -600,6 +644,14 @@ em andamento. No Dashboard, F3 é capturado no PreviewKeyDown da janela autentic
 antes que o controle focado consuma a tecla; ele só executa com Dashboard ativo,
 permissão de vendas e comando disponível. A chave idempotente impede que uma
 tentativa repetida gere duas vendas.
+
+O botão Fechar e o Esc sem popup secundário chamam o mesmo comando. Esc com
+quantidade ou desconto aberto fecha somente o popup superior. Com carrinho vazio,
+o editor fecha e limpa imediatamente. Com itens, “Descartar venda?” oferece
+“Continuar venda” e “Descartar”. Continuar preserva tudo; descartar cancela buscas
+pendentes e limpa carrinho, seleção, resultados, busca, quantidade, desconto,
+pagamentos, troco visual, mensagens, captura de barcode e idempotência. Nenhum
+endpoint de criação de venda é chamado pelo descarte.
 
 6.2.4 Navegação e identidade visual
 
@@ -745,12 +797,15 @@ https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Se
 
 Publicação correspondente ao estado funcional deste documento:
 
-- commit: 966562f49e227fb83a25b95a8d83c37e10e919de;
-- workflow aprovado: https://github.com/RafaelBG7/pdv2026/actions/runs/32417393569;
+- commit funcional de acessibilidade: b24fb4663ed6652058000bf94b41757319f48fa6;
+- correção estrita do build e commit publicado na main:
+  375593ec2150bddedc0b56f9e80785e2a85451de;
+- workflow Windows aprovado (#157):
+  https://github.com/RafaelBG7/pdv2026/actions/runs/32423695447;
 - SHA-256 do instalador dessa publicação:
-  0cb84ad01c3cc349bb1918dad6fa2663281def8abccd24480ced6ce714103ebb;
+  828565cfdb24e8f486584be3df2eb12669167196c68a39060838f7ed57aa2ab4;
 - SHA-256 do executável portátil dessa publicação:
-  8becbd211a4cb1a83f27108eee43acf52eb845632882aaff9c9b0dbad3e0f988.
+  5a90510bb7afe8d6cff0cd5a417db9d9e075725433cf94bdc8de36f632d95cf6.
 
 O hash SHA-256 muda a cada publicação e deve ser consultado ou calculado sobre o
 arquivo efetivamente baixado. A validação automatizada ocorre em runner Windows do
@@ -1398,7 +1453,7 @@ Recursos de catálogo concluídos em 20/08/2026:
   contador de resultados e ação de limpeza sem reduzir as opções usadas nos
   formulários e no filtro de Produtos.
 
-Pendências exatas que impedem marcar a Etapa 2 como concluída:
+Entregas de paridade concluídas neste marco:
 
 - o painel Alertas do App Windows carrega e salva as preferências autenticadas de
   notificações: canal interno, canal Windows, envio por e-mail, severidade mínima,
@@ -1412,6 +1467,15 @@ Pendências exatas que impedem marcar a Etapa 2 como concluída:
   e persistência tenant-aware nos registros `EmailAlertSetting`. O endpoint em
   lote exige `can_manage_settings`, valida todos os e-mails, rejeita tipos ausentes,
   desconhecidos ou duplicados e registra a alteração na auditoria;
+- a aba Acessibilidade do App passou a ser integralmente nativa, com quatro escalas
+  tipográficas, reforço de peso, três níveis de contraste, redução de movimento,
+  pré-visualização, persistência local, restauração e composição Light/Dark;
+- os testes unitários cobrem valores padrão, persistência sem perda das demais
+  preferências, pré-visualização sem gravação, restauração e normalização de valores
+  inválidos. O build estrito, os testes e o empacotamento passaram no workflow #157.
+
+Pendências exatas que impedem marcar a Etapa 2 como concluída:
+
 - gráficos WPF e alguns painéis de suporte possuem divergência visual intencional
   e precisam de homologação visual, sem alterar seus dados/regras.
 

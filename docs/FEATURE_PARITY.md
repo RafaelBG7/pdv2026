@@ -70,6 +70,7 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 |---|---|---|---|---|---|---|
 | Produtos | listar e paginar | 20/página | 50/página | paginação configurável | OK | Diferença de UX intencional |
 | Produtos | nome/código | Pesquisa única | Pesquisa única | `q` cobre ambos | OK | Nenhuma |
+| Produtos | código de barras | Manual | Manual ou scanner HID; Enter não salva formulário | `barcode` exato, tenant e unicidade `(company_id, barcode)` | OK | Entregue em 20/08/2026 |
 | Produtos | categoria/status | Filtros | Filtros | suportados | OK | Nenhuma |
 | Produtos | estoque/preço | Filtros por disponibilidade, estoque baixo, sem estoque e faixa de preço | Mesmos filtros da Web | `stock`, `min_price` e `max_price` validados e isolados por empresa | OK | Entregue em 20/08/2026 |
 | Produtos | ordenação | nome/preço/estoque/criação | nome/preço/estoque/mais recentes/mais antigos | `created_desc` e `created_asc` com desempate por ID | OK | Entregue em 20/08/2026 |
@@ -90,6 +91,8 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 |---|---|---|---|---|---|---|
 | Vendas | exigir caixa aberto | Sim | Sim | sale_service | OK | Nenhuma |
 | Vendas | pesquisa/autocomplete | Sim | Até 20 sugestões ranqueadas, densas, virtualizadas, com debounce/cancelamento | catálogo tenant retorna até 30 | OK | Modal responsivo e teclado aprimorados em 19/08/2026 |
+| Vendas | scan de código de barras | Busca pelo código | Autofocus, captura HID segura, match exato e quantidade | `barcode` exato; venda segue `sale_service` | OK | Entregue em 20/08/2026 |
+| Vendas | fechar pedido não finalizado | Estado transitório | X/Esc compartilham confirmação e descarte integral | nenhuma venda/API é criada antes de Finalizar | OK | Sem rascunho nesta versão |
 | Vendas | seleção de quantidade | Modal Web | Modal WPF equivalente | valida novamente | OK | Entregue em `0d14e87` |
 | Vendas | múltiplos itens/alteração/remoção | Sim | Sim | itens revalidados | OK | Nenhuma |
 | Vendas | desconto | Sim | Popup | servidor limita | OK | Nenhuma |

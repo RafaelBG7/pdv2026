@@ -492,20 +492,20 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="26" Duration="{DynamicResource AnimationNormalDuration}">
+                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="26" Duration="{StaticResource AnimationNormalDuration}">
                                             <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
                                         </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="45" Duration="{DynamicResource AnimationNormalDuration}" />
+                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="45" Duration="{StaticResource AnimationNormalDuration}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="0" Duration="{DynamicResource AnimationNormalDuration}">
+                                        <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X" To="0" Duration="{StaticResource AnimationNormalDuration}">
                                             <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
                                         </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="0" Duration="{DynamicResource AnimationNormalDuration}" />
+                                        <DoubleAnimation Storyboard.TargetName="SunRotation" Storyboard.TargetProperty="Angle" To="0" Duration="{StaticResource AnimationNormalDuration}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>

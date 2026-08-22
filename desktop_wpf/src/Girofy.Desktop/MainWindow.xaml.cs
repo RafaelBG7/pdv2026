@@ -30,6 +30,8 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         _smoothScrollController = new SmoothScrollController(this);
         Loaded += HandleLoaded;
+        Deactivated += HandleWindowDeactivated;
+        StateChanged += HandleWindowStateChanged;
         _viewModel.Login.PropertyChanged += HandleLoginPropertyChanged;
         _viewModel.Login.ForgotPassword.PropertyChanged += HandleForgotPasswordPropertyChanged;
     }
@@ -122,6 +124,25 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             _logger.LogWarning(exception, "Notification popover initialization failed.");
+        }
+    }
+
+    private void HandleWindowDeactivated(object? sender, EventArgs e) =>
+        CloseNotificationsPopup();
+
+    private void HandleWindowStateChanged(object? sender, EventArgs e)
+    {
+        if (WindowState == WindowState.Minimized)
+        {
+            CloseNotificationsPopup();
+        }
+    }
+
+    private void CloseNotificationsPopup()
+    {
+        if (NotificationsPopup.IsOpen)
+        {
+            NotificationsPopup.IsOpen = false;
         }
     }
 
@@ -274,6 +295,11 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName == nameof(LoginViewModel.IsAuthenticated))
         {
+            if (!_viewModel.Login.IsAuthenticated)
+            {
+                CloseNotificationsPopup();
+            }
+
             ApplyAuthenticationWindowMode();
             return;
         }
@@ -407,6 +433,8 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         Loaded -= HandleLoaded;
+        Deactivated -= HandleWindowDeactivated;
+        StateChanged -= HandleWindowStateChanged;
         _viewModel.Login.PropertyChanged -= HandleLoginPropertyChanged;
         _viewModel.Login.ForgotPassword.PropertyChanged -= HandleForgotPasswordPropertyChanged;
         _smoothScrollController.Dispose();

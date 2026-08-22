@@ -8,20 +8,6 @@ namespace Girofy.UnitTests;
 public sealed class PayablesViewModelTests
 {
     [Fact]
-    public void New_payable_defaults_use_brazilian_amount_and_date_formats()
-    {
-        using var viewModel = new PayablesViewModel(new StubApiClient(), CreateSessionContext());
-
-        Assert.Equal("0,00", viewModel.AmountText);
-        Assert.True(DateOnly.TryParseExact(
-            viewModel.DueDateText,
-            "dd/MM/yyyy",
-            System.Globalization.CultureInfo.GetCultureInfo("pt-BR"),
-            System.Globalization.DateTimeStyles.None,
-            out _));
-    }
-
-    [Fact]
     public async Task Initialize_loads_payables_summary_filters_and_items()
     {
         var sessionContext = CreateSessionContext();

@@ -1,4 +1,5 @@
 using Girofy.Application.Abstractions;
+using Girofy.Application.Formatting;
 using Girofy.Application.Models;
 using Girofy.Application.Services;
 using Girofy.Application.ViewModels;
@@ -93,6 +94,8 @@ public sealed class CatalogViewModelTests
         viewModel.SelectedStockFilter = viewModel.StockFilters[2];
         viewModel.MinPriceText = "5,50";
         viewModel.MaxPriceText = "20,00";
+        viewModel.IsMinPriceFilterActive = true;
+        viewModel.IsMaxPriceFilterActive = true;
         viewModel.SelectedSort = viewModel.SortOptions[6];
 
         await viewModel.SearchCommand.ExecuteAsync();
@@ -118,6 +121,8 @@ public sealed class CatalogViewModelTests
         var requestsBeforeSearch = apiClient.ProductListRequestCount;
         viewModel.MinPriceText = "30,00";
         viewModel.MaxPriceText = "10,00";
+        viewModel.IsMinPriceFilterActive = true;
+        viewModel.IsMaxPriceFilterActive = true;
 
         await viewModel.SearchCommand.ExecuteAsync();
 
@@ -142,12 +147,80 @@ public sealed class CatalogViewModelTests
         await viewModel.ClearProductFiltersCommand.ExecuteAsync();
 
         Assert.Empty(viewModel.SearchText);
-        Assert.Empty(viewModel.MinPriceText);
-        Assert.Empty(viewModel.MaxPriceText);
+        Assert.Equal("0,00", viewModel.MinPriceText);
+        Assert.Equal("0,00", viewModel.MaxPriceText);
+        Assert.False(viewModel.IsMinPriceFilterActive);
+        Assert.False(viewModel.IsMaxPriceFilterActive);
         Assert.Equal("all", apiClient.LastStockFilter);
         Assert.Null(apiClient.LastMinPrice);
         Assert.Null(apiClient.LastMaxPrice);
         Assert.Equal("name", apiClient.LastSort);
+    }
+
+    [Theory]
+    [InlineData("1", "0,01")]
+    [InlineData("12", "0,12")]
+    [InlineData("123", "1,23")]
+    [InlineData("1234", "12,34")]
+    public void Money_formatter_enters_values_from_right_to_left(string input, string expected)
+    {
+        Assert.Equal(expected, BrazilianMoneyFormatter.FormatDigits(input));
+    }
+
+    [Theory]
+    [InlineData("12,50", "12,50")]
+    [InlineData("12.50", "12,50")]
+    [InlineData("R$ 12,50", "12,50")]
+    [InlineData("1.234,56", "1.234,56")]
+    [InlineData("1234.56", "1.234,56")]
+    public void Money_formatter_normalizes_pasted_values(string input, string expected)
+    {
+        Assert.True(BrazilianMoneyFormatter.TryNormalize(input, out var formatted));
+        Assert.Equal(expected, formatted);
+    }
+
+    [Fact]
+    public void Money_formatter_removes_digits_in_reverse_order_without_becoming_empty()
+    {
+        var value = "1.234,56";
+        var expected = new[] { "123,45", "12,34", "1,23", "0,12", "0,01", "0,00", "0,00" };
+
+        foreach (var step in expected)
+        {
+            value = BrazilianMoneyFormatter.RemoveLastDigit(value);
+            Assert.Equal(step, value);
+        }
+    }
+
+    [Theory]
+    [InlineData("0,01", "0.01")]
+    [InlineData("1,00", "1.00")]
+    [InlineData("10,50", "10.50")]
+    [InlineData("99,90", "99.90")]
+    [InlineData("1.234,56", "1234.56")]
+    [InlineData("12.345,67", "12345.67")]
+    public void Money_formatter_preserves_decimal_precision(string input, string expected)
+    {
+        Assert.True(BrazilianMoneyFormatter.TryParse(input, out var amount));
+        Assert.Equal(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), amount);
+        Assert.Equal(input, BrazilianMoneyFormatter.Format(amount));
+    }
+
+    [Fact]
+    public async Task Untouched_zero_price_filters_are_sent_as_null()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        await viewModel.SearchCommand.ExecuteAsync();
+
+        Assert.Equal("0,00", viewModel.MinPriceText);
+        Assert.Equal("0,00", viewModel.MaxPriceText);
+        Assert.Null(apiClient.LastMinPrice);
+        Assert.Null(apiClient.LastMaxPrice);
     }
 
     [Fact]
@@ -213,8 +286,8 @@ public sealed class CatalogViewModelTests
         viewModel.EditorName = "Água Mineral";
         viewModel.EditorBarcode = "789";
         viewModel.EditorCategory = viewModel.Categories[1];
-        viewModel.EditorCostPrice = "2,50";
-        viewModel.EditorSalePrice = "5,00";
+        viewModel.EditorCostPrice = "7,25";
+        viewModel.EditorSalePrice = "12,50";
         viewModel.EditorStockQuantity = "12";
         viewModel.EditorMinStockQuantity = "3";
         viewModel.EditorStockReason = "Carga inicial";
@@ -224,8 +297,8 @@ public sealed class CatalogViewModelTests
         Assert.NotNull(apiClient.CreatedProductRequest);
         Assert.Equal("Água Mineral", apiClient.CreatedProductRequest.Name);
         Assert.Equal(7, apiClient.CreatedProductRequest.CategoryId);
-        Assert.Equal(2.50m, apiClient.CreatedProductRequest.CostPrice);
-        Assert.Equal(5.00m, apiClient.CreatedProductRequest.SalePrice);
+        Assert.Equal(7.25m, apiClient.CreatedProductRequest.CostPrice);
+        Assert.Equal(12.50m, apiClient.CreatedProductRequest.SalePrice);
         Assert.Equal(12, apiClient.CreatedProductRequest.StockQuantity);
         Assert.False(viewModel.IsProductEditorOpen);
     }

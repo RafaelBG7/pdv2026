@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Exceptions;
+using Girofy.Application.Formatting;
 using Girofy.Application.Models;
 using Girofy.Application.Mvvm;
 
@@ -20,8 +21,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private CatalogFilterOption _selectedActiveFilter;
     private CatalogFilterOption _selectedStockFilter;
     private CatalogFilterOption _selectedSort;
-    private string _minPriceText = string.Empty;
-    private string _maxPriceText = string.Empty;
+    private string _minPriceText = "0,00";
+    private string _maxPriceText = "0,00";
+    private bool _isMinPriceFilterActive;
+    private bool _isMaxPriceFilterActive;
     private decimal? _appliedMinPrice;
     private decimal? _appliedMaxPrice;
     private int _page = 1;
@@ -214,6 +217,18 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     {
         get => _maxPriceText;
         set => SetProperty(ref _maxPriceText, value);
+    }
+
+    public bool IsMinPriceFilterActive
+    {
+        get => _isMinPriceFilterActive;
+        set => SetProperty(ref _isMinPriceFilterActive, value);
+    }
+
+    public bool IsMaxPriceFilterActive
+    {
+        get => _isMaxPriceFilterActive;
+        set => SetProperty(ref _isMaxPriceFilterActive, value);
     }
 
     public CatalogFilterOption SelectedSort
@@ -512,12 +527,12 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
     private async Task SearchAsync(CancellationToken cancellationToken)
     {
-        if (!TryParseOptionalMoney(MinPriceText, out var minPrice))
+        if (!TryParseOptionalMoney(MinPriceText, IsMinPriceFilterActive, out var minPrice))
         {
             ErrorMessage = "Informe um preço mínimo válido.";
             return;
         }
-        if (!TryParseOptionalMoney(MaxPriceText, out var maxPrice))
+        if (!TryParseOptionalMoney(MaxPriceText, IsMaxPriceFilterActive, out var maxPrice))
         {
             ErrorMessage = "Informe um preço máximo válido.";
             return;
@@ -539,8 +554,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         SelectedActiveFilter = ActiveFilters[0];
         SelectedStockFilter = StockFilters[0];
         SelectedSort = SortOptions[0];
-        MinPriceText = string.Empty;
-        MaxPriceText = string.Empty;
+        MinPriceText = "0,00";
+        MaxPriceText = "0,00";
+        IsMinPriceFilterActive = false;
+        IsMaxPriceFilterActive = false;
         _appliedMinPrice = null;
         _appliedMaxPrice = null;
         _suppressCategoryFilter = true;
@@ -1067,26 +1084,15 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     }
 
     private static string FormatMoney(decimal value) =>
-        value.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"));
+        BrazilianMoneyFormatter.Format(value);
 
-    private static bool TryParseMoney(string value, out decimal amount)
-    {
-        var text = value.Trim();
-        var brazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
-        var styles = NumberStyles.Number | NumberStyles.AllowCurrencySymbol;
-        if (!decimal.TryParse(text, styles, brazilianCulture, out amount) &&
-            !decimal.TryParse(text, styles, CultureInfo.InvariantCulture, out amount))
-        {
-            return false;
-        }
+    private static bool TryParseMoney(string value, out decimal amount) =>
+        BrazilianMoneyFormatter.TryParse(value, out amount);
 
-        return amount >= 0;
-    }
-
-    private static bool TryParseOptionalMoney(string value, out decimal? amount)
+    private static bool TryParseOptionalMoney(string value, bool isActive, out decimal? amount)
     {
         amount = null;
-        if (string.IsNullOrWhiteSpace(value))
+        if (!isActive)
         {
             return true;
         }
@@ -1143,8 +1149,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CategorySummary));
         KitComponentProducts.Clear();
         SearchText = string.Empty;
-        MinPriceText = string.Empty;
-        MaxPriceText = string.Empty;
+        MinPriceText = "0,00";
+        MaxPriceText = "0,00";
+        IsMinPriceFilterActive = false;
+        IsMaxPriceFilterActive = false;
         _appliedMinPrice = null;
         _appliedMaxPrice = null;
         SelectedActiveFilter = ActiveFilters[0];

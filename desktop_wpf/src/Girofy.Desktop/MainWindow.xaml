@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:Girofy.Desktop.Views"
+        xmlns:behaviors="clr-namespace:Girofy.Desktop.Behaviors"
         Title="Girofy"
         Icon="Resources/logo-girofy.png"
         Width="470"
@@ -744,7 +745,11 @@
                                 <TextBox Grid.Row="2"
                                          Text="{Binding Catalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="Buscar produto"
-                                         Style="{StaticResource TextInputStyle}" />
+                                         Style="{StaticResource TextInputStyle}">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding Catalog.SearchCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
                                 <ComboBox Grid.Row="2" Grid.Column="2"
                                           ItemsSource="{Binding Catalog.ActiveFilters}"
                                           SelectedItem="{Binding Catalog.SelectedActiveFilter}"
@@ -772,12 +777,26 @@
                                           DisplayMemberPath="Label" />
                                 <TextBox Grid.Row="6" Grid.Column="2"
                                          Text="{Binding Catalog.MinPriceText, UpdateSourceTrigger=PropertyChanged}"
+                                         behaviors:MoneyInputBehavior.IsEnabled="True"
+                                         behaviors:MoneyInputBehavior.IsTouched="{Binding Catalog.IsMinPriceFilterActive, Mode=TwoWay}"
+                                         AutomationProperties.Name="Preço mínimo"
                                          ToolTip="Preço mínimo, por exemplo 10,00"
-                                         Style="{StaticResource TextInputStyle}" />
+                                         Style="{StaticResource TextInputStyle}">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding Catalog.SearchCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
                                 <TextBox Grid.Row="6" Grid.Column="4"
                                          Text="{Binding Catalog.MaxPriceText, UpdateSourceTrigger=PropertyChanged}"
+                                         behaviors:MoneyInputBehavior.IsEnabled="True"
+                                         behaviors:MoneyInputBehavior.IsTouched="{Binding Catalog.IsMaxPriceFilterActive, Mode=TwoWay}"
+                                         AutomationProperties.Name="Preço máximo"
                                          ToolTip="Preço máximo, por exemplo 100,00"
-                                         Style="{StaticResource TextInputStyle}" />
+                                         Style="{StaticResource TextInputStyle}">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding Catalog.SearchCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
                                 <Button Grid.Row="6" Grid.Column="6" Grid.ColumnSpan="3" MinWidth="120"
                                         Command="{Binding Catalog.ClearProductFiltersCommand}"
                                         Content="Limpar filtros" Style="{StaticResource SecondaryButtonStyle}" />
@@ -939,15 +958,28 @@
                                                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                                                    Text="Detalhes completos do produto" />
                                                     </StackPanel>
-                                                    <Border Grid.Column="1" Padding="12,6"
-                                                            VerticalAlignment="Center"
-                                                            Background="{DynamicResource InfoSurfaceBrush}"
-                                                            BorderBrush="{DynamicResource InfoBorderBrush}"
-                                                            BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="12">
-                                                        <TextBlock FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
-                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                                                   Text="{Binding StatusText}" />
-                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Border Padding="12,6"
+                                                                Background="{DynamicResource InfoSurfaceBrush}"
+                                                                BorderBrush="{DynamicResource InfoBorderBrush}"
+                                                                BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="12">
+                                                            <TextBlock FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
+                                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                       Text="{Binding StatusText}" />
+                                                        </Border>
+                                                        <Button Margin="10,0,0,0" MinWidth="92" Padding="12,6"
+                                                                Command="{Binding DataContext.Catalog.OpenEditProductCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                AutomationProperties.Name="Editar produto"
+                                                                ToolTip="Editar produto"
+                                                                Style="{StaticResource SecondaryButtonStyle}">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Path Width="14" Height="14" Margin="0,0,6,0"
+                                                                      Stretch="Uniform" Fill="{DynamicResource TextPrimaryBrush}"
+                                                                      Data="M3,17.25 V21 H6.75 L17.81,9.94 L14.06,6.19 Z M20.71,7.04 C21.1,6.65 21.1,6.02 20.71,5.63 L18.37,3.29 C17.98,2.9 17.35,2.9 16.96,3.29 L15.13,5.12 L18.88,8.87 Z" />
+                                                                <TextBlock Text="Editar" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </StackPanel>
                                                 </Grid>
 
                                                 <UniformGrid Margin="0,18,0,0" Columns="5">
@@ -1172,12 +1204,16 @@
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Custo" />
                                             <TextBox Text="{Binding Catalog.EditorCostPrice, UpdateSourceTrigger=PropertyChanged}"
+                                                     behaviors:MoneyInputBehavior.IsEnabled="True"
+                                                     AutomationProperties.Name="Preço de custo"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         <StackPanel Grid.Row="2" Grid.Column="2">
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Venda" />
                                             <TextBox Text="{Binding Catalog.EditorSalePrice, UpdateSourceTrigger=PropertyChanged}"
+                                                     behaviors:MoneyInputBehavior.IsEnabled="True"
+                                                     AutomationProperties.Name="Preço de venda"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         <StackPanel Grid.Row="2" Grid.Column="4">

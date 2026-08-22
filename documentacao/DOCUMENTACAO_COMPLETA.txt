@@ -1,11 +1,11 @@
 GIROFY — DOCUMENTAÇÃO COMPLETA DO PROJETO
 =========================================
 
-Marco de referência: 20/08/2026
+Marco de referência: 22/08/2026
 Repositório: https://github.com/RafaelBG7/pdv2026
 Produto: PDV SaaS Web/API com aplicativo nativo para Windows
 Versão do App documentada: 0.8.0-preview
-Commit-base deste marco funcional: 95c9803
+Commit-base deste marco funcional: 87f5dca
 Classificação: documento técnico, funcional, operacional e de segurança
 
 
@@ -1790,3 +1790,229 @@ API, listagem, pagamento, reabertura, datas invertidas, loading, empty state e f
 O workflow Windows executa unittest discover, dotnet test, publish self-contained,
 smoke test do executável e do instalador. O workflow OCI valida tenant_0004 antes do
 deploy e executa health checks do site e das dependências.
+
+
+24. ATUALIZAÇÕES DE HOMOLOGAÇÃO WINDOWS — 22/08/2026
+-----------------------------------------------------
+
+24.1 Escopo e versão distribuída
+
+Este marco consolida as correções encontradas durante a homologação manual do App
+Windows e a melhoria do painel de equipe. A versão distribuída continua sendo
+0.8.0-preview; o canal `windows-preview` contém o instalador gerado a partir do
+commit 87f5dca. O workflow #172 terminou com sucesso em 6m18s, produziu o instalador
+e o executável portável e publicou ambos na release.
+
+Instalador homologável:
+https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
+
+24.2 Notificações — ciclo de vida da janela
+
+[APP]
+O painel compacto de notificações abre e fecha por clique no sino e é subordinado
+ao ciclo de vida da janela principal. Ele deve fechar ao perder foco, desativar,
+minimizar ou ocultar a janela, trocar de tela e encerrar a sessão. Isso impede que o
+Popup WPF, implementado pelo Windows como superfície nativa separada, permaneça
+sobre Chrome, área de trabalho ou outros aplicativos. O painel não é uma notificação
+global do Windows e não pode continuar visível fora do Girofy.
+
+[SEGURANÇA E PRIVACIDADE]
+O fechamento automático reduz exposição acidental de informações da adega em outros
+aplicativos ou durante compartilhamento de tela. Fechar o painel não marca alertas
+como lidos; contagem, leitura e remoção continuam persistidas pela API.
+
+24.3 Contas a pagar — entrada monetária e data brasileira
+
+[APP]
+Os campos monetários de criação e filtros usam máscara de centavos da direita para
+a esquerda. O estado inicial é `0,00`: digitar 1 produz `0,01`, digitar 2 produz
+`0,12` e digitar 3 produz `1,23`. Backspace/Delete removem o último dígito lógico,
+a colagem conserva apenas dígitos e a perda de foco normaliza duas casas e os
+separadores pt-BR. A quantidade de dígitos é limitada antes da conversão para evitar
+estouro e valores incompatíveis com NUMERIC(12,2).
+
+O vencimento e os filtros de período são apresentados como `dd/MM/aaaa`. A digitação
+insere barras progressivamente, aceita oito dígitos e normaliza datas coladas em
+formato brasileiro ou ISO. O ViewModel converte o vencimento para `yyyy-MM-dd`
+somente no payload da API. Vencimento é data civil, usa DateOnly e não sofre
+conversão de fuso horário.
+
+[BACKEND/API]
+O servidor permanece como validador definitivo de valor positivo, limite monetário,
+data válida, tenant e permissão. As máscaras do App melhoram a UX, mas não substituem
+validações e não permitem ao cliente escolher company_id.
+
+24.4 Configurações > Equipe — painel de gerenciamento
+
+[APP]
+O painel nativo de equipe foi reorganizado para administração diária e contém:
+
+- indicadores de total de integrantes, ativos e inativos;
+- formulário de novo funcionário com usuário, senha, nome, sobrenome, CPF, e-mail,
+  telefone e perfil;
+- ações distintas para limpar, cadastrar e atualizar a lista;
+- pesquisa de funcionário, tabela de resultados e estado vazio explícito;
+- identificação, usuário, perfil e status de cada integrante;
+- editor do selecionado com dados pessoais, perfil, telefone, e-mail e estado Ativo;
+- botão Salvar habilitado apenas com integrante selecionado e operação permitida.
+
+Os indicadores são derivados da coleção carregada e notificados após recarregar a
+equipe ou limpar a sessão. O layout utiliza cards, bordas, tipografia, estados e
+cores do design system do App e respeita os temas claro e escuro.
+
+[WEB]
+A Web continua oferecendo a administração de equipe em Configurações. A organização
+visual pode variar; papéis, ativação, isolamento, validações e permissões permanecem
+equivalentes porque pertencem ao backend/API.
+
+[BACKEND/API E SEGURANÇA]
+Listar, cadastrar ou alterar equipe exige sessão válida e permissão administrativa.
+O servidor restringe a operação à empresa autenticada, valida perfil e campos
+permitidos e não devolve senha ou hash. A senha do cadastro é enviada apenas na
+requisição autenticada, processada no backend e não é gravada como preferência local.
+Desativar preserva vendas, operações e auditoria do integrante.
+
+24.5 Horário comercial e testes determinísticos
+
+[APP/BACKEND]
+Datas e horários operacionais são exibidos em America/Sao_Paulo. Timestamps da API
+continuam canônicos em UTC com offset/Z; somente a apresentação converte para o fuso
+comercial. Datas civis, como vencimento, nunca passam por essa conversão.
+
+[TESTES]
+O teste de auditoria foi alinhado para comparar explicitamente 15:30 UTC com 12:30
+em São Paulo, em vez de usar o fuso local da máquina do GitHub Actions. Runners
+Windows usam UTC e não representam o fuso do negócio. A asserção agora é
+determinística em desenvolvimento, integração contínua e produção.
+
+24.6 Build, instalador e publicação
+
+O workflow `Build Windows WPF preview` executa: validações XAML; contratos backend;
+restore .NET; testes unitários; publish win-x64 self-contained/single-file; smoke
+test de inicialização; construção Inno Setup; teste de instalação/desinstalação;
+upload de artefatos; e atualização da release `windows-preview` com `--clobber`.
+
+Resultado deste marco:
+
+- entrega funcional e visual: commit 1a51515;
+- correções de validação do pipeline: commits 6c1b1cd e 87f5dca;
+- workflow aprovado: #172;
+- instalador: GiroFy-Installer-0.8.0, 65,2 MB;
+- digest SHA-256 do pacote de artefato no GitHub Actions:
+  5b12dd5bd5a54f05125556526fba18771100070f10a85a827aa83f0e56598c7e;
+- executável portável também produzido no mesmo workflow.
+
+O aviso de actions baseadas em Node.js 20 não impediu o build: o runner as executou
+com Node.js 24. Atualizar as versões dessas actions permanece manutenção recomendada,
+mas não representa defeito funcional do Girofy.
+
+24.7 Checklist de homologação manual
+
+[ ] Digitar, apagar e colar valores monetários no formulário de contas.
+[ ] Confirmar `dd/MM/aaaa` na tela e `yyyy-MM-dd` enviado corretamente à API.
+[ ] Criar, pesquisar, selecionar, editar, desativar e reativar funcionário.
+[ ] Repetir a equipe com operador, gerente e administrador.
+[ ] Abrir Alertas, alternar para Chrome e confirmar fechamento imediato.
+[ ] Repetir o fechamento ao minimizar, bloquear/restaurar e navegar no Girofy.
+[ ] Validar equipe e contas em 1366x768, 1920x1080 e escalas 100%, 125% e 150%.
+[ ] Instalar sobre uma 0.8.0 anterior e confirmar preservação de dados locais.
+[ ] Desinstalar e reinstalar em VM limpa, validando atalhos e inicialização.
+
+Os itens manuais permanecem desmarcados até confirmação expressa da homologação. O
+workflow comprova build, testes e ciclo automatizado do instalador, mas não substitui
+inspeção visual e uso real nas resoluções suportadas.
+
+
+25. PRODUTOS — TECLADO, VALORES E EDIÇÃO CONTEXTUAL — 22/08/2026
+----------------------------------------------------------------
+
+25.1 Escopo
+
+Esta atualização trata exclusivamente de quatro bloqueadores de UX do catálogo no
+App Windows: pesquisa por Enter, entrada monetária de custo/venda, faixa de preço e
+acesso à edição no detalhe expandido. Não altera o contrato REST, o banco de dados,
+o fluxo de venda nem o tratamento do leitor de código de barras.
+
+25.2 Pesquisa e filtros por teclado
+
+[APP]
+Nos campos de pesquisa principal, preço mínimo e preço máximo, pressionar Enter
+executa exatamente `Catalog.SearchCommand`, o mesmo ICommand usado pelo botão
+Pesquisar. Não há lógica duplicada e o estado de carregamento, validações, página 1,
+mensagens e parâmetros enviados à API permanecem idênticos.
+
+O atalho está declarado localmente em cada TextBox do catálogo. Ele não é um atalho
+global da janela e, portanto, não intercepta o Enter usado pelo scanner HID na tela
+de Vendas. A pesquisa de categorias mantém seu próprio comando local.
+
+25.3 Máscara monetária reutilizável
+
+[APP]
+`BrazilianMoneyFormatter` centraliza normalização e parsing de dinheiro. O
+`MoneyInputBehavior` conecta essa regra aos TextBox WPF sem replicar eventos em cada
+tela. A mesma implementação atende:
+
+- custo no cadastro/edição de produto;
+- preço de venda no cadastro/edição de produto;
+- preço mínimo do filtro;
+- preço máximo do filtro.
+
+A digitação trabalha da direita para a esquerda: `1` vira `0,01`, depois `2` vira
+`0,12`, depois `3` vira `1,23`. Backspace/Delete remove o último dígito monetário.
+Colagens como `12,50`, `12.50`, `R$ 12,50`, `1.234,56` e `1234.56` são normalizadas
+para duas casas no padrão pt-BR. O ViewModel converte o valor para Decimal antes do
+payload; a API continua recebendo número, nunca texto formatado.
+
+25.4 Semântica dos filtros opcionais
+
+[APP/API]
+Preço mínimo e máximo exibem `0,00` ao abrir e após Limpar filtros. Esse zero é apenas
+estado visual enquanto o usuário não interagir com o campo: o ViewModel mantém flags
+de ativação separadas e envia `null` para `min_price`/`max_price`. Ao digitar, apagar
+ou colar, o filtro passa a estar ativo e o Decimal correspondente é enviado.
+
+Antes da consulta, o App rejeita valores inválidos e a combinação em que mínimo é
+maior que máximo, exibindo mensagem segura e sem chamar a API. A API continua sendo
+a autoridade final para limites, tenant, permissão e formato dos parâmetros.
+
+25.5 Edição pelo produto expandido
+
+[APP]
+O cabeçalho do detalhe expandido mostra o status Ativo/Inativo e, ao lado, um botão
+Editar com ícone vetorial de lápis, tooltip e nome de automação. O botão reutiliza
+`OpenEditProductCommand`; por isso abre o mesmo editor existente, pré-preenche os
+mesmos dados e herda validações, salvamento e exclusão já implementados.
+
+O CanExecute do comando exige `can_manage_products`, produto selecionado e ausência
+de operação ocupada. Sem permissão, a ação fica desabilitada e nenhuma regra é
+confiada apenas à interface; a API revalida autorização e isolamento por empresa.
+As cores vêm de recursos dinâmicos, preservando tema claro, tema escuro, contraste e
+configurações de acessibilidade.
+
+25.6 Testes e regressão
+
+[AUTOMATIZADO]
+Foram acrescentados testes unitários para progressão monetária da direita para a
+esquerda, normalização de colagem, filtros `0,00` intocados enviados como null,
+limpeza do estado visual/semântico, faixa válida e rejeição de mínimo maior que
+máximo. Os testes existentes de criação e edição continuam verificando Decimals
+exatos no contrato da API.
+
+[REGRESSÃO]
+O XAML foi validado estruturalmente e o diff não possui erros de whitespace. O Mac
+de desenvolvimento não dispõe do SDK .NET; por isso compilação WPF, suíte completa,
+publish win-x64, smoke test e instalador devem ser comprovados pelo runner Windows do
+workflow antes de marcar esta entrega como publicada.
+
+25.7 Checklist de homologação
+
+[ ] Enter na busca principal executa uma única consulta.
+[ ] Enter em preço mínimo e máximo aplica os mesmos filtros do botão.
+[ ] Scanner de Vendas continua adicionando/buscando código sem interferência.
+[ ] Digitar 1, 2, 3 e apagar confirma 0,01; 0,12; 1,23; 0,12.
+[ ] Colar cada formato suportado confirma normalização pt-BR.
+[ ] Limpar filtros mostra 0,00 e envia ambos os preços como null.
+[ ] Mínimo maior que máximo não chama a API e mostra a validação.
+[ ] Botão Editar abre o produto correto para usuário autorizado.
+[ ] Usuário sem can_manage_products não consegue executar a edição.
+[ ] Repetir em tema claro/escuro e nas resoluções de homologação.

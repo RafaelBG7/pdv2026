@@ -1,6 +1,6 @@
 # Paridade funcional Web, Windows e Backend
 
-Atualizado em 20/08/2026 a partir das rotas Flask, endpoints `/api/v1`, serviços, modelos, ViewModels WPF, XAML e testes do repositório. Esta matriz registra comportamento comprovado no código; tela parecida não é considerada paridade por si só. A documentação canônica está em `documentacao/DOCUMENTACAO_COMPLETA.txt`.
+Atualizado em 22/08/2026 a partir das rotas Flask, endpoints `/api/v1`, serviços, modelos, ViewModels WPF, XAML e testes do repositório. Esta matriz registra comportamento comprovado no código; tela parecida não é considerada paridade por si só. A documentação canônica está em `documentacao/DOCUMENTACAO_COMPLETA.txt`. O marco Windows atual corresponde ao commit `87f5dca`, validado pelo workflow #172.
 
 ## Legenda
 
@@ -69,12 +69,12 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Módulo | Ação/recurso | Web | App | Backend/API | Situação | Ação |
 |---|---|---|---|---|---|---|
 | Produtos | listar e paginar | 20/página | 50/página | paginação configurável | OK | Diferença de UX intencional |
-| Produtos | nome/código | Pesquisa única | Pesquisa única | `q` cobre ambos | OK | Nenhuma |
+| Produtos | nome/código | Pesquisa única | Pesquisa única; Enter executa o mesmo comando do botão | `q` cobre ambos | OK | UX de teclado homologável |
 | Produtos | código de barras | Manual | Manual ou scanner HID; Enter não salva formulário | `barcode` exato, tenant e unicidade `(company_id, barcode)` | OK | Entregue em 20/08/2026 |
 | Produtos | categoria/status | Filtros | Filtros | suportados | OK | Nenhuma |
-| Produtos | estoque/preço | Filtros por disponibilidade, estoque baixo, sem estoque e faixa de preço | Mesmos filtros da Web | `stock`, `min_price` e `max_price` validados e isolados por empresa | OK | Entregue em 20/08/2026 |
+| Produtos | estoque/preço | Filtros por disponibilidade, estoque baixo, sem estoque e faixa de preço | Mesmos filtros, máscara monetária pt-BR da direita para a esquerda, Enter e limpeza sem aplicar zero implícito | `stock`, `min_price` e `max_price` validados e isolados por empresa | OK | UX nativa consolidada em 22/08/2026 |
 | Produtos | ordenação | nome/preço/estoque/criação | nome/preço/estoque/mais recentes/mais antigos | `created_desc` e `created_asc` com desempate por ID | OK | Entregue em 20/08/2026 |
-| Produtos | detalhes | Expansível | Expansível | payload de catálogo | OK | Nenhuma |
+| Produtos | detalhes | Expansível | Expansível, com status e ação contextual Editar | payload de catálogo | OK | Editor existente reutilizado e protegido por permissão |
 | Produtos | criar/editar campos básicos | Completo | Modal nativo | POST/PUT products | OK | Nenhuma |
 | Produtos | ativar/inativar | Ação dedicada | campo Ativo no editor | PUT products | OK | UX diferente, regra equivalente |
 | Produtos | excluir | Confirma e protege histórico | Confirma e chama API | DELETE com permissão, tenant e conflitos | OK | Corrigido nesta auditoria |
@@ -119,8 +119,8 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Estoque | detalhe histórico/custos | Sim | Sim | snapshot persistido; custo condicionado a `can_view_reports` | OK | Nenhuma |
 | Estoque | baixa/devolução/kit | Sim | Reflete com origem distinta | sale_service | OK | Homologar cenário completo no App |
 | Contas | listar/criar/pagar/reabrir | Sim | Sim | endpoints payables, Decimal(12,2), tenant do token e auditoria | OK | Homologar migration tenant_0004 na OCI |
-| Contas | valores pt-BR e precisão | Sim | Sim | aceita `65,99`, `2.480,35`, `19` e `19,90`; responde strings decimais de duas casas | OK | Nenhuma |
-| Contas | datas e horários | Data de vencimento local | DateOnly para vencimento e horário convertido para America/Sao_Paulo | datas ISO `YYYY-MM-DD`; timestamps UTC `Z` | OK | Nenhuma |
+| Contas | valores pt-BR e precisão | Sim | Máscara de centavos da direita para a esquerda, com colagem e exclusão normalizadas | aceita `65,99`, `2.480,35`, `19` e `19,90`; responde strings decimais de duas casas | OK | Homologar entrada na VM |
+| Contas | datas e horários | Data de vencimento local | Entrada `dd/MM/aaaa`, DateOnly no vencimento e horário convertido para America/Sao_Paulo | datas ISO `YYYY-MM-DD`; timestamps UTC `Z` | OK | Teste de fuso corrigido no workflow #172 |
 | Contas | busca, categoria, status e período | Sim | Sim | filtros sempre escopados por company_id | OK | Nenhuma |
 | Contas | editar conta existente | Não | Não | endpoint ausente | NÃO APLICÁVEL | Definir como feature futura se necessário |
 | Contas | status e alertas | Sim | Sim | backend/notificações; pagar resolve e reabrir rematerializa o alerta | OK | Nenhuma |
@@ -134,13 +134,13 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 |---|---|---|---|---|---|---|
 | Auditoria | filtros/paginação/detalhe | Sim | Sim | `/audit/logs` | OK | Nenhuma |
 | Auditoria | escopo master | Sim | Não | rotas master | EXCLUSIVO WEB POR DECISÃO | Manter |
-| Notificações | listar/contagem/ler/ler todas/dispensar | Sim | Popover | endpoints dedicados | OK | Nenhuma |
+| Notificações | listar/contagem/ler/ler todas/dispensar | Sim | Popover subordinado à janela principal; fecha ao perder foco, minimizar ou navegar | endpoints dedicados | OK | Revalidar na VM ao alternar para aplicativos externos |
 | Notificações | preferências internas | Sim | Editor completo no painel Alertas | GET/PUT preferences | OK | Entregue em 20/08/2026 |
 | Alertas por e-mail | tipos, ativação e destinatários individuais | Cartões por tipo | Cartões nativos equivalentes, com chips de e-mail | GET/PUT em lote, `EmailAlertSetting` e delivery sem repetição | OK | Protegido por `can_manage_settings` |
 | Perfil | nome/sobrenome/telefone | Sim | Sim | `/settings/profile` | OK | Nenhuma |
 | Perfil | troca de e-mail confirmada | Sim | abre Web | token/serviço Web | EXCLUSIVO WEB POR DECISÃO | Manter por segurança |
 | Senha | atual/nova/confirmação | Sim | Sim | `/settings/password` | OK | Nenhuma |
-| Equipe | listar/criar/editar/ativar | Sim | Sim | settings/team | OK | Nenhuma |
+| Equipe | listar/criar/editar/ativar | Sim | Painel gerencial com indicadores, pesquisa, lista, cadastro e editor selecionado | settings/team | OK | Homologar perfis e resoluções |
 | Equipe | papéis e flags de permissão | Sim | Sim | servidor revalida | OK | Auditar cada botão continuamente |
 | Operação | estoque negativo | Sim | Sim | company settings | OK | Nenhuma |
 | Financeiro | taxas Pix/débito/crédito | Sim | Sim | company settings | OK | Nenhuma |

@@ -94,7 +94,7 @@ public sealed class SessionRefreshCoordinator(
             logger.LogWarning(exception, "Session refresh could not reach the API.");
             return false;
         }
-        catch (System.Text.Json.JsonException exception)
+        catch (global::System.Text.Json.JsonException exception)
         {
             logger.LogWarning(exception, "Session refresh returned invalid JSON.");
             return false;
@@ -135,7 +135,7 @@ public sealed class SessionRefreshCoordinator(
         expiresAt <= DateTimeOffset.UtcNow.AddSeconds(60);
 
     private sealed record RefreshRequest(
-        [property: System.Text.Json.Serialization.JsonPropertyName("refresh_token")]
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("refresh_token")]
         string RefreshToken);
 }
 

@@ -127,6 +127,19 @@ public partial class MainWindow : Window
         }
     }
 
+    private void HandleNotificationsBellPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // A Popup com StaysOpen=False fecha antes do Click ao pressionar o sino.
+        // Interceptar o mouse-down evita que o Click seguinte reabra o painel.
+        if (!NotificationsPopup.IsOpen)
+        {
+            return;
+        }
+
+        CloseNotificationsPopup();
+        e.Handled = true;
+    }
+
     private void HandleWindowDeactivated(object? sender, EventArgs e) =>
         CloseNotificationsPopup();
 

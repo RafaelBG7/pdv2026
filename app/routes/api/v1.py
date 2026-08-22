@@ -1170,11 +1170,23 @@ def catalog_product_data(product, include_cost):
     return payload
 
 
-def stock_movement_data(movement):
+def stock_movement_data(movement, include_cost=False):
     product = movement.product
     user = movement.user
     category = product.category if product is not None else None
-    return {
+    previous_stock = int(movement.previous_stock or 0)
+    new_stock = int(movement.new_stock or 0)
+    signed_quantity = new_stock - previous_stock
+    source_label = stock_source_label(movement.source_type, movement.movement_type)
+    reference = ''
+    if movement.source_id:
+        reference = {
+            'sale': f'Venda #{movement.source_id}',
+            'kit_sale': f'Venda #{movement.source_id} (kit)',
+            'sale_cancellation': f'Cancelamento da venda #{movement.source_id}',
+        }.get(movement.source_type, f'Referência #{movement.source_id}')
+
+    payload = {
         'id': movement.id,
         'created_at': utc_isoformat(movement.created_at),
         'product': None if product is None else {
@@ -1189,19 +1201,29 @@ def stock_movement_data(movement):
             'id': user.id,
             'username': user.username,
         },
-        'movement_type': movement.movement_type,
+        'movement_type': movement.movement_type or '',
         'movement_type_label': stock_movement_label(movement.movement_type),
-        'source_type': movement.source_type,
-        'source_type_label': stock_source_label(movement.source_type),
+        'source_type': movement.source_type or '',
+        'source_type_label': source_label,
+        'origin': movement.source_type or '',
+        'origin_label': source_label,
         'source_id': movement.source_id,
+        'reference': reference,
         'quantity': int(movement.quantity or 0),
-        'previous_stock': int(movement.previous_stock or 0),
-        'new_stock': int(movement.new_stock or 0),
-        'unit_cost': round(float(movement.unit_cost or 0), 2),
-        'total_cost': round(float(movement.total_cost or 0), 2),
+        'signed_quantity': signed_quantity,
+        'direction': 'in' if signed_quantity > 0 else 'out' if signed_quantity < 0 else 'none',
+        'previous_stock': previous_stock,
+        'new_stock': new_stock,
+        'balance_consistent': previous_stock + signed_quantity == new_stock,
         'reason': movement.reason or '',
         'notes': movement.notes or '',
     }
+    if include_cost:
+        payload.update({
+            'unit_cost': round(float(movement.unit_cost or 0), 2),
+            'total_cost': round(float(movement.total_cost or 0), 2),
+        })
+    return payload
 
 
 def stock_filter_options(labels):
@@ -4213,8 +4235,18 @@ def api_stock_movements():
         per_page = positive_integer_argument('per_page', 25, maximum=100)
         search = (request.args.get('q') or '').strip()[:120]
         category_id = request.args.get('category_id', '').strip()
+        user_id = request.args.get('user_id', '').strip()
         movement_type = (request.args.get('movement_type') or 'all').strip()
         source_type = (request.args.get('source_type') or 'all').strip()
+        start_date = parse_optional_query_date_argument('start_date')
+        end_date = parse_optional_query_date_argument('end_date')
+        if start_date and end_date and start_date > end_date:
+            raise ApiAuthError(
+                'A data inicial não pode ser posterior à data final.',
+                'invalid_date_range',
+                422,
+                'start_date',
+            )
 
         if movement_type != 'all' and movement_type not in MOVEMENT_TYPE_LABELS:
             raise ApiAuthError(
@@ -4248,6 +4280,25 @@ def api_stock_movements():
                     'invalid_query_parameter',
                     422,
                     'category_id',
+                )
+
+        parsed_user_id = None
+        if user_id:
+            try:
+                parsed_user_id = int(user_id)
+            except ValueError as error:
+                raise ApiAuthError(
+                    'O responsável precisa ser um número inteiro.',
+                    'invalid_query_parameter',
+                    422,
+                    'user_id',
+                ) from error
+            if parsed_user_id < 1:
+                raise ApiAuthError(
+                    'O responsável precisa ser maior que zero.',
+                    'invalid_query_parameter',
+                    422,
+                    'user_id',
                 )
 
         with api_tenant_database(g.api_user) as tenant_db:
@@ -4284,6 +4335,17 @@ def api_stock_movements():
             if source_type != 'all':
                 query = query.filter(StockMovement.source_type == source_type)
                 summary_query = summary_query.filter(StockMovement.source_type == source_type)
+            if parsed_user_id:
+                query = query.filter(StockMovement.user_id == parsed_user_id)
+                summary_query = summary_query.filter(StockMovement.user_id == parsed_user_id)
+            if start_date:
+                start_utc, _ = business_date_range_utc(start_date, start_date)
+                query = query.filter(StockMovement.created_at >= start_utc)
+                summary_query = summary_query.filter(StockMovement.created_at >= start_utc)
+            if end_date:
+                _, end_utc = business_date_range_utc(end_date, end_date)
+                query = query.filter(StockMovement.created_at < end_utc)
+                summary_query = summary_query.filter(StockMovement.created_at < end_utc)
 
             total = query.count()
             movements = query.order_by(
@@ -4306,9 +4368,18 @@ def api_stock_movements():
                     func.count(func.distinct(StockMovement.product_id)),
                 ).scalar() or 0),
             }
+            responsible_users = (
+                tenant_db.query(User.id, User.username)
+                .join(StockMovement, StockMovement.user_id == User.id)
+                .filter(StockMovement.company_id == g.api_user.company_id)
+                .distinct()
+                .order_by(User.username.asc(), User.id.asc())
+                .all()
+            )
+            include_cost = g.api_user.has_permission('can_view_reports')
 
         return api_success({
-            'items': [stock_movement_data(movement) for movement in movements],
+            'items': [stock_movement_data(movement, include_cost=include_cost) for movement in movements],
             'pagination': {
                 'page': page,
                 'per_page': per_page,
@@ -4318,6 +4389,11 @@ def api_stock_movements():
             'summary': summary,
             'movement_types': stock_filter_options(MOVEMENT_TYPE_LABELS),
             'source_types': stock_filter_options(SOURCE_TYPE_LABELS),
+            'responsible_users': [
+                {'value': str(user_id), 'label': username}
+                for user_id, username in responsible_users
+            ],
+            'costs_visible': include_cost,
         })
     except ApiAuthError as error:
         return api_auth_error_response(error)
@@ -4362,7 +4438,10 @@ def api_create_stock_entry():
                     notes=notes,
                 )
                 tenant_db.commit()
-                response_data = stock_movement_data(movement)
+                response_data = stock_movement_data(
+                    movement,
+                    include_cost=g.api_user.has_permission('can_view_reports'),
+                )
             except StockMovementError:
                 tenant_db.rollback()
                 raise
@@ -4440,7 +4519,10 @@ def api_create_stock_adjustment():
                     })
                 response_data = {
                     'changed': True,
-                    'movement': stock_movement_data(movement),
+                    'movement': stock_movement_data(
+                        movement,
+                        include_cost=g.api_user.has_permission('can_view_reports'),
+                    ),
                 }
             except StockMovementError:
                 tenant_db.rollback()

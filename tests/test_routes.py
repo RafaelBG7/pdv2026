@@ -1958,7 +1958,17 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(data['summary']['entries_quantity'], 5)
         self.assertEqual(data['summary']['movement_count'], 1)
         self.assertEqual(data['summary']['product_count'], 1)
-        self.assertIn({'value': 'entry', 'label': 'Entrada manual'}, data['movement_types'])
+        item = data['items'][0]
+        self.assertEqual(item['movement_type'], 'entry')
+        self.assertEqual(item['movement_type_label'], 'Entrada')
+        self.assertEqual(item['origin'], 'manual')
+        self.assertEqual(item['origin_label'], 'Entrada manual')
+        self.assertEqual(item['signed_quantity'], 5)
+        self.assertTrue(item['balance_consistent'])
+        self.assertEqual(item['unit_cost'], 5.0)
+        self.assertIn({'value': 'entry', 'label': 'Entrada'}, data['movement_types'])
+        self.assertIn({'value': str(user.id), 'label': user.username}, data['responsible_users'])
+        self.assertTrue(data['costs_visible'])
 
     def test_api_stock_entry_and_adjustment_mutate_product_stock(self):
         user, company = self.create_api_user()
@@ -1999,19 +2009,104 @@ class RouteTestCase(unittest.TestCase):
                 'reason': 'Quebra',
             },
         )
+        positive_adjustment_response = self.client.post(
+            '/api/v1/stock/adjustments',
+            headers=self.bearer_header(access_token),
+            json={
+                'product_id': product_id,
+                'adjustment_mode': 'delta',
+                'direction': 'in',
+                'quantity': 4,
+                'reason': 'Contagem física',
+            },
+        )
 
         self.assertEqual(entry_response.status_code, 201)
-        self.assertEqual(entry_response.get_json()['data']['new_stock'], 5)
+        entry_data = entry_response.get_json()['data']
+        self.assertEqual(entry_data['movement_type'], 'entry')
+        self.assertEqual(entry_data['movement_type_label'], 'Entrada')
+        self.assertEqual(entry_data['origin_label'], 'Entrada manual')
+        self.assertEqual(entry_data['signed_quantity'], 3)
+        self.assertEqual(entry_data['previous_stock'], 2)
+        self.assertEqual(entry_data['new_stock'], 5)
+        self.assertEqual(entry_data['unit_cost'], 4.5)
+        self.assertEqual(entry_data['total_cost'], 13.5)
         self.assertEqual(adjustment_response.status_code, 201)
         adjustment_data = adjustment_response.get_json()['data']
         self.assertTrue(adjustment_data['changed'])
         self.assertEqual(adjustment_data['movement']['movement_type'], 'adjustment_out')
+        self.assertEqual(adjustment_data['movement']['movement_type_label'], 'Ajuste -')
+        self.assertEqual(adjustment_data['movement']['origin_label'], 'Ajuste manual')
+        self.assertEqual(adjustment_data['movement']['signed_quantity'], -2)
+        self.assertEqual(adjustment_data['movement']['previous_stock'], 5)
         self.assertEqual(adjustment_data['movement']['new_stock'], 3)
+        self.assertEqual(positive_adjustment_response.status_code, 201)
+        positive_movement = positive_adjustment_response.get_json()['data']['movement']
+        self.assertEqual(positive_movement['movement_type'], 'adjustment_in')
+        self.assertEqual(positive_movement['movement_type_label'], 'Ajuste +')
+        self.assertEqual(positive_movement['origin_label'], 'Ajuste manual')
+        self.assertEqual(positive_movement['signed_quantity'], 4)
+        self.assertEqual(positive_movement['previous_stock'], 3)
+        self.assertEqual(positive_movement['new_stock'], 7)
         with self.app.app_context():
             product = db.session.get(Product, product_id)
-            self.assertEqual(product.stock_quantity, 3)
+            self.assertEqual(product.stock_quantity, 7)
             self.assertEqual(float(product.cost_price), 4.5)
-            self.assertEqual(StockMovement.query.filter_by(product_id=product_id).count(), 2)
+            self.assertEqual(StockMovement.query.filter_by(product_id=product_id).count(), 3)
+
+    def test_api_stock_movements_redacts_costs_and_falls_back_for_legacy_labels(self):
+        user, company = self.create_api_user(
+            username='api-estoque-sem-custos',
+            role='operator',
+            can_view_stock_movements=True,
+            can_view_reports=False,
+        )
+        with self.app.app_context():
+            product = Product(
+                name='Produto legado', company_id=company.id, cost_price=9,
+                sale_price=15, stock_quantity=4, active=True,
+            )
+            db.session.add(product)
+            db.session.flush()
+            movement = StockMovement(
+                company_id=company.id,
+                product_id=product.id,
+                user_id=user.id,
+                movement_type='',
+                source_type='',
+                quantity=4,
+                previous_stock=0,
+                new_stock=4,
+                unit_cost=9,
+                total_cost=36,
+                created_at=datetime.now(timezone.utc),
+            )
+            db.session.add(movement)
+            db.session.commit()
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        today = business_today().isoformat()
+        response = self.client.get(
+            f'/api/v1/stock/movements?user_id={user.id}&start_date={today}&end_date={today}',
+            headers=self.bearer_header(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(len(data['items']), 1)
+        item = data['items'][0]
+        self.assertEqual(item['movement_type_label'], 'Não informado')
+        self.assertEqual(item['origin_label'], 'Não informado')
+        self.assertNotIn('unit_cost', item)
+        self.assertNotIn('total_cost', item)
+        self.assertFalse(data['costs_visible'])
+
+        invalid_range = self.client.get(
+            '/api/v1/stock/movements?start_date=2026-08-23&end_date=2026-08-22',
+            headers=self.bearer_header(token),
+        )
+        self.assertEqual(invalid_range.status_code, 422)
+        self.assertEqual(invalid_range.get_json()['errors'][0]['code'], 'invalid_date_range')
 
     def test_api_dashboard_summary_is_aggregated_and_company_scoped(self):
         user, company = self.create_api_user()
@@ -2989,7 +3084,13 @@ class RouteTestCase(unittest.TestCase):
 
         with self.app.app_context():
             sale = db.session.get(Sale, sale_id)
+            sale_movement = StockMovement.query.filter_by(
+                source_type='kit_sale', source_id=sale_id, movement_type='sale',
+            ).one()
             self.assertEqual(db.session.get(Product, component_id).stock_quantity, 20)
+            self.assertEqual(sale_movement.quantity, 6)
+            self.assertEqual(sale_movement.previous_stock, 20)
+            self.assertEqual(sale_movement.new_stock, 14)
             self.assertEqual(Payment.query.filter_by(sale_id=sale_id).count(), 1)
             self.assertEqual(SaleItem.query.filter_by(sale_id=sale_id).count(), 1)
             self.assertEqual(
@@ -6938,7 +7039,7 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(base.stock_quantity, 6)
             movement = StockMovement.query.filter_by(product_id=base_id, movement_type='sale').one()
             self.assertEqual(movement.quantity, 4)
-            self.assertEqual(movement.source_type, 'sale')
+            self.assertEqual(movement.source_type, 'kit_sale')
             self.assertIsNotNone(movement.source_id)
             self.assertEqual(AuditLog.query.filter_by(action='sale_completed').count(), 1)
 

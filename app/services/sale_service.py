@@ -320,7 +320,7 @@ def create_sale(
                 stock_product,
                 required_quantity,
                 movement_type='sale',
-                source_type='sale',
+                source_type='kit_sale' if product.id != stock_product.id else 'sale',
                 user_id=user.id,
                 source_id=sale.id,
                 unit_cost=stock_product.cost_price,
@@ -463,7 +463,7 @@ def cancel_sale(db_session, company, user, sale_id, reason):
         db_session.query(StockMovement)
         .filter(
             StockMovement.company_id == company.id,
-            StockMovement.source_type == 'sale',
+            StockMovement.source_type.in_({'sale', 'kit_sale'}),
             StockMovement.source_id == sale.id,
             StockMovement.movement_type == 'sale',
         )

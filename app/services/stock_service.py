@@ -5,14 +5,14 @@ from app.services.audit_service import record_audit_event
 
 
 MOVEMENT_TYPE_LABELS = {
-    'entry': 'Entrada manual',
-    'sale': 'Venda',
-    'adjustment_in': 'Ajuste de entrada',
-    'adjustment_out': 'Ajuste de saída',
+    'entry': 'Entrada',
+    'sale': 'Saída',
+    'adjustment_in': 'Ajuste +',
+    'adjustment_out': 'Ajuste -',
     'return': 'Devolução',
-    'cancellation': 'Cancelamento',
-    'initial_stock': 'Estoque inicial',
-    'import': 'Importação',
+    'cancellation': 'Devolução',
+    'initial_stock': 'Entrada',
+    'import': 'Entrada',
 }
 
 SOURCE_TYPE_LABELS = {
@@ -22,6 +22,7 @@ SOURCE_TYPE_LABELS = {
     'product_edit': 'Edição de produto',
     'spreadsheet_import': 'Importação de planilha',
     'sale_cancellation': 'Cancelamento de venda',
+    'kit_sale': 'Venda de kit',
     'system': 'Sistema',
 }
 
@@ -38,11 +39,13 @@ def decimal_money(value):
 
 
 def stock_movement_label(movement_type):
-    return MOVEMENT_TYPE_LABELS.get(movement_type, movement_type)
+    return MOVEMENT_TYPE_LABELS.get(movement_type) or 'Não informado'
 
 
-def stock_source_label(source_type):
-    return SOURCE_TYPE_LABELS.get(source_type, source_type)
+def stock_source_label(source_type, movement_type=None):
+    if source_type == 'manual':
+        return 'Entrada manual' if movement_type == 'entry' else 'Ajuste manual'
+    return SOURCE_TYPE_LABELS.get(source_type) or 'Não informado'
 
 
 def audit_action_for_movement(movement_type):

@@ -336,17 +336,55 @@ tenant e permissões ao consultar o ID; o App nunca acessa banco de dados direta
 
 5.6 Estoque
 
-O estoque oferece:
+O backend é a fonte de verdade do estoque. Web e App não recalculam nem mantêm
+estoques paralelos: entrada, ajuste, criação/edição de produto, importação, venda e
+cancelamento passam pelo stock_service, que altera Product.stock_quantity e grava
+StockMovement na mesma transação.
 
-- entrada manual de mercadoria;
-- ajuste positivo ou negativo com motivo;
-- baixa automática por venda;
-- devolução por cancelamento;
-- saldo anterior e saldo posterior;
-- tipo, origem, observação, usuário e data;
-- custo unitário e total quando aplicável;
-- filtros por produto, categoria, tipo, responsável e período;
-- acompanhamento de estoque baixo, esgotado ou negativo.
+Cada StockMovement preserva tenant, produto, usuário responsável, código de tipo,
+código de origem, referência da operação, quantidade absoluta, saldo anterior,
+saldo posterior, snapshot do custo unitário, custo total, motivo, observação e data.
+O snapshot impede que uma alteração futura no custo do produto reescreva o valor
+histórico. O contrato também fornece a quantidade com sinal e confirma a identidade
+"saldo anterior + quantidade assinada = saldo posterior".
+
+Tipo descreve o que aconteceu com o saldo: entry e initial_stock/import são
+Entrada; sale é Saída; adjustment_in é Ajuste +; adjustment_out é Ajuste -; return
+e cancellation são Devolução. Origem descreve o causador: manual vira Entrada
+manual para entry e Ajuste manual nos ajustes; sale é Venda; kit_sale é Venda de
+kit; sale_cancellation é Cancelamento de venda; product_creation é Cadastro de
+produto; product_edit é Edição de produto; spreadsheet_import é Importação de
+planilha; system é Sistema.
+
+Código desconhecido ou registro legado sem informação recebe "Não informado".
+Nenhum backfill inferencial foi aplicado: o sistema não inventa tipo ou origem para
+o passado.
+
+No App Windows, a tabela compacta mostra Produto, Tipo, Origem, quantidade assinada,
+Antes, Depois, Usuário e Data. Um clique abre o detalhe com categoria, referência,
+motivo, observação, validação do saldo e custos; clicar novamente recolhe. A grade
+usa virtualização e paginação real. O horário ISO é convertido para o fuso de
+negócio America/Sao_Paulo, mesmo quando o computador está em outro fuso.
+
+Os filtros reais são pesquisa textual, categoria, tipo, origem, responsável, data
+inicial e final. O período rejeita faixa invertida. A ordenação padrão é created_at
+DESC e id DESC. "Limpar e atualizar" restaura os filtros e "Atualizar" refaz a
+consulta. Após entrada ou ajuste confirmado, produtos e movimentos são recarregados
+sem reiniciar o App. Loading, dados, vazio, vazio filtrado e erro são estados
+distintos; o erro oferece "Tentar novamente".
+
+GET /api/v1/stock/movements é autenticado, isolado pelo company_id da sessão e exige
+can_view_stock_movements (ou gestão de estoque). Aceita q, category_id,
+movement_type, source_type, user_id, start_date, end_date, page e per_page. Retorna
+items, summary, pagination, movement_types, source_types, responsible_users e
+costs_visible. Custos só são enviados quando o servidor confirma can_view_reports.
+POST /stock/entries e POST /stock/adjustments exigem can_manage_stock.
+
+Fluxos: entrada manual gera Entrada/Entrada manual; ajustes geram Ajuste + ou Ajuste
+-/Ajuste manual; venda simples gera Saída/Venda; venda de kit gera Saída/Venda de
+kit e baixa multiplicada no produto-base; cancelamento gera
+Devolução/Cancelamento de venda uma única vez. Estoque baixo, zerado ou negativo
+aciona notificações sem modificar o histórico.
 
 5.7 Contas a pagar
 
@@ -951,7 +989,10 @@ Operação:
   tenant, produto-base ativo, quantidade positiva e impede autorreferência;
 - DELETE /catalog/products/<id>, com bloqueio quando vendas ou kits exigem a
   preservação do registro;
-- GET /stock/movements, POST /stock/entries e /stock/adjustments.
+- GET /stock/movements, paginado e filtrável por texto, categoria, tipo, origem,
+  responsável e período; POST /stock/entries e /stock/adjustments. O histórico
+  inclui códigos e labels, quantidade assinada, saldos, referência, consistência
+  matemática e custos somente quando autorizados.
 
 Notificações:
 

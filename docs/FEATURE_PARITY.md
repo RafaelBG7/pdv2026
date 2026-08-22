@@ -113,10 +113,11 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 
 | Módulo | Ação/recurso | Web | App | Backend/API | Situação | Ação |
 |---|---|---|---|---|---|---|
-| Estoque | movimentos/filtros/paginação | Sim | Sim | `/stock/movements` | OK | Nenhuma |
-| Estoque | entrada e ajuste | Sim | Sim | stock_service | OK | Nenhuma |
-| Estoque | motivo/saldos/origem/responsável | Sim | Sim | payload de movimento | OK | Nenhuma |
-| Estoque | baixa/devolução automática | Sim | Reflete | sale_service | OK | Nenhuma |
+| Estoque | movimentos/filtros/paginação | Sim | Sim | `/stock/movements`: texto, categoria, tipo, origem, responsável, período, página | OK | Homologar visualmente em 1366×768 |
+| Estoque | entrada e ajuste | Sim | Sim | stock_service transacional | OK | Nenhuma |
+| Estoque | tipo/origem/quantidade/saldos | Sim | Sim | códigos estáveis + labels e fallback legado | OK | Nenhuma |
+| Estoque | detalhe histórico/custos | Sim | Sim | snapshot persistido; custo condicionado a `can_view_reports` | OK | Nenhuma |
+| Estoque | baixa/devolução/kit | Sim | Reflete com origem distinta | sale_service | OK | Homologar cenário completo no App |
 | Contas | listar/criar/pagar/reabrir | Sim | Sim | endpoints payables | OK | Nenhuma |
 | Contas | editar conta existente | Não | Não | endpoint ausente | NÃO APLICÁVEL | Definir como feature futura se necessário |
 | Contas | status e alertas | Sim | Sim | backend/notificações | OK | Nenhuma |

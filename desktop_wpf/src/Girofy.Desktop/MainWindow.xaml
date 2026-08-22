@@ -1590,7 +1590,7 @@
                     <TextBlock Grid.Row="2" FontSize="{DynamicResource FontSizeBody}"
                                Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
                         <Run Text="Tem certeza de que deseja excluir &quot;" />
-                        <Run FontWeight="Bold" Text="{Binding Catalog.DeleteConfirmationProductName}" />
+                        <Run FontWeight="Bold" Text="{Binding Catalog.DeleteConfirmationProductName, Mode=OneWay}" />
                         <Run Text="&quot;?" />
                     </TextBlock>
                     <TextBlock Grid.Row="4" FontSize="{DynamicResource FontSizeCaption}"

@@ -69,6 +69,67 @@ public sealed class PayablesViewModelTests
         Assert.Equal(1, apiClient.GetCalls);
     }
 
+    [Theory]
+    [InlineData("65,99", "65.99")]
+    [InlineData("2.480,35", "2480.35")]
+    [InlineData("19", "19.00")]
+    [InlineData("19,90", "19.90")]
+    public async Task Create_payable_preserves_supported_brazilian_money_formats(
+        string input,
+        string expected)
+    {
+        var sessionContext = CreateSessionContext();
+        var apiClient = new StubApiClient();
+        using var viewModel = new PayablesViewModel(apiClient, sessionContext)
+        {
+            Description = "Conta monetária",
+            AmountText = input,
+            DueDateText = "2026-08-30",
+        };
+
+        await viewModel.CreatePayableCommand.ExecuteAsync();
+
+        Assert.NotNull(apiClient.CreatedRequest);
+        Assert.Equal(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), apiClient.CreatedRequest!.Amount);
+    }
+
+    [Fact]
+    public async Task Empty_state_is_only_visible_after_a_successful_load()
+    {
+        var sessionContext = CreateSessionContext();
+        var apiClient = new StubApiClient { Snapshot = new PayablesSnapshot() };
+        using var viewModel = new PayablesViewModel(apiClient, sessionContext);
+
+        Assert.False(viewModel.ShowEmptyState);
+        await viewModel.InitializeAsync();
+
+        Assert.True(viewModel.HasLoaded);
+        Assert.True(viewModel.ShowEmptyState);
+        Assert.Equal("Nenhuma conta cadastrada.", viewModel.EmptyStateMessage);
+    }
+
+    [Fact]
+    public async Task Second_create_click_is_ignored_while_the_first_is_running()
+    {
+        var sessionContext = CreateSessionContext();
+        var gate = new TaskCompletionSource<PayableRecord>();
+        var apiClient = new StubApiClient { CreateGate = gate };
+        using var viewModel = new PayablesViewModel(apiClient, sessionContext)
+        {
+            Description = "Conta única",
+            AmountText = "19,90",
+            DueDateText = "2026-08-30",
+        };
+
+        var first = viewModel.CreatePayableCommand.ExecuteAsync();
+        await WaitUntilAsync(() => apiClient.CreateCalls == 1);
+        await viewModel.CreatePayableCommand.ExecuteAsync();
+        gate.SetResult(apiClient.CreatedPayable);
+        await first;
+
+        Assert.Equal(1, apiClient.CreateCalls);
+    }
+
     [Fact]
     public async Task Create_payable_rejects_discounted_invalid_amount_before_api_call()
     {
@@ -231,6 +292,8 @@ public sealed class PayablesViewModelTests
             DueDate = "2026-07-20",
         };
 
+        public TaskCompletionSource<PayableRecord>? CreateGate { get; init; }
+
         public string LastAccessToken { get; private set; } = string.Empty;
 
         public int GetCalls { get; private set; }
@@ -264,7 +327,7 @@ public sealed class PayablesViewModelTests
             LastAccessToken = accessToken;
             CreateCalls++;
             CreatedRequest = request;
-            return Task.FromResult(CreatedPayable);
+            return CreateGate?.Task ?? Task.FromResult(CreatedPayable);
         }
 
         public Task<PayableRecord> PayPayableAsync(

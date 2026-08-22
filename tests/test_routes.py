@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 import io
 import logging
 from pathlib import Path
@@ -4557,13 +4558,13 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(create_response.status_code, 200)
         self.assertIn('Conta a pagar cadastrada com sucesso.'.encode(), create_response.data)
         self.assertIn('Aluguel'.encode(), create_response.data)
-        self.assertIn('R$ 1500,00'.encode(), create_response.data)
+        self.assertIn('R$ 1.500,00'.encode(), create_response.data)
 
         dashboard_response = self.client.get('/dashboard')
 
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertIn('Conta próxima do vencimento'.encode(), dashboard_response.data)
-        self.assertIn('Aluguel vence em 2 dias. Valor: R$ 1500,00.'.encode(), dashboard_response.data)
+        self.assertIn('Aluguel vence em 2 dias. Valor: R$ 1.500,00.'.encode(), dashboard_response.data)
 
         with self.app.app_context():
             payable_id = Payable.query.filter_by(description='Aluguel').one().id
@@ -4574,6 +4575,144 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Conta marcada como paga.'.encode(), pay_response.data)
         with self.app.app_context():
             self.assertTrue(db.session.get(Payable, payable_id).paid)
+
+    def test_payables_reject_invalid_amount_and_preserve_decimal_value(self):
+        self.login()
+        invalid_response = self.client.post(
+            '/contas-a-pagar',
+            data={'description': 'Inválida', 'amount': 'abc', 'due_date': '2026-08-30'},
+            follow_redirects=True,
+        )
+        self.assertEqual(invalid_response.status_code, 200)
+        self.assertIn('valor monetário válido'.encode(), invalid_response.data)
+
+        valid_response = self.client.post(
+            '/contas-a-pagar',
+            data={'description': 'Fornecedor decimal', 'amount': '2.480,35', 'due_date': '2026-08-30'},
+            follow_redirects=True,
+        )
+        self.assertEqual(valid_response.status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(Payable.query.filter_by(description='Inválida').count(), 0)
+            payable = Payable.query.filter_by(description='Fornecedor decimal').one()
+            self.assertEqual(payable.amount, Decimal('2480.35'))
+
+    def test_api_payables_create_list_pay_reopen_and_validate_contract(self):
+        user, _ = self.create_api_user(username='financeiro-api')
+        login_response = self.api_login(user.username, 'SenhaApi123')
+        token = login_response.get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+
+        create_response = self.client.post(
+            '/api/v1/payables',
+            headers=headers,
+            json={
+                'description': 'Energia API',
+                'category': 'Luz',
+                'amount': '2.480,35',
+                'due_date': '2026-08-30',
+                'notes': 'Competência agosto',
+            },
+        )
+        self.assertEqual(create_response.status_code, 201)
+        created = create_response.get_json()['data']
+        self.assertEqual(created['amount'], '2480.35')
+        self.assertEqual(created['due_date'], '2026-08-30')
+        self.assertTrue(created['created_at'].endswith('Z'))
+
+        list_response = self.client.get('/api/v1/payables?status=all', headers=headers)
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.get_json()['data']['items'][0]['amount'], '2480.35')
+
+        filtered_response = self.client.get(
+            '/api/v1/payables?status=open&q=Energia&category=Luz&start_date=2026-08-01&end_date=2026-08-31',
+            headers=headers,
+        )
+        self.assertEqual(filtered_response.status_code, 200)
+        self.assertEqual([item['description'] for item in filtered_response.get_json()['data']['items']], ['Energia API'])
+
+        payable_id = created['id']
+        paid_response = self.client.post(f'/api/v1/payables/{payable_id}/pay', headers=headers)
+        self.assertEqual(paid_response.status_code, 200)
+        self.assertTrue(paid_response.get_json()['data']['paid'])
+        self.assertTrue(paid_response.get_json()['data']['paid_at'].endswith('Z'))
+
+        reopened_response = self.client.post(f'/api/v1/payables/{payable_id}/reopen', headers=headers)
+        self.assertEqual(reopened_response.status_code, 200)
+        self.assertFalse(reopened_response.get_json()['data']['paid'])
+        self.assertIsNone(reopened_response.get_json()['data']['paid_at'])
+
+        invalid_money = self.client.post(
+            '/api/v1/payables',
+            headers=headers,
+            json={'description': 'Inválida', 'amount': 'abc', 'due_date': '2026-08-30'},
+        )
+        self.assertEqual(invalid_money.status_code, 422)
+        self.assertEqual(invalid_money.get_json()['errors'][0]['field'], 'amount')
+
+        inverted_range = self.client.get(
+            '/api/v1/payables?start_date=2026-09-01&end_date=2026-08-01',
+            headers=headers,
+        )
+        self.assertEqual(inverted_range.status_code, 422)
+
+        other_user, _ = self.create_api_user(username='outro-financeiro', company_name='Outro tenant')
+        other_login = self.api_login(other_user.username, 'SenhaApi123')
+        other_headers = self.bearer_header(other_login.get_json()['data']['access_token'])
+        cross_tenant_pay = self.client.post(f'/api/v1/payables/{payable_id}/pay', headers=other_headers)
+        self.assertEqual(cross_tenant_pay.status_code, 404)
+
+        restricted_user, _ = self.create_api_user(
+            username='sem-contas',
+            company_name='Tenant restrito',
+            role='operator',
+            can_manage_payables=False,
+        )
+        restricted_login = self.api_login(restricted_user.username, 'SenhaApi123')
+        restricted_headers = self.bearer_header(restricted_login.get_json()['data']['access_token'])
+        self.assertEqual(self.client.get('/api/v1/payables', headers=restricted_headers).status_code, 403)
+
+    def test_web_payable_search_and_status_filters_work_together(self):
+        self.login()
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            db.session.add_all([
+                Payable(company_id=company_id, description='Internet', category='Internet', amount=Decimal('65.99'), due_date=business_today()),
+                Payable(company_id=company_id, description='Aluguel antigo', category='Aluguel', amount=Decimal('900.00'), due_date=business_today() - timedelta(days=1)),
+                Payable(company_id=company_id, description='Energia paga', category='Luz', amount=Decimal('100.00'), due_date=business_today(), paid=True),
+            ])
+            db.session.commit()
+
+        response = self.client.get('/contas-a-pagar?status=due_today&q=internet&category=Internet')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<strong>Internet</strong>', response.data)
+        self.assertNotIn(b'<strong>Aluguel antigo</strong>', response.data)
+        self.assertNotIn(b'<strong>Energia paga</strong>', response.data)
+
+    def test_paying_payable_resolves_due_notification_and_reopen_restores_it(self):
+        user, _ = self.create_api_user(username='alerta-conta')
+        login_response = self.api_login(user.username, 'SenhaApi123')
+        headers = self.bearer_header(login_response.get_json()['data']['access_token'])
+        created = self.client.post(
+            '/api/v1/payables',
+            headers=headers,
+            json={
+                'description': 'Conta vence hoje',
+                'amount': '65,99',
+                'due_date': business_today().isoformat(),
+            },
+        ).get_json()['data']
+
+        initial_notifications = self.client.get('/api/v1/notifications', headers=headers).get_json()['data']['items']
+        self.assertIn('payable_due_today', {item['notification_type'] for item in initial_notifications})
+
+        self.client.post(f"/api/v1/payables/{created['id']}/pay", headers=headers)
+        paid_notifications = self.client.get('/api/v1/notifications', headers=headers).get_json()['data']['items']
+        self.assertNotIn('payable_due_today', {item['notification_type'] for item in paid_notifications})
+
+        self.client.post(f"/api/v1/payables/{created['id']}/reopen", headers=headers)
+        reopened_notifications = self.client.get('/api/v1/notifications', headers=headers).get_json()['data']['items']
+        self.assertIn('payable_due_today', {item['notification_type'] for item in reopened_notifications})
 
     def test_dashboard_shows_operational_summary(self):
         self.login()

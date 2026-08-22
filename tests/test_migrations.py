@@ -4,6 +4,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from alembic import command
+from decimal import Decimal
+
 from sqlalchemy import create_engine, inspect, text
 
 from app.extensions import db
@@ -21,12 +23,36 @@ class VersionedMigrationTestCase(unittest.TestCase):
             central = self.engine(directory, 'central.db')
             tenant = self.engine(directory, 'tenant.db')
             self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0002')
-            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0003')
+            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0004')
             self.assertEqual(assert_database_at_head(central, 'central'), migration_head('central'))
             self.assertEqual(assert_database_at_head(tenant, 'tenant'), migration_head('tenant'))
             self.assertIn('sales', inspect(tenant).get_table_names())
             central.dispose()
             tenant.dispose()
+
+    def test_payable_decimal_migration_preserves_and_quantizes_legacy_amount(self):
+        with tempfile.TemporaryDirectory() as directory:
+            engine = self.engine(directory, 'payables-legacy.db')
+            with engine.connect() as connection:
+                command.upgrade(migration_config('tenant', connection), 'tenant_0003')
+                connection.execute(text("INSERT INTO companies (id, name) VALUES (7, 'Tenant')"))
+                connection.execute(text(
+                    "INSERT INTO payables "
+                    "(id, company_id, description, amount, due_date, paid) "
+                    "VALUES (3, 7, 'Energia', 2480.349, '2026-08-30', 0)",
+                ))
+                connection.commit()
+
+            self.assertEqual(upgrade_database(engine, 'tenant').current_revision, 'tenant_0004')
+            columns = {column['name']: column for column in inspect(engine).get_columns('payables')}
+            with engine.connect() as connection:
+                amount = connection.execute(text('SELECT amount FROM payables WHERE id = 3')).scalar_one()
+
+            self.assertEqual(Decimal(str(amount)), Decimal('2480.35'))
+            self.assertFalse(columns['amount']['nullable'])
+            self.assertEqual(columns['amount']['type'].precision, 12)
+            self.assertEqual(columns['amount']['type'].scale, 2)
+            engine.dispose()
 
     def test_upgrade_is_idempotent_and_preserves_existing_data(self):
         with tempfile.TemporaryDirectory() as directory:

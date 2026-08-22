@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import io
 import logging
 from pathlib import Path
@@ -512,6 +512,57 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(old_refresh_response.status_code, 401)
         self.assertEqual(old_access_response.status_code, 401)
         self.assertEqual(new_access_response.status_code, 200)
+
+    def test_api_refresh_rejects_expired_refresh_session(self):
+        user, _ = self.create_api_user(username='api-refresh-expirado')
+        login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+        with self.app.app_context():
+            session = ApiRefreshToken.query.filter_by(user_id=user.id).one()
+            session.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=1)
+            db.session.commit()
+
+        response = self.client.post(
+            '/api/v1/auth/refresh',
+            json={'refresh_token': login_data['refresh_token']},
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'invalid_refresh_token')
+
+    def test_api_refresh_revalidates_user_company_subscription_and_credentials(self):
+        scenarios = (
+            ('usuario', 'user_inactive'),
+            ('empresa', 'company_inactive'),
+            ('assinatura', 'subscription_required'),
+            ('senha', 'credentials_changed'),
+        )
+        for index, (scenario, expected_code) in enumerate(scenarios, start=1):
+            with self.subTest(scenario=scenario):
+                user, company = self.create_api_user(
+                    username=f'api-refresh-{index}',
+                    company_name=f'Adega refresh {index}',
+                )
+                login_data = self.api_login(user.username, 'SenhaApi123').get_json()['data']
+                with self.app.app_context():
+                    stored_user = db.session.get(User, user.id)
+                    stored_company = db.session.get(Company, company.id)
+                    if scenario == 'usuario':
+                        stored_user.is_active = False
+                    elif scenario == 'empresa':
+                        stored_company.active = False
+                    elif scenario == 'assinatura':
+                        stored_company.subscription_renews_at = date.today() - timedelta(days=1)
+                    else:
+                        stored_user.set_password('OutraSenha123')
+                    db.session.commit()
+
+                response = self.client.post(
+                    '/api/v1/auth/refresh',
+                    json={'refresh_token': login_data['refresh_token']},
+                )
+
+                self.assertIn(response.status_code, (401, 403))
+                self.assertEqual(response.get_json()['errors'][0]['code'], expected_code)
 
     def test_api_logout_revokes_desktop_session(self):
         user, _ = self.create_api_user()

@@ -68,12 +68,20 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<IAccessibilityService, AccessibilityService>();
                 services.AddSingleton<WindowsAccessibilityResourceAdapter>();
                 services.AddSingleton<IAppSessionContext, AppSessionContext>();
-                services.AddHttpClient<IGirofyApiClient, GirofyApiClient>(client =>
+                services.AddSingleton<SessionRefreshCoordinator>();
+                services.AddTransient<AutomaticSessionRefreshHandler>();
+                services.AddHttpClient(ApiHttpClientNames.SessionRefresh, client =>
                 {
                     client.BaseAddress = serverUri;
                     client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
                     client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
                 });
+                services.AddHttpClient<IGirofyApiClient, GirofyApiClient>(client =>
+                {
+                    client.BaseAddress = serverUri;
+                    client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+                }).AddHttpMessageHandler<AutomaticSessionRefreshHandler>();
                 services.AddHttpClient<IPasswordRecoveryService, PasswordRecoveryService>(client =>
                 {
                     client.BaseAddress = serverUri;

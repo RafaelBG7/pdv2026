@@ -451,6 +451,51 @@ O App oferece login, recuperação de senha, renovação de sessão e logout. Ut
 access token e refresh token rotacionável. A sessão é protegida por mecanismos do
 Windows e o endereço do servidor pode ser configurado.
 
+6.1.1 Renovação automática da sessão do operador
+
+O access token possui duração curta e sua expiração normal não encerra a sessão do
+operador. O refresh token possui duração maior, é rotacionável, pode ser revogado e
+continua protegido em repouso pelo DpapiSessionStore com DPAPI CurrentUser. Access
+token, refresh token e cabeçalho Authorization nunca são escritos em logs.
+
+O AutomaticSessionRefreshHandler centraliza o comportamento de todas as chamadas
+autenticadas. Antes de uma operação, ele substitui qualquer token capturado por um
+ViewModel pelo token mais recente do IAppSessionContext. Quando a validade conhecida
+está a menos de 60 segundos do fim, solicita renovação sob demanda, sem timer ou
+keep-alive. Se a API ainda responder 401, tenta renovar reativamente. Login, refresh,
+logout e recuperação de senha não entram nesse mecanismo, evitando recursão.
+
+SessionRefreshCoordinator é singleton e utiliza SemaphoreSlim. Se Dashboard,
+notificações, caixa e produtos receberem 401 simultaneamente, somente a primeira
+requisição usa o refresh token. As demais aguardam, detectam que o access token já
+foi substituído e reutilizam a sessão nova. Isso é obrigatório porque o backend
+revoga o refresh token anterior durante a rotação.
+
+Após POST /api/v1/auth/refresh retornar sucesso, AccessToken, RefreshToken,
+ExpiresIn, AccessExpiresAtUtc, identidade e empresa são substituídos como uma única
+sessão. O arquivo DPAPI é atualizado por escrita temporária e substituição atômica;
+somente depois o contexto global publica a nova sessão. O refresh token antigo não
+volta a ser utilizado.
+
+A requisição original é clonada antes do primeiro envio. Método, URI, versão,
+headers, opções, corpo e headers do corpo são preservados, portanto uma repetição
+mantém também a Idempotency-Key e o idempotency_key persistido de vendas. O retry
+ocorre no máximo uma vez. A API autentica antes de executar rotas protegidas, e as
+operações financeiras continuam dependentes das garantias de idempotência do
+backend; o cliente não cria uma chave nova durante a renovação.
+
+Um refresh rejeitado com 401 ou 403 limpa o arquivo protegido e o estado global,
+direcionando uma única vez para o login com a mensagem “Sua sessão terminou. Entre
+novamente para continuar.” Falhas transitórias de rede ou servidor não revogam
+localmente uma sessão que o backend não rejeitou. Um segundo 401 após retry encerra
+a sessão e nunca inicia outro ciclo de refresh.
+
+Na inicialização, LoginViewModel continua carregando a sessão DPAPI e chama o mesmo
+contrato de refresh antes de decidir pelo login. Assim, um access token persistido
+expirado com refresh válido restaura a aplicação autenticada. Durante uso normal,
+o refresh não recria ViewModels nem navega: carrinho, desconto, pagamentos, filtros,
+expansões e tela atual permanecem intactos.
+
 6.2 Módulos
 
 O aplicativo contém interfaces para:
@@ -1537,6 +1582,20 @@ Etapa 3 — Homologação Windows: PENDENTE.
 Testar instalação, SmartScreen, resolução/escala, Light/Dark, teclado, múltiplos
 cliques, scroll, rede lenta/offline, expiração de token, sessão DPAPI, logs,
 desinstalação e reinstalação em Windows limpo.
+
+Critérios específicos pendentes para homologação manual do ciclo de sessão:
+
+[ ] Deixar a sessão tempo suficiente ou simular expiração do access token.
+[ ] Confirmar refresh automático sem reiniciar o Girofy e sem perder a tela atual.
+[ ] Confirmar que refresh inválido retorna ao login sem loop ou travamento.
+[ ] Repetir a expiração com uma venda aberta e confirmar preservação do carrinho.
+[ ] Minimizar/bloquear o Windows, restaurar e confirmar renovação sob demanda.
+
+Cobertura automatizada deste ciclo valida access válido sem refresh, 401 seguido de
+refresh e retry, rejeição definitiva, ausência de loop, single-flight concorrente,
+rotação e persistência do novo refresh, refresh preventivo, exclusão da própria rota
+de refresh e preservação de corpo/headers/idempotência. Esses testes automatizados
+não substituem os itens manuais acima, que permanecem desmarcados até execução na VM.
 
 Etapa 4 — Concorrência e consistência: PENDENTE.
 Executar cenários simultâneos em MySQL real para venda, estoque, caixa,

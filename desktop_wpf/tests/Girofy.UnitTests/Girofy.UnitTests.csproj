@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
@@ -16,5 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Girofy.Application\Girofy.Application.csproj" />
+    <ProjectReference Include="..\..\src\Girofy.Infrastructure\Girofy.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

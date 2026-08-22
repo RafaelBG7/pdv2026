@@ -121,7 +121,8 @@ public sealed class GirofyApiClient(
             "api/v1/auth/login",
             new LoginRequest(identifier, password),
             cancellationToken);
-        return await ReadEnvelopeAsync<AuthSession>(response, cancellationToken);
+        return (await ReadEnvelopeAsync<AuthSession>(response, cancellationToken))
+            .WithCalculatedAccessExpiration(DateTimeOffset.UtcNow);
     }
 
     public async Task<AuthSession> ActivateSubscriptionAsync(
@@ -134,7 +135,8 @@ public sealed class GirofyApiClient(
             "api/v1/subscription/activate",
             new SubscriptionActivationRequest(identifier, password, activationKey),
             cancellationToken);
-        return await ReadEnvelopeAsync<AuthSession>(response, cancellationToken);
+        return (await ReadEnvelopeAsync<AuthSession>(response, cancellationToken))
+            .WithCalculatedAccessExpiration(DateTimeOffset.UtcNow);
     }
 
     public async Task<AuthSession> RefreshSessionAsync(
@@ -145,7 +147,8 @@ public sealed class GirofyApiClient(
             "api/v1/auth/refresh",
             new RefreshRequest(refreshToken),
             cancellationToken);
-        return await ReadEnvelopeAsync<AuthSession>(response, cancellationToken);
+        return (await ReadEnvelopeAsync<AuthSession>(response, cancellationToken))
+            .WithCalculatedAccessExpiration(DateTimeOffset.UtcNow);
     }
 
     public async Task<AuthIdentity> GetCurrentIdentityAsync(

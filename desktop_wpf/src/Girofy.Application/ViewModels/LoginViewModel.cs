@@ -43,6 +43,7 @@ public sealed class LoginViewModel : ObservableObject
         _sessionContext = sessionContext;
         ForgotPassword = forgotPassword;
         _registrationUri = registrationUri;
+        _sessionContext.Changed += HandleSessionContextChanged;
         LoginCommand = new AsyncRelayCommand(LoginAsync);
         ActivateSubscriptionCommand = new AsyncRelayCommand(ActivateSubscriptionAsync);
         LogoutCommand = new AsyncRelayCommand(LogoutAsync);
@@ -413,6 +414,34 @@ public sealed class LoginViewModel : ObservableObject
         AuthenticatedRoleLabel = string.Empty;
         RequiresSubscriptionActivation = false;
         ActivationKey = string.Empty;
+        IsAuthenticated = false;
+    }
+
+    private void HandleSessionContextChanged(object? sender, EventArgs e)
+    {
+        var current = _sessionContext.Current;
+        if (current is not null)
+        {
+            _session = current;
+            AuthenticatedUserName = string.IsNullOrWhiteSpace(current.User.FullName)
+                ? current.User.Username
+                : current.User.FullName;
+            AuthenticatedCompanyName = current.Company?.Name ?? "Painel master";
+            AuthenticatedRoleLabel = current.User.RoleLabel;
+            IsAuthenticated = true;
+            return;
+        }
+
+        if (!IsAuthenticated)
+        {
+            return;
+        }
+
+        _session = null;
+        AuthenticatedUserName = string.Empty;
+        AuthenticatedCompanyName = string.Empty;
+        AuthenticatedRoleLabel = string.Empty;
+        ErrorMessage = "Sua sessão terminou. Entre novamente para continuar.";
         IsAuthenticated = false;
     }
 }

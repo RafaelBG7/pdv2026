@@ -16,6 +16,9 @@ public sealed class AuthSession
     [JsonPropertyName("expires_in")]
     public int ExpiresIn { get; init; }
 
+    [JsonPropertyName("access_expires_at_utc")]
+    public DateTimeOffset? AccessExpiresAtUtc { get; init; }
+
     [JsonPropertyName("refresh_expires_at")]
     public string RefreshExpiresAt { get; init; } = string.Empty;
 
@@ -24,6 +27,18 @@ public sealed class AuthSession
 
     [JsonPropertyName("company")]
     public CompanyIdentity? Company { get; init; }
+
+    public AuthSession WithCalculatedAccessExpiration(DateTimeOffset now) => new()
+    {
+        AccessToken = AccessToken,
+        RefreshToken = RefreshToken,
+        TokenType = TokenType,
+        ExpiresIn = ExpiresIn,
+        AccessExpiresAtUtc = ExpiresIn > 0 ? now.AddSeconds(ExpiresIn) : null,
+        RefreshExpiresAt = RefreshExpiresAt,
+        User = User,
+        Company = Company,
+    };
 }
 
 public sealed class AuthIdentity

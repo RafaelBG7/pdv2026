@@ -76,6 +76,32 @@ public sealed class LoginViewModelTests
     }
 
     [Fact]
+    public async Task Initialize_clears_a_stored_session_when_refresh_is_rejected()
+    {
+        var apiClient = new StubApiClient
+        {
+            RefreshException = new GirofyApiException(
+                "A sessão do aplicativo é inválida ou expirou.",
+                "invalid_refresh_token",
+                401),
+        };
+        var sessionStore = new StubSessionStore
+        {
+            LoadedSession = CreateSession("access-expired", "refresh-expired"),
+        };
+        var viewModel = CreateViewModel(
+            apiClient,
+            sessionStore,
+            new StubPreferencesStore());
+
+        await viewModel.InitializeAsync();
+
+        Assert.False(viewModel.IsAuthenticated);
+        Assert.True(sessionStore.WasCleared);
+        Assert.Equal("refresh-expired", apiClient.LastRefreshToken);
+    }
+
+    [Fact]
     public async Task Login_exposes_the_safe_api_error_and_clears_password()
     {
         var apiClient = new StubApiClient
@@ -243,6 +269,8 @@ public sealed class LoginViewModelTests
 
         public Exception? ActivationException { get; init; }
 
+        public Exception? RefreshException { get; init; }
+
         public Exception? LogoutException { get; init; }
 
         public string LastLoginIdentifier { get; private set; } = string.Empty;
@@ -288,7 +316,9 @@ public sealed class LoginViewModelTests
             CancellationToken cancellationToken)
         {
             LastRefreshToken = refreshToken;
-            return Task.FromResult(RefreshResult!);
+            return RefreshException is null
+                ? Task.FromResult(RefreshResult!)
+                : Task.FromException<AuthSession>(RefreshException);
         }
 
         public Task<AuthIdentity> GetCurrentIdentityAsync(

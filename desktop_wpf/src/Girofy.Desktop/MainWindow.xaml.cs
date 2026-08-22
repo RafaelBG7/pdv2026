@@ -111,8 +111,10 @@ public partial class MainWindow : Window
 
     private async void HandleNotificationsBellClick(object sender, RoutedEventArgs e)
     {
-        NotificationsPopup.IsOpen = !NotificationsPopup.IsOpen;
-        if (!NotificationsPopup.IsOpen)
+        NotificationsPanel.Visibility = NotificationsPanel.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        if (NotificationsPanel.Visibility != Visibility.Visible)
         {
             return;
         }
@@ -127,35 +129,35 @@ public partial class MainWindow : Window
         }
     }
 
-    private void HandleNotificationsBellPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void HandleAuthenticatedShellPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // A Popup com StaysOpen=False fecha antes do Click ao pressionar o sino.
-        // Interceptar o mouse-down evita que o Click seguinte reabra o painel.
-        if (!NotificationsPopup.IsOpen)
+        if (NotificationsPanel.Visibility != Visibility.Visible ||
+            e.OriginalSource is not DependencyObject source ||
+            IsDescendantOf(source, NotificationsPanel) ||
+            IsDescendantOf(source, NotificationsBellButton))
         {
             return;
         }
 
-        CloseNotificationsPopup();
-        e.Handled = true;
+        CloseNotificationsPanel();
     }
 
     private void HandleWindowDeactivated(object? sender, EventArgs e) =>
-        CloseNotificationsPopup();
+        CloseNotificationsPanel();
 
     private void HandleWindowStateChanged(object? sender, EventArgs e)
     {
         if (WindowState == WindowState.Minimized)
         {
-            CloseNotificationsPopup();
+            CloseNotificationsPanel();
         }
     }
 
-    private void CloseNotificationsPopup()
+    private void CloseNotificationsPanel()
     {
-        if (NotificationsPopup.IsOpen)
+        if (NotificationsPanel.Visibility == Visibility.Visible)
         {
-            NotificationsPopup.IsOpen = false;
+            NotificationsPanel.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -213,6 +215,23 @@ public partial class MainWindow : Window
         }
 
         return null;
+    }
+
+    private static bool IsDescendantOf(DependencyObject? element, DependencyObject ancestor)
+    {
+        while (element is not null)
+        {
+            if (ReferenceEquals(element, ancestor))
+            {
+                return true;
+            }
+
+            element = element is Visual
+                ? VisualTreeHelper.GetParent(element)
+                : LogicalTreeHelper.GetParent(element);
+        }
+
+        return false;
     }
 
     private void QueueLoginFocus()
@@ -310,7 +329,7 @@ public partial class MainWindow : Window
         {
             if (!_viewModel.Login.IsAuthenticated)
             {
-                CloseNotificationsPopup();
+                CloseNotificationsPanel();
             }
 
             ApplyAuthenticationWindowMode();

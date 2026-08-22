@@ -298,7 +298,7 @@
             </Grid>
         </ScrollViewer>
 
-        <Grid Margin="22">
+        <Grid Margin="22" PreviewMouseLeftButtonDown="HandleAuthenticatedShellPreviewMouseLeftButtonDown">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -339,7 +339,6 @@
                                       Style="{StaticResource ThemeToggleButtonStyle}" />
                         <Button x:Name="NotificationsBellButton" MinWidth="54" Margin="0,0,14,0"
                                 Click="HandleNotificationsBellClick"
-                                PreviewMouseLeftButtonDown="HandleNotificationsBellPreviewMouseLeftButtonDown"
                                 ToolTip="Notificações pendentes"
                                 Style="{StaticResource SecondaryButtonStyle}">
                             <StackPanel Orientation="Horizontal">
@@ -350,11 +349,6 @@
                                 </Border>
                             </StackPanel>
                         </Button>
-                        <Popup x:Name="NotificationsPopup" PlacementTarget="{Binding ElementName=NotificationsBellButton}"
-                               Placement="Bottom" HorizontalOffset="-480" VerticalOffset="10"
-                               AllowsTransparency="True" StaysOpen="False">
-                            <views:NotificationsPopoverView DataContext="{Binding Notifications}" />
-                        </Popup>
                         <StackPanel Margin="0,0,18,0" VerticalAlignment="Center">
                             <TextBlock HorizontalAlignment="Right" FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}"
                                        Foreground="{DynamicResource TextPrimaryBrush}"
@@ -1482,6 +1476,14 @@
                     </Grid>
                     </Grid>
                 </Border>
+            </Grid>
+
+            <Grid x:Name="NotificationsPanel"
+                  Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="200"
+                  Margin="0,82,190,0"
+                  HorizontalAlignment="Right" VerticalAlignment="Top"
+                  Visibility="Collapsed">
+                <views:NotificationsPopoverView DataContext="{Binding Notifications}" />
             </Grid>
         </Grid>
         <Grid Panel.ZIndex="100"

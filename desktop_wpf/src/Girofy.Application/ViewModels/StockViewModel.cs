@@ -23,6 +23,12 @@ public sealed class StockViewModel : ObservableObject, IDisposable
     private CatalogCategory? _selectedCategory;
     private CatalogFilterOption _selectedMovementType;
     private CatalogFilterOption _selectedSourceType;
+    private CatalogFilterOption _selectedResponsibleUser;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+    private bool _movementsLoaded;
+    private bool _costsVisible;
+    private StockMovementRecord? _selectedMovement;
     private StockMovementSummary _summary = new();
     private CatalogProduct? _entryProduct;
     private string _entryQuantityText = "1";
@@ -46,6 +52,7 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         _sessionContext = sessionContext;
         _selectedMovementType = new CatalogFilterOption("all", "Todos");
         _selectedSourceType = new CatalogFilterOption("all", "Todas");
+        _selectedResponsibleUser = new CatalogFilterOption("all", "Todos");
         AdjustmentModes =
         [
             new("target", "Definir estoque final"),
@@ -60,6 +67,7 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         _selectedAdjustmentDirection = AdjustmentDirections[0];
         SearchCommand = new AsyncRelayCommand(SearchAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync);
         SearchProductsCommand = new AsyncRelayCommand(SearchProductsAsync);
         PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync);
         NextPageCommand = new AsyncRelayCommand(NextPageAsync);
@@ -79,6 +87,8 @@ public sealed class StockViewModel : ObservableObject, IDisposable
     public ObservableCollection<CatalogFilterOption> MovementTypes { get; } = [];
 
     public ObservableCollection<CatalogFilterOption> SourceTypes { get; } = [];
+
+    public ObservableCollection<CatalogFilterOption> ResponsibleUsers { get; } = [];
 
     public IReadOnlyList<CatalogFilterOption> AdjustmentModes { get; }
 
@@ -113,6 +123,61 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         get => _selectedSourceType;
         set => SetProperty(ref _selectedSourceType, value);
     }
+
+    public CatalogFilterOption SelectedResponsibleUser
+    {
+        get => _selectedResponsibleUser;
+        set => SetProperty(ref _selectedResponsibleUser, value);
+    }
+
+    public DateTime? StartDate
+    {
+        get => _startDate;
+        set => SetProperty(ref _startDate, value);
+    }
+
+    public DateTime? EndDate
+    {
+        get => _endDate;
+        set => SetProperty(ref _endDate, value);
+    }
+
+    public StockMovementRecord? SelectedMovement
+    {
+        get => _selectedMovement;
+        set
+        {
+            if (SetProperty(ref _selectedMovement, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedMovement));
+            }
+        }
+    }
+
+    public bool HasSelectedMovement => SelectedMovement is not null;
+
+    public bool CostsVisible
+    {
+        get => _costsVisible;
+        private set => SetProperty(ref _costsVisible, value);
+    }
+
+    public bool HasMovements => Movements.Count > 0;
+
+    public bool ShowEmptyState => _movementsLoaded && !IsBusy && !HasError && !HasMovements;
+
+    public string EmptyStateText => HasActiveFilters
+        ? "Nenhuma movimentação encontrada para os filtros selecionados."
+        : "Nenhuma movimentação de estoque encontrada.";
+
+    public bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(SearchText) ||
+        SelectedCategory is { Id: > 0 } ||
+        SelectedMovementType.Value != "all" ||
+        SelectedSourceType.Value != "all" ||
+        SelectedResponsibleUser.Value != "all" ||
+        StartDate.HasValue ||
+        EndDate.HasValue;
 
     public StockMovementSummary Summary
     {
@@ -259,6 +324,7 @@ public sealed class StockViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _isBusy, value))
             {
                 NotifyCommandState();
+                NotifyMovementState();
             }
         }
     }
@@ -306,6 +372,8 @@ public sealed class StockViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand RefreshCommand { get; }
 
+    public AsyncRelayCommand ClearFiltersCommand { get; }
+
     public AsyncRelayCommand SearchProductsCommand { get; }
 
     public AsyncRelayCommand PreviousPageCommand { get; }
@@ -349,6 +417,20 @@ public sealed class StockViewModel : ObservableObject, IDisposable
     }
 
     private async Task RefreshAsync(CancellationToken cancellationToken) => await LoadAsync(cancellationToken);
+
+    private async Task ClearFiltersAsync(CancellationToken cancellationToken)
+    {
+        SearchText = string.Empty;
+        SelectedCategory = Categories.FirstOrDefault();
+        SelectedMovementType = MovementTypes.FirstOrDefault() ?? new CatalogFilterOption("all", "Todos");
+        SelectedSourceType = SourceTypes.FirstOrDefault() ?? new CatalogFilterOption("all", "Todas");
+        SelectedResponsibleUser = ResponsibleUsers.FirstOrDefault() ?? new CatalogFilterOption("all", "Todos");
+        StartDate = null;
+        EndDate = null;
+        Page = 1;
+        SelectedMovement = null;
+        await LoadMovementsAsync(cancellationToken);
+    }
 
     private async Task SearchProductsAsync(CancellationToken cancellationToken)
     {
@@ -495,7 +577,15 @@ public sealed class StockViewModel : ObservableObject, IDisposable
 
     private async Task LoadMovementsAsync(CancellationToken cancellationToken)
     {
+        if (StartDate.HasValue && EndDate.HasValue && StartDate.Value.Date > EndDate.Value.Date)
+        {
+            ErrorMessage = "A data inicial não pode ser posterior à data final.";
+            return;
+        }
+
         IsBusy = true;
+        _movementsLoaded = false;
+        NotifyMovementState();
         ClearMessages();
         try
         {
@@ -507,7 +597,9 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         }
         finally
         {
+            _movementsLoaded = true;
             IsBusy = false;
+            NotifyMovementState();
         }
     }
 
@@ -572,11 +664,17 @@ public sealed class StockViewModel : ObservableObject, IDisposable
                 SelectedCategory is { Id: > 0 } ? SelectedCategory.Id : null,
                 SelectedMovementType.Value,
                 SelectedSourceType.Value,
+                int.TryParse(SelectedResponsibleUser.Value, out var responsibleUserId)
+                    ? responsibleUserId
+                    : null,
+                StartDate,
+                EndDate,
                 Page,
                 30),
             cancellationToken);
 
         Movements.Clear();
+        SelectedMovement = null;
         foreach (var movement in result.Items)
         {
             Movements.Add(movement);
@@ -584,10 +682,15 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         Summary = result.Summary;
         SyncFilterOptions(MovementTypes, result.MovementTypes, "Todos", ref _selectedMovementType);
         SyncFilterOptions(SourceTypes, result.SourceTypes, "Todas", ref _selectedSourceType);
+        SyncFilterOptions(ResponsibleUsers, result.ResponsibleUsers, "Todos", ref _selectedResponsibleUser);
         OnPropertyChanged(nameof(SelectedMovementType));
         OnPropertyChanged(nameof(SelectedSourceType));
+        OnPropertyChanged(nameof(SelectedResponsibleUser));
+        CostsVisible = result.CostsVisible;
         Page = result.Pagination.Page;
         TotalPages = result.Pagination.TotalPages;
+        _movementsLoaded = true;
+        NotifyMovementState();
     }
 
     private static void SyncFilterOptions(
@@ -721,6 +824,14 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         SuccessMessage = string.Empty;
     }
 
+    private void NotifyMovementState()
+    {
+        OnPropertyChanged(nameof(HasMovements));
+        OnPropertyChanged(nameof(ShowEmptyState));
+        OnPropertyChanged(nameof(EmptyStateText));
+        OnPropertyChanged(nameof(HasActiveFilters));
+    }
+
     private void NotifyCommandState()
     {
         OnPropertyChanged(nameof(CanGoPrevious));
@@ -739,6 +850,7 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         ProductOptions.Clear();
         MovementTypes.Clear();
         SourceTypes.Clear();
+        ResponsibleUsers.Clear();
         Summary = new StockMovementSummary();
         SearchText = string.Empty;
         ProductSearchText = string.Empty;
@@ -746,6 +858,11 @@ public sealed class StockViewModel : ObservableObject, IDisposable
         SuccessMessage = string.Empty;
         Page = 1;
         TotalPages = 0;
+        StartDate = null;
+        EndDate = null;
+        SelectedMovement = null;
+        CostsVisible = false;
+        _movementsLoaded = false;
         EntryProduct = null;
         AdjustmentProduct = null;
         IsMovementsTabSelected = true;

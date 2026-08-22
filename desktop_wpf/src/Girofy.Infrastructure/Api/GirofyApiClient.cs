@@ -855,6 +855,18 @@ public sealed class GirofyApiClient(
         {
             parameters.Add($"category_id={query.CategoryId.Value}");
         }
+        if (query.UserId is > 0)
+        {
+            parameters.Add($"user_id={query.UserId.Value}");
+        }
+        if (query.StartDate.HasValue)
+        {
+            parameters.Add($"start_date={query.StartDate.Value:yyyy-MM-dd}");
+        }
+        if (query.EndDate.HasValue)
+        {
+            parameters.Add($"end_date={query.EndDate.Value:yyyy-MM-dd}");
+        }
 
         var path = $"api/v1/stock/movements?{string.Join('&', parameters)}";
         using var request = CreateAuthenticatedRequest(HttpMethod.Get, path, accessToken);

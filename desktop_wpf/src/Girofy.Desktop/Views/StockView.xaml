@@ -52,8 +52,20 @@
                             </Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
-                               Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
+                        <Button Grid.Column="2" MinWidth="96"
+                                Command="{Binding RefreshCommand}"
+                                Content="Tentar novamente"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                    </Grid>
                 </Border>
                 <Border Padding="12"
                         Background="{DynamicResource SuccessSurfaceBrush}"
@@ -207,6 +219,8 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="10" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="10" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1.45*" />
@@ -253,12 +267,39 @@
                                       DisplayMemberPath="Label" />
                         </StackPanel>
 
-                        <Button Grid.Row="2" Grid.ColumnSpan="3" MinWidth="150"
+                        <StackPanel Grid.Row="2" Grid.ColumnSpan="3">
+                            <TextBlock Margin="0,0,0,6" FontWeight="{DynamicResource FontWeightStrong}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       Text="Responsável" />
+                            <ComboBox Height="48" Padding="10,0"
+                                      AutomationProperties.Name="Filtrar por responsável"
+                                      ItemsSource="{Binding ResponsibleUsers}"
+                                      SelectedItem="{Binding SelectedResponsibleUser}"
+                                      DisplayMemberPath="Label" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="4">
+                            <TextBlock Margin="0,0,0,6" FontWeight="{DynamicResource FontWeightStrong}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       Text="Data inicial" />
+                            <DatePicker Height="48"
+                                        AutomationProperties.Name="Data inicial"
+                                        SelectedDate="{Binding StartDate}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="6">
+                            <TextBlock Margin="0,0,0,6" FontWeight="{DynamicResource FontWeightStrong}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       Text="Data final" />
+                            <DatePicker Height="48"
+                                        AutomationProperties.Name="Data final"
+                                        SelectedDate="{Binding EndDate}" />
+                        </StackPanel>
+
+                        <Button Grid.Row="4" Grid.ColumnSpan="3" MinWidth="150"
                                 Command="{Binding SearchCommand}"
                                 Content="Filtrar"
                                 Style="{StaticResource PrimaryButtonStyle}" />
-                        <Button Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="3" MinWidth="150"
-                                Command="{Binding RefreshCommand}"
+                        <Button Grid.Row="4" Grid.Column="4" Grid.ColumnSpan="3" MinWidth="150"
+                                Command="{Binding ClearFiltersCommand}"
                                 Content="Limpar e atualizar"
                                 Style="{StaticResource SecondaryButtonStyle}" />
                     </Grid>
@@ -474,6 +515,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Border Padding="18,14" Background="{DynamicResource SurfaceRaisedBrush}"
                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
@@ -494,6 +536,9 @@
                         </Grid>
                     </Border>
                     <DataGrid Grid.Row="1" ItemsSource="{Binding Movements}"
+                              SelectedItem="{Binding SelectedMovement, Mode=TwoWay}"
+                              PreviewMouseLeftButtonDown="MovementsGrid_PreviewMouseLeftButtonDown"
+                              MinHeight="180"
                               MaxHeight="560"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
@@ -535,19 +580,100 @@
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Data e hora" Binding="{Binding CreatedAtText}" Width="1.15*" />
-                            <DataGridTextColumn Header="Produto" Binding="{Binding ProductName}" Width="1.8*" />
-                            <DataGridTextColumn Header="Categoria" Binding="{Binding CategoryName}" Width="1.2*" />
-                            <DataGridTextColumn Header="Tipo" Binding="{Binding MovementTypeLabel}" Width="0.95*" />
-                            <DataGridTextColumn Header="Origem" Binding="{Binding SourceTypeLabel}" Width="0.95*" />
-                            <DataGridTextColumn Header="Qtd." Binding="{Binding QuantityText}" Width="0.75*" />
-                            <DataGridTextColumn Header="Anterior" Binding="{Binding PreviousStockText}" Width="0.8*" />
-                            <DataGridTextColumn Header="Posterior" Binding="{Binding NewStockText}" Width="0.8*" />
-                            <DataGridTextColumn Header="Usuário" Binding="{Binding UserName}" Width="0.9*" />
-                            <DataGridTextColumn Header="Motivo" Binding="{Binding Reason}" Width="1.4*" />
+                            <DataGridTextColumn Header="Produto" Binding="{Binding ProductName}" Width="1.75*" MinWidth="150" />
+                            <DataGridTextColumn Header="Tipo" Binding="{Binding TypeLabel}" Width="0.9*" MinWidth="85" />
+                            <DataGridTextColumn Header="Origem" Binding="{Binding OriginText}" Width="1.15*" MinWidth="110" />
+                            <DataGridTextColumn Header="Qtd." Binding="{Binding QuantityText}" Width="0.65*" MinWidth="65" />
+                            <DataGridTextColumn Header="Anterior" Binding="{Binding PreviousStockText}" Width="0.7*" MinWidth="72" />
+                            <DataGridTextColumn Header="Posterior" Binding="{Binding NewStockText}" Width="0.7*" MinWidth="72" />
+                            <DataGridTextColumn Header="Usuário" Binding="{Binding UserName}" Width="0.9*" MinWidth="90" />
+                            <DataGridTextColumn Header="Data e hora" Binding="{Binding CreatedAtText}" Width="1.15*" MinWidth="125" />
                         </DataGrid.Columns>
                     </DataGrid>
-                    <Grid Grid.Row="2" Margin="14">
+                    <Border Grid.Row="1" Padding="24" Background="{DynamicResource SurfaceBrush}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ProgressBar Width="220" Height="5" IsIndeterminate="True" />
+                            <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Text="Carregando movimentações de estoque..." />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Row="1" Padding="24" Background="{DynamicResource SurfaceBrush}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ShowEmptyState}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="{Binding EmptyStateText}" TextWrapping="Wrap" />
+                    </Border>
+
+                    <Border Grid.Row="2" Margin="14,10,14,0" Padding="16"
+                            Background="{DynamicResource InfoSurfaceBrush}"
+                            BorderBrush="{DynamicResource InfoBorderBrush}"
+                            BorderThickness="{DynamicResource AccessibilityBorderThickness}"
+                            CornerRadius="6">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSelectedMovement}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.2*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="1*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="1*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                           Text="{Binding SelectedMovement.ProductName}" />
+                                <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="{Binding SelectedMovement.CategoryName}" />
+                                <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="{Binding SelectedMovement.ReferenceText}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
+                                           Text="{Binding SelectedMovement.ReasonText, StringFormat=Motivo: {0}}" />
+                                <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="{Binding SelectedMovement.NotesText, StringFormat=Observação: {0}}" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="{Binding SelectedMovement.BalanceStatusText}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
+                                           Text="{Binding SelectedMovement.UserName, StringFormat=Responsável: {0}}" />
+                                <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="{Binding SelectedMovement.UnitCostText, StringFormat=Custo unitário: {0}}" />
+                                <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="{Binding SelectedMovement.TotalCostText, StringFormat=Custo total: {0}}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="3" Margin="14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />

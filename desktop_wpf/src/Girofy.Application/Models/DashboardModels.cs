@@ -6,6 +6,7 @@ namespace Girofy.Application.Models;
 public static class DashboardFormatting
 {
     private static readonly CultureInfo BrazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
+    private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
 
     public static string Money(decimal value) => $"R$ {value.ToString("N2", BrazilianCulture)}";
 
@@ -19,7 +20,7 @@ public static class DashboardFormatting
                 DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal,
                 out var parsed))
         {
-            return parsed.ToLocalTime();
+            return TimeZoneInfo.ConvertTime(parsed, BusinessTimeZone);
         }
 
         return null;
@@ -29,6 +30,25 @@ public static class DashboardFormatting
     {
         var parsed = LocalDateTime(value);
         return parsed?.ToString("dd/MM/yyyy HH:mm", BrazilianCulture) ?? "Data não informada";
+    }
+
+    private static TimeZoneInfo ResolveBusinessTimeZone()
+    {
+        foreach (var identifier in new[] { "E. South America Standard Time", "America/Sao_Paulo" })
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(identifier);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+            }
+            catch (InvalidTimeZoneException)
+            {
+            }
+        }
+
+        return TimeZoneInfo.Local;
     }
 }
 

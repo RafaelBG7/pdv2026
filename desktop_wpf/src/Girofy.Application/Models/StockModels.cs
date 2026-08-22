@@ -18,6 +18,12 @@ public sealed class StockMovementList
 
     [JsonPropertyName("source_types")]
     public IReadOnlyList<CatalogFilterOption> SourceTypes { get; init; } = [];
+
+    [JsonPropertyName("responsible_users")]
+    public IReadOnlyList<CatalogFilterOption> ResponsibleUsers { get; init; } = [];
+
+    [JsonPropertyName("costs_visible")]
+    public bool CostsVisible { get; init; }
 }
 
 public sealed class StockMovementSummary
@@ -69,8 +75,23 @@ public sealed class StockMovementRecord
     [JsonPropertyName("source_type_label")]
     public string SourceTypeLabel { get; init; } = string.Empty;
 
+    [JsonPropertyName("origin")]
+    public string Origin { get; init; } = string.Empty;
+
+    [JsonPropertyName("origin_label")]
+    public string OriginLabel { get; init; } = string.Empty;
+
+    [JsonPropertyName("source_id")]
+    public int? SourceId { get; init; }
+
+    [JsonPropertyName("reference")]
+    public string Reference { get; init; } = string.Empty;
+
     [JsonPropertyName("quantity")]
     public int Quantity { get; init; }
+
+    [JsonPropertyName("signed_quantity")]
+    public int SignedQuantity { get; init; }
 
     [JsonPropertyName("previous_stock")]
     public int PreviousStock { get; init; }
@@ -79,10 +100,13 @@ public sealed class StockMovementRecord
     public int NewStock { get; init; }
 
     [JsonPropertyName("unit_cost")]
-    public decimal UnitCost { get; init; }
+    public decimal? UnitCost { get; init; }
 
     [JsonPropertyName("total_cost")]
-    public decimal TotalCost { get; init; }
+    public decimal? TotalCost { get; init; }
+
+    [JsonPropertyName("balance_consistent")]
+    public bool BalanceConsistent { get; init; } = true;
 
     [JsonPropertyName("reason")]
     public string Reason { get; init; } = string.Empty;
@@ -98,13 +122,40 @@ public sealed class StockMovementRecord
 
     public string UserName => User?.Username ?? "Sistema";
 
-    public string QuantityText => $"{Quantity} un.";
+    public string TypeLabel => string.IsNullOrWhiteSpace(MovementTypeLabel)
+        ? "Não informado"
+        : MovementTypeLabel;
+
+    public string OriginText => !string.IsNullOrWhiteSpace(OriginLabel)
+        ? OriginLabel
+        : !string.IsNullOrWhiteSpace(SourceTypeLabel)
+            ? SourceTypeLabel
+            : "Não informado";
+
+    public string QuantityText
+    {
+        get
+        {
+            var value = SignedQuantity != 0 ? SignedQuantity : NewStock - PreviousStock;
+            return $"{(value > 0 ? "+" : string.Empty)}{value} un.";
+        }
+    }
 
     public string PreviousStockText => $"{PreviousStock} un.";
 
     public string NewStockText => $"{NewStock} un.";
 
-    public string TotalCostText => DashboardFormatting.Money(TotalCost);
+    public string UnitCostText => DashboardFormatting.OptionalMoney(UnitCost);
+
+    public string TotalCostText => DashboardFormatting.OptionalMoney(TotalCost);
+
+    public string ReasonText => string.IsNullOrWhiteSpace(Reason) ? "Não informado" : Reason;
+
+    public string NotesText => string.IsNullOrWhiteSpace(Notes) ? "Sem observação" : Notes;
+
+    public string ReferenceText => string.IsNullOrWhiteSpace(Reference) ? "Sem referência" : Reference;
+
+    public string BalanceStatusText => BalanceConsistent ? "Saldo conferido" : "Saldo inconsistente";
 }
 
 public sealed class StockProductReference
@@ -133,6 +184,9 @@ public sealed record StockMovementQuery(
     int? CategoryId,
     string MovementType,
     string SourceType,
+    int? UserId,
+    DateTime? StartDate,
+    DateTime? EndDate,
     int Page,
     int PerPage);
 

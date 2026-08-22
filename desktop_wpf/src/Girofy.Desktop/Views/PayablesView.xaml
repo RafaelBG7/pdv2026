@@ -118,9 +118,15 @@
                         <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Categoria" />
                             <ComboBox IsEditable="True" ItemsSource="{Binding Categories}" Text="{Binding CategoryText, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
                         <StackPanel Grid.Column="4"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Valor" />
-                            <TextBox Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" ToolTip="0,00" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                            <TextBox Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" ToolTip="0,00"
+                                     TextAlignment="Right" PreviewTextInput="CurrencyInput_PreviewTextInput"
+                                     PreviewKeyDown="CurrencyInput_PreviewKeyDown" DataObject.Pasting="CurrencyInput_Pasting"
+                                     LostKeyboardFocus="CurrencyInput_LostKeyboardFocus" Style="{StaticResource TextInputStyle}" /></StackPanel>
                         <StackPanel Grid.Column="6"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Vencimento" />
-                            <TextBox Text="{Binding DueDateText, UpdateSourceTrigger=PropertyChanged}" ToolTip="DD/MM/AAAA" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                            <TextBox Text="{Binding DueDateText, UpdateSourceTrigger=PropertyChanged}" ToolTip="DD/MM/AAAA" MaxLength="10"
+                                     PreviewTextInput="DateInput_PreviewTextInput" PreviewKeyDown="DateInput_PreviewKeyDown"
+                                     DataObject.Pasting="DateInput_Pasting" LostKeyboardFocus="DateInput_LostKeyboardFocus"
+                                     Style="{StaticResource TextInputStyle}" /></StackPanel>
                     </Grid>
                     <Grid Grid.Row="4">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" />
@@ -152,9 +158,15 @@
                         <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Categoria" />
                             <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" /></StackPanel>
                         <StackPanel Grid.Column="4"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Data inicial" />
-                            <TextBox Text="{Binding StartDateText, UpdateSourceTrigger=PropertyChanged}" ToolTip="DD/MM/AAAA" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                            <TextBox Text="{Binding StartDateText, UpdateSourceTrigger=PropertyChanged}" ToolTip="DD/MM/AAAA" MaxLength="10"
+                                     PreviewTextInput="DateInput_PreviewTextInput" PreviewKeyDown="DateInput_PreviewKeyDown"
+                                     DataObject.Pasting="DateInput_Pasting" LostKeyboardFocus="DateInput_LostKeyboardFocus"
+                                     Style="{StaticResource TextInputStyle}" /></StackPanel>
                         <StackPanel Grid.Column="6"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Data final" />
-                            <TextBox Text="{Binding EndDateText, UpdateSourceTrigger=PropertyChanged}" ToolTip="DD/MM/AAAA" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                            <TextBox Text="{Binding EndDateText, UpdateSourceTrigger=PropertyChanged}" ToolTip="DD/MM/AAAA" MaxLength="10"
+                                     PreviewTextInput="DateInput_PreviewTextInput" PreviewKeyDown="DateInput_PreviewKeyDown"
+                                     DataObject.Pasting="DateInput_Pasting" LostKeyboardFocus="DateInput_LostKeyboardFocus"
+                                     Style="{StaticResource TextInputStyle}" /></StackPanel>
                         <StackPanel Grid.Column="8" Orientation="Horizontal" VerticalAlignment="Bottom">
                             <Button MinWidth="96" Margin="0,0,8,0" Command="{Binding ClearFiltersCommand}"
                                     Content="Limpar" Style="{StaticResource SecondaryButtonStyle}" />

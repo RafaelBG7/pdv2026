@@ -30,7 +30,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     private string _description = string.Empty;
     private string _categoryText = "Outros";
     private string _amountText = "0,00";
-    private string _dueDateText = DashboardFormatting.BusinessToday().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private string _dueDateText = DashboardFormatting.BusinessToday().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
     private string _notes = string.Empty;
     private string _errorMessage = string.Empty;
     private string _successMessage = string.Empty;
@@ -564,7 +564,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         Description = string.Empty;
         CategoryText = "Outros";
         AmountText = "0,00";
-        DueDateText = DashboardFormatting.BusinessToday().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        DueDateText = DashboardFormatting.BusinessToday().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
         Notes = string.Empty;
     }
 

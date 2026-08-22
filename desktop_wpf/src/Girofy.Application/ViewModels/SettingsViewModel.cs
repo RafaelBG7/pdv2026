@@ -517,6 +517,14 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
     public bool HasSelectedEmployee => SelectedEmployee is not null;
 
+    public int TeamMemberCount => Employees.Count;
+
+    public int ActiveTeamMemberCount => Employees.Count(employee => employee.IsActive);
+
+    public int InactiveTeamMemberCount => Employees.Count(employee => !employee.IsActive);
+
+    public bool HasTeamMembers => Employees.Count > 0;
+
     public string TeamVisibility => CanManageTeam ? "Visible" : "Collapsed";
 
     public string CompanySettingsVisibility => CanManageTeam ? "Visible" : "Collapsed";
@@ -1407,6 +1415,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
             Employees.Add(employee);
         }
 
+        NotifyTeamSummary();
+
         SelectedEmployee = Employees.FirstOrDefault(employee => employee.Id == preserveEmployeeId) ??
             Employees.FirstOrDefault();
     }
@@ -1494,6 +1504,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         TeamSearch = string.Empty;
         SelectedEmployee = null;
         Employees.Clear();
+        NotifyTeamSummary();
         RoleOptions.Clear();
         ClearNewEmployeeForm();
         ErrorMessage = string.Empty;
@@ -1522,6 +1533,14 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         NewEmployeeEmail = string.Empty;
         NewEmployeePhone = string.Empty;
         NewEmployeeRole = RoleOptions.FirstOrDefault()?.Value ?? "operator";
+    }
+
+    private void NotifyTeamSummary()
+    {
+        OnPropertyChanged(nameof(TeamMemberCount));
+        OnPropertyChanged(nameof(ActiveTeamMemberCount));
+        OnPropertyChanged(nameof(InactiveTeamMemberCount));
+        OnPropertyChanged(nameof(HasTeamMembers));
     }
 
     private void NotifyAdministrativeCommands()

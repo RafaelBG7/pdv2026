@@ -428,13 +428,53 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="16" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="16" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <Border Style="{StaticResource SettingsInnerPanelStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Padding="18" Style="{StaticResource SettingsInnerPanelStyle}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SettingsSmallLabelStyle}" Text="TOTAL DA EQUIPE" />
+                                        <TextBlock Margin="0,8,0,0" FontSize="28" FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding TeamMemberCount}" />
+                                        <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="acessos cadastrados" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Padding="18" Style="{StaticResource SettingsInnerPanelStyle}"
+                                        BorderBrush="{DynamicResource SuccessBorderBrush}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SettingsSmallLabelStyle}" Text="ATIVOS" />
+                                        <TextBlock Margin="0,8,0,0" FontSize="28" FontWeight="Bold"
+                                                   Foreground="{DynamicResource SuccessBrush}" Text="{Binding ActiveTeamMemberCount}" />
+                                        <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="podem acessar o sistema" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="4" Padding="18" Style="{StaticResource SettingsInnerPanelStyle}"
+                                        BorderBrush="{DynamicResource WarningBorderBrush}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SettingsSmallLabelStyle}" Text="INATIVOS" />
+                                        <TextBlock Margin="0,8,0,0" FontSize="28" FontWeight="Bold"
+                                                   Foreground="{DynamicResource WarningBrush}" Text="{Binding InactiveTeamMemberCount}" />
+                                        <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="acessos suspensos" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Border Grid.Row="2" Style="{StaticResource SettingsInnerPanelStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="14" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="12" />
                                         <RowDefinition Height="Auto" />
@@ -447,9 +487,9 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
                                             <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
-                                                       Text="Novo funcionário" />
+                                                       Text="Adicionar funcionário" />
                                             <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
-                                                       Text="Cadastre um acesso operacional, gerente ou administrador para a adega." />
+                                                       Text="Crie um acesso individual e defina o nível de permissão na equipe." />
                                         </StackPanel>
                                         <Button Grid.Column="2"
                                                 MinWidth="132"
@@ -471,11 +511,13 @@
                                         <StackPanel>
                                             <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Usuário" />
                                             <TextBox Text="{Binding NewEmployeeUsername, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="Nome usado para entrar no Girofy"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Senha" />
                                             <PasswordBox x:Name="NewEmployeePasswordInput"
+                                                         ToolTip="Senha inicial do funcionário"
                                                          PasswordChanged="HandleNewEmployeePasswordChanged"
                                                          Style="{StaticResource PasswordInputStyle}" />
                                         </StackPanel>
@@ -501,40 +543,35 @@
                                             <ColumnDefinition Width="10" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="10" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="10" />
-                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Text="{Binding NewEmployeeLastName, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{StaticResource TextInputStyle}"
-                                                 ToolTip="Sobrenome" />
-                                        <TextBox Grid.Column="2"
-                                                 Text="{Binding NewEmployeeCpf, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{StaticResource TextInputStyle}"
-                                                 ToolTip="CPF" />
-                                        <TextBox Grid.Column="4"
-                                                 Text="{Binding NewEmployeeEmail, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{StaticResource TextInputStyle}"
-                                                 ToolTip="E-mail" />
-                                        <Button Grid.Column="6"
-                                                MinWidth="112"
-                                                Command="{Binding ClearNewEmployeeCommand}"
-                                                Content="Limpar"
-                                                Style="{StaticResource SecondaryButtonStyle}" />
-                                        <Button Grid.Column="8"
-                                                MinWidth="136"
-                                                Command="{Binding CreateEmployeeCommand}"
-                                                Content="Cadastrar"
-                                                Style="{StaticResource PrimaryButtonStyle}" />
+                                        <StackPanel><TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Sobrenome" />
+                                            <TextBox Text="{Binding NewEmployeeLastName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                                        <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource SettingsLabelStyle}" Text="CPF" />
+                                            <TextBox Text="{Binding NewEmployeeCpf, UpdateSourceTrigger=PropertyChanged}" ToolTip="Somente números" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                                        <StackPanel Grid.Column="4"><TextBlock Style="{StaticResource SettingsLabelStyle}" Text="E-mail" />
+                                            <TextBox Text="{Binding NewEmployeeEmail, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                                        <StackPanel Grid.Column="6"><TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Telefone" />
+                                            <TextBox Text="{Binding NewEmployeePhone, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                                    </Grid>
+
+                                    <Grid Grid.Row="6">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="10" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Cada funcionário deve usar seu próprio acesso para manter a auditoria correta." TextWrapping="Wrap" />
+                                        <Button Grid.Column="1" MinWidth="112" Command="{Binding ClearNewEmployeeCommand}"
+                                                Content="Limpar" Style="{StaticResource SecondaryButtonStyle}" />
+                                        <Button Grid.Column="3" MinWidth="166" Command="{Binding CreateEmployeeCommand}"
+                                                Content="Adicionar à equipe" Style="{StaticResource PrimaryButtonStyle}" />
                                     </Grid>
                                 </Grid>
                             </Border>
 
-                            <Grid Grid.Row="2">
+                            <Grid Grid.Row="4">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.05*" />
+                                    <ColumnDefinition Width="1.15*" />
                                     <ColumnDefinition Width="16" />
-                                    <ColumnDefinition Width="1.45*" />
+                                    <ColumnDefinition Width="1.85*" />
                                 </Grid.ColumnDefinitions>
 
                                 <Border Style="{StaticResource SettingsInnerPanelStyle}">
@@ -546,9 +583,10 @@
                                             <RowDefinition Height="10" />
                                             <RowDefinition Height="*" />
                                         </Grid.RowDefinitions>
-                                        <TextBlock FontWeight="Bold"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                                   Text="Buscar funcionário" />
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Funcionários" />
+                                            <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}" Text="Pesquise e selecione um acesso para editar." />
+                                        </StackPanel>
                                         <Grid Grid.Row="2">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -557,7 +595,7 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBox Text="{Binding TeamSearch, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}"
-                                                     ToolTip="Buscar funcionário" />
+                                                     ToolTip="Nome, usuário ou e-mail" />
                                             <Button Grid.Column="2"
                                                     MinWidth="92"
                                                     Command="{Binding RefreshTeamCommand}"
@@ -572,13 +610,21 @@
                                                   CanUserAddRows="False"
                                                   IsReadOnly="True"
                                                   HeadersVisibility="Column"
+                                                  RowHeight="52"
                                                   SelectionMode="Single">
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="Funcionário" Binding="{Binding DisplayName}" Width="*" />
-                                                <DataGridTextColumn Header="Perfil" Binding="{Binding RoleLabel}" Width="112" />
-                                                <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="82" />
+                                                <DataGridTextColumn Header="Usuário" Binding="{Binding Username}" Width="120" />
+                                                <DataGridTextColumn Header="Perfil" Binding="{Binding RoleLabel}" Width="100" />
+                                                <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="78" />
                                             </DataGrid.Columns>
                                         </DataGrid>
+                                        <TextBlock Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" Text="Nenhum funcionário encontrado.">
+                                            <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers><DataTrigger Binding="{Binding HasTeamMembers}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                            </Style></TextBlock.Style>
+                                        </TextBlock>
                                     </Grid>
                                 </Border>
 
@@ -591,12 +637,24 @@
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="12" />
                                             <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="12" />
+                                            <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
-                                        <TextBlock FontWeight="Bold"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                                   Text="Editar funcionário selecionado" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Gerenciar acesso" />
+                                                <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
+                                                           Text="{Binding SelectedEmployee.DisplayName, TargetNullValue='Selecione um funcionário na lista'}" />
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Padding="12,6" VerticalAlignment="Center"
+                                                    Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}"
+                                                    BorderThickness="1" CornerRadius="12">
+                                                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding SelectedEmployee.Username, TargetNullValue='Sem seleção'}" />
+                                            </Border>
+                                        </Grid>
 
-                                        <Grid Grid.Row="2">
+                                        <Grid Grid.Row="2" IsEnabled="{Binding HasSelectedEmployee}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="10" />
@@ -621,39 +679,29 @@
                                             </StackPanel>
                                         </Grid>
 
-                                        <Grid Grid.Row="4">
+                                        <Grid Grid.Row="4" IsEnabled="{Binding HasSelectedEmployee}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="10" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="10" />
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="10" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="10" />
-                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Text="{Binding EmployeeEmail, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{StaticResource TextInputStyle}"
-                                                     ToolTip="E-mail" />
-                                            <TextBox Grid.Column="2"
-                                                     Text="{Binding EmployeePhone, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{StaticResource TextInputStyle}"
-                                                     ToolTip="Telefone" />
-                                            <ComboBox Grid.Column="4"
-                                                      ItemsSource="{Binding RoleOptions}"
-                                                      DisplayMemberPath="Label"
-                                                      SelectedValuePath="Value"
-                                                      SelectedValue="{Binding EmployeeRole, UpdateSourceTrigger=PropertyChanged}" />
-                                            <CheckBox Grid.Column="6"
-                                                      VerticalAlignment="Center"
-                                                      Content="Ativo"
-                                                      Foreground="{DynamicResource TextPrimaryBrush}"
-                                                      IsChecked="{Binding EmployeeIsActive}" />
-                                            <Button Grid.Column="8"
-                                                    MinWidth="122"
+                                            <StackPanel><TextBlock Style="{StaticResource SettingsLabelStyle}" Text="E-mail" />
+                                                <TextBox Text="{Binding EmployeeEmail, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                                            <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Telefone" />
+                                                <TextBox Text="{Binding EmployeePhone, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TextInputStyle}" /></StackPanel>
+                                            <StackPanel Grid.Column="4"><TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Perfil" />
+                                                <ComboBox ItemsSource="{Binding RoleOptions}" DisplayMemberPath="Label" SelectedValuePath="Value"
+                                                          SelectedValue="{Binding EmployeeRole, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                        </Grid>
+                                        <Grid Grid.Row="6" IsEnabled="{Binding HasSelectedEmployee}">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <CheckBox VerticalAlignment="Center" Content="Acesso ativo"
+                                                      Foreground="{DynamicResource TextPrimaryBrush}" IsChecked="{Binding EmployeeIsActive}" />
+                                            <Button Grid.Column="1" MinWidth="166"
                                                     Command="{Binding SaveEmployeeCommand}"
-                                                    Content="Salvar"
+                                                    Content="Salvar alterações"
                                                     Style="{StaticResource PrimaryButtonStyle}" />
                                         </Grid>
                                     </Grid>

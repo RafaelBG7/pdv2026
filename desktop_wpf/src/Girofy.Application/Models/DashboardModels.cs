@@ -32,6 +32,12 @@ public static class DashboardFormatting
         return parsed?.ToString("dd/MM/yyyy HH:mm", BrazilianCulture) ?? "Data não informada";
     }
 
+    public static DateOnly BusinessToday()
+    {
+        var now = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, BusinessTimeZone);
+        return DateOnly.FromDateTime(now.DateTime);
+    }
+
     private static TimeZoneInfo ResolveBusinessTimeZone()
     {
         foreach (var identifier in new[] { "E. South America Standard Time", "America/Sao_Paulo" })

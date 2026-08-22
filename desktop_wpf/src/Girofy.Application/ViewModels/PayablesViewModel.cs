@@ -30,12 +30,13 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     private string _description = string.Empty;
     private string _categoryText = "Outros";
     private string _amountText = "0,00";
-    private string _dueDateText = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private string _dueDateText = DashboardFormatting.BusinessToday().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     private string _notes = string.Empty;
     private string _errorMessage = string.Empty;
     private string _successMessage = string.Empty;
     private bool _isBusy;
     private bool _isInitialized;
+    private bool _hasLoaded;
     private PayableSummary _summary = new();
 
     public PayablesViewModel(
@@ -48,6 +49,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         ApplyFiltersCommand = new AsyncRelayCommand(LoadAsync, () => IsAvailable && !IsBusy);
         CreatePayableCommand = new AsyncRelayCommand(CreatePayableAsync, () => CanManagePayables && !IsBusy);
         ClearFormCommand = new RelayCommand(ClearForm);
+        ClearFiltersCommand = new RelayCommand(ClearFilters);
         FilterByStatusCommand = new RelayCommand<string>(status => _ = FilterByStatusAsync(status));
         PayPayableCommand = new RelayCommand<PayableRecord>(
             payable => _ = PayAsync(payable, CancellationToken.None),
@@ -73,7 +75,14 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     public string SearchText
     {
         get => _searchText;
-        set => SetProperty(ref _searchText, value);
+        set
+        {
+            if (SetProperty(ref _searchText, value))
+            {
+                OnPropertyChanged(nameof(HasActiveFilters));
+                OnPropertyChanged(nameof(EmptyStateMessage));
+            }
+        }
     }
 
     public CatalogFilterOption SelectedStatus
@@ -86,6 +95,8 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(IsPendingFilter));
                 OnPropertyChanged(nameof(IsPaidFilter));
                 OnPropertyChanged(nameof(IsAllFilter));
+                OnPropertyChanged(nameof(HasActiveFilters));
+                OnPropertyChanged(nameof(EmptyStateMessage));
             }
         }
     }
@@ -99,19 +110,40 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     public string SelectedCategory
     {
         get => _selectedCategory;
-        set => SetProperty(ref _selectedCategory, value);
+        set
+        {
+            if (SetProperty(ref _selectedCategory, value))
+            {
+                OnPropertyChanged(nameof(HasActiveFilters));
+                OnPropertyChanged(nameof(EmptyStateMessage));
+            }
+        }
     }
 
     public string StartDateText
     {
         get => _startDateText;
-        set => SetProperty(ref _startDateText, value);
+        set
+        {
+            if (SetProperty(ref _startDateText, value))
+            {
+                OnPropertyChanged(nameof(HasActiveFilters));
+                OnPropertyChanged(nameof(EmptyStateMessage));
+            }
+        }
     }
 
     public string EndDateText
     {
         get => _endDateText;
-        set => SetProperty(ref _endDateText, value);
+        set
+        {
+            if (SetProperty(ref _endDateText, value))
+            {
+                OnPropertyChanged(nameof(HasActiveFilters));
+                OnPropertyChanged(nameof(EmptyStateMessage));
+            }
+        }
     }
 
     public string Description
@@ -180,6 +212,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _isBusy, value))
             {
                 NotifyCommandState();
+                OnPropertyChanged(nameof(ShowEmptyState));
             }
         }
     }
@@ -190,6 +223,20 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
 
     public bool HasItems => Payables.Count > 0;
 
+    public bool HasLoaded => _hasLoaded;
+
+    public bool ShowEmptyState => HasLoaded && !IsBusy && !HasItems && !HasError;
+
+    public bool HasActiveFilters => !string.IsNullOrWhiteSpace(SearchText) ||
+        SelectedCategory != "Todas" ||
+        !string.IsNullOrWhiteSpace(StartDateText) ||
+        !string.IsNullOrWhiteSpace(EndDateText) ||
+        SelectedStatus.Value != "open";
+
+    public string EmptyStateMessage => HasActiveFilters
+        ? "Nenhuma conta corresponde aos filtros informados."
+        : "Nenhuma conta cadastrada.";
+
     public AsyncRelayCommand RefreshCommand { get; }
 
     public AsyncRelayCommand ApplyFiltersCommand { get; }
@@ -197,6 +244,8 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand CreatePayableCommand { get; }
 
     public RelayCommand ClearFormCommand { get; }
+
+    public RelayCommand ClearFiltersCommand { get; }
 
     public RelayCommand<string> FilterByStatusCommand { get; }
 
@@ -252,6 +301,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
 
         var session = RequireSession();
         IsBusy = true;
+        OnPropertyChanged(nameof(ShowEmptyState));
         ClearMessages();
         try
         {
@@ -276,6 +326,10 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
             SyncCategories(snapshot.Categories);
             OnPropertyChanged(nameof(HasItems));
             _isInitialized = true;
+            _hasLoaded = true;
+            OnPropertyChanged(nameof(HasLoaded));
+            OnPropertyChanged(nameof(HasActiveFilters));
+            OnPropertyChanged(nameof(EmptyStateMessage));
         }
         catch (Exception exception)
         {
@@ -284,6 +338,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         finally
         {
             IsBusy = false;
+            OnPropertyChanged(nameof(ShowEmptyState));
         }
     }
 
@@ -420,7 +475,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         request = new PayableMutationRequest(string.Empty, string.Empty, 0, string.Empty, string.Empty);
         if (string.IsNullOrWhiteSpace(Description))
         {
-            ErrorMessage = "Informe a descricao da conta.";
+            ErrorMessage = "Informe a descrição da conta.";
             return false;
         }
         if (!TryParseMoney(AmountText, out var amount) || amount <= 0)
@@ -431,7 +486,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         var dueDate = NormalizeDate(DueDateText);
         if (dueDate is null)
         {
-            ErrorMessage = "Informe um vencimento valido.";
+            ErrorMessage = "Informe um vencimento válido.";
             return false;
         }
 
@@ -454,7 +509,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         }
 
         var formats = new[] { "yyyy-MM-dd", "dd/MM/yyyy", "d/M/yyyy" };
-        return DateTime.TryParseExact(
+        return DateOnly.TryParseExact(
             text,
             formats,
             CultureInfo.GetCultureInfo("pt-BR"),
@@ -483,7 +538,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
 
     private AuthSession RequireSession() => _sessionContext.Current
         ?? throw new GirofyApiException(
-            "Sua sessao terminou. Entre novamente para continuar.",
+            "Sua sessão terminou. Entre novamente para continuar.",
             "session_required",
             401);
 
@@ -493,8 +548,8 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         {
             GirofyApiException apiException => apiException.Message,
             TaskCanceledException => "O servidor demorou para responder. Tente novamente.",
-            HttpRequestException => "Nao foi possivel consultar as contas agora.",
-            _ => "Nao foi possivel carregar contas a pagar. Tente novamente.",
+            HttpRequestException => "Não foi possível consultar as contas agora.",
+            _ => "Não foi possível carregar contas a pagar. Tente novamente.",
         };
     }
 
@@ -509,8 +564,20 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         Description = string.Empty;
         CategoryText = "Outros";
         AmountText = "0,00";
-        DueDateText = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        DueDateText = DashboardFormatting.BusinessToday().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         Notes = string.Empty;
+    }
+
+    private void ClearFilters()
+    {
+        SearchText = string.Empty;
+        SelectedCategory = "Todas";
+        StartDateText = string.Empty;
+        EndDateText = string.Empty;
+        SelectedStatus = StatusOptions.FirstOrDefault(option => option.Value == "open")
+            ?? new CatalogFilterOption("open", "Abertas");
+        OnPropertyChanged(nameof(HasActiveFilters));
+        OnPropertyChanged(nameof(EmptyStateMessage));
     }
 
     private void NotifyCommandState()
@@ -539,7 +606,10 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         ClearForm();
         ClearMessages();
         _isInitialized = false;
+        _hasLoaded = false;
         OnPropertyChanged(nameof(HasItems));
+        OnPropertyChanged(nameof(HasLoaded));
+        OnPropertyChanged(nameof(ShowEmptyState));
         NotifyCommandState();
     }
 

@@ -24,12 +24,15 @@ public sealed class PayablesSnapshot
 public sealed class PayableSummary
 {
     [JsonPropertyName("open_amount")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     public decimal OpenAmount { get; init; }
 
     [JsonPropertyName("overdue_amount")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     public decimal OverdueAmount { get; init; }
 
     [JsonPropertyName("due_soon_amount")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     public decimal DueSoonAmount { get; init; }
 
     [JsonPropertyName("open_count")]
@@ -63,6 +66,7 @@ public sealed class PayableRecord
     public string Category { get; init; } = "Outros";
 
     [JsonPropertyName("amount")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     public decimal Amount { get; init; }
 
     [JsonPropertyName("due_date")]
@@ -107,7 +111,7 @@ public sealed class PayableRecord
             return "Sem vencimento";
         }
 
-        return DateTime.TryParse(value, BrazilianCulture, DateTimeStyles.AssumeLocal, out var parsed)
+        return DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
             ? parsed.ToString("dd/MM/yyyy", BrazilianCulture)
             : value;
     }

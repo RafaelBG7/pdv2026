@@ -56,6 +56,9 @@
                                Text="Cadastre despesas como aluguel, luz e fornecedores." />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox Width="150" Margin="0,0,8,0" ItemsSource="{Binding StatusOptions}"
+                              SelectedItem="{Binding SelectedStatus}" DisplayMemberPath="Label"
+                              ToolTip="Filtrar contas por status" />
                     <Button Command="{Binding FilterByStatusCommand}" CommandParameter="open" Content="Pendentes"
                             Tag="{Binding IsPendingFilter}" Style="{StaticResource PayablesStatusButtonStyle}" />
                     <Button Command="{Binding FilterByStatusCommand}" CommandParameter="paid" Content="Pagas"
@@ -71,7 +74,11 @@
                     <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers><DataTrigger Binding="{Binding HasError}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                     </Style></Border.Style>
-                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
+                        <Button Grid.Column="1" Margin="12,0,0,0" MinWidth="96" Command="{Binding RefreshCommand}" Content="Tentar novamente" Style="{StaticResource SecondaryButtonStyle}" />
+                    </Grid>
                 </Border>
                 <Border Padding="12" Background="{DynamicResource SuccessSurfaceBrush}"
                         BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="8">
@@ -148,8 +155,12 @@
                             <TextBox Text="{Binding StartDateText, UpdateSourceTrigger=PropertyChanged}" ToolTip="DD/MM/AAAA" Style="{StaticResource TextInputStyle}" /></StackPanel>
                         <StackPanel Grid.Column="6"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Data final" />
                             <TextBox Text="{Binding EndDateText, UpdateSourceTrigger=PropertyChanged}" ToolTip="DD/MM/AAAA" Style="{StaticResource TextInputStyle}" /></StackPanel>
-                        <Button Grid.Column="8" MinWidth="112" VerticalAlignment="Bottom" Command="{Binding ApplyFiltersCommand}"
-                                Content="Filtrar" Style="{StaticResource PrimaryButtonStyle}" />
+                        <StackPanel Grid.Column="8" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <Button MinWidth="96" Margin="0,0,8,0" Command="{Binding ClearFiltersCommand}"
+                                    Content="Limpar" Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button MinWidth="112" Command="{Binding ApplyFiltersCommand}"
+                                    Content="Filtrar" Style="{StaticResource PrimaryButtonStyle}" />
+                        </StackPanel>
                     </Grid>
                 </Grid>
             </Border>
@@ -180,11 +191,20 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{DynamicResource FontSizeInput}"
-                               Foreground="{DynamicResource TextSecondaryBrush}" Text="Nenhuma conta encontrada.">
-                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible" />
-                            <Style.Triggers><DataTrigger Binding="{Binding HasItems}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                               Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding EmptyStateMessage}">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers><DataTrigger Binding="{Binding ShowEmptyState}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                         </Style></TextBlock.Style>
                     </TextBlock>
+                    <Border Background="#66000000" CornerRadius="10">
+                        <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsBusy}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                        </Style></Border.Style>
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ProgressBar Width="180" Height="6" IsIndeterminate="True" />
+                            <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource TextPrimaryBrush}" Text="Carregando contas..." />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>

@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload, sessionmaker
 
 from app.extensions import db, limiter
+from app.money import money_json, parse_money_decimal
 from app.backup import BACKUP_FREQUENCIES, create_company_backup
 from app.models import (
     ActivationKey,
@@ -1252,7 +1253,7 @@ def payable_data(payable, today=None):
         'id': payable.id,
         'description': payable.description,
         'category': payable.category or 'Outros',
-        'amount': round(float(payable.amount or 0), 2),
+        'amount': money_json(payable.amount),
         'due_date': payable.due_date.isoformat() if payable.due_date else None,
         'paid': bool(payable.paid),
         'paid_at': utc_isoformat(payable.paid_at),
@@ -1275,7 +1276,7 @@ def payable_filter_options():
 
 
 def payable_snapshot(db_session, company_id, status_filter, search, category, start_date, end_date):
-    today = date.today()
+    today = business_today()
     query = db_session.query(Payable).filter(Payable.company_id == company_id)
     if search:
         pattern = f'%{search}%'
@@ -1329,17 +1330,17 @@ def payable_snapshot(db_session, company_id, status_filter, search, category, st
     return {
         'items': [payable_data(payable, today) for payable in items],
         'summary': {
-            'open_amount': round(float(sum(item.amount or 0 for item in open_items)), 2),
-            'overdue_amount': round(float(sum(
+            'open_amount': money_json(sum((item.amount or 0 for item in open_items), Decimal('0.00'))),
+            'overdue_amount': money_json(sum((
                 item.amount or 0
                 for item in open_items
                 if payable_status_value(item, today) == 'overdue'
-            )), 2),
-            'due_soon_amount': round(float(sum(
+            ), Decimal('0.00'))),
+            'due_soon_amount': money_json(sum((
                 item.amount or 0
                 for item in open_items
                 if payable_status_value(item, today) in {'due_today', 'near_due'}
-            )), 2),
+            ), Decimal('0.00'))),
             'open_count': len(open_items),
             'paid_count': paid_count,
         },
@@ -3187,7 +3188,12 @@ def api_payables():
         start_date = parse_optional_query_date_argument('start_date')
         end_date = parse_optional_query_date_argument('end_date')
         if start_date and end_date and end_date < start_date:
-            start_date, end_date = end_date, start_date
+            raise ApiAuthError(
+                'A data final não pode ser anterior à data inicial.',
+                'invalid_date_range',
+                422,
+                'end_date',
+            )
 
         with api_tenant_database(g.api_user) as tenant_db:
             snapshot = payable_snapshot(
@@ -3210,19 +3216,20 @@ def api_create_payable():
     try:
         payload = json_object_body()
         description = json_text(payload, 'description', required=True, max_length=180)
-        category = json_text(payload, 'category', required=False, default='Outros', max_length=80)
+        category = json_text(payload, 'category', required=False, max_length=80) or 'Outros'
         if category not in PAYABLE_CATEGORIES:
             category = 'Outros'
-        amount = json_money(payload, 'amount')
-        if amount <= 0:
+        try:
+            amount = parse_money_decimal(payload.get('amount'), positive=True)
+        except ValueError as error:
             raise ApiAuthError(
-                'O valor da conta precisa ser maior que zero.',
+                'O valor da conta precisa ser monetário, maior que zero e estar no intervalo permitido.',
                 'invalid_money',
                 422,
                 'amount',
-            )
+            ) from error
         due_date = json_required_date(payload, 'due_date')
-        notes = json_text(payload, 'notes', required=False, default='', max_length=2000)
+        notes = json_text(payload, 'notes', required=False, max_length=2000)
 
         with api_tenant_database(g.api_user) as tenant_db:
             try:
@@ -3230,7 +3237,7 @@ def api_create_payable():
                     company_id=g.api_user.company_id,
                     description=description,
                     category=category,
-                    amount=float(amount),
+                    amount=amount,
                     due_date=due_date,
                     notes=notes,
                 )
@@ -3244,7 +3251,7 @@ def api_create_payable():
                     new_values={
                         'description': description,
                         'category': category,
-                        'amount': round(float(amount), 2),
+                        'amount': money_json(amount),
                         'due_date': due_date.isoformat(),
                     },
                     company_id=g.api_user.company_id,
@@ -3259,6 +3266,13 @@ def api_create_payable():
         return api_success(response_data, 201)
     except ApiAuthError as error:
         return api_auth_error_response(error)
+    except IntegrityError:
+        current_app.logger.exception('Falha de integridade ao cadastrar conta a pagar.')
+        return api_failure(
+            'Não foi possível cadastrar a conta. Atualize os dados e tente novamente.',
+            'payable_integrity_error',
+            409,
+        )
 
 
 @api_v1_bp.post('/payables/<int:payable_id>/pay')
@@ -3284,6 +3298,7 @@ def api_pay_payable(payable_id):
                         user=g.api_user,
                         db_session=tenant_db,
                     )
+                    sync_operational_notifications(tenant_db, g.api_user.company_id)
                     tenant_db.commit()
                 response_data = payable_data(payable)
             except Exception:
@@ -3316,6 +3331,7 @@ def api_reopen_payable(payable_id):
                         user=g.api_user,
                         db_session=tenant_db,
                     )
+                    sync_operational_notifications(tenant_db, g.api_user.company_id)
                     tenant_db.commit()
                 response_data = payable_data(payable)
             except Exception:

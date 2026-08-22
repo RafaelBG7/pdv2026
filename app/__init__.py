@@ -9,10 +9,12 @@ from sqlalchemy.orm import joinedload
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.extensions import db, limiter, login_manager, migrate
+from app.money import format_brl
 from app.error_logging import log_http_error, setup_error_logging
 from app.security.csrf import init_csrf
 from app.security.rate_limit import init_rate_limit_errors
 from config import Config
+from app.time_utils import business_today
 
 
 def ensure_mysql_database_exists(database_uri):
@@ -670,7 +672,7 @@ def create_app(config_class=Config):
                     'key': notification_key,
                 })
 
-            today = date.today()
+            today = business_today()
             alert_limit = today + timedelta(days=3)
             payables = tenant_db.query(Payable).filter(
                 Payable.company_id == company.id,
@@ -679,7 +681,7 @@ def create_app(config_class=Config):
             ).order_by(Payable.due_date.asc(), Payable.description.asc()).all() if tenant_db and company else []
 
             for payable in payables[:10]:
-                amount = f'R$ {(payable.amount or 0):.2f}'.replace('.', ',')
+                amount = format_brl(payable.amount or 0)
                 if payable.due_date < today:
                     days = (today - payable.due_date).days
                     title = 'Conta vencida'

@@ -1,11 +1,12 @@
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 
 from app.models import Notification, NotificationPreference, Payable, Product
-from app.time_utils import utc_isoformat
+from app.money import format_brl
+from app.time_utils import business_today, utc_isoformat
 
 
 SEVERITIES = ('info', 'success', 'warning', 'critical')
@@ -323,7 +324,7 @@ def sync_operational_notifications(db_session, company_id):
             )
         _resolve_other_entity_notifications(db_session, company_id, 'product', product.id, active_key)
 
-    today = date.today()
+    today = business_today()
     alert_limit = today + timedelta(days=3)
     payables = db_session.query(Payable).filter(
         Payable.company_id == company_id,
@@ -333,7 +334,7 @@ def sync_operational_notifications(db_session, company_id):
     active_payable_ids = set()
     for payable in payables:
         active_payable_ids.add(payable.id)
-        amount = f'R$ {(payable.amount or 0):.2f}'.replace('.', ',')
+        amount = format_brl(payable.amount or 0)
         if payable.due_date < today:
             days = (today - payable.due_date).days
             alert_type, severity, title = 'payable_overdue', 'critical', 'Conta vencida'
@@ -358,7 +359,7 @@ def sync_operational_notifications(db_session, company_id):
             entity_type='payable',
             entity_id=payable.id,
             action_url='/payables',
-            metadata={'amount': payable.amount or 0, 'due_date': payable.due_date.isoformat()},
+            metadata={'amount': str(payable.amount or 0), 'due_date': payable.due_date.isoformat()},
         )
         _resolve_other_entity_notifications(db_session, company_id, 'payable', payable.id, active_key)
 

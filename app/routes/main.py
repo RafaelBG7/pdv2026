@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
+from app.money import format_brl as format_brl_decimal, parse_money_decimal
 from app.models import AuditLog, CashRegister, Category, Company, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.permissions import authorize_role_override, has_permission_view_override, permission_required
 from app.services.audit_service import audit_action_label, entity_label, record_audit_event
@@ -27,6 +28,7 @@ from app.services.sale_service import (
     create_sale,
     find_completed_sale_request,
 )
+from app.services.notification_service import sync_operational_notifications
 from app.security.rate_limit import redis_health_status
 from app.services.stock_service import (
     MOVEMENT_TYPE_LABELS,
@@ -38,6 +40,7 @@ from app.services.stock_service import (
     stock_source_label,
 )
 from app.tenant import current_tenant_company, tenant_session
+from app.time_utils import business_today
 
 main_bp = Blueprint('main', __name__)
 PAYMENT_METHODS = {
@@ -102,7 +105,7 @@ def safe_local_redirect(default_endpoint='main.dashboard'):
 def payable_status(payable):
     if payable.paid:
         return 'paid'
-    today = date.today()
+    today = business_today()
     if payable.due_date < today:
         return 'overdue'
     if payable.due_date == today:
@@ -1368,48 +1371,86 @@ def payables():
     if request.method == 'POST':
         description = request.form.get('description', '').strip()
         category = request.form.get('category', 'Outros').strip() or 'Outros'
-        amount = parse_money(request.form.get('amount'))
+        try:
+            amount = parse_money_decimal(request.form.get('amount'), positive=True)
+        except ValueError:
+            amount = None
         due_date = parse_date(request.form.get('due_date'))
         notes = request.form.get('notes', '').strip()
 
         if not description:
             flash('Informe a descrição da conta.', 'danger')
+        elif amount is None:
+            flash('Informe um valor monetário válido e maior que zero.', 'danger')
         elif not due_date:
             flash('Informe uma data de vencimento válida.', 'danger')
         else:
             tenant_db = tenant_session()
-            payable = Payable(
-                company_id=current_tenant_company().id,
-                description=description,
-                category=category if category in PAYABLE_CATEGORIES else 'Outros',
-                amount=amount,
-                due_date=due_date,
-                notes=notes,
-            )
-            tenant_db.add(payable)
-            tenant_db.flush()
-            record_audit_event(
-                'payable_created',
-                'payable',
-                payable.id,
-                f'Conta {payable.description} cadastrada.',
-                new_values={
-                    'description': payable.description,
-                    'category': payable.category,
-                    'amount': payable.amount,
-                    'due_date': payable.due_date,
-                },
-                company_id=current_tenant_company().id,
-                db_session=tenant_db,
-            )
-            tenant_db.commit()
+            try:
+                payable = Payable(
+                    company_id=current_tenant_company().id,
+                    description=description,
+                    category=category if category in PAYABLE_CATEGORIES else 'Outros',
+                    amount=amount,
+                    due_date=due_date,
+                    notes=notes,
+                )
+                tenant_db.add(payable)
+                tenant_db.flush()
+                record_audit_event(
+                    'payable_created',
+                    'payable',
+                    payable.id,
+                    f'Conta {payable.description} cadastrada.',
+                    new_values={
+                        'description': payable.description,
+                        'category': payable.category,
+                        'amount': str(payable.amount),
+                        'due_date': payable.due_date.isoformat(),
+                    },
+                    company_id=current_tenant_company().id,
+                    db_session=tenant_db,
+                )
+                tenant_db.commit()
+            except IntegrityError:
+                tenant_db.rollback()
+                flash('Não foi possível cadastrar a conta. Revise os dados e tente novamente.', 'danger')
+                return redirect(url_for('main.payables'))
             flash('Conta a pagar cadastrada com sucesso.', 'success')
             return redirect(url_for('main.payables'))
 
-    status_filter = request.args.get('status', 'open')
+    status_filter = (request.args.get('status') or 'open').strip().casefold()
+    search = (request.args.get('q') or '').strip()[:160]
+    category_filter = (request.args.get('category') or 'all').strip()
+    start_date = parse_date(request.args.get('start_date'))
+    end_date = parse_date(request.args.get('end_date'))
+    today = business_today()
     query = tenant_query(Payable)
+    if search:
+        pattern = f'%{search}%'
+        query = query.filter(or_(
+            Payable.description.ilike(pattern),
+            Payable.category.ilike(pattern),
+            Payable.notes.ilike(pattern),
+        ))
+    if category_filter != 'all':
+        query = query.filter(Payable.category == category_filter)
+    if start_date:
+        query = query.filter(Payable.due_date >= start_date)
+    if end_date:
+        query = query.filter(Payable.due_date <= end_date)
     if status_filter == 'paid':
         query = query.filter_by(paid=True)
+    elif status_filter == 'overdue':
+        query = query.filter(Payable.paid.is_(False), Payable.due_date < today)
+    elif status_filter == 'due_today':
+        query = query.filter(Payable.paid.is_(False), Payable.due_date == today)
+    elif status_filter == 'near_due':
+        query = query.filter(
+            Payable.paid.is_(False),
+            Payable.due_date > today,
+            Payable.due_date <= today + timedelta(days=3),
+        )
     elif status_filter == 'all':
         pass
     else:
@@ -1419,9 +1460,9 @@ def payables():
     payables_list = query.order_by(Payable.paid.asc(), Payable.due_date.asc(), Payable.description.asc()).all()
     open_payables = tenant_query(Payable).filter_by(paid=False).all()
     totals = {
-        'open': round(sum(item.amount or 0.0 for item in open_payables), 2),
-        'overdue': round(sum(item.amount or 0.0 for item in open_payables if payable_status(item) == 'overdue'), 2),
-        'due_soon': round(sum(item.amount or 0.0 for item in open_payables if payable_status(item) in ('due_today', 'near_due')), 2),
+        'open': sum((item.amount or 0 for item in open_payables), start=parse_money_decimal('0')),
+        'overdue': sum((item.amount or 0 for item in open_payables if payable_status(item) == 'overdue'), start=parse_money_decimal('0')),
+        'due_soon': sum((item.amount or 0 for item in open_payables if payable_status(item) in ('due_today', 'near_due')), start=parse_money_decimal('0')),
     }
 
     return render_template(
@@ -1429,10 +1470,15 @@ def payables():
         payables=payables_list,
         categories=PAYABLE_CATEGORIES,
         status_filter=status_filter,
+        search=search,
+        category_filter=category_filter,
+        start_date=start_date,
+        end_date=end_date,
         payable_status=payable_status,
         payable_status_label=payable_status_label,
         totals=totals,
-        today=date.today(),
+        today=business_today(),
+        format_brl_value=format_brl_decimal,
     )
 
 
@@ -1441,6 +1487,9 @@ def payables():
 @permission_required('can_manage_payables')
 def pay_payable(payable_id):
     payable = tenant_get_or_404(Payable, payable_id)
+    if payable.paid:
+        flash('A conta já estava marcada como paga.', 'info')
+        return redirect(url_for('main.payables', status='paid'))
     old_values = {'paid': payable.paid, 'paid_at': payable.paid_at}
     payable.paid = True
     payable.paid_at = datetime.now(timezone.utc)
@@ -1454,6 +1503,7 @@ def pay_payable(payable_id):
         company_id=current_tenant_company().id,
         db_session=tenant_session(),
     )
+    sync_operational_notifications(tenant_session(), current_tenant_company().id)
     tenant_session().commit()
     flash('Conta marcada como paga.', 'success')
     return redirect(url_for('main.payables'))
@@ -1464,6 +1514,9 @@ def pay_payable(payable_id):
 @permission_required('can_manage_payables')
 def reopen_payable(payable_id):
     payable = tenant_get_or_404(Payable, payable_id)
+    if not payable.paid:
+        flash('A conta já estava em aberto.', 'info')
+        return redirect(url_for('main.payables'))
     old_values = {'paid': payable.paid, 'paid_at': payable.paid_at}
     payable.paid = False
     payable.paid_at = None
@@ -1477,6 +1530,7 @@ def reopen_payable(payable_id):
         company_id=current_tenant_company().id,
         db_session=tenant_session(),
     )
+    sync_operational_notifications(tenant_session(), current_tenant_company().id)
     tenant_session().commit()
     flash('Conta reaberta.', 'info')
     return redirect(url_for('main.payables', status='all'))

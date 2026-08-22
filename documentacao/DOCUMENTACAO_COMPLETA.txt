@@ -1729,3 +1729,64 @@ Os documentos em docs/ e o arquivo histórico ROADMAP_CONTINUIDADE.txt podem ser
 como registro de decisões anteriores, mas não são necessários para compreender o
 estado atual: funcionalidades, arquitetura, segurança, tecnologias, operação,
 distribuição, pendências e roadmap até a versão 1.0.0 estão reunidos aqui.
+
+
+23. CONTAS A PAGAR — CONTRATO CONSOLIDADO (22/08/2026)
+-------------------------------------------------------
+
+[DATABASE]
+A tabela payables pertence ao banco do tenant e contém id, company_id, description,
+category, amount, due_date, paid, paid_at, notes e created_at. A migration versionada
+tenant_0004 substitui FLOAT por NUMERIC(12,2), converte valores nulos legados para
+0.00, torna amount e paid obrigatórios e preserva todos os registros. O deploy deve
+executar schema_migrate antes de liberar tráfego. Rollback converte novamente para
+FLOAT apenas em emergência, podendo perder precisão e, por isso, não é a estratégia
+normal de recuperação.
+
+[BACKEND E WEB]
+O parser monetário compartilhado usa Decimal, arredondamento ROUND_HALF_UP e limite
+compatível com NUMERIC(12,2). São aceitos 65,99; 2.480,35; 19; 19,90 e números JSON
+canônicos. Texto inválido, zero, negativo, NaN, infinito e estouro são rejeitados.
+A Web exige descrição, valor positivo e vencimento ISO válido. Criação, pagamento e
+reabertura são transacionais, auditados e sempre recebem company_id da sessão. Uma
+conta paga recebe paid_at em UTC; reabrir limpa paid_at. Pagar conta já paga ou
+reabrir conta já aberta não duplica auditoria nem altera o estado.
+
+[API]
+GET /api/v1/payables lista com busca, categoria, status e período.
+POST /api/v1/payables cria a conta.
+POST /api/v1/payables/<id>/pay registra pagamento.
+POST /api/v1/payables/<id>/reopen reabre a conta.
+Todos exigem Bearer válido e can_manage_payables. O tenant vem exclusivamente do
+token. Valores são retornados como strings decimais exatas com duas casas. due_date
+é data civil YYYY-MM-DD; created_at e paid_at são timestamps UTC com Z. Erros de
+validação retornam 422; ausência retorna 404; conflito de integridade retorna 409
+sem expor SQL, stack trace, credenciais ou estrutura interna.
+
+[APP WINDOWS]
+PayablesViewModel carrega resumo, categorias, status e contas; pesquisa e filtra por
+texto, categoria e datas; cria; paga; reabre; atualiza imediatamente após mutações;
+exibe sucesso e erro seguro; oferece retry, limpar filtros, loading e estados vazios
+distintos. Amount é decimal no DTO e aceita string decimal da API por compatibilidade.
+O vencimento é tratado com DateOnly, sem conversão de fuso. created_at e paid_at são
+convertidos de UTC para America/Sao_Paulo antes da exibição. O formulário usa pt-BR,
+envia data canônica e bloqueia nova execução enquanto uma operação está em andamento.
+
+[ALERTAS]
+Contas vencidas, vencendo hoje ou em até três dias geram notificações conforme as
+preferências. O cálculo usa a data comercial America/Sao_Paulo. Ao pagar, alertas da
+conta são resolvidos na mesma transação. Ao reabrir, a sincronização pode recriá-los
+se o vencimento continuar dentro da janela. A chave de deduplicação impede repetição
+do mesmo alerta ativo.
+
+[SEGURANÇA]
+O cliente não controla company_id. Permissão é validada no servidor. Consultas por ID
+incluem tenant, evitando IDOR. SQLAlchemy usa parâmetros, CSRF protege a Web e tokens
+protegem a API. Logs técnicos ficam no servidor; respostas ao usuário são sanitizadas.
+
+[TESTES E ENTREGA]
+Os testes cobrem parsing monetário, valores exatos, rejeições, criação Web, contrato
+API, listagem, pagamento, reabertura, datas invertidas, loading, empty state e filtros.
+O workflow Windows executa unittest discover, dotnet test, publish self-contained,
+smoke test do executável e do instalador. O workflow OCI valida tenant_0004 antes do
+deploy e executa health checks do site e das dependências.

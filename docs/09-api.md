@@ -239,6 +239,24 @@ Conteúdo de `data`:
 As somas, agrupamentos e limites são calculados no backend para manter o cliente Windows
 leve e evitar o envio de listas completas de vendas.
 
+## Contas a pagar
+
+- `GET /api/v1/payables`: lista por `q`, `category`, `status`, `start_date` e
+  `end_date`; datas invertidas retornam HTTP 422.
+- `POST /api/v1/payables`: cria no tenant do token. `description`, `amount` e
+  `due_date` são obrigatórios. Dinheiro aceita número JSON ou texto pt-BR e é
+  validado/quantizado sem `float`.
+- `POST /api/v1/payables/<id>/pay`: marca como paga, registra `paid_at` UTC,
+  auditoria e resolve notificações vencidas.
+- `POST /api/v1/payables/<id>/reopen`: reabre, remove `paid_at`, audita e permite
+  que alertas aplicáveis sejam materializados novamente.
+
+`amount`, `open_amount`, `overdue_amount` e `due_soon_amount` são enviados como
+strings decimais exatas com duas casas (exemplo: `"2480.35"`). `due_date` é uma
+data civil ISO (`YYYY-MM-DD`), enquanto `created_at` e `paid_at` são instantes UTC
+com sufixo `Z`. Todos os endpoints exigem `can_manage_payables` e ignoram qualquer
+tentativa do cliente de escolher `company_id`.
+
 ## Relatórios da API
 
 ### `GET /api/v1/reports/summary`

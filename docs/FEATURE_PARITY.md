@@ -118,9 +118,12 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Estoque | tipo/origem/quantidade/saldos | Sim | Sim | códigos estáveis + labels e fallback legado | OK | Nenhuma |
 | Estoque | detalhe histórico/custos | Sim | Sim | snapshot persistido; custo condicionado a `can_view_reports` | OK | Nenhuma |
 | Estoque | baixa/devolução/kit | Sim | Reflete com origem distinta | sale_service | OK | Homologar cenário completo no App |
-| Contas | listar/criar/pagar/reabrir | Sim | Sim | endpoints payables | OK | Nenhuma |
+| Contas | listar/criar/pagar/reabrir | Sim | Sim | endpoints payables, Decimal(12,2), tenant do token e auditoria | OK | Homologar migration tenant_0004 na OCI |
+| Contas | valores pt-BR e precisão | Sim | Sim | aceita `65,99`, `2.480,35`, `19` e `19,90`; responde strings decimais de duas casas | OK | Nenhuma |
+| Contas | datas e horários | Data de vencimento local | DateOnly para vencimento e horário convertido para America/Sao_Paulo | datas ISO `YYYY-MM-DD`; timestamps UTC `Z` | OK | Nenhuma |
+| Contas | busca, categoria, status e período | Sim | Sim | filtros sempre escopados por company_id | OK | Nenhuma |
 | Contas | editar conta existente | Não | Não | endpoint ausente | NÃO APLICÁVEL | Definir como feature futura se necessário |
-| Contas | status e alertas | Sim | Sim | backend/notificações | OK | Nenhuma |
+| Contas | status e alertas | Sim | Sim | backend/notificações; pagar resolve e reabrir rematerializa o alerta | OK | Nenhuma |
 | Relatórios | período e indicadores | Sim | Sim | `/reports/summary` | OK | Nenhuma |
 | Relatórios | pagamentos/produtos/horários | Sim | Sim | mesma agregação | OK | Nenhuma |
 | Relatórios | representação gráfica | HTML/CSS | WPF nativo | mesmos números | DIVERGÊNCIA VISUAL | Intencional, validar visualmente |

@@ -47,7 +47,7 @@ jobs:
           TESTING: '1'
         run: |
           python scripts/schema_migrate.py --help
-          python -c "from app.services.migration_service import migration_head; assert migration_head('central') == 'central_0002'; assert migration_head('tenant') == 'tenant_0003'"
+          python -c "from app.services.migration_service import migration_head; assert migration_head('central') == 'central_0002'; assert migration_head('tenant') == 'tenant_0004'"
 
       - name: Sintaxe dos scripts de deploy
         run: |

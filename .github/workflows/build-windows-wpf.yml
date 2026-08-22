@@ -15,7 +15,11 @@ on:
       - 'desktop_wpf/**'
       - 'app/models/api_refresh_token.py'
       - 'app/models/api_sale_request.py'
+      - 'app/models/payable.py'
+      - 'app/money.py'
       - 'app/routes/api/**'
+      - 'app/services/notification_service.py'
+      - 'migrations/tenant/**'
       - 'app/services/api_auth_service.py'
       - 'app/services/dashboard_service.py'
       - 'app/services/cash_register_service.py'
@@ -31,7 +35,11 @@ on:
       - 'desktop_wpf/**'
       - 'app/models/api_refresh_token.py'
       - 'app/models/api_sale_request.py'
+      - 'app/models/payable.py'
+      - 'app/money.py'
       - 'app/routes/api/**'
+      - 'app/services/notification_service.py'
+      - 'migrations/tenant/**'
       - 'app/services/api_auth_service.py'
       - 'app/services/dashboard_service.py'
       - 'app/services/cash_register_service.py'
@@ -102,7 +110,7 @@ jobs:
         env:
           TESTING: '1'
           MAIL_SUPPRESS_SEND: '1'
-        run: python -m unittest tests.test_routes
+        run: python -m unittest discover
 
       - name: Restore solution
         run: dotnet restore desktop_wpf/Girofy.Desktop.sln

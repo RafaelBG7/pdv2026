@@ -293,13 +293,17 @@ Métodos:
 
 ### `payables`
 
+Valores monetários são armazenados em `NUMERIC(12,2)`, nunca em ponto flutuante.
+A migration tenant `tenant_0004` converte registros legados, transforma `NULL` em
+`0.00` e torna `amount`/`paid` obrigatórios sem apagar contas existentes.
+
 - `id`
 - `company_id`
 - `description`
 - `category`
-- `amount`
+- `amount` (`NUMERIC(12,2)`, não nulo)
 - `due_date`
-- `paid`
+- `paid` (booleano, não nulo)
 - `paid_at`
 - `notes`
 - `created_at`

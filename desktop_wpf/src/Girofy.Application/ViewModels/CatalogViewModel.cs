@@ -15,6 +15,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private string _searchText = string.Empty;
     private string _categorySearchText = string.Empty;
     private string _errorMessage = string.Empty;
+    private string _successMessage = string.Empty;
     private bool _isBusy;
     private bool _isProductsView = true;
     private CatalogCategory? _selectedCategory;
@@ -36,6 +37,9 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private CatalogCategory? _editorCategory;
     private bool _isProductEditorOpen;
     private bool _isEditingProduct;
+    private bool _isDeleteConfirmationOpen;
+    private bool _isDeleting;
+    private string _deleteConfirmationError = string.Empty;
     private bool _editorActive = true;
     private bool _editorIsKit;
     private CatalogProduct? _editorKitComponent;
@@ -100,7 +104,9 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         OpenEditProductCommand = new RelayCommand(OpenSelectedProduct, () => CanManageProducts && SelectedProduct is not null && !IsBusy);
         CloseProductEditorCommand = new RelayCommand(CloseProductEditor);
         SaveProductCommand = new AsyncRelayCommand(SaveProductAsync, () => CanManageProducts && IsProductEditorOpen && !IsBusy);
-        DeleteProductCommand = new AsyncRelayCommand(DeleteProductAsync, () => CanManageProducts && IsEditingProduct && SelectedProduct is not null && !IsBusy);
+        OpenDeleteProductConfirmationCommand = new RelayCommand(OpenDeleteProductConfirmation, CanRequestProductDeletion);
+        CancelDeleteProductCommand = new RelayCommand(CancelDeleteProductConfirmation, () => IsDeleteConfirmationOpen && !IsDeleting);
+        DeleteProductCommand = new AsyncRelayCommand(DeleteProductAsync, () => CanRequestProductDeletion() && IsDeleteConfirmationOpen && !IsDeleting);
         OpenNewCategoryCommand = new RelayCommand(OpenNewCategory, () => CanManageCategories && !IsBusy);
         OpenEditCategoryCommand = new RelayCommand(OpenSelectedCategory, () => CanManageCategories && SelectedCategoryRow is not null && !IsBusy);
         CloseCategoryEditorCommand = new RelayCommand(CloseCategoryEditor);
@@ -154,6 +160,20 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     }
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    public string SuccessMessage
+    {
+        get => _successMessage;
+        private set
+        {
+            if (SetProperty(ref _successMessage, value))
+            {
+                OnPropertyChanged(nameof(HasSuccess));
+            }
+        }
+    }
+
+    public bool HasSuccess => !string.IsNullOrWhiteSpace(SuccessMessage);
 
     public bool IsBusy
     {
@@ -303,7 +323,9 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         {
             if (SetProperty(ref _selectedProduct, value))
             {
+                OnPropertyChanged(nameof(DeleteConfirmationProductName));
                 OpenEditProductCommand.NotifyCanExecuteChanged();
+                OpenDeleteProductConfirmationCommand.NotifyCanExecuteChanged();
                 DeleteProductCommand.NotifyCanExecuteChanged();
             }
         }
@@ -333,6 +355,53 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             }
         }
     }
+
+    public bool IsDeleteConfirmationOpen
+    {
+        get => _isDeleteConfirmationOpen;
+        private set
+        {
+            if (SetProperty(ref _isDeleteConfirmationOpen, value))
+            {
+                OpenDeleteProductConfirmationCommand.NotifyCanExecuteChanged();
+                CancelDeleteProductCommand.NotifyCanExecuteChanged();
+                DeleteProductCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsDeleting
+    {
+        get => _isDeleting;
+        private set
+        {
+            if (SetProperty(ref _isDeleting, value))
+            {
+                OnPropertyChanged(nameof(DeleteProductButtonText));
+                OpenDeleteProductConfirmationCommand.NotifyCanExecuteChanged();
+                CancelDeleteProductCommand.NotifyCanExecuteChanged();
+                DeleteProductCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string DeleteProductButtonText => IsDeleting ? "Excluindo..." : "Excluir produto";
+
+    public string DeleteConfirmationProductName => SelectedProduct?.Name ?? string.Empty;
+
+    public string DeleteConfirmationError
+    {
+        get => _deleteConfirmationError;
+        private set
+        {
+            if (SetProperty(ref _deleteConfirmationError, value))
+            {
+                OnPropertyChanged(nameof(HasDeleteConfirmationError));
+            }
+        }
+    }
+
+    public bool HasDeleteConfirmationError => !string.IsNullOrWhiteSpace(DeleteConfirmationError);
 
     public string EditorTitle
     {
@@ -485,6 +554,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     public RelayCommand CloseProductEditorCommand { get; }
 
     public AsyncRelayCommand SaveProductCommand { get; }
+
+    public RelayCommand OpenDeleteProductConfirmationCommand { get; }
+
+    public RelayCommand CancelDeleteProductCommand { get; }
 
     public AsyncRelayCommand DeleteProductCommand { get; }
 
@@ -668,8 +741,37 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
     private void CloseProductEditor()
     {
+        CancelDeleteProductConfirmation();
         IsProductEditorOpen = false;
         ErrorMessage = string.Empty;
+    }
+
+    private bool CanRequestProductDeletion() =>
+        CanManageProducts && IsEditingProduct && SelectedProduct is not null && !IsBusy && !IsDeleting;
+
+    private void OpenDeleteProductConfirmation()
+    {
+        if (!CanRequestProductDeletion())
+        {
+            return;
+        }
+
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        DeleteConfirmationError = string.Empty;
+        OnPropertyChanged(nameof(DeleteConfirmationProductName));
+        IsDeleteConfirmationOpen = true;
+    }
+
+    private void CancelDeleteProductConfirmation()
+    {
+        if (IsDeleting)
+        {
+            return;
+        }
+
+        IsDeleteConfirmationOpen = false;
+        DeleteConfirmationError = string.Empty;
     }
 
     private async Task SaveProductAsync(CancellationToken cancellationToken)
@@ -719,28 +821,49 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
         var session = RequireSession();
         var deletedProductId = SelectedProduct.Id;
+        var deletedProductName = SelectedProduct.Name;
+        IsDeleting = true;
         IsBusy = true;
         ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        DeleteConfirmationError = string.Empty;
         try
         {
             await _apiClient.DeleteCatalogProductAsync(
                 session.AccessToken,
                 deletedProductId,
                 cancellationToken);
+            IsDeleteConfirmationOpen = false;
             IsProductEditorOpen = false;
             SelectedProduct = null;
             await LoadCatalogAsync(cancellationToken);
+            SuccessMessage = $"Produto \"{deletedProductName}\" excluído com sucesso.";
         }
         catch (Exception exception)
         {
-            SetSafeError(exception);
+            DeleteConfirmationError = GetDeleteProductError(exception);
         }
         finally
         {
             IsBusy = false;
+            IsDeleting = false;
             NotifyNavigationState();
         }
     }
+
+    private static string GetDeleteProductError(Exception exception) => exception switch
+    {
+        GirofyApiException { StatusCode: 409 } =>
+            "Este produto possui histórico de vendas ou é usado como base de kit. Inative-o em vez de excluir.",
+        GirofyApiException { StatusCode: 403 } =>
+            "Você não possui permissão para excluir este produto.",
+        GirofyApiException { StatusCode: 404 } =>
+            "Este produto não foi encontrado. Atualize a lista e tente novamente.",
+        GirofyApiException apiException => apiException.Message,
+        TaskCanceledException => "O servidor demorou para responder. Tente novamente.",
+        HttpRequestException => "Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.",
+        _ => "Não foi possível excluir o produto agora. Tente novamente.",
+    };
 
     private void OpenNewCategory()
     {
@@ -1133,6 +1256,8 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         OpenNewProductCommand.NotifyCanExecuteChanged();
         OpenEditProductCommand.NotifyCanExecuteChanged();
         SaveProductCommand.NotifyCanExecuteChanged();
+        OpenDeleteProductConfirmationCommand.NotifyCanExecuteChanged();
+        CancelDeleteProductCommand.NotifyCanExecuteChanged();
         DeleteProductCommand.NotifyCanExecuteChanged();
         OpenNewCategoryCommand.NotifyCanExecuteChanged();
         OpenEditCategoryCommand.NotifyCanExecuteChanged();
@@ -1160,6 +1285,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         SelectedSort = SortOptions[0];
         CategorySearchText = string.Empty;
         ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        IsDeleteConfirmationOpen = false;
+        IsDeleting = false;
+        DeleteConfirmationError = string.Empty;
         Page = 1;
         TotalPages = 0;
         TotalProducts = 0;

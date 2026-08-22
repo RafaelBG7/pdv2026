@@ -1,4 +1,5 @@
 using Girofy.Application.Abstractions;
+using Girofy.Application.Exceptions;
 using Girofy.Application.Formatting;
 using Girofy.Application.Models;
 using Girofy.Application.Services;
@@ -373,7 +374,7 @@ public sealed class CatalogViewModelTests
     }
 
     [Fact]
-    public async Task Delete_existing_product_calls_api_and_closes_editor()
+    public async Task Request_delete_opens_confirmation_without_calling_api()
     {
         var sessionContext = new AppSessionContext();
         sessionContext.Set(CreateSession());
@@ -383,10 +384,97 @@ public sealed class CatalogViewModelTests
 
         viewModel.SelectedProduct = viewModel.Products[0];
         viewModel.OpenEditProductCommand.Execute(null);
-        await viewModel.DeleteProductCommand.ExecuteAsync();
+        viewModel.OpenDeleteProductConfirmationCommand.Execute(null);
+
+        Assert.True(viewModel.IsDeleteConfirmationOpen);
+        Assert.Null(apiClient.DeletedProductId);
+    }
+
+    [Fact]
+    public async Task Cancel_delete_closes_only_confirmation_and_keeps_product_editor()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedProduct = viewModel.Products[0];
+        viewModel.OpenEditProductCommand.Execute(null);
+        viewModel.OpenDeleteProductConfirmationCommand.Execute(null);
+        viewModel.CancelDeleteProductCommand.Execute(null);
+
+        Assert.False(viewModel.IsDeleteConfirmationOpen);
+        Assert.True(viewModel.IsProductEditorOpen);
+        Assert.Null(apiClient.DeletedProductId);
+    }
+
+    [Fact]
+    public async Task Confirm_delete_calls_api_once_and_closes_editor()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedProduct = viewModel.Products[0];
+        viewModel.OpenEditProductCommand.Execute(null);
+        viewModel.OpenDeleteProductConfirmationCommand.Execute(null);
+        var firstExecution = viewModel.DeleteProductCommand.ExecuteAsync();
+        var secondExecution = viewModel.DeleteProductCommand.ExecuteAsync();
+        await Task.WhenAll(firstExecution, secondExecution);
 
         Assert.Equal(9, apiClient.DeletedProductId);
+        Assert.Equal(1, apiClient.DeleteProductRequestCount);
+        Assert.False(viewModel.IsDeleteConfirmationOpen);
         Assert.False(viewModel.IsProductEditorOpen);
+        Assert.True(viewModel.HasSuccess);
+    }
+
+    [Fact]
+    public async Task Delete_conflict_keeps_product_and_shows_friendly_error()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient
+        {
+            DeleteProductException = new GirofyApiException("database constraint", "product_in_use", 409),
+        };
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        var product = viewModel.Products[0];
+
+        viewModel.SelectedProduct = product;
+        viewModel.OpenEditProductCommand.Execute(null);
+        viewModel.OpenDeleteProductConfirmationCommand.Execute(null);
+        await viewModel.DeleteProductCommand.ExecuteAsync();
+
+        Assert.True(viewModel.IsDeleteConfirmationOpen);
+        Assert.True(viewModel.IsProductEditorOpen);
+        Assert.Same(product, viewModel.SelectedProduct);
+        Assert.Contains("histórico de vendas", viewModel.DeleteConfirmationError);
+        Assert.Contains("Inative-o", viewModel.DeleteConfirmationError);
+    }
+
+    [Fact]
+    public async Task Delete_network_failure_keeps_product_and_shows_safe_error()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient { DeleteProductException = new HttpRequestException("host details") };
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        var product = viewModel.Products[0];
+
+        viewModel.SelectedProduct = product;
+        viewModel.OpenEditProductCommand.Execute(null);
+        viewModel.OpenDeleteProductConfirmationCommand.Execute(null);
+        await viewModel.DeleteProductCommand.ExecuteAsync();
+
+        Assert.True(viewModel.IsDeleteConfirmationOpen);
+        Assert.Same(product, viewModel.SelectedProduct);
+        Assert.Equal("Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.", viewModel.DeleteConfirmationError);
     }
 
     [Fact]
@@ -514,6 +602,10 @@ public sealed class CatalogViewModelTests
         public int? UpdatedProductId { get; private set; }
 
         public int? DeletedProductId { get; private set; }
+
+        public int DeleteProductRequestCount { get; private set; }
+
+        public Exception? DeleteProductException { get; init; }
 
         public CatalogCategoryMutationRequest? CreatedCategoryRequest { get; private set; }
 
@@ -704,6 +796,11 @@ public sealed class CatalogViewModelTests
         {
             LastAccessToken = accessToken;
             DeletedProductId = productId;
+            DeleteProductRequestCount++;
+            if (DeleteProductException is not null)
+            {
+                return Task.FromException(DeleteProductException);
+            }
             return Task.CompletedTask;
         }
 

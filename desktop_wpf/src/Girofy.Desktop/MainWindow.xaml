@@ -819,6 +819,22 @@
                                        Text="{Binding Catalog.ErrorMessage}" TextWrapping="Wrap" />
                         </Border>
 
+                        <Border Grid.Row="4" Padding="12" Background="{DynamicResource SuccessSurfaceBrush}"
+                                BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="5">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Catalog.HasSuccess}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
+                                       Text="{Binding Catalog.SuccessMessage}" TextWrapping="Wrap" />
+                        </Border>
+
                         <Grid Grid.Row="6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="300" />
@@ -1283,8 +1299,7 @@
                                                    Foreground="{DynamicResource TextMutedBrush}"
                                                    Text="Os valores usam o mesmo cadastro da versão web." />
                                         <Button Grid.Column="1" MinWidth="120"
-                                                Click="DeleteSelectedProduct_Click"
-                                                CommandParameter="{Binding Catalog.SelectedProduct}"
+                                                Command="{Binding Catalog.OpenDeleteProductConfirmationCommand}"
                                                 Content="Excluir produto">
                                             <Button.Style>
                                                 <Style TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}">
@@ -1307,6 +1322,7 @@
                                 </Grid>
                             </Border>
                         </Grid>
+
                     </Grid>
 
                     <Grid>
@@ -1521,6 +1537,91 @@
                   Visibility="Collapsed">
                 <views:NotificationsPopoverView DataContext="{Binding Notifications}" />
             </Grid>
+        </Grid>
+        <Grid Panel.ZIndex="300" Background="{DynamicResource OverlaySoftBrush}"
+              IsVisibleChanged="ProductDeleteConfirmation_IsVisibleChanged">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Catalog.IsDeleteConfirmationOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Border Width="560" MaxWidth="560" Margin="24" Padding="24"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{DynamicResource SurfaceElevatedBrush}"
+                    BorderBrush="{DynamicResource ErrorBorderBrush}"
+                    BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" /><RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="10" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="46" Height="46" CornerRadius="23" Background="{DynamicResource ErrorSurfaceBrush}">
+                            <Viewbox Width="22" Height="22"><Canvas Width="24" Height="24">
+                                <Path Stroke="{DynamicResource ErrorBrush}" StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Data="M9,3 H15 M4,6 H20 M7,6 L8,21 H16 L17,6 M10,10 V17 M14,10 V17" />
+                            </Canvas></Viewbox>
+                        </Border>
+                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="{DynamicResource FontSizeTitle}"
+                                   FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Excluir produto" />
+                        <Button Grid.Column="3" Width="38" Height="38" Padding="0"
+                                Command="{Binding Catalog.CancelDeleteProductCommand}"
+                                AutomationProperties.Name="Fechar confirmação de exclusão"
+                                Style="{StaticResource SecondaryButtonStyle}">
+                            <Viewbox Width="14" Height="14"><Canvas Width="16" Height="16">
+                                <Path Stroke="{DynamicResource TextPrimaryBrush}" StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M3,3 L13,13 M13,3 L3,13" />
+                            </Canvas></Viewbox>
+                        </Button>
+                    </Grid>
+                    <TextBlock Grid.Row="2" FontSize="{DynamicResource FontSizeBody}"
+                               Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
+                        <Run Text="Tem certeza de que deseja excluir &quot;" />
+                        <Run FontWeight="Bold" Text="{Binding Catalog.DeleteConfirmationProductName}" />
+                        <Run Text="&quot;?" />
+                    </TextBlock>
+                    <TextBlock Grid.Row="4" FontSize="{DynamicResource FontSizeCaption}"
+                               Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"
+                               Text="Produtos com vendas ou usados como base de kit não podem ser excluídos. Nesse caso, inative o produto." />
+                    <Border Grid.Row="6" Padding="11" Background="{DynamicResource ErrorSurfaceBrush}"
+                            BorderBrush="{DynamicResource ErrorBorderBrush}" BorderThickness="1" CornerRadius="7">
+                        <Border.Style><Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers><DataTrigger Binding="{Binding Catalog.HasDeleteConfirmationError}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger></Style.Triggers>
+                        </Style></Border.Style>
+                        <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
+                                   Text="{Binding Catalog.DeleteConfirmationError}" TextWrapping="Wrap" />
+                    </Border>
+                    <Grid Grid.Row="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="CancelProductDeleteButton" Grid.Column="1" MinWidth="112"
+                                Command="{Binding Catalog.CancelDeleteProductCommand}"
+                                Content="Cancelar" Style="{StaticResource SecondaryButtonStyle}"
+                                IsTabStop="True" TabIndex="0" />
+                        <Button Grid.Column="3" MinWidth="150" Command="{Binding Catalog.DeleteProductCommand}"
+                                Content="{Binding Catalog.DeleteProductButtonText}"
+                                Style="{StaticResource DangerButtonStyle}" IsTabStop="True" TabIndex="1" />
+                    </Grid>
+                </Grid>
+            </Border>
         </Grid>
         <Grid Panel.ZIndex="100"
               Background="{DynamicResource OverlaySoftBrush}"

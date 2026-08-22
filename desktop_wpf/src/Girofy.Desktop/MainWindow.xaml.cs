@@ -58,6 +58,16 @@ public partial class MainWindow : Window
 
     private async void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _viewModel.Catalog.IsDeleteConfirmationOpen)
+        {
+            if (_viewModel.Catalog.CancelDeleteProductCommand.CanExecute(null))
+            {
+                _viewModel.Catalog.CancelDeleteProductCommand.Execute(null);
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key != Key.F3 ||
             !_viewModel.Login.IsAuthenticated ||
             !_viewModel.IsDashboardView ||
@@ -161,27 +171,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void DeleteSelectedProduct_Click(object sender, RoutedEventArgs e)
+    private void ProductDeleteConfirmation_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        var product = _viewModel.Catalog.SelectedProduct;
-        if (product is null || !_viewModel.Catalog.DeleteProductCommand.CanExecute(null))
+        if (e.NewValue is not true)
         {
             return;
         }
 
-        var confirmation = MessageBox.Show(
-            this,
-            $"Excluir o produto '{product.Name}'?\n\nProdutos com vendas ou usados como base de kit não podem ser excluídos. Nesse caso, inative o produto.",
-            "Confirmar exclusão",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-        if (confirmation != MessageBoxResult.Yes)
-        {
-            return;
-        }
-
-        await _viewModel.Catalog.DeleteProductCommand.ExecuteAsync();
+        Dispatcher.InvokeAsync(() => CancelProductDeleteButton.Focus(), DispatcherPriority.Input);
     }
 
     private void ProductsGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

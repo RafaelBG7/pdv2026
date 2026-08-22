@@ -607,6 +607,40 @@ produto incompleto. A orientação “Digite o código ou escaneie com o leitor�
 junto ao campo. Duplicidade é apresentada com a mensagem devolvida pela API e não
 é decidida apenas pelo cliente.
 
+A exclusão de Produto no APP usa confirmação visual interna do Girofy, e não uma
+janela nativa do Windows. Ao selecionar “Excluir produto”, o ViewModel apenas abre
+um overlay modal sobre o editor, mantendo a entidade selecionada e sem enviar a
+requisição. O cartão apresenta o nome exato do produto, alerta que itens com
+histórico de vendas ou usados como base de kit devem ser inativados e oferece as
+ações “Cancelar” e “Excluir produto”. O fundo é bloqueado enquanto a confirmação
+está aberta. O foco inicial fica em Cancelar; Tab percorre primeiro Cancelar e
+depois Excluir; Enter não confirma implicitamente; Esc e o botão X cancelam apenas
+a confirmação e preservam o editor do produto.
+
+Durante a confirmação, a exclusão continua usando o DeleteProductCommand e o
+contrato DELETE /api/v1/catalog/products/<id>. O comando impede execução paralela,
+desabilita as ações e exibe “Excluindo...” até a resposta. As regras críticas não
+foram duplicadas no cliente: permissão can_manage_products, isolamento por tenant,
+bloqueio por histórico de vendas, bloqueio quando o produto é base de kit e
+auditoria permanecem no backend/product_service. Em sucesso, confirmação e editor
+são fechados, a grade é recarregada pela API e o APP mostra retorno interno de
+sucesso. Em falha, o produto permanece selecionado e o modal continua aberto.
+
+Tratamento interno da exclusão no APP:
+- HTTP 409: informa que há histórico de vendas ou uso como base de kit e orienta
+  a inativação;
+- HTTP 403: informa ausência de permissão;
+- HTTP 404: orienta atualizar a lista porque o produto não foi encontrado;
+- timeout: informa demora do servidor;
+- falha de rede: orienta verificar a conexão;
+- demais respostas da API: usa a mensagem segura do contrato, sem expor stack
+  trace ou detalhes técnicos.
+
+O modal usa exclusivamente DynamicResource para superfície, textos, bordas,
+overlay, erro e estados de interação, acompanhando tema claro/escuro, contraste e
+espessura de borda configurados no APP. O ícone de lixeira é vetorial em XAML e
+não depende de emoji, arquivo externo ou fonte específica.
+
 Categorias são listadas separadamente e podem ser criadas, editadas ou excluídas
 conforme permissão. O cadastro e a edição usam popup modal no mesmo padrão de
 Produtos: overlay que bloqueia interação acidental com o conteúdo ao fundo,
@@ -1506,7 +1540,12 @@ Correções entregues nesta revisão:
    - produto vendido não pode ser removido: deve ser inativado;
    - produto usado como base de kit não pode ser removido;
    - exclusão bem-sucedida gera auditoria;
-   - o App confirma a ação destrutiva antes da chamada.
+   - o App confirma a ação destrutiva antes da chamada em modal Girofy interno;
+   - Cancelar, X e Esc fecham somente a confirmação e não chamam a API;
+   - confirmação repetida é bloqueada enquanto a requisição está em andamento;
+   - sucesso fecha editor/modal, atualiza a grade e mostra feedback interno;
+   - conflito 409, permissão, item inexistente, timeout e rede possuem mensagens
+     seguras dentro do próprio modal.
 
 2. Cadastro e edição de kits
    - POST/PUT de produto aceitam identificação de kit, produto-base e consumo;
@@ -1519,8 +1558,10 @@ Correções entregues nesta revisão:
 3. Cobertura
    - foram adicionados testes de rota para exclusão, conflito com kit, tenant e
      criação válida de kit;
-   - foram adicionados testes do CatalogViewModel para exclusão, serialização de
-     kit, margem e apresentação da composição;
+   - foram adicionados testes do CatalogViewModel para abertura/cancelamento da
+     confirmação, exclusão única, fechamento após sucesso, conflito 409, falha de
+     rede, preservação do produto em erro, serialização de kit, margem e
+     apresentação da composição;
    - alterações de estoque continuam obrigatoriamente passando por
      stock_service e gerando movimento.
 

@@ -17,7 +17,7 @@ namespace Girofy.Desktop.Views;
 public partial class SalesView : UserControl
 {
     private const double CompactSaleEditorWidth = 1100d;
-    private const double CompactPaymentWidth = 900d;
+    private const double CompactPaymentWidth = 640d;
     private static readonly CultureInfo BrazilianCulture = new("pt-BR");
     private static readonly Regex DigitsOnlyRegex = new(@"^\d+$", RegexOptions.Compiled);
     private readonly BarcodeScannerInputService _barcodeScanner = new();

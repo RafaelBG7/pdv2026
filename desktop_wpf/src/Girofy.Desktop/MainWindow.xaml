@@ -1311,8 +1311,8 @@
                                                                         <StackPanel>
                                                                             <TextBlock FontWeight="{DynamicResource FontWeightStrong}" Text="{Binding Name}" />
                                                                             <TextBlock FontSize="{DynamicResource FontSizeTiny}" Foreground="{DynamicResource TextMutedBrush}">
-                                                                                <Run Text="Código: " /><Run Text="{Binding BarcodeText}" />
-                                                                                <Run Text=" · Estoque: " /><Run Text="{Binding StockText}" />
+                                                                                <Run Text="Código: " /><Run Text="{Binding BarcodeText, Mode=OneWay}" />
+                                                                                <Run Text=" · Estoque: " /><Run Text="{Binding StockText, Mode=OneWay}" />
                                                                             </TextBlock>
                                                                         </StackPanel>
                                                                         <TextBlock Grid.Column="1" Margin="12,0,4,0" VerticalAlignment="Center"

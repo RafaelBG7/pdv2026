@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Mvvm;
 
@@ -64,6 +65,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         ShowAuditCommand = new AsyncRelayCommand(ShowAuditAsync);
         ShowNotificationsCommand = new AsyncRelayCommand(ShowNotificationsAsync);
         ShowSettingsCommand = new AsyncRelayCommand(ShowSettingsAsync);
+        Sales.PropertyChanged += HandleSalesPropertyChanged;
     }
 
     public LoginViewModel Login { get; }
@@ -319,5 +321,14 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _navigationCancellation?.Cancel();
+        Sales.PropertyChanged -= HandleSalesPropertyChanged;
+    }
+
+    private void HandleSalesPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SalesViewModel.IsAvailable))
+        {
+            StartSaleCommand.NotifyCanExecuteChanged();
+        }
     }
 }

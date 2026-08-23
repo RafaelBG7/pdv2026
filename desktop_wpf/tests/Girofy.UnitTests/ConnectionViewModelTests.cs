@@ -8,6 +8,59 @@ namespace Girofy.UnitTests;
 public sealed class ConnectionViewModelTests
 {
     [Fact]
+    public async Task Dashboard_start_sale_is_available_on_first_session_load()
+    {
+        var sessionContext = new AppSessionContext();
+        using var viewModel = CreateConnectionViewModel(new StubApiClient(new HealthStatus()), sessionContext);
+
+        sessionContext.Set(CreateSession(canManageSales: true));
+        await viewModel.Dashboard.InitializeAsync();
+
+        Assert.True(viewModel.IsDashboardView);
+        Assert.True(viewModel.StartSaleCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void Start_sale_notifies_can_execute_when_permissions_finish_loading()
+    {
+        var sessionContext = new AppSessionContext();
+        using var viewModel = CreateConnectionViewModel(new StubApiClient(new HealthStatus()), sessionContext);
+        var notifications = 0;
+        viewModel.StartSaleCommand.CanExecuteChanged += (_, _) => notifications++;
+
+        Assert.False(viewModel.StartSaleCommand.CanExecute(null));
+        sessionContext.Set(CreateSession(canManageSales: true));
+
+        Assert.True(notifications > 0);
+        Assert.True(viewModel.StartSaleCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void Dashboard_start_sale_remains_blocked_without_sales_permission()
+    {
+        var sessionContext = new AppSessionContext();
+        using var viewModel = CreateConnectionViewModel(new StubApiClient(new HealthStatus()), sessionContext);
+
+        sessionContext.Set(CreateSession(canManageSales: false));
+
+        Assert.False(viewModel.StartSaleCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task Dashboard_start_sale_remains_available_after_navigation_reentry()
+    {
+        var sessionContext = new AppSessionContext();
+        using var viewModel = CreateConnectionViewModel(new StubApiClient(new HealthStatus()), sessionContext);
+        sessionContext.Set(CreateSession(canManageSales: true));
+
+        await viewModel.ShowProductsCommand.ExecuteAsync();
+        Assert.False(viewModel.StartSaleCommand.CanExecute(null));
+
+        await viewModel.ShowDashboardCommand.ExecuteAsync();
+        Assert.True(viewModel.StartSaleCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task InitializeAsync_marks_server_as_connected_when_health_is_valid()
     {
         var apiClient = new StubApiClient(new HealthStatus
@@ -75,6 +128,54 @@ public sealed class ConnectionViewModelTests
             new AppSessionContext(),
             new ForgotPasswordViewModel(new StubPasswordRecoveryService()),
             new Uri("https://girofy.example/login?auth_tab=register"));
+
+    private static ConnectionViewModel CreateConnectionViewModel(
+        IGirofyApiClient apiClient,
+        AppSessionContext sessionContext) =>
+        new(
+            apiClient,
+            new StubBrowserService(),
+            new Uri("https://girofy.example"),
+            new LoginViewModel(
+                apiClient,
+                new StubSessionStore(),
+                new StubPreferencesStore(),
+                new StubBrowserService(),
+                sessionContext,
+                new ForgotPasswordViewModel(new StubPasswordRecoveryService()),
+                new Uri("https://girofy.example/login?auth_tab=register")),
+            new CatalogViewModel(apiClient, sessionContext),
+            new DashboardViewModel(apiClient, sessionContext),
+            new CashRegisterViewModel(apiClient, sessionContext),
+            new SalesViewModel(apiClient, sessionContext),
+            new StockViewModel(apiClient, sessionContext),
+            new PayablesViewModel(apiClient, sessionContext),
+            new ReportsViewModel(apiClient, sessionContext),
+            new AuditViewModel(apiClient, sessionContext),
+            new NotificationsViewModel(apiClient, sessionContext, enablePolling: false),
+            new SettingsViewModel(
+                apiClient,
+                sessionContext,
+                new StubBrowserService(),
+                new StubFileSaveService(),
+                new StubFilePickerService(),
+                new Uri("https://girofy.example/configuracoes")));
+
+    private static AuthSession CreateSession(bool canManageSales) => new()
+    {
+        AccessToken = "access-token",
+        RefreshToken = "refresh-token",
+        User = new UserIdentity
+        {
+            Id = 1,
+            Username = "operator",
+            Permissions = new Dictionary<string, bool>
+            {
+                ["can_manage_sales"] = canManageSales,
+            },
+        },
+        Company = new CompanyIdentity { Id = 1, Name = "Adega JF", Active = true },
+    };
 
     private static CatalogViewModel CreateCatalogViewModel(IGirofyApiClient apiClient) =>
         new(apiClient, new AppSessionContext());

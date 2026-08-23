@@ -374,6 +374,168 @@ public sealed class CatalogViewModelTests
     }
 
     [Fact]
+    public async Task Kit_component_search_uses_active_paginated_api_and_selects_by_id()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient
+        {
+            SearchProductResults =
+            [
+                new CatalogProduct
+                {
+                    Id = 44,
+                    Name = "Água Mineral 500ml",
+                    Barcode = "78944",
+                    SalePrice = 4.5m,
+                    StockQuantity = 12,
+                    Active = true,
+                },
+            ],
+        };
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorIsKit = true;
+
+        viewModel.EditorKitComponentSearchText = "78944";
+        await WaitUntilAsync(() => viewModel.KitComponentSuggestions.Count == 1);
+
+        Assert.Equal("78944", apiClient.LastSearch);
+        Assert.Equal("active", apiClient.LastActiveFilter);
+        Assert.Equal(1, apiClient.LastPage);
+        viewModel.ConfirmSelectedKitComponentSuggestion();
+        Assert.Equal(44, viewModel.EditorKitComponent?.Id);
+        Assert.Equal("Água Mineral 500ml", viewModel.EditorKitComponentSearchText);
+    }
+
+    [Fact]
+    public async Task Typing_after_component_selection_invalidates_it_and_unmarking_kit_clears_state()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        using var viewModel = new CatalogViewModel(new StubApiClient(), sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorIsKit = true;
+        viewModel.EditorKitComponent = new CatalogProduct { Id = 20, Name = "Base" };
+        viewModel.EditorKitComponentSearchText = "Base";
+
+        viewModel.EditorKitComponentSearchText = "Outra";
+        Assert.Null(viewModel.EditorKitComponent);
+
+        viewModel.EditorKitComponentQuantity = "3";
+        viewModel.EditorIsKit = false;
+        Assert.Empty(viewModel.EditorKitComponentSearchText);
+        Assert.Empty(viewModel.KitComponentSuggestions);
+        Assert.Equal("0", viewModel.EditorKitComponentQuantity);
+    }
+
+    [Fact]
+    public async Task Kit_component_search_excludes_product_being_edited()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient
+        {
+            SearchProductResults =
+            [
+                new CatalogProduct { Id = 9, Name = "Coca Cola 2L", Active = true },
+                new CatalogProduct { Id = 10, Name = "Coca Cola Lata", Active = true },
+            ],
+        };
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.SelectedProduct = viewModel.Products[0];
+        viewModel.OpenEditProductCommand.Execute(null);
+        viewModel.EditorIsKit = true;
+
+        viewModel.EditorKitComponentSearchText = "coca";
+        await WaitUntilAsync(() => viewModel.KitComponentSuggestions.Count == 1);
+
+        Assert.DoesNotContain(viewModel.KitComponentSuggestions, product => product.Id == 9);
+        Assert.Equal(10, viewModel.KitComponentSuggestions[0].Id);
+    }
+
+    [Fact]
+    public async Task Kit_component_search_debounces_and_discards_stale_response()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient
+        {
+            ProductSearchHandler = async (search, _) =>
+            {
+                await Task.Delay(search == "coca" ? 300 : 20);
+                return
+                [
+                    new CatalogProduct
+                    {
+                        Id = search == "coca" ? 51 : 52,
+                        Name = search == "coca" ? "Coca Cola" : "Heineken",
+                        Active = true,
+                    },
+                ];
+            },
+        };
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorIsKit = true;
+
+        var requestsBefore = apiClient.ProductListRequestCount;
+        viewModel.EditorKitComponentSearchText = "coca";
+        await Task.Delay(260);
+        viewModel.EditorKitComponentSearchText = "heineken";
+        await WaitUntilAsync(() => viewModel.KitComponentSuggestions.Any(product => product.Id == 52));
+        await Task.Delay(300);
+
+        Assert.Equal(requestsBefore + 2, apiClient.ProductListRequestCount);
+        Assert.Single(viewModel.KitComponentSuggestions);
+        Assert.Equal("Heineken", viewModel.KitComponentSuggestions[0].Name);
+    }
+
+    [Fact]
+    public async Task Existing_kit_loads_component_and_network_error_preserves_form()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient
+        {
+            InitialProductResults =
+            [
+                new CatalogProduct
+                {
+                    Id = 90,
+                    Name = "Kit Festa",
+                    Active = true,
+                    IsKit = true,
+                    KitComponent = new CatalogCategoryReference { Id = 44, Name = "Refrigerante Base" },
+                    KitComponentQuantity = 2,
+                },
+            ],
+            ProductSearchHandler = (_, _) => throw new HttpRequestException("offline"),
+        };
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.SelectedProduct = viewModel.Products[0];
+        viewModel.OpenEditProductCommand.Execute(null);
+
+        Assert.Equal(44, viewModel.EditorKitComponent?.Id);
+        Assert.Equal("Refrigerante Base", viewModel.EditorKitComponentSearchText);
+        Assert.Equal("2", viewModel.EditorKitComponentQuantity);
+
+        viewModel.EditorName = "Kit Festa Atualizado";
+        viewModel.ClearKitComponentCommand.Execute(null);
+        viewModel.EditorKitComponentSearchText = "água";
+        await WaitUntilAsync(() => viewModel.HasKitComponentSearchMessage);
+
+        Assert.Equal("Kit Festa Atualizado", viewModel.EditorName);
+        Assert.Equal("Não foi possível pesquisar. Tente novamente.", viewModel.KitComponentSearchMessage);
+        Assert.True(viewModel.IsProductEditorOpen);
+    }
+
+    [Fact]
     public async Task Request_delete_opens_confirmation_without_calling_api()
     {
         var sessionContext = new AppSessionContext();
@@ -571,6 +733,16 @@ public sealed class CatalogViewModelTests
         Company = new CompanyIdentity { Id = 2, Name = "Adega JF" },
     };
 
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var timeout = DateTime.UtcNow.AddSeconds(2);
+        while (!condition() && DateTime.UtcNow < timeout)
+        {
+            await Task.Delay(25);
+        }
+        Assert.True(condition(), "A operação assíncrona não terminou no tempo esperado.");
+    }
+
     private sealed class StubApiClient : IGirofyApiClient
     {
         public string LastAccessToken { get; private set; } = string.Empty;
@@ -606,6 +778,12 @@ public sealed class CatalogViewModelTests
         public int DeleteProductRequestCount { get; private set; }
 
         public Exception? DeleteProductException { get; init; }
+
+        public IReadOnlyList<CatalogProduct>? SearchProductResults { get; init; }
+
+        public IReadOnlyList<CatalogProduct>? InitialProductResults { get; init; }
+
+        public Func<string, CancellationToken, Task<IReadOnlyList<CatalogProduct>>>? ProductSearchHandler { get; init; }
 
         public CatalogCategoryMutationRequest? CreatedCategoryRequest { get; private set; }
 
@@ -696,7 +874,7 @@ public sealed class CatalogViewModelTests
                 perPage,
                 cancellationToken);
 
-        public Task<CatalogProductList> GetCatalogProductsAsync(
+        public async Task<CatalogProductList> GetCatalogProductsAsync(
             string accessToken,
             string search,
             int? categoryId,
@@ -719,9 +897,18 @@ public sealed class CatalogViewModelTests
             LastSort = sort;
             LastPage = page;
             ProductListRequestCount++;
-            return Task.FromResult(new CatalogProductList
+            IReadOnlyList<CatalogProduct> items;
+            if (!string.IsNullOrWhiteSpace(search) && ProductSearchHandler is not null)
             {
-                Items =
+                items = await ProductSearchHandler(search, cancellationToken);
+            }
+            else if (!string.IsNullOrWhiteSpace(search) && SearchProductResults is not null)
+            {
+                items = SearchProductResults;
+            }
+            else
+            {
+                items = InitialProductResults ??
                 [
                     new CatalogProduct
                     {
@@ -732,7 +919,11 @@ public sealed class CatalogViewModelTests
                         StockQuantity = 8,
                         Active = true,
                     },
-                ],
+                ];
+            }
+            return new CatalogProductList
+            {
+                Items = items,
                 Pagination = new CatalogPagination
                 {
                     Page = page,
@@ -740,7 +931,7 @@ public sealed class CatalogViewModelTests
                     Total = 1,
                     TotalPages = 1,
                 },
-            });
+            };
         }
 
         public Task<CatalogProduct> CreateCatalogProductAsync(

@@ -1263,10 +1263,125 @@
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Produto-base" />
-                                            <ComboBox ItemsSource="{Binding Catalog.KitComponentProducts}"
-                                                      SelectedItem="{Binding Catalog.EditorKitComponent}"
-                                                      DisplayMemberPath="Name"
-                                                      IsEnabled="{Binding Catalog.EditorIsKit}" />
+                                            <Grid>
+                                                <TextBox x:Name="KitComponentSearchInput"
+                                                         Padding="12,8,38,8"
+                                                         Text="{Binding Catalog.EditorKitComponentSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                         IsEnabled="{Binding Catalog.EditorIsKit}"
+                                                         PreviewKeyDown="KitComponentSearchInput_PreviewKeyDown"
+                                                         AutomationProperties.Name="Pesquisar produto-base do kit"
+                                                         ToolTip="Busque por nome, código ou código de barras"
+                                                         Style="{StaticResource TextInputStyle}" />
+                                                <Button Width="30" Height="30" Margin="0,4,4,4"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                        Command="{Binding Catalog.ClearKitComponentCommand}"
+                                                        Content="×" ToolTip="Limpar produto-base">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Catalog.EditorKitComponentSearchText}" Value="">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </Grid>
+                                            <Border Margin="0,5,0,0" Padding="4" MaxHeight="210"
+                                                    BorderBrush="{DynamicResource BorderBrush}"
+                                                    BorderThickness="1" CornerRadius="8"
+                                                    Background="{DynamicResource SurfaceElevatedBrush}">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Catalog.IsKitComponentSuggestionsOpen}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Grid>
+                                                    <ListBox x:Name="KitComponentSuggestionsList"
+                                                             ItemsSource="{Binding Catalog.KitComponentSuggestions}"
+                                                             SelectedItem="{Binding Catalog.SelectedKitComponentSuggestion}"
+                                                             PreviewKeyDown="KitComponentSuggestionsList_PreviewKeyDown"
+                                                             BorderThickness="0" Background="Transparent"
+                                                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Button Padding="10,7" HorizontalContentAlignment="Stretch"
+                                                                        Command="{Binding DataContext.Catalog.SelectKitComponentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Style="{StaticResource SecondaryButtonStyle}">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="*" />
+                                                                            <ColumnDefinition Width="Auto" />
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <StackPanel>
+                                                                            <TextBlock FontWeight="{DynamicResource FontWeightStrong}" Text="{Binding Name}" />
+                                                                            <TextBlock FontSize="{DynamicResource FontSizeTiny}" Foreground="{DynamicResource TextMutedBrush}">
+                                                                                <Run Text="Código: " /><Run Text="{Binding BarcodeText}" />
+                                                                                <Run Text=" · Estoque: " /><Run Text="{Binding StockText}" />
+                                                                            </TextBlock>
+                                                                        </StackPanel>
+                                                                        <TextBlock Grid.Column="1" Margin="12,0,4,0" VerticalAlignment="Center"
+                                                                                   Foreground="{DynamicResource AccentBrush}" FontWeight="{DynamicResource FontWeightStrong}"
+                                                                                   Text="{Binding SalePriceText}" />
+                                                                    </Grid>
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                   Text="Pesquisando produtos...">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Catalog.IsSearchingKitComponents}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock MaxWidth="300" TextAlignment="Center" TextWrapping="Wrap"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                   Text="{Binding Catalog.KitComponentSearchMessage}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Catalog.HasKitComponentSearchMessage}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <Button Margin="0,6,0,0" Padding="12,5" Content="Tentar novamente"
+                                                                Command="{Binding Catalog.RetryKitComponentSearchCommand}">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Catalog.KitComponentSearchMessage}" Value="Não foi possível pesquisar. Tente novamente.">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                            <TextBlock Margin="2,4,0,0" FontSize="{DynamicResource FontSizeTiny}"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       Text="Busque por nome, código ou código de barras." />
                                         </StackPanel>
                                         <StackPanel Grid.Column="4">
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"

@@ -104,6 +104,33 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void KitComponentSearchInput_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Down)
+        {
+            _viewModel.Catalog.MoveKitComponentSuggestionSelection(1);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Up)
+        {
+            _viewModel.Catalog.MoveKitComponentSuggestionSelection(-1);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter)
+        {
+            _viewModel.Catalog.ConfirmSelectedKitComponentSuggestion();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            _viewModel.Catalog.CloseKitComponentSuggestions();
+            e.Handled = true;
+        }
+    }
+
+    private void KitComponentSuggestionsList_PreviewKeyDown(object sender, KeyEventArgs e) =>
+        KitComponentSearchInput_PreviewKeyDown(sender, e);
+
     private async void HandleLoaded(object sender, RoutedEventArgs e)
     {
         if (_initialized)

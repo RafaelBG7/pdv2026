@@ -147,7 +147,7 @@ public partial class SalesView : UserControl
 
             if (e.Key == Key.Escape)
             {
-                ExecuteIfAllowed(viewModel.CancelOpenCashBeforeSaleCommand);
+                ExecuteIfAllowed(viewModel.HandleSaleEscapeCommand);
                 e.Handled = true;
                 return;
             }
@@ -160,25 +160,7 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Escape && viewModel.IsSaleEditorOpen)
         {
-            if (viewModel.IsDiscardConfirmationOpen)
-            {
-                ExecuteIfAllowed(viewModel.ContinueSaleCommand);
-                FocusProductSearch();
-            }
-            else if (viewModel.IsQuantityPopupOpen)
-            {
-                ExecuteIfAllowed(viewModel.CloseQuantityPopupCommand);
-                FocusProductSearch();
-            }
-            else if (viewModel.IsDiscountPopupVisible)
-            {
-                ExecuteIfAllowed(viewModel.CloseDiscountPopupCommand);
-                FocusPaymentMethod();
-            }
-            else
-            {
-                ExecuteIfAllowed(viewModel.CloseSaleEditorCommand);
-            }
+            ExecuteIfAllowed(viewModel.HandleSaleEscapeCommand);
 
             e.Handled = true;
             return;

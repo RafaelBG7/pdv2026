@@ -125,7 +125,7 @@
             </UniformGrid>
 
             <Border Grid.Row="6" Style="{StaticResource PayablesCardStyle}">
-                <Grid>
+                <Grid behaviors:EnterCommandBehavior.Command="{Binding CreatePayableCommand}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="18" /><RowDefinition Height="Auto" />
                         <RowDefinition Height="14" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <TextBlock FontSize="{DynamicResource FontSizeCardTitle}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Nova conta" />

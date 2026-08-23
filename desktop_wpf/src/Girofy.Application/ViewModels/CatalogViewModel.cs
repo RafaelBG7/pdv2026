@@ -35,6 +35,8 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     private bool _suppressCategoryFilter;
     private CatalogProduct? _selectedProduct;
     private CatalogCategory? _editorCategory;
+    private string _editorCategorySearchText = string.Empty;
+    private bool _suppressEditorCategorySearch;
     private bool _isProductEditorOpen;
     private bool _isEditingProduct;
     private bool _isDeleteConfirmationOpen;
@@ -131,6 +133,8 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     public ObservableCollection<CatalogCategory> Categories { get; } = [];
 
     public ObservableCollection<CatalogCategory> ProductCategories { get; } = [];
+
+    public ObservableCollection<CatalogCategory> EditorCategorySuggestions { get; } = [];
 
     public ObservableCollection<CatalogCategory> CategoryRows { get; } = [];
 
@@ -440,7 +444,71 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
     public CatalogCategory? EditorCategory
     {
         get => _editorCategory;
-        set => SetProperty(ref _editorCategory, value);
+        set
+        {
+            if (!SetProperty(ref _editorCategory, value) || value is null)
+            {
+                return;
+            }
+
+            _suppressEditorCategorySearch = true;
+            try
+            {
+                EditorCategorySearchText = value.Name;
+            }
+            finally
+            {
+                _suppressEditorCategorySearch = false;
+            }
+            RefreshEditorCategorySuggestions();
+        }
+    }
+
+    public string EditorCategorySearchText
+    {
+        get => _editorCategorySearchText;
+        set
+        {
+            if (!SetProperty(ref _editorCategorySearchText, value))
+            {
+                return;
+            }
+
+            if (!_suppressEditorCategorySearch
+                && EditorCategory is not null
+                && !string.Equals(value.Trim(), EditorCategory.Name, StringComparison.CurrentCultureIgnoreCase))
+            {
+                _editorCategory = null;
+                OnPropertyChanged(nameof(EditorCategory));
+            }
+            RefreshEditorCategorySuggestions();
+            OnPropertyChanged(nameof(HasNoEditorCategoryResults));
+        }
+    }
+
+    public bool HasNoEditorCategoryResults =>
+        !string.IsNullOrWhiteSpace(EditorCategorySearchText) && EditorCategorySuggestions.Count == 0;
+
+    public void RefreshEditorCategorySuggestions()
+    {
+        var term = EditorCategorySearchText.Trim();
+        EditorCategorySuggestions.Clear();
+        foreach (var category in ProductCategories.Where(category =>
+                     string.IsNullOrEmpty(term) || ContainsIgnoringAccents(category.Name, term)))
+        {
+            EditorCategorySuggestions.Add(category);
+        }
+        OnPropertyChanged(nameof(HasNoEditorCategoryResults));
+    }
+
+    public void ShowAllEditorCategorySuggestions()
+    {
+        EditorCategorySuggestions.Clear();
+        foreach (var category in ProductCategories)
+        {
+            EditorCategorySuggestions.Add(category);
+        }
+        OnPropertyChanged(nameof(HasNoEditorCategoryResults));
     }
 
     public string EditorCostPrice
@@ -786,6 +854,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         EditorName = string.Empty;
         EditorBarcode = string.Empty;
         EditorCategory = ProductCategories.FirstOrDefault();
+        if (EditorCategory is null)
+        {
+            EditorCategorySearchText = string.Empty;
+        }
         EditorCostPrice = "0,00";
         EditorSalePrice = "0,00";
         EditorStockQuantity = "0";
@@ -814,6 +886,10 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
         EditorCategory = product.Category is { Id: > 0 }
             ? ProductCategories.FirstOrDefault(category => category.Id == product.Category.Id)
             : ProductCategories.FirstOrDefault();
+        if (EditorCategory is null)
+        {
+            EditorCategorySearchText = string.Empty;
+        }
         EditorCostPrice = FormatMoney(product.CostPrice ?? 0);
         EditorSalePrice = FormatMoney(product.SalePrice);
         EditorStockQuantity = product.StockQuantity.ToString(CultureInfo.InvariantCulture);
@@ -1131,6 +1207,7 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
                 Categories.Add(category);
                 ProductCategories.Add(category);
             }
+            RefreshEditorCategorySuggestions();
             SelectedCategory = Categories.FirstOrDefault(category => category.Id == selectedCategoryId)
                 ?? Categories.FirstOrDefault();
 
@@ -1473,6 +1550,12 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             EditorIsKit ? kitComponentQuantity : 0);
         return true;
     }
+
+    private static bool ContainsIgnoringAccents(string source, string value) =>
+        CultureInfo.GetCultureInfo("pt-BR").CompareInfo.IndexOf(
+            source,
+            value,
+            CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
 
     private bool TryBuildCategoryRequest(out CatalogCategoryMutationRequest request)
     {

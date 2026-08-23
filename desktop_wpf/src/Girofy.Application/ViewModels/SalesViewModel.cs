@@ -215,6 +215,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         FinalizeCommand = new AsyncRelayCommand(FinalizeAsync);
         OpenSaleEditorCommand = new AsyncRelayCommand(OpenSaleEditorAsync);
         CloseSaleEditorCommand = new RelayCommand(CloseSaleEditor);
+        HandleSaleEscapeCommand = new RelayCommand(HandleSaleEscape);
         ContinueSaleCommand = new RelayCommand(ContinueSale);
         ConfirmDiscardSaleCommand = new RelayCommand(ConfirmDiscardSale);
         ConfirmOpenCashBeforeSaleCommand = new AsyncRelayCommand(ConfirmOpenCashBeforeSaleAsync, () => !IsBusy);
@@ -676,6 +677,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand OpenSaleEditorCommand { get; }
 
     public RelayCommand CloseSaleEditorCommand { get; }
+
+    public RelayCommand HandleSaleEscapeCommand { get; }
 
     public RelayCommand ContinueSaleCommand { get; }
 
@@ -1498,6 +1501,46 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
 
         DiscardCurrentSale();
+    }
+
+    private void HandleSaleEscape()
+    {
+        if (IsOpenCashPromptOpen)
+        {
+            CancelOpenCashBeforeSale();
+            return;
+        }
+
+        if (!IsSaleEditorOpen)
+        {
+            return;
+        }
+
+        if (IsDiscardConfirmationOpen)
+        {
+            ContinueSale();
+            return;
+        }
+
+        if (IsQuantityPopupOpen)
+        {
+            CloseQuantityPopup();
+            return;
+        }
+
+        if (IsDiscountPopupVisible)
+        {
+            CloseDiscountPopup();
+            return;
+        }
+
+        if (HasSearchResults)
+        {
+            SearchText = string.Empty;
+            return;
+        }
+
+        CloseSaleEditor();
     }
 
     private void ContinueSale()

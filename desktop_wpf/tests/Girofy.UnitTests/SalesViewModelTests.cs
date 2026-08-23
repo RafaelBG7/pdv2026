@@ -500,6 +500,89 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Escape_closes_empty_sale_and_reopening_starts_with_a_clean_draft()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        viewModel.HandleSaleEscapeCommand.Execute(null);
+
+        Assert.False(viewModel.IsSaleEditorOpen);
+        Assert.Empty(viewModel.CartItems);
+        Assert.Empty(viewModel.SearchText);
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.True(viewModel.IsProductStepOpen);
+        Assert.Equal("R$ 0,00", viewModel.SubtotalText);
+        Assert.Equal("R$ 0,00", viewModel.TotalText);
+    }
+
+    [Fact]
+    public async Task Escape_closes_only_the_highest_sale_layer()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext())
+        {
+            SearchText = "coca",
+        };
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        await viewModel.SearchCommand.ExecuteAsync();
+        Assert.True(viewModel.HasSearchResults);
+
+        viewModel.HandleSaleEscapeCommand.Execute(null);
+
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.False(viewModel.HasSearchResults);
+        Assert.Empty(viewModel.SearchText);
+
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        Assert.True(viewModel.IsQuantityPopupOpen);
+
+        viewModel.HandleSaleEscapeCommand.Execute(null);
+
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.False(viewModel.IsQuantityPopupOpen);
+
+        viewModel.HandleSaleEscapeCommand.Execute(null);
+
+        Assert.False(viewModel.IsSaleEditorOpen);
+    }
+
+    [Fact]
+    public async Task Escape_and_close_button_share_the_same_discard_confirmation_flow()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.AddProductCommand.Execute(null);
+
+        viewModel.HandleSaleEscapeCommand.Execute(null);
+
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.True(viewModel.IsDiscardConfirmationOpen);
+        Assert.Single(viewModel.CartItems);
+
+        viewModel.HandleSaleEscapeCommand.Execute(null);
+        Assert.False(viewModel.IsDiscardConfirmationOpen);
+        Assert.Single(viewModel.CartItems);
+
+        viewModel.CloseSaleEditorCommand.Execute(null);
+        Assert.True(viewModel.IsDiscardConfirmationOpen);
+        viewModel.ConfirmDiscardSaleCommand.Execute(null);
+
+        Assert.False(viewModel.IsSaleEditorOpen);
+        Assert.Empty(viewModel.CartItems);
+        Assert.Equal("0,00", viewModel.DiscountText);
+        Assert.Equal("0,00", viewModel.MoneyText);
+        Assert.Equal("0,00", viewModel.PixText);
+        Assert.Empty(viewModel.SearchText);
+    }
+
+    [Fact]
     public async Task Closing_sale_with_items_requires_confirmation_and_discard_clears_all_draft_state()
     {
         var apiClient = new StubApiClient();

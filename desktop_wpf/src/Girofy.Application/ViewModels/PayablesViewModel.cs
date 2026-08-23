@@ -346,13 +346,13 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
                     cancellationToken);
 
                 Payables.Clear();
-                foreach (var payable in snapshot.Items)
+                foreach (var payable in snapshot.Items ?? [])
                 {
                     Payables.Add(payable);
                 }
 
-                Summary = snapshot.Summary;
-                SyncStatusOptions(snapshot.StatusOptions);
+                Summary = snapshot.Summary ?? new PayableSummary();
+                SyncStatusOptions(snapshot.StatusOptions ?? []);
                 IsSummaryAvailable = true;
                 OnPropertyChanged(nameof(HasItems));
                 _isInitialized = true;
@@ -363,11 +363,17 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
             }
             catch (Exception exception)
             {
+                Payables.Clear();
+                Summary = new PayableSummary();
                 IsSummaryAvailable = false;
+                _hasLoaded = false;
+                _isInitialized = false;
+                OnPropertyChanged(nameof(HasItems));
+                OnPropertyChanged(nameof(HasLoaded));
                 SetSafeError(exception);
             }
 
-            await LoadCategoriesCoreAsync(session.AccessToken, snapshot?.Categories, cancellationToken);
+            await LoadCategoriesCoreAsync(session.AccessToken, snapshot?.Categories ?? [], cancellationToken);
         }
         finally
         {
@@ -583,7 +589,15 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
             return false;
         }
 
-        var category = string.IsNullOrWhiteSpace(CategoryText) ? "Outros" : CategoryText.Trim();
+        var requestedCategory = string.IsNullOrWhiteSpace(CategoryText) ? "Outros" : CategoryText.Trim();
+        var category = Categories.FirstOrDefault(candidate =>
+            !string.Equals(candidate, "Todas", StringComparison.CurrentCultureIgnoreCase) &&
+            string.Equals(candidate, requestedCategory, StringComparison.CurrentCultureIgnoreCase));
+        if (category is null)
+        {
+            ErrorMessage = "Selecione uma categoria válida para a conta.";
+            return false;
+        }
         request = new PayableMutationRequest(
             Description.Trim(),
             category,

@@ -58,6 +58,18 @@ public partial class MainWindow : Window
 
     private async void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape &&
+            _viewModel.IsSalesView &&
+            (_viewModel.Sales.IsSaleEditorOpen || _viewModel.Sales.IsOpenCashPromptOpen))
+        {
+            if (_viewModel.Sales.HandleSaleEscapeCommand.CanExecute(null))
+            {
+                _viewModel.Sales.HandleSaleEscapeCommand.Execute(null);
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Escape && _viewModel.Catalog.IsDeleteConfirmationOpen)
         {
             if (_viewModel.Catalog.CancelDeleteProductCommand.CanExecute(null))
@@ -101,6 +113,41 @@ public partial class MainWindow : Window
 
         _viewModel.Catalog.CommitEditorBarcodeInput();
         textBox.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+        e.Handled = true;
+    }
+
+    private void ProductCategoryInput_DropDownOpened(object sender, EventArgs e)
+    {
+        if (_viewModel.Catalog.EditorCategory is null
+            && !string.IsNullOrWhiteSpace(_viewModel.Catalog.EditorCategorySearchText))
+        {
+            _viewModel.Catalog.RefreshEditorCategorySuggestions();
+            return;
+        }
+        _viewModel.Catalog.ShowAllEditorCategorySuggestions();
+    }
+
+    private void ProductCategoryInput_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (sender is ComboBox comboBox)
+        {
+            comboBox.Dispatcher.BeginInvoke(new Action(() => comboBox.IsDropDownOpen = true));
+        }
+    }
+
+    private void ProductCategoryInput_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is ComboBox editableComboBox && e.Key is Key.Back or Key.Delete)
+        {
+            editableComboBox.Dispatcher.BeginInvoke(new Action(() => editableComboBox.IsDropDownOpen = true));
+        }
+
+        if (e.Key != Key.Escape || sender is not ComboBox comboBox || !comboBox.IsDropDownOpen)
+        {
+            return;
+        }
+
+        comboBox.IsDropDownOpen = false;
         e.Handled = true;
     }
 

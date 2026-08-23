@@ -206,6 +206,54 @@ public sealed class PayablesViewModelTests
         Assert.Equal(0, apiClient.GetCalls);
     }
 
+    [Fact]
+    public async Task Create_payable_rejects_unknown_category_before_api_call()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new PayablesViewModel(apiClient, CreateSessionContext())
+        {
+            Description = "Conta inválida",
+            CategoryText = "Categoria inexistente",
+            AmountText = "10,00",
+            DueDateText = "30/08/2026",
+        };
+
+        await viewModel.CreatePayableCommand.ExecuteAsync();
+
+        Assert.True(viewModel.HasError);
+        Assert.Contains("categoria válida", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, apiClient.CreateCalls);
+    }
+
+    [Fact]
+    public async Task Refresh_retries_list_and_categories_after_a_transient_failure()
+    {
+        var apiClient = new StubApiClient
+        {
+            Snapshot = SnapshotWithItems(),
+            GetException = new HttpRequestException("offline"),
+            CategoriesException = new HttpRequestException("offline"),
+        };
+        using var viewModel = new PayablesViewModel(apiClient, CreateSessionContext());
+
+        await viewModel.InitializeAsync();
+        Assert.True(viewModel.HasError);
+        Assert.True(viewModel.HasCategoriesError);
+        Assert.False(viewModel.HasLoaded);
+        Assert.False(viewModel.IsSummaryAvailable);
+        Assert.Empty(viewModel.Payables);
+
+        apiClient.GetException = null;
+        apiClient.CategoriesException = null;
+        await viewModel.RefreshCommand.ExecuteAsync();
+
+        Assert.False(viewModel.HasError);
+        Assert.False(viewModel.HasCategoriesError);
+        Assert.True(viewModel.HasItems);
+        Assert.Equal(2, apiClient.GetCalls);
+        Assert.Equal(2, apiClient.CategoryCalls);
+    }
+
     [Theory]
     [InlineData("31/02/2026")]
     [InlineData("29/02/2025")]
@@ -402,7 +450,11 @@ public sealed class PayablesViewModelTests
 
         public PayableMutationRequest? CreatedRequest { get; private set; }
 
-        public Exception? CategoriesException { get; init; }
+        public Exception? GetException { get; set; }
+
+        public Exception? CategoriesException { get; set; }
+
+        public int CategoryCalls { get; private set; }
 
         public int? PaidId { get; private set; }
 
@@ -416,6 +468,10 @@ public sealed class PayablesViewModelTests
             LastAccessToken = accessToken;
             GetCalls++;
             LastQuery = query;
+            if (GetException is not null)
+            {
+                return Task.FromException<PayablesSnapshot>(GetException);
+            }
             return Task.FromResult(Snapshot);
         }
 
@@ -423,6 +479,7 @@ public sealed class PayablesViewModelTests
             string accessToken,
             CancellationToken cancellationToken)
         {
+            CategoryCalls++;
             if (CategoriesException is not null)
             {
                 return Task.FromException<IReadOnlyList<string>>(CategoriesException);

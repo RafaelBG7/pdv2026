@@ -305,6 +305,75 @@ public sealed class CatalogViewModelTests
     }
 
     [Fact]
+    public async Task Product_category_search_filters_ignoring_case_and_accents_and_invalidates_selection()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        using var viewModel = new CatalogViewModel(new StubApiClient(), sessionContext);
+        await viewModel.InitializeAsync();
+        var beer = new CatalogCategory { Id = 22, Name = "Cerveja" };
+        var softDrink = new CatalogCategory { Id = 23, Name = "Refrigeração" };
+        viewModel.ProductCategories.Add(beer);
+        viewModel.ProductCategories.Add(softDrink);
+
+        viewModel.EditorCategorySearchText = "REFRIGERACAO";
+
+        Assert.Single(viewModel.EditorCategorySuggestions);
+        Assert.Equal(23, viewModel.EditorCategorySuggestions[0].Id);
+        viewModel.EditorCategory = beer;
+        Assert.Equal("Cerveja", viewModel.EditorCategorySearchText);
+
+        viewModel.EditorCategorySearchText = "cer";
+
+        Assert.Null(viewModel.EditorCategory);
+        Assert.Contains(viewModel.EditorCategorySuggestions, category => category.Id == 22);
+    }
+
+    [Fact]
+    public async Task Unselected_category_text_does_not_generate_category_id()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorName = "Produto sem categoria selecionada";
+        viewModel.EditorSalePrice = "10,00";
+        viewModel.EditorCategorySearchText = "Categoria digitada";
+
+        await viewModel.SaveProductCommand.ExecuteAsync();
+
+        Assert.NotNull(apiClient.CreatedProductRequest);
+        Assert.Null(apiClient.CreatedProductRequest.CategoryId);
+    }
+
+    [Theory]
+    [InlineData("1,5")]
+    [InlineData("abc")]
+    [InlineData("0")]
+    public async Task Kit_quantity_rejects_non_integer_or_zero_values(string quantity)
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        viewModel.OpenNewProductCommand.Execute(null);
+        viewModel.EditorName = "Kit inválido";
+        viewModel.EditorSalePrice = "10,00";
+        viewModel.EditorIsKit = true;
+        viewModel.EditorKitComponent = viewModel.Products[0];
+        viewModel.EditorKitComponentQuantity = quantity;
+
+        await viewModel.SaveProductCommand.ExecuteAsync();
+
+        Assert.Null(apiClient.CreatedProductRequest);
+        Assert.Contains("quantidade consumida", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.True(viewModel.IsProductEditorOpen);
+    }
+
+    [Fact]
     public async Task Barcode_input_accepts_manual_or_scanner_text_and_commits_without_saving()
     {
         var sessionContext = new AppSessionContext();

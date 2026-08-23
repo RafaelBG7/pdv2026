@@ -1121,7 +1121,9 @@
                                     </Style.Triggers>
                                 </Style>
                             </Grid.Style>
-                            <Border MaxWidth="900" Margin="24" Padding="24" CornerRadius="14"
+                            <ScrollViewer Margin="24" HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                            <Border MaxWidth="900" Padding="24" CornerRadius="14"
                                     HorizontalAlignment="Stretch" VerticalAlignment="Center"
                                     Background="{DynamicResource HeroGradientBrush}"
                                     BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}">
@@ -1193,9 +1195,32 @@
                                         <StackPanel Grid.Column="4">
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Categoria" />
-                                            <ComboBox ItemsSource="{Binding Catalog.ProductCategories}"
-                                                      SelectedItem="{Binding Catalog.EditorCategory}"
-                                                      DisplayMemberPath="Name" />
+                                            <ComboBox x:Name="ProductCategoryInput"
+                                                      ItemsSource="{Binding Catalog.EditorCategorySuggestions}"
+                                                      SelectedItem="{Binding Catalog.EditorCategory, Mode=TwoWay}"
+                                                      Text="{Binding Catalog.EditorCategorySearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      DisplayMemberPath="Name"
+                                                      IsEditable="True"
+                                                      IsTextSearchEnabled="False"
+                                                      StaysOpenOnEdit="True"
+                                                      DropDownOpened="ProductCategoryInput_DropDownOpened"
+                                                      PreviewTextInput="ProductCategoryInput_PreviewTextInput"
+                                                      PreviewKeyDown="ProductCategoryInput_PreviewKeyDown"
+                                                      AutomationProperties.Name="Categoria do produto" />
+                                            <TextBlock Margin="2,4,0,0" FontSize="{DynamicResource FontSizeTiny}"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       Text="Nenhuma categoria encontrada.">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Catalog.HasNoEditorCategoryResults}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
                                         </StackPanel>
                                         <StackPanel Grid.Column="6">
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
@@ -1375,6 +1400,7 @@
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Quantidade consumida" />
                                             <TextBox Text="{Binding Catalog.EditorKitComponentQuantity, UpdateSourceTrigger=PropertyChanged}"
+                                                     behaviors:IntegerInputBehavior.IsEnabled="True"
                                                      IsEnabled="{Binding Catalog.EditorIsKit}"
                                                      ToolTip="Quantidade do produto-base consumida por unidade do kit"
                                                      Style="{StaticResource TextInputStyle}" />
@@ -1424,6 +1450,7 @@
                                     </Grid>
                                 </Grid>
                             </Border>
+                            </ScrollViewer>
                         </Grid>
 
                     </Grid>

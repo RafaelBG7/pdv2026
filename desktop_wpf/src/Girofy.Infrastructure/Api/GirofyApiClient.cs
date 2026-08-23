@@ -542,6 +542,11 @@ public sealed class GirofyApiClient(
             parameters.Add($"end_date={Uri.EscapeDataString(query.EndDate.Trim())}");
         }
 
+        logger.LogInformation(
+            "Loading payables with status {Status}, category filter {HasCategoryFilter} and date filter {HasDateFilter}.",
+            query.Status,
+            !string.Equals(query.Category, "all", StringComparison.OrdinalIgnoreCase),
+            !string.IsNullOrWhiteSpace(query.StartDate) || !string.IsNullOrWhiteSpace(query.EndDate));
         using var request = CreateAuthenticatedRequest(
             HttpMethod.Get,
             $"api/v1/payables?{string.Join('&', parameters)}",
@@ -550,7 +555,11 @@ public sealed class GirofyApiClient(
             request,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
-        return await ReadEnvelopeAsync<PayablesSnapshot>(response, cancellationToken);
+        var snapshot = await ReadEnvelopeAsync<PayablesSnapshot>(response, cancellationToken);
+        logger.LogInformation(
+            "Payables loaded successfully with {ItemCount} items.",
+            snapshot.Items?.Count ?? 0);
+        return snapshot;
     }
 
     public async Task<IReadOnlyList<string>> GetPayableCategoriesAsync(
@@ -949,6 +958,7 @@ public sealed class GirofyApiClient(
         CancellationToken cancellationToken)
     {
         ApiEnvelope<T>? payload = null;
+        global::System.Text.Json.JsonException? contractException = null;
         try
         {
             payload = await response.Content.ReadFromJsonAsync<ApiEnvelope<T>>(
@@ -956,15 +966,37 @@ public sealed class GirofyApiClient(
         }
         catch (global::System.Text.Json.JsonException exception)
         {
+            contractException = exception;
             logger.LogWarning(
                 exception,
-                "API returned invalid JSON with HTTP {StatusCode}.",
+                "API response contract could not be read as {ResponseType} with HTTP {StatusCode}.",
+                typeof(T).Name,
                 (int)response.StatusCode);
         }
 
         if (response.IsSuccessStatusCode && payload is { Success: true, Data: not null })
         {
             return payload.Data;
+        }
+
+        if (response.IsSuccessStatusCode && contractException is not null)
+        {
+            throw new GirofyApiException(
+                "O servidor respondeu, mas os dados recebidos são incompatíveis com esta versão do aplicativo. Atualize e tente novamente.",
+                "api_contract_invalid",
+                (int)response.StatusCode);
+        }
+
+        if (response.IsSuccessStatusCode && payload is { Success: true, Data: null })
+        {
+            logger.LogWarning(
+                "API returned an empty successful payload for {ResponseType} with HTTP {StatusCode}.",
+                typeof(T).Name,
+                (int)response.StatusCode);
+            throw new GirofyApiException(
+                "O servidor respondeu sem os dados necessários. Tente novamente e, se persistir, atualize o aplicativo.",
+                "api_contract_empty",
+                (int)response.StatusCode);
         }
 
         var firstError = payload?.Errors.FirstOrDefault();

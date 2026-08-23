@@ -68,18 +68,23 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.Key != Key.F3 ||
-            !_viewModel.Login.IsAuthenticated ||
-            !_viewModel.IsDashboardView ||
-            !_viewModel.StartSaleCommand.CanExecute(null))
+        if (e.Key != Key.F3 || !_viewModel.Login.IsAuthenticated)
         {
             return;
         }
 
-        e.Handled = true;
         try
         {
-            await _viewModel.StartSaleCommand.ExecuteAsync();
+            if (_viewModel.IsDashboardView && _viewModel.StartSaleCommand.CanExecute(null))
+            {
+                e.Handled = true;
+                await _viewModel.StartSaleCommand.ExecuteAsync();
+            }
+            else if (_viewModel.IsSalesView && _viewModel.SalesScreenF3Command.CanExecute(null))
+            {
+                e.Handled = true;
+                await _viewModel.SalesScreenF3Command.ExecuteAsync();
+            }
         }
         catch (Exception exception)
         {

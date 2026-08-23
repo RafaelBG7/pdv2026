@@ -109,6 +109,12 @@ public partial class SalesView : UserControl
             return;
         }
 
+        if (e.PropertyName == nameof(SalesViewModel.IsDiscountPopupVisible) && viewModel.IsDiscountPopupVisible)
+        {
+            FocusDiscountInput();
+            return;
+        }
+
         if (e.PropertyName == nameof(SalesViewModel.IsSaleEditorOpen) && !viewModel.IsSaleEditorOpen)
         {
             _barcodeScanner.Reset();
@@ -182,22 +188,6 @@ public partial class SalesView : UserControl
             && _barcodeScanner.TryComplete(DateTimeOffset.UtcNow, out var barcode))
         {
             _ = SelectScannedBarcodeAsync(viewModel, barcode);
-            e.Handled = true;
-            return;
-        }
-
-        if (e.Key == Key.F3)
-        {
-            if (viewModel.IsPaymentStepVisible)
-            {
-                ExecuteIfAllowed(viewModel.OpenDiscountPopupCommand);
-                FocusDiscountInput();
-            }
-            else
-            {
-                ExecuteIfAllowed(viewModel.OpenSaleEditorCommand);
-            }
-
             e.Handled = true;
             return;
         }

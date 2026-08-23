@@ -59,6 +59,9 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         StartSaleCommand = new AsyncRelayCommand(
             StartSaleAsync,
             () => IsDashboardView && Sales.IsAvailable);
+        SalesScreenF3Command = new AsyncRelayCommand(
+            ExecuteSalesScreenF3Async,
+            () => IsSalesView && Sales.IsAvailable);
         ShowStockCommand = new AsyncRelayCommand(ShowStockAsync);
         ShowPayablesCommand = new AsyncRelayCommand(ShowPayablesAsync);
         ShowReportsCommand = new AsyncRelayCommand(ShowReportsAsync);
@@ -162,6 +165,8 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand StartSaleCommand { get; }
 
+    public AsyncRelayCommand SalesScreenF3Command { get; }
+
     public AsyncRelayCommand ShowStockCommand { get; }
 
     public AsyncRelayCommand ShowPayablesCommand { get; }
@@ -208,6 +213,28 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         }
 
         await Sales.OpenSaleEditorCommand.ExecuteAsync(cancellationToken);
+    }
+
+    private async Task ExecuteSalesScreenF3Async(CancellationToken cancellationToken)
+    {
+        if (Sales.IsPaymentStepVisible)
+        {
+            if (Sales.OpenDiscountPopupCommand.CanExecute(null))
+            {
+                Sales.OpenDiscountPopupCommand.Execute(null);
+            }
+            return;
+        }
+
+        if (Sales.IsSaleEditorOpen || Sales.IsOpenCashPromptOpen)
+        {
+            return;
+        }
+
+        if (Sales.OpenSaleEditorCommand.CanExecute(null))
+        {
+            await Sales.OpenSaleEditorCommand.ExecuteAsync(cancellationToken);
+        }
     }
 
     private Task ShowStockAsync(CancellationToken cancellationToken) =>
@@ -279,6 +306,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsNotificationsView));
         OnPropertyChanged(nameof(IsSettingsView));
         StartSaleCommand.NotifyCanExecuteChanged();
+        SalesScreenF3Command.NotifyCanExecuteChanged();
     }
 
     private async Task CheckConnectionAsync(CancellationToken cancellationToken)
@@ -329,6 +357,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         if (e.PropertyName == nameof(SalesViewModel.IsAvailable))
         {
             StartSaleCommand.NotifyCanExecuteChanged();
+            SalesScreenF3Command.NotifyCanExecuteChanged();
         }
     }
 }

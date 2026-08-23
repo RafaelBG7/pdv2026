@@ -61,6 +61,43 @@ public sealed class ConnectionViewModelTests
     }
 
     [Fact]
+    public async Task Sales_f3_is_available_immediately_and_does_not_open_duplicate_editor()
+    {
+        var sessionContext = new AppSessionContext();
+        var apiClient = new StubApiClient(new HealthStatus());
+        using var viewModel = CreateConnectionViewModel(apiClient, sessionContext);
+        sessionContext.Set(CreateSession(canManageSales: true));
+
+        await viewModel.ShowSalesCommand.ExecuteAsync();
+
+        Assert.True(viewModel.IsSalesView);
+        Assert.True(viewModel.SalesScreenF3Command.CanExecute(null));
+        await viewModel.SalesScreenF3Command.ExecuteAsync();
+        Assert.True(viewModel.Sales.IsSaleEditorOpen);
+        Assert.Equal(1, apiClient.CashRegisterSummaryCalls);
+
+        await viewModel.SalesScreenF3Command.ExecuteAsync();
+        Assert.Equal(1, apiClient.CashRegisterSummaryCalls);
+
+        viewModel.Sales.CloseSaleEditorCommand.Execute(null);
+        await viewModel.SalesScreenF3Command.ExecuteAsync();
+        Assert.True(viewModel.Sales.IsSaleEditorOpen);
+        Assert.Equal(2, apiClient.CashRegisterSummaryCalls);
+    }
+
+    [Fact]
+    public async Task Sales_f3_remains_blocked_without_sales_permission()
+    {
+        var sessionContext = new AppSessionContext();
+        using var viewModel = CreateConnectionViewModel(new StubApiClient(new HealthStatus()), sessionContext);
+        sessionContext.Set(CreateSession(canManageSales: false));
+
+        await viewModel.ShowSalesCommand.ExecuteAsync();
+
+        Assert.False(viewModel.SalesScreenF3Command.CanExecute(null));
+    }
+
+    [Fact]
     public async Task InitializeAsync_marks_server_as_connected_when_health_is_valid()
     {
         var apiClient = new StubApiClient(new HealthStatus
@@ -240,6 +277,8 @@ public sealed class ConnectionViewModelTests
 
         public StubApiClient(Exception exception) => _exception = exception;
 
+        public int CashRegisterSummaryCalls { get; private set; }
+
         public Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken)
         {
             if (_exception is not null)
@@ -278,8 +317,14 @@ public sealed class ConnectionViewModelTests
 
         public Task<CashRegisterSnapshot> GetCashRegisterSummaryAsync(
             string accessToken,
-            CancellationToken cancellationToken) =>
-            Task.FromException<CashRegisterSnapshot>(new NotSupportedException());
+            CancellationToken cancellationToken)
+        {
+            CashRegisterSummaryCalls++;
+            return Task.FromResult(new CashRegisterSnapshot
+            {
+                CurrentRegister = new CashRegisterRecord { Id = 1, Status = "open" },
+            });
+        }
 
         public Task<CashRegisterSnapshot> OpenCashRegisterAsync(
             string accessToken,

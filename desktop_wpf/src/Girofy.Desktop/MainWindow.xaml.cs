@@ -80,6 +80,23 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (e.Key == Key.Escape && _viewModel.Catalog.IsProductEditorOpen)
+        {
+            // Preserve the expected two-step Escape behavior: first close an open
+            // autocomplete/dropdown, then close the product editor itself.
+            if (ProductCategoryInput.IsDropDownOpen || _viewModel.Catalog.IsKitComponentSuggestionsOpen)
+            {
+                return;
+            }
+
+            if (_viewModel.Catalog.CloseProductEditorCommand.CanExecute(null))
+            {
+                _viewModel.Catalog.CloseProductEditorCommand.Execute(null);
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key != Key.F3 || !_viewModel.Login.IsAuthenticated)
         {
             return;

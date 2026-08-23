@@ -1519,6 +1519,12 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             return false;
         }
 
+        if (EditorCategory is null && !string.IsNullOrWhiteSpace(EditorCategorySearchText))
+        {
+            ErrorMessage = "Selecione uma categoria válida na lista.";
+            return false;
+        }
+
         var kitComponentQuantity = 0;
         if (EditorIsKit && (EditorKitComponent is null
             || !TryParseInteger(EditorKitComponentQuantity, out kitComponentQuantity)

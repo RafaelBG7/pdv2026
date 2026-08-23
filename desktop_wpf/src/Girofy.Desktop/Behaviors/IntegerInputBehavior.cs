@@ -6,6 +6,9 @@ namespace Girofy.Desktop.Behaviors;
 
 public static class IntegerInputBehavior
 {
+    public static bool IsValidIntegerText(string? value) =>
+        !string.IsNullOrEmpty(value) && value.All(char.IsDigit);
+
     public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
         "IsEnabled",
         typeof(bool),
@@ -36,14 +39,13 @@ public static class IntegerInputBehavior
     }
 
     private static void HandlePreviewTextInput(object sender, TextCompositionEventArgs args) =>
-        args.Handled = args.Text.Any(character => !char.IsDigit(character));
+        args.Handled = !IsValidIntegerText(args.Text);
 
     private static void HandlePaste(object sender, DataObjectPastingEventArgs args)
     {
         if (!args.SourceDataObject.GetDataPresent(DataFormats.UnicodeText)
             || args.SourceDataObject.GetData(DataFormats.UnicodeText) is not string text
-            || string.IsNullOrEmpty(text)
-            || text.Any(character => !char.IsDigit(character)))
+            || !IsValidIntegerText(text))
         {
             args.CancelCommand();
         }

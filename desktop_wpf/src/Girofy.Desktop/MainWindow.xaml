@@ -1203,6 +1203,8 @@
                                                       IsEditable="True"
                                                       IsTextSearchEnabled="False"
                                                       StaysOpenOnEdit="True"
+                                                      MaxDropDownHeight="240"
+                                                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                                                       DropDownOpened="ProductCategoryInput_DropDownOpened"
                                                       PreviewTextInput="ProductCategoryInput_PreviewTextInput"
                                                       PreviewKeyDown="ProductCategoryInput_PreviewKeyDown"
@@ -1260,20 +1262,33 @@
                                     </Grid>
 
                                     <Grid Grid.Row="4">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="10" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="18" />
-                                            <ColumnDefinition Width="2*" />
-                                            <ColumnDefinition Width="14" />
-                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="3*" MinWidth="260" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="1*" MinWidth="140" MaxWidth="210" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Grid.ColumnSpan="3" VerticalAlignment="Center">
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Tipo" />
                                             <CheckBox Content="Produto kit"
                                                       IsChecked="{Binding Catalog.EditorIsKit}" />
                                         </StackPanel>
-                                        <StackPanel Grid.Column="2">
+                                        <StackPanel Grid.Row="2">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Catalog.EditorIsKit}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Produto-base" />
                                             <Grid>
@@ -1301,7 +1316,7 @@
                                                     </Button.Style>
                                                 </Button>
                                             </Grid>
-                                            <Border Margin="0,5,0,0" Padding="4" MaxHeight="210"
+                                            <Border Margin="0,5,0,0" Padding="4" MaxHeight="200"
                                                     BorderBrush="{DynamicResource BorderBrush}"
                                                     BorderThickness="1" CornerRadius="8"
                                                     Background="{DynamicResource SurfaceElevatedBrush}">
@@ -1320,11 +1335,19 @@
                                                              ItemsSource="{Binding Catalog.KitComponentSuggestions}"
                                                              SelectedItem="{Binding Catalog.SelectedKitComponentSuggestion}"
                                                              PreviewKeyDown="KitComponentSuggestionsList_PreviewKeyDown"
+                                                             MaxHeight="188"
+                                                             HorizontalContentAlignment="Stretch"
                                                              BorderThickness="0" Background="Transparent"
                                                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                        <ListBox.ItemContainerStyle>
+                                                            <Style TargetType="ListBoxItem">
+                                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                                <Setter Property="Padding" Value="0" />
+                                                            </Style>
+                                                        </ListBox.ItemContainerStyle>
                                                         <ListBox.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Button Padding="10,7" HorizontalContentAlignment="Stretch"
+                                                                <Button Padding="10,6" HorizontalContentAlignment="Stretch"
                                                                         Command="{Binding DataContext.Catalog.SelectKitComponentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding}"
                                                                         Style="{StaticResource SecondaryButtonStyle}">
@@ -1334,15 +1357,26 @@
                                                                             <ColumnDefinition Width="Auto" />
                                                                         </Grid.ColumnDefinitions>
                                                                         <StackPanel>
-                                                                            <TextBlock FontWeight="{DynamicResource FontWeightStrong}" Text="{Binding Name}" />
-                                                                            <TextBlock FontSize="{DynamicResource FontSizeTiny}" Foreground="{DynamicResource TextMutedBrush}">
+                                                                            <TextBlock FontWeight="{DynamicResource FontWeightStrong}"
+                                                                                       Text="{Binding Name}" TextWrapping="Wrap" />
+                                                                            <TextBlock FontSize="{DynamicResource FontSizeTiny}"
+                                                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                                                       TextTrimming="CharacterEllipsis"
+                                                                                       ToolTip="{Binding BarcodeText}">
                                                                                 <Run Text="Código: " /><Run Text="{Binding BarcodeText, Mode=OneWay}" />
-                                                                                <Run Text=" · Estoque: " /><Run Text="{Binding StockText, Mode=OneWay}" />
                                                                             </TextBlock>
                                                                         </StackPanel>
-                                                                        <TextBlock Grid.Column="1" Margin="12,0,4,0" VerticalAlignment="Center"
-                                                                                   Foreground="{DynamicResource AccentBrush}" FontWeight="{DynamicResource FontWeightStrong}"
-                                                                                   Text="{Binding SalePriceText}" />
+                                                                        <StackPanel Grid.Column="1" Margin="12,0,4,0" VerticalAlignment="Center">
+                                                                            <TextBlock HorizontalAlignment="Right"
+                                                                                       Foreground="{DynamicResource AccentBrush}"
+                                                                                       FontWeight="{DynamicResource FontWeightStrong}"
+                                                                                       Text="{Binding SalePriceText}" />
+                                                                            <TextBlock HorizontalAlignment="Right"
+                                                                                       FontSize="{DynamicResource FontSizeTiny}"
+                                                                                       Foreground="{DynamicResource TextMutedBrush}">
+                                                                                <Run Text="Estoque: " /><Run Text="{Binding StockText, Mode=OneWay}" />
+                                                                            </TextBlock>
+                                                                        </StackPanel>
                                                                     </Grid>
                                                                 </Button>
                                                             </DataTemplate>
@@ -1396,7 +1430,17 @@
                                                        Foreground="{DynamicResource TextMutedBrush}"
                                                        Text="Busque por nome, código ou código de barras." />
                                         </StackPanel>
-                                        <StackPanel Grid.Column="4">
+                                        <StackPanel Grid.Row="2" Grid.Column="2">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Catalog.EditorIsKit}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
                                             <TextBlock Margin="0,0,0,5" FontSize="{DynamicResource FontSizeCaption}" FontWeight="{DynamicResource FontWeightStrong}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Quantidade consumida" />
                                             <TextBox Text="{Binding Catalog.EditorKitComponentQuantity, UpdateSourceTrigger=PropertyChanged}"

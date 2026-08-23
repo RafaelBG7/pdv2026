@@ -330,7 +330,7 @@ public sealed class CatalogViewModelTests
     }
 
     [Fact]
-    public async Task Unselected_category_text_does_not_generate_category_id()
+    public async Task Unselected_category_text_is_rejected_instead_of_reusing_or_generating_category_id()
     {
         var sessionContext = new AppSessionContext();
         sessionContext.Set(CreateSession());
@@ -344,8 +344,35 @@ public sealed class CatalogViewModelTests
 
         await viewModel.SaveProductCommand.ExecuteAsync();
 
+        Assert.Null(apiClient.CreatedProductRequest);
+        Assert.Contains("categoria válida", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.True(viewModel.IsProductEditorOpen);
+    }
+
+    [Fact]
+    public async Task Showing_category_dropdown_lists_all_categories_and_selected_category_sets_correct_id()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        var apiClient = new StubApiClient();
+        using var viewModel = new CatalogViewModel(apiClient, sessionContext);
+        await viewModel.InitializeAsync();
+        var beer = new CatalogCategory { Id = 31, Name = "Cerveja Artesanal" };
+        viewModel.ProductCategories.Add(beer);
+        viewModel.OpenNewProductCommand.Execute(null);
+
+        viewModel.ShowAllEditorCategorySuggestions();
+        Assert.Contains(viewModel.EditorCategorySuggestions, category => category.Id == 31);
+
+        viewModel.EditorCategorySearchText = "art";
+        viewModel.EditorCategory = Assert.Single(viewModel.EditorCategorySuggestions);
+        viewModel.EditorName = "Produto categorizado";
+        viewModel.EditorSalePrice = "10,00";
+        await viewModel.SaveProductCommand.ExecuteAsync();
+
         Assert.NotNull(apiClient.CreatedProductRequest);
-        Assert.Null(apiClient.CreatedProductRequest.CategoryId);
+        Assert.Equal(31, apiClient.CreatedProductRequest.CategoryId);
+        Assert.Equal("Cerveja Artesanal", viewModel.EditorCategorySearchText);
     }
 
     [Theory]

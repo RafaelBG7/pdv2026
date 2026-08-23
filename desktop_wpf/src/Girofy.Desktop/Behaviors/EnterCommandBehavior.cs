@@ -66,19 +66,28 @@ public static class EnterCommandBehavior
     {
         for (var current = source; current is not null; current = GetParent(current))
         {
-            if (current is TextBoxBase { AcceptsReturn: true } || current is ButtonBase)
+            if (!ShouldSubmitControl(
+                    current is TextBoxBase { AcceptsReturn: true },
+                    current is ButtonBase,
+                    current is ComboBox { IsDropDownOpen: true }))
             {
                 return false;
             }
 
-            if (current is ComboBox comboBox)
+            if (current is ComboBox)
             {
-                return !comboBox.IsDropDownOpen;
+                return true;
             }
         }
 
         return true;
     }
+
+    internal static bool ShouldSubmitControl(
+        bool acceptsReturn,
+        bool isButton,
+        bool isOpenComboBox) =>
+        !acceptsReturn && !isButton && !isOpenComboBox;
 
     internal static bool TryExecute(ICommand? command, object? parameter)
     {

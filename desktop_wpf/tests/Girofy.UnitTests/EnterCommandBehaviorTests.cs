@@ -1,5 +1,3 @@
-using System.Runtime.ExceptionServices;
-using System.Windows.Controls;
 using System.Windows.Input;
 using Girofy.Desktop.Behaviors;
 
@@ -34,46 +32,23 @@ public sealed class EnterCommandBehaviorTests
     [Fact]
     public void ShouldSubmit_PreservesMultilineTextBox()
     {
-        RunInSta(() =>
-            Assert.False(EnterCommandBehavior.ShouldSubmit(new TextBox { AcceptsReturn = true })));
+        Assert.False(EnterCommandBehavior.ShouldSubmitControl(
+            acceptsReturn: true,
+            isButton: false,
+            isOpenComboBox: false));
     }
 
     [Fact]
     public void ShouldSubmit_PreservesOpenComboBox_AndSubmitsClosedComboBox()
     {
-        RunInSta(() =>
-        {
-            var comboBox = new ComboBox();
-
-            Assert.True(EnterCommandBehavior.ShouldSubmit(comboBox));
-
-            comboBox.IsDropDownOpen = true;
-            Assert.False(EnterCommandBehavior.ShouldSubmit(comboBox));
-        });
-    }
-
-    private static void RunInSta(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
+        Assert.True(EnterCommandBehavior.ShouldSubmitControl(
+            acceptsReturn: false,
+            isButton: false,
+            isOpenComboBox: false));
+        Assert.False(EnterCommandBehavior.ShouldSubmitControl(
+            acceptsReturn: false,
+            isButton: false,
+            isOpenComboBox: true));
     }
 
     private sealed class RecordingCommand(bool canExecute) : ICommand

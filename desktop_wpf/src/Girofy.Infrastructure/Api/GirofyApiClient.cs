@@ -552,6 +552,21 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<PayablesSnapshot>(response, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<string>> GetPayableCategoriesAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "api/v1/payables/categories",
+            accessToken);
+        using var response = await httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        return await ReadEnvelopeAsync<IReadOnlyList<string>>(response, cancellationToken);
+    }
+
     public async Task<PayableRecord> CreatePayableAsync(
         string accessToken,
         PayableMutationRequest payable,
@@ -954,7 +969,15 @@ public sealed class GirofyApiClient(
         var firstError = payload?.Errors.FirstOrDefault();
         var message = payload?.Message
             ?? firstError?.Message
-            ?? "O servidor Girofy não conseguiu concluir a solicitação.";
+            ?? response.StatusCode switch
+            {
+                HttpStatusCode.Unauthorized => "Sua sessão expirou. Entre novamente para continuar.",
+                HttpStatusCode.Forbidden => "Seu usuário não possui permissão para esta operação.",
+                HttpStatusCode.NotFound => "Este recurso ainda não está disponível no servidor Girofy conectado.",
+                HttpStatusCode.UnprocessableEntity => "O servidor rejeitou um ou mais dados informados.",
+                _ when (int)response.StatusCode >= 500 => "O servidor Girofy apresentou uma falha interna. Tente novamente.",
+                _ => "O servidor Girofy não conseguiu concluir a solicitação.",
+            };
         var code = firstError?.Code ?? "api_request_failed";
         logger.LogWarning(
             "API request failed with HTTP {StatusCode} and code {ErrorCode}.",

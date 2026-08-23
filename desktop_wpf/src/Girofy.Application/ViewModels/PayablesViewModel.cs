@@ -30,13 +30,15 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     private string _description = string.Empty;
     private string _categoryText = "Outros";
     private string _amountText = "0,00";
-    private string _dueDateText = DashboardFormatting.BusinessToday().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+    private string _dueDateText = BrazilianDateFormatting.FormatDate(DashboardFormatting.BusinessToday());
     private string _notes = string.Empty;
     private string _errorMessage = string.Empty;
+    private string _categoriesErrorMessage = string.Empty;
     private string _successMessage = string.Empty;
     private bool _isBusy;
     private bool _isInitialized;
     private bool _hasLoaded;
+    private bool _isSummaryAvailable;
     private PayableSummary _summary = new();
 
     public PayablesViewModel(
@@ -46,7 +48,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         _apiClient = apiClient;
         _sessionContext = sessionContext;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => IsAvailable && !IsBusy);
-        ApplyFiltersCommand = new AsyncRelayCommand(LoadAsync, () => IsAvailable && !IsBusy);
+        ApplyFiltersCommand = new AsyncRelayCommand(ApplyFiltersAsync, () => IsAvailable && !IsBusy);
         CreatePayableCommand = new AsyncRelayCommand(CreatePayableAsync, () => CanManagePayables && !IsBusy);
         ClearFormCommand = new RelayCommand(ClearForm);
         ClearFiltersCommand = new RelayCommand(ClearFilters);
@@ -57,6 +59,9 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         ReopenPayableCommand = new RelayCommand<PayableRecord>(
             payable => _ = ReopenAsync(payable, CancellationToken.None),
             payable => CanManagePayables && !IsBusy && payable.CanReopen);
+        RetryCategoriesCommand = new AsyncRelayCommand(LoadCategoriesAsync, () => IsAvailable && !IsBusy);
+        SyncStatusOptions([]);
+        SyncCategories([]);
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -190,6 +195,20 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
+    public string CategoriesErrorMessage
+    {
+        get => _categoriesErrorMessage;
+        private set
+        {
+            if (SetProperty(ref _categoriesErrorMessage, value))
+            {
+                OnPropertyChanged(nameof(HasCategoriesError));
+            }
+        }
+    }
+
+    public bool HasCategoriesError => !string.IsNullOrWhiteSpace(CategoriesErrorMessage);
+
     public string SuccessMessage
     {
         get => _successMessage;
@@ -225,6 +244,12 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
 
     public bool HasLoaded => _hasLoaded;
 
+    public bool IsSummaryAvailable
+    {
+        get => _isSummaryAvailable;
+        private set => SetProperty(ref _isSummaryAvailable, value);
+    }
+
     public bool ShowEmptyState => HasLoaded && !IsBusy && !HasItems && !HasError;
 
     public bool HasActiveFilters => !string.IsNullOrWhiteSpace(SearchText) ||
@@ -252,6 +277,8 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     public RelayCommand<PayableRecord> PayPayableCommand { get; }
 
     public RelayCommand<PayableRecord> ReopenPayableCommand { get; }
+
+    public AsyncRelayCommand RetryCategoriesCommand { get; }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -305,40 +332,106 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         ClearMessages();
         try
         {
-            var snapshot = await _apiClient.GetPayablesAsync(
-                session.AccessToken,
-                new PayablesQuery(
-                    SearchText,
-                    SelectedStatus.Value,
-                    SelectedCategory == "Todas" ? "all" : SelectedCategory,
-                    NormalizeDate(StartDateText),
-                    NormalizeDate(EndDateText)),
-                cancellationToken);
-
-            Payables.Clear();
-            foreach (var payable in snapshot.Items)
+            PayablesSnapshot? snapshot = null;
+            try
             {
-                Payables.Add(payable);
+                snapshot = await _apiClient.GetPayablesAsync(
+                    session.AccessToken,
+                    new PayablesQuery(
+                        SearchText,
+                        SelectedStatus.Value,
+                        SelectedCategory == "Todas" ? "all" : SelectedCategory,
+                        NormalizeDate(StartDateText),
+                        NormalizeDate(EndDateText)),
+                    cancellationToken);
+
+                Payables.Clear();
+                foreach (var payable in snapshot.Items)
+                {
+                    Payables.Add(payable);
+                }
+
+                Summary = snapshot.Summary;
+                SyncStatusOptions(snapshot.StatusOptions);
+                IsSummaryAvailable = true;
+                OnPropertyChanged(nameof(HasItems));
+                _isInitialized = true;
+                _hasLoaded = true;
+                OnPropertyChanged(nameof(HasLoaded));
+                OnPropertyChanged(nameof(HasActiveFilters));
+                OnPropertyChanged(nameof(EmptyStateMessage));
+            }
+            catch (Exception exception)
+            {
+                IsSummaryAvailable = false;
+                SetSafeError(exception);
             }
 
-            Summary = snapshot.Summary;
-            SyncStatusOptions(snapshot.StatusOptions);
-            SyncCategories(snapshot.Categories);
-            OnPropertyChanged(nameof(HasItems));
-            _isInitialized = true;
-            _hasLoaded = true;
-            OnPropertyChanged(nameof(HasLoaded));
-            OnPropertyChanged(nameof(HasActiveFilters));
-            OnPropertyChanged(nameof(EmptyStateMessage));
-        }
-        catch (Exception exception)
-        {
-            SetSafeError(exception);
+            await LoadCategoriesCoreAsync(session.AccessToken, snapshot?.Categories, cancellationToken);
         }
         finally
         {
             IsBusy = false;
             OnPropertyChanged(nameof(ShowEmptyState));
+        }
+    }
+
+    private async Task ApplyFiltersAsync(CancellationToken cancellationToken)
+    {
+        if (!IsValidOptionalDate(StartDateText) || !IsValidOptionalDate(EndDateText))
+        {
+            ErrorMessage = "Informe as datas dos filtros no formato DD/MM/AAAA.";
+            return;
+        }
+
+        if (!IsValidDateRange(StartDateText, EndDateText))
+        {
+            ErrorMessage = "A data inicial não pode ser posterior à data final.";
+            return;
+        }
+
+        await LoadAsync(cancellationToken);
+    }
+
+    private async Task LoadCategoriesAsync(CancellationToken cancellationToken)
+    {
+        if (!IsAvailable)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            await LoadCategoriesCoreAsync(RequireSession().AccessToken, null, cancellationToken);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task LoadCategoriesCoreAsync(
+        string accessToken,
+        IReadOnlyList<string>? snapshotFallback,
+        CancellationToken cancellationToken)
+    {
+        CategoriesErrorMessage = string.Empty;
+        try
+        {
+            SyncCategories(await _apiClient.GetPayableCategoriesAsync(accessToken, cancellationToken));
+        }
+        catch (Exception exception)
+        {
+            SyncCategories(snapshotFallback ?? []);
+            CategoriesErrorMessage = exception switch
+            {
+                TaskCanceledException => "As categorias demoraram para responder.",
+                HttpRequestException => "Não foi possível atualizar as categorias.",
+                GirofyApiException apiException when apiException.StatusCode == 404 && snapshotFallback is not null => string.Empty,
+                GirofyApiException apiException => apiException.Message,
+                _ => "Não foi possível atualizar as categorias.",
+            };
         }
     }
 
@@ -500,24 +593,15 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         return true;
     }
 
-    private static string? NormalizeDate(string value)
-    {
-        var text = value.Trim();
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return null;
-        }
+    private static string? NormalizeDate(string value) => BrazilianDateFormatting.ToApiDate(value);
 
-        var formats = new[] { "yyyy-MM-dd", "dd/MM/yyyy", "d/M/yyyy" };
-        return DateOnly.TryParseExact(
-            text,
-            formats,
-            CultureInfo.GetCultureInfo("pt-BR"),
-            DateTimeStyles.None,
-            out var parsed)
-            ? parsed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
-            : null;
-    }
+    private static bool IsValidOptionalDate(string value) =>
+        BrazilianDateFormatting.IsValidOptionalDate(value);
+
+    private static bool IsValidDateRange(string start, string end) =>
+        !BrazilianDateFormatting.TryParseDate(start, out var startDate) ||
+        !BrazilianDateFormatting.TryParseDate(end, out var endDate) ||
+        startDate <= endDate;
 
     private static bool TryParseMoney(string value, out decimal amount)
     {
@@ -556,6 +640,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
     private void ClearMessages()
     {
         ErrorMessage = string.Empty;
+        CategoriesErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
     }
 
@@ -564,7 +649,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         Description = string.Empty;
         CategoryText = "Outros";
         AmountText = "0,00";
-        DueDateText = DashboardFormatting.BusinessToday().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+        DueDateText = BrazilianDateFormatting.FormatDate(DashboardFormatting.BusinessToday());
         Notes = string.Empty;
     }
 
@@ -590,6 +675,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         FilterByStatusCommand.NotifyCanExecuteChanged();
         PayPayableCommand.NotifyCanExecuteChanged();
         ReopenPayableCommand.NotifyCanExecuteChanged();
+        RetryCategoriesCommand.NotifyCanExecuteChanged();
     }
 
     private void Reset()
@@ -607,6 +693,7 @@ public sealed class PayablesViewModel : ObservableObject, IDisposable
         ClearMessages();
         _isInitialized = false;
         _hasLoaded = false;
+        IsSummaryAvailable = false;
         OnPropertyChanged(nameof(HasItems));
         OnPropertyChanged(nameof(HasLoaded));
         OnPropertyChanged(nameof(ShowEmptyState));

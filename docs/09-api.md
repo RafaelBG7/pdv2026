@@ -243,6 +243,9 @@ leve e evitar o envio de listas completas de vendas.
 
 - `GET /api/v1/payables`: lista por `q`, `category`, `status`, `start_date` e
   `end_date`; datas invertidas retornam HTTP 422.
+- `GET /api/v1/payables/categories`: retorna separadamente as categorias válidas.
+  Esse contrato mantém o formulário utilizável e permite retry isolado se o dado
+  auxiliar falhar, sem derrubar lista e resumo.
 - `POST /api/v1/payables`: cria no tenant do token. `description`, `amount` e
   `due_date` são obrigatórios. Dinheiro aceita número JSON ou texto pt-BR e é
   validado/quantizado sem `float`.
@@ -256,6 +259,11 @@ strings decimais exatas com duas casas (exemplo: `"2480.35"`). `due_date` é uma
 data civil ISO (`YYYY-MM-DD`), enquanto `created_at` e `paid_at` são instantes UTC
 com sufixo `Z`. Todos os endpoints exigem `can_manage_payables` e ignoram qualquer
 tentativa do cliente de escolher `company_id`.
+
+Datas civis impossíveis (por exemplo, `2025-02-29`) retornam HTTP 422 com código
+`invalid_date` e campo `due_date`. Falhas inesperadas de listagem/cadastro são
+registradas no log do servidor com `request_id` e retornam envelope JSON sanitizado;
+HTML de erro ou stack trace não fazem parte do contrato da API.
 
 ## Relatórios da API
 

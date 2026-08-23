@@ -4624,6 +4624,10 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(list_response.status_code, 200)
         self.assertEqual(list_response.get_json()['data']['items'][0]['amount'], '2480.35')
 
+        categories_response = self.client.get('/api/v1/payables/categories', headers=headers)
+        self.assertEqual(categories_response.status_code, 200)
+        self.assertIn('Luz', categories_response.get_json()['data'])
+
         filtered_response = self.client.get(
             '/api/v1/payables?status=open&q=Energia&category=Luz&start_date=2026-08-01&end_date=2026-08-31',
             headers=headers,
@@ -4649,6 +4653,14 @@ class RouteTestCase(unittest.TestCase):
         )
         self.assertEqual(invalid_money.status_code, 422)
         self.assertEqual(invalid_money.get_json()['errors'][0]['field'], 'amount')
+
+        invalid_date = self.client.post(
+            '/api/v1/payables',
+            headers=headers,
+            json={'description': 'Data impossível', 'amount': '10.00', 'due_date': '2025-02-29'},
+        )
+        self.assertEqual(invalid_date.status_code, 422)
+        self.assertEqual(invalid_date.get_json()['errors'][0]['field'], 'due_date')
 
         inverted_range = self.client.get(
             '/api/v1/payables?start_date=2026-09-01&end_date=2026-08-01',

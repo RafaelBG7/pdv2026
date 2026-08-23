@@ -31,9 +31,21 @@ public sealed class ReportsSnapshot
     [JsonPropertyName("chart")]
     public ReportChart Chart { get; init; } = new();
 
-    public string PeriodDescription => string.IsNullOrWhiteSpace(PeriodLabel)
-        ? "Período atual"
-        : PeriodLabel;
+    public string PeriodDescription => BuildPeriodDescription(StartDate, EndDate, PeriodLabel, "Período atual");
+
+    internal static string BuildPeriodDescription(string? startDate, string? endDate, string? label, string fallback)
+    {
+        var hasStart = BrazilianDateFormatting.TryParseDate(startDate, out var start);
+        var hasEnd = BrazilianDateFormatting.TryParseDate(endDate, out var end);
+        if (hasStart && hasEnd)
+        {
+            return start == end
+                ? BrazilianDateFormatting.FormatDate(start)
+                : $"{BrazilianDateFormatting.FormatDate(start)} a {BrazilianDateFormatting.FormatDate(end)}";
+        }
+
+        return string.IsNullOrWhiteSpace(label) ? fallback : label;
+    }
 }
 
 public sealed class ReportSummary
@@ -228,9 +240,11 @@ public sealed class ProductReportSnapshot
     [JsonPropertyName("sort_options")]
     public IReadOnlyList<ReportOption> SortOptions { get; init; } = [];
 
-    public string PeriodDescription => string.IsNullOrWhiteSpace(PeriodLabel)
-        ? "Produtos no período atual"
-        : PeriodLabel;
+    public string PeriodDescription => ReportsSnapshot.BuildPeriodDescription(
+        StartDate,
+        EndDate,
+        PeriodLabel,
+        "Produtos no período atual");
 }
 
 public sealed class ProductReportSummary

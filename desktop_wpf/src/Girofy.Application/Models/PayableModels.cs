@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace Girofy.Application.Models;
@@ -54,8 +53,6 @@ public sealed class PayableSummary
 
 public sealed class PayableRecord
 {
-    private static readonly CultureInfo BrazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
-
     [JsonPropertyName("id")]
     public int Id { get; init; }
 
@@ -111,9 +108,9 @@ public sealed class PayableRecord
             return "Sem vencimento";
         }
 
-        return DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
-            ? parsed.ToString("dd/MM/yyyy", BrazilianCulture)
-            : value;
+        return BrazilianDateFormatting.TryParseDate(value, out var parsed)
+            ? BrazilianDateFormatting.FormatDate(parsed)
+            : "Data inválida";
     }
 }
 

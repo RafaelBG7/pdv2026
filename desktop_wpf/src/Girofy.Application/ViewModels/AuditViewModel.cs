@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Exceptions;
 using Girofy.Application.Models;
@@ -192,6 +191,18 @@ public sealed class AuditViewModel : ObservableObject, IDisposable
 
     private async Task SearchAsync(CancellationToken cancellationToken)
     {
+        if (!IsValidOptionalDate(StartDateText) || !IsValidOptionalDate(EndDateText))
+        {
+            ErrorMessage = "Informe as datas no formato DD/MM/AAAA.";
+            return;
+        }
+
+        if (!IsValidDateRange(StartDateText, EndDateText))
+        {
+            ErrorMessage = "A data inicial não pode ser posterior à data final.";
+            return;
+        }
+
         Page = 1;
         await LoadAsync(cancellationToken);
     }
@@ -331,22 +342,14 @@ public sealed class AuditViewModel : ObservableObject, IDisposable
             "session_required",
             401);
 
-    private static string NormalizeDate(string value)
-    {
-        var text = value.Trim();
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return string.Empty;
-        }
+    private static string NormalizeDate(string value) => BrazilianDateFormatting.ToApiDate(value) ?? string.Empty;
 
-        if (DateTime.TryParse(text, CultureInfo.GetCultureInfo("pt-BR"), DateTimeStyles.None, out var date) ||
-            DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
-        {
-            return date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        }
+    private static bool IsValidOptionalDate(string value) => BrazilianDateFormatting.IsValidOptionalDate(value);
 
-        return text;
-    }
+    private static bool IsValidDateRange(string start, string end) =>
+        !BrazilianDateFormatting.TryParseDate(start, out var startDate) ||
+        !BrazilianDateFormatting.TryParseDate(end, out var endDate) ||
+        startDate <= endDate;
 
     private void SetSafeError(Exception exception)
     {

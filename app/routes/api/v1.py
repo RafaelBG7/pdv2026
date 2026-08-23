@@ -1323,10 +1323,6 @@ def payable_snapshot(db_session, company_id, status_filter, search, category, st
         Payable.company_id == company_id,
         Payable.paid.is_(True),
     ).count() or 0)
-    category_rows = db_session.query(Payable.category).filter(
-        Payable.company_id == company_id,
-    ).distinct().order_by(func.lower(Payable.category)).all()
-
     return {
         'items': [payable_data(payable, today) for payable in items],
         'summary': {
@@ -1344,11 +1340,9 @@ def payable_snapshot(db_session, company_id, status_filter, search, category, st
             'open_count': len(open_items),
             'paid_count': paid_count,
         },
-        'categories': [
-            category_row[0]
-            for category_row in category_rows
-            if category_row[0]
-        ],
+        # Kept for backwards compatibility. Categories have their own endpoint so
+        # a failure in this auxiliary data can no longer invalidate the snapshot.
+        'categories': list(PAYABLE_CATEGORIES),
         'status_options': payable_filter_options(),
         'selected_status': status_filter,
     }
@@ -3208,6 +3202,23 @@ def api_payables():
         return api_success(snapshot)
     except ApiAuthError as error:
         return api_auth_error_response(error)
+    except Exception:
+        current_app.logger.exception(
+            'Falha inesperada ao carregar contas a pagar (request_id=%s).',
+            getattr(g, 'request_id', None),
+        )
+        return api_failure(
+            'Não foi possível carregar as contas a pagar agora. Tente novamente.',
+            'payables_load_failed',
+            500,
+        )
+
+
+@api_v1_bp.get('/payables/categories')
+@api_permission_required('can_manage_payables')
+def api_payable_categories():
+    """Return the stable payable category contract independently of list data."""
+    return api_success(list(PAYABLE_CATEGORIES))
 
 
 @api_v1_bp.post('/payables')
@@ -3272,6 +3283,16 @@ def api_create_payable():
             'Não foi possível cadastrar a conta. Atualize os dados e tente novamente.',
             'payable_integrity_error',
             409,
+        )
+    except Exception:
+        current_app.logger.exception(
+            'Falha inesperada ao cadastrar conta a pagar (request_id=%s).',
+            getattr(g, 'request_id', None),
+        )
+        return api_failure(
+            'Não foi possível cadastrar a conta agora. Os dados informados foram preservados.',
+            'payable_create_failed',
+            500,
         )
 
 

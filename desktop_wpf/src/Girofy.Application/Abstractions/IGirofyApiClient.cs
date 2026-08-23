@@ -164,6 +164,11 @@ public interface IGirofyApiClient
         CancellationToken cancellationToken) =>
         Task.FromException<PayablesSnapshot>(new NotSupportedException());
 
+    Task<IReadOnlyList<string>> GetPayableCategoriesAsync(
+        string accessToken,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<string>>([]);
+
     Task<PayableRecord> CreatePayableAsync(
         string accessToken,
         PayableMutationRequest request,

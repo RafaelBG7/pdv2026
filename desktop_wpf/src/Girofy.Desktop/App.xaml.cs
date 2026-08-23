@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
@@ -27,6 +28,10 @@ public partial class App : System.Windows.Application
 
     public App()
     {
+        var brazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
+        CultureInfo.DefaultThreadCurrentCulture = brazilianCulture;
+        CultureInfo.DefaultThreadCurrentUICulture = brazilianCulture;
+
         _ownsSingleInstance = TryAcquireSingleInstance(_singleInstanceMutex);
         if (!_ownsSingleInstance)
         {

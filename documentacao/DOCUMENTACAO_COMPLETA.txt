@@ -1883,6 +1883,50 @@ O servidor permanece como validador definitivo de valor positivo, limite monetá
 data válida, tenant e permissão. As máscaras do App melhoram a UX, mas não substituem
 validações e não permitem ao cliente escolher company_id.
 
+24.3.1 Correção de homologação — carregamento parcial e contrato de categorias
+
+[CAUSA RAIZ]
+Lista, resumo, opções de status e categorias eram obtidos por uma única chamada. Uma
+falha inesperada ao compor qualquer parte fazia a API responder com a página HTML de
+erro 500; o cliente não conseguia desserializar o envelope e exibia a mensagem genérica.
+Além disso, o ViewModel só preenchia categorias/status depois do sucesso integral,
+deixando os combos vazios e os cartões com valores padrão que pareciam dados reais.
+
+[BACKEND/API]
+GET /api/v1/payables/categories passou a oferecer o contrato estável e independente
+das categorias permitidas. GET /api/v1/payables continua trazendo `categories` por
+compatibilidade, mas usa a lista canônica e não executa uma consulta auxiliar capaz de
+invalidar o snapshot. Falhas inesperadas de listagem e criação agora são registradas
+com request_id e respondem em JSON sanitizado com `payables_load_failed` ou
+`payable_create_failed`; nenhuma página HTML, SQL ou stack trace é entregue ao App.
+
+POST /api/v1/payables recebe `due_date` exclusivamente como data civil ISO
+`yyyy-MM-dd`. `date.fromisoformat` valida o calendário gregoriano real, incluindo anos
+bissextos: 29/02 só é aceito em ano válido; 31/02, mês 13 e texto retornam HTTP 422,
+`invalid_date`, campo `due_date`. Como o tipo é Date/DateOnly, não existe conversão UTC
+nem deslocamento de dia por timezone.
+
+[APP WINDOWS]
+Status e categorias padrão são materializados antes do primeiro acesso à rede. A tela
+carrega snapshot principal e categorias em operações isoladas. Se somente categorias
+falharem, lista, resumo e formulário continuam disponíveis, aparece um aviso específico
+e o botão Tentar novamente repete apenas a chamada de categorias. Se o snapshot falhar,
+o formulário digitado e qualquer dado previamente válido são preservados; os cartões de
+resumo ficam ocultos para não apresentar R$ 0,00 falso. O retry principal mantém busca,
+filtros e todos os campos da nova conta.
+
+O campo Vencimento aceita apenas dígitos, insere `/` automaticamente, limita a oito
+dígitos e apresenta `dd/MM/aaaa`. Colagem ISO ou brasileira é normalizada. O ViewModel
+usa DateOnly.TryParseExact para rejeitar letras e datas impossíveis antes do POST e só
+então gera `yyyy-MM-dd`. A mesma regra vale para datas inicial/final dos filtros.
+
+[TESTES]
+O contrato Python cobre criação/listagem, endpoint independente de categorias e rejeição
+422 de data impossível. Os testes .NET cobrem conversão pt-BR para ISO, valores
+monetários, datas inválidas e falha parcial de categorias sem perda de resumo/itens. O
+workflow Windows executa todos os testes, valida XAML, publica self-contained, faz smoke
+test do executável/instalador e atualiza a release `windows-preview`.
+
 24.4 Configurações > Equipe — painel de gerenciamento
 
 [APP]
@@ -2057,3 +2101,89 @@ workflow antes de marcar esta entrega como publicada.
 [ ] Botão Editar abre o produto correto para usuário autorizado.
 [ ] Usuário sem can_manage_products não consegue executar a edição.
 [ ] Repetir em tema claro/escuro e nas resoluções de homologação.
+
+25.8 Enter padronizado em pesquisa e filtros
+
+[APP WINDOWS]
+As áreas de consulta agora usam `EnterCommandBehavior`, um comportamento anexado
+reutilizável que recebe exatamente o mesmo `ICommand` do botão visual de pesquisar,
+filtrar ou aplicar. A implementação foi aplicada somente ao contêiner de filtros de
+Produtos, Categorias, Estoque, Contas a pagar, resumo e produtos de Relatórios,
+Auditoria e pesquisa da Equipe. Assim, qualquer campo simples dentro desse bloco
+dispara uma única execução equivalente ao clique, inclusive ComboBox fechado.
+
+O comportamento consulta `CanExecute` antes de executar. Logo, comandos bloqueados
+por carregamento, permissão ou estado inválido não são forçados. Enter já tratado,
+combinações com modificadores, botões, TextBox multilinha e ComboBox com dropdown
+aberto mantêm o comportamento nativo. O recurso não foi instalado globalmente na
+janela e não alcança login, leitor de código, autocomplete, quantidade, pagamento,
+desconto, cadastro, edição, modal ou caixa. Vendas, Caixa e Notificações não possuem
+um bloco de filtros equivalente no estado atual e permanecem sem captura adicional.
+
+Nos filtros com datas digitáveis, Contas a pagar, Relatórios e Auditoria validam
+DD/MM/AAAA. Uma data preenchida e inválida mostra erro local e não inicia chamada
+HTTP. Validações monetárias e de faixa de Produtos continuam no comando já usado
+pelo botão, mantendo a API como autoridade final.
+
+[TESTES]
+`EnterCommandBehaviorTests` cobre execução única com o parâmetro original, respeito
+a `CanExecute=false`, preservação de campo multilinha e prioridade do ComboBox aberto.
+O XAML das telas alteradas deve ser validado no pipeline Windows junto da compilação
+e da suíte .NET, pois o ambiente macOS de desenvolvimento não possui o SDK WPF.
+
+25.9 Padronização global de datas e horários do App Windows
+
+[APP WINDOWS — APRESENTAÇÃO]
+Toda data civil exibida no aplicativo segue DD/MM/AAAA. Instantes operacionais
+seguem DD/MM/AAAA HH:mm. A cultura padrão das threads do processo é definida
+explicitamente como pt-BR no início do aplicativo, evitando que uma máquina em
+en-US ou outra localidade altere textos, calendário ou ordem de dia e mês.
+
+`BrazilianDateFormatting` é a fronteira central de datas da camada Application. Ela
+concentra parsing, máscara, apresentação, conversão de data civil para o contrato da
+API, relógio comercial e conversão de timestamp. `DashboardFormatting` delega a
+essa implementação; com isso Dashboard, Vendas, Caixa atual e anteriores, Estoque,
+Contas a pagar, Relatórios, Auditoria, Notificações, Configurações/backup e estados
+de conexão usam a mesma regra. Produtos e Categorias não apresentam atualmente
+campos de data; quando passarem a apresentá-los, devem consumir a mesma fronteira.
+
+[APP WINDOWS — ENTRADA]
+`BrazilianDateInputBehavior` fornece a máscara reutilizável para TextBox. A digitação
+de 23082026 evolui para 23/08/2026, aceita colagem segura, bloqueia letras e limita a
+oito dígitos. A validação usa o calendário real do .NET: datas impossíveis, mês 13,
+dia zero e 29/02 em ano não bissexto são rejeitados. O comportamento foi aplicado ao
+vencimento e aos filtros de Contas a pagar, aos períodos de Relatórios e aos filtros
+da Auditoria. Os DatePicker de Estoque declaram idioma pt-BR.
+
+Pressionar Enter em filtro inválido exibe a mensagem local e não chama a API. Quando
+as duas extremidades estão preenchidas, a data inicial deve ser menor ou igual à
+final. Em uma faixa válida, Enter e botão visual continuam executando exatamente o
+mesmo ICommand e o mesmo caminho de consulta.
+
+[API E PERSISTÊNCIA]
+Data civil não recebe conversão de fuso: o App apresenta DD/MM/AAAA e envia
+YYYY-MM-DD, preservando o dia escolhido. Instantes permanecem no contrato ISO 8601.
+Ao exibi-los, o App interpreta o offset recebido e converte uma única vez para
+America/Sao_Paulo (ou o identificador equivalente do Windows). Não são usados
+`AddHours`, sufixos artificiais nem correção duplicada. Viradas de dia, mês, ano e
+ano bissexto são consequência da conversão oficial de fuso, não de regra manual.
+
+[SEGURANÇA E CONFIABILIDADE]
+Entradas inválidas são interrompidas antes da rede, reduzindo requisições ambíguas.
+A API continua validando parâmetros, autorização e isolamento por empresa; formato
+visual nunca substitui validação de servidor. Valores inesperados recebidos da API
+não são reinterpretados silenciosamente como outra data: a interface apresenta um
+fallback seguro. Logs técnicos podem manter ISO 8601 porque não são campos de UI.
+
+[TESTES]
+`BrazilianDateFormattingTests` cobre DD/MM/AAAA, oito dígitos, ISO do contrato,
+cultura en-US, colagem/máscara, datas impossíveis, ano bissexto e conversões UTC que
+atravessam dia e ano em São Paulo. `PayablesViewModelTests` cobre bloqueio de data
+inválida e de período invertido sem chamada à API, além do payload YYYY-MM-DD.
+
+[HOMOLOGAÇÃO PENDENTE NO WINDOWS]
+[ ] Digitar e colar datas nas telas listadas, inclusive usando Windows em en-US.
+[ ] Confirmar Enter e clique com data inválida e período invertido.
+[ ] Confirmar abertura/fechamento de caixa, venda, cancelamento, auditoria e alertas
+    próximos à meia-noite com o mesmo horário de São Paulo exibido na Web.
+[ ] Executar build, testes .NET, publish win-x64 e smoke test do instalador no runner.

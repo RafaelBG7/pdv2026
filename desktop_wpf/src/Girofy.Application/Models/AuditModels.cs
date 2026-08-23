@@ -102,7 +102,9 @@ public sealed class AuditLogRecord
 
     public string CreatedAtText => DashboardFormatting.DateTimeText(CreatedAt);
 
-    public string CreatedDateText => DashboardFormatting.LocalDateTime(CreatedAt)?.ToString("dd/MM/yyyy") ?? "-";
+    public string CreatedDateText => DashboardFormatting.LocalDateTime(CreatedAt) is { } createdAt
+        ? BrazilianDateFormatting.FormatDate(DateOnly.FromDateTime(createdAt.DateTime))
+        : "-";
 
     public string CreatedTimeText => DashboardFormatting.LocalDateTime(CreatedAt)?.ToString("HH:mm") ?? "";
 

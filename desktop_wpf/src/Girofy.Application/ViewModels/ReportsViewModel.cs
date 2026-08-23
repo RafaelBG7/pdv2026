@@ -267,6 +267,18 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
 
     private async Task ApplyFiltersAsync(CancellationToken cancellationToken)
     {
+        if (!HasValidFilterDates())
+        {
+            ErrorMessage = "Informe as datas no formato DD/MM/AAAA.";
+            return;
+        }
+
+        if (!HasValidFilterRange())
+        {
+            ErrorMessage = "A data inicial não pode ser posterior à data final.";
+            return;
+        }
+
         _isInitialized = false;
         await LoadAsync(cancellationToken);
     }
@@ -286,7 +298,21 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     }
 
     private async Task ApplyProductFiltersAsync(CancellationToken cancellationToken)
-        => await LoadProductReportAsync(1, cancellationToken);
+    {
+        if (!HasValidFilterDates())
+        {
+            ErrorMessage = "Informe as datas no formato DD/MM/AAAA.";
+            return;
+        }
+
+        if (!HasValidFilterRange())
+        {
+            ErrorMessage = "A data inicial não pode ser posterior à data final.";
+            return;
+        }
+
+        await LoadProductReportAsync(1, cancellationToken);
+    }
 
     private async Task PreviousProductPageAsync(CancellationToken cancellationToken)
         => await LoadProductReportAsync(ProductSnapshot.Pagination.Page - 1, cancellationToken);
@@ -356,11 +382,16 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         Math.Max(1, page),
         25);
 
-    private static string? NormalizeDate(string value)
-    {
-        var trimmed = value.Trim();
-        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
-    }
+    private static string? NormalizeDate(string value) => BrazilianDateFormatting.ToApiDate(value);
+
+    private bool HasValidFilterDates() =>
+        BrazilianDateFormatting.IsValidOptionalDate(StartDateText) &&
+        BrazilianDateFormatting.IsValidOptionalDate(EndDateText);
+
+    private bool HasValidFilterRange() =>
+        !BrazilianDateFormatting.TryParseDate(StartDateText, out var start) ||
+        !BrazilianDateFormatting.TryParseDate(EndDateText, out var end) ||
+        start <= end;
 
     private bool HasPermission(string permission)
     {

@@ -1,6 +1,7 @@
 <UserControl x:Class="Girofy.Desktop.Views.AuditView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:behaviors="clr-namespace:Girofy.Desktop.Behaviors"
              xmlns:models="clr-namespace:Girofy.Application.Models;assembly=Girofy.Application">
     <UserControl.Resources>
         <Style x:Key="AuditMetricCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
@@ -87,6 +88,7 @@
             </UniformGrid>
 
             <Border Grid.Row="6" Style="{StaticResource CardStyle}" Padding="18"
+                    behaviors:EnterCommandBehavior.Command="{Binding SearchCommand}"
                     BorderBrush="{DynamicResource InfoBorderBrush}" Effect="{StaticResource CardShadowEffect}">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -116,9 +118,11 @@
                     <TextBlock Grid.Row="4" Grid.Column="4" FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}" Foreground="{DynamicResource TextPrimaryBrush}" Text="Data final" />
                     <ComboBox Grid.Row="6" ItemsSource="{Binding Methods}" SelectedItem="{Binding SelectedMethod}" DisplayMemberPath="Label" />
                     <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding StartDateText, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="dd/mm/aaaa" Style="{StaticResource TextInputStyle}" />
+                             ToolTip="DD/MM/AAAA" MaxLength="10"
+                             behaviors:BrazilianDateInputBehavior.IsEnabled="True" Style="{StaticResource TextInputStyle}" />
                     <TextBox Grid.Row="6" Grid.Column="4" Text="{Binding EndDateText, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="dd/mm/aaaa" Style="{StaticResource TextInputStyle}" />
+                             ToolTip="DD/MM/AAAA" MaxLength="10"
+                             behaviors:BrazilianDateInputBehavior.IsEnabled="True" Style="{StaticResource TextInputStyle}" />
                     <Grid Grid.Row="6" Grid.Column="6">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Button Command="{Binding SearchCommand}" Content="Filtrar" Style="{StaticResource PrimaryButtonStyle}" />

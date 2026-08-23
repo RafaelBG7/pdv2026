@@ -1,5 +1,6 @@
 using Girofy.Application.Models;
 using Girofy.Application.Mvvm;
+using System.Globalization;
 
 namespace Girofy.Application.ViewModels;
 
@@ -42,13 +43,36 @@ public sealed class CashRegisterTimelineSaleViewModel : ObservableObject
         ? $"Venda #{Summary.Id}"
         : $"Venda {Summary.Number}";
 
-    public string DateTimeText => string.IsNullOrWhiteSpace(Summary.Date)
-        ? Summary.Time
-        : $"{Summary.Date} às {Summary.Time}";
+    public string DateTimeText
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(Summary.CreatedAt))
+            {
+                return BrazilianDateFormatting.FormatTimestamp(Summary.CreatedAt);
+            }
+
+            var date = BrazilianDateFormatting.NormalizeDateInput(Summary.Date);
+            var time = NormalizeTime(Summary.Time);
+            return date is null
+                ? (string.IsNullOrWhiteSpace(time) ? "Data não informada" : time)
+                : string.IsNullOrWhiteSpace(time) ? date : $"{date} às {time}";
+        }
+    }
 
     public string SellerText => string.IsNullOrWhiteSpace(Summary.Seller)
         ? "Não informado"
         : Summary.Seller;
+
+    private static string NormalizeTime(string? value) =>
+        TimeOnly.TryParseExact(
+            value,
+            ["HH:mm", "HH:mm:ss"],
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var time)
+                ? time.ToString("HH:mm", CultureInfo.InvariantCulture)
+                : value?.Trim() ?? string.Empty;
 
     public SaleReceipt? Detail
     {

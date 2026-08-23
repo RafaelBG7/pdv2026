@@ -6,55 +6,21 @@ namespace Girofy.Application.Models;
 public static class DashboardFormatting
 {
     private static readonly CultureInfo BrazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
-    private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
 
     public static string Money(decimal value) => $"R$ {value.ToString("N2", BrazilianCulture)}";
 
     public static string OptionalMoney(decimal? value) => value.HasValue ? Money(value.Value) : "Restrito";
 
-    public static DateTimeOffset? LocalDateTime(string? value)
-    {
-        if (DateTimeOffset.TryParse(
-                value,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal,
-                out var parsed))
-        {
-            return TimeZoneInfo.ConvertTime(parsed, BusinessTimeZone);
-        }
-
-        return null;
-    }
+    public static DateTimeOffset? LocalDateTime(string? value) => BrazilianDateFormatting.ToBusinessTime(value);
 
     public static string DateTimeText(string? value)
     {
-        var parsed = LocalDateTime(value);
-        return parsed?.ToString("dd/MM/yyyy HH:mm", BrazilianCulture) ?? "Data não informada";
+        return BrazilianDateFormatting.FormatTimestamp(value);
     }
 
     public static DateOnly BusinessToday()
     {
-        var now = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, BusinessTimeZone);
-        return DateOnly.FromDateTime(now.DateTime);
-    }
-
-    private static TimeZoneInfo ResolveBusinessTimeZone()
-    {
-        foreach (var identifier in new[] { "E. South America Standard Time", "America/Sao_Paulo" })
-        {
-            try
-            {
-                return TimeZoneInfo.FindSystemTimeZoneById(identifier);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-            }
-            catch (InvalidTimeZoneException)
-            {
-            }
-        }
-
-        return TimeZoneInfo.Local;
+        return BrazilianDateFormatting.BusinessToday();
     }
 }
 
@@ -87,8 +53,8 @@ public sealed class DashboardSnapshot
     [JsonPropertyName("upcoming_payables")]
     public IReadOnlyList<DashboardPayable> UpcomingPayables { get; init; } = [];
 
-    public string ReferenceDateText => DateTime.TryParse(Date, out var parsed)
-        ? parsed.ToString("dd 'de' MMMM 'de' yyyy", CultureInfo.GetCultureInfo("pt-BR"))
+    public string ReferenceDateText => BrazilianDateFormatting.TryParseDate(Date, out var parsed)
+        ? BrazilianDateFormatting.FormatDate(parsed)
         : "Operação de hoje";
 }
 
@@ -298,7 +264,7 @@ public sealed class DashboardPayable
 
     public string AmountText => DashboardFormatting.Money(Amount);
 
-    public string DueDateText => DateTime.TryParse(DueDate, out var parsed)
-        ? $"{(Overdue ? "Vencida" : "Vence")} em {parsed:dd/MM/yyyy}"
+    public string DueDateText => BrazilianDateFormatting.TryParseDate(DueDate, out var parsed)
+        ? $"{(Overdue ? "Vencida" : "Vence")} em {BrazilianDateFormatting.FormatDate(parsed)}"
         : "Vencimento não informado";
 }

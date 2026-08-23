@@ -1,6 +1,7 @@
 <UserControl x:Class="Girofy.Desktop.Views.ReportsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:behaviors="clr-namespace:Girofy.Desktop.Behaviors">
     <UserControl.Resources>
         <Style x:Key="ReportTabButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="44" />
@@ -175,7 +176,7 @@
                     <TextBlock FontSize="{DynamicResource FontSizeSection}" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                Text="Filtros do período" />
-                    <Grid Grid.Row="2">
+                    <Grid Grid.Row="2" behaviors:EnterCommandBehavior.Command="{Binding ApplyFiltersCommand}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="10" />
@@ -213,7 +214,8 @@
                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Data inicial" />
                             <TextBox Text="{Binding StartDateText, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="AAAA-MM-DD"
+                                     ToolTip="DD/MM/AAAA" MaxLength="10"
+                                     behaviors:BrazilianDateInputBehavior.IsEnabled="True"
                                      Style="{StaticResource TextInputStyle}" />
                         </StackPanel>
                         <StackPanel Grid.Column="6">
@@ -221,7 +223,8 @@
                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                        Text="Data final" />
                             <TextBox Text="{Binding EndDateText, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="AAAA-MM-DD"
+                                     ToolTip="DD/MM/AAAA" MaxLength="10"
+                                     behaviors:BrazilianDateInputBehavior.IsEnabled="True"
                                      Style="{StaticResource TextInputStyle}" />
                         </StackPanel>
 
@@ -621,7 +624,7 @@
                                    Text="{Binding ProductPagination.PageText}" />
                     </Grid>
 
-                    <Grid Grid.Row="2">
+                    <Grid Grid.Row="2" behaviors:EnterCommandBehavior.Command="{Binding ApplyProductFiltersCommand}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*" />
                             <ColumnDefinition Width="12" />

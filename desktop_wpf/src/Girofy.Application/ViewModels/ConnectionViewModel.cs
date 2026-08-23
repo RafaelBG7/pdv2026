@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using System.Globalization;
 using Girofy.Application.Abstractions;
+using Girofy.Application.Models;
 using Girofy.Application.Mvvm;
 
 namespace Girofy.Application.ViewModels;
@@ -341,7 +343,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            LastCheckedText = $"Última verificação: {DateTimeOffset.Now:dd/MM/yyyy HH:mm:ss}";
+            LastCheckedText = $"Última verificação: {BrazilianDateFormatting.FormatTimestamp(DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture))}";
             IsBusy = false;
         }
     }

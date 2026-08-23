@@ -8,6 +8,39 @@ namespace Girofy.UnitTests;
 public sealed class PayablesViewModelTests
 {
     [Fact]
+    public async Task Apply_filters_with_invalid_date_does_not_call_api()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new PayablesViewModel(apiClient, CreateSessionContext())
+        {
+            StartDateText = "31/02/2026",
+        };
+
+        await viewModel.ApplyFiltersCommand.ExecuteAsync();
+
+        Assert.Equal(0, apiClient.GetCalls);
+        Assert.True(viewModel.HasError);
+        Assert.Contains("DD/MM/AAAA", viewModel.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Apply_filters_with_reversed_period_does_not_call_api()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new PayablesViewModel(apiClient, CreateSessionContext())
+        {
+            StartDateText = "24/08/2026",
+            EndDateText = "23/08/2026",
+        };
+
+        await viewModel.ApplyFiltersCommand.ExecuteAsync();
+
+        Assert.Equal(0, apiClient.GetCalls);
+        Assert.True(viewModel.HasError);
+        Assert.Contains("inicial", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Initialize_loads_payables_summary_filters_and_items()
     {
         var sessionContext = CreateSessionContext();
@@ -93,6 +126,30 @@ public sealed class PayablesViewModelTests
         Assert.Equal(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), apiClient.CreatedRequest!.Amount);
     }
 
+    [Theory]
+    [InlineData("29/02/2024", "2024-02-29")]
+    [InlineData("31/08/2026", "2026-08-31")]
+    [InlineData("01/09/2026", "2026-09-01")]
+    [InlineData("31/12/2026", "2026-12-31")]
+    [InlineData("01/01/2027", "2027-01-01")]
+    public async Task Create_payable_sends_valid_civil_dates_without_timezone_shift(
+        string input,
+        string expectedIsoDate)
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new PayablesViewModel(apiClient, CreateSessionContext())
+        {
+            Description = "Conta com data civil",
+            AmountText = "10,00",
+            DueDateText = input,
+        };
+
+        await viewModel.CreatePayableCommand.ExecuteAsync();
+
+        Assert.NotNull(apiClient.CreatedRequest);
+        Assert.Equal(expectedIsoDate, apiClient.CreatedRequest!.DueDate);
+    }
+
     [Fact]
     public async Task Empty_state_is_only_visible_after_a_successful_load()
     {
@@ -147,6 +204,47 @@ public sealed class PayablesViewModelTests
         Assert.True(viewModel.HasError);
         Assert.Equal(0, apiClient.CreateCalls);
         Assert.Equal(0, apiClient.GetCalls);
+    }
+
+    [Theory]
+    [InlineData("31/02/2026")]
+    [InlineData("29/02/2025")]
+    [InlineData("texto")]
+    [InlineData("01/13/2026")]
+    public async Task Create_payable_rejects_impossible_or_non_brazilian_due_date(string dueDate)
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new PayablesViewModel(apiClient, CreateSessionContext())
+        {
+            Description = "Conta inválida",
+            AmountText = "10,00",
+            DueDateText = dueDate,
+        };
+
+        await viewModel.CreatePayableCommand.ExecuteAsync();
+
+        Assert.True(viewModel.HasError);
+        Assert.Contains("vencimento válido", viewModel.ErrorMessage);
+        Assert.Equal(0, apiClient.CreateCalls);
+    }
+
+    [Fact]
+    public async Task Category_failure_is_partial_and_keeps_summary_items_and_default_categories()
+    {
+        var apiClient = new StubApiClient
+        {
+            Snapshot = SnapshotWithItems(),
+            CategoriesException = new HttpRequestException("offline"),
+        };
+        using var viewModel = new PayablesViewModel(apiClient, CreateSessionContext());
+
+        await viewModel.InitializeAsync();
+
+        Assert.True(viewModel.HasLoaded);
+        Assert.True(viewModel.IsSummaryAvailable);
+        Assert.True(viewModel.HasItems);
+        Assert.True(viewModel.HasCategoriesError);
+        Assert.Contains("Outros", viewModel.Categories);
     }
 
     [Fact]
@@ -304,6 +402,8 @@ public sealed class PayablesViewModelTests
 
         public PayableMutationRequest? CreatedRequest { get; private set; }
 
+        public Exception? CategoriesException { get; init; }
+
         public int? PaidId { get; private set; }
 
         public int? ReopenedId { get; private set; }
@@ -317,6 +417,18 @@ public sealed class PayablesViewModelTests
             GetCalls++;
             LastQuery = query;
             return Task.FromResult(Snapshot);
+        }
+
+        public Task<IReadOnlyList<string>> GetPayableCategoriesAsync(
+            string accessToken,
+            CancellationToken cancellationToken)
+        {
+            if (CategoriesException is not null)
+            {
+                return Task.FromException<IReadOnlyList<string>>(CategoriesException);
+            }
+
+            return Task.FromResult(Snapshot.Categories);
         }
 
         public Task<PayableRecord> CreatePayableAsync(

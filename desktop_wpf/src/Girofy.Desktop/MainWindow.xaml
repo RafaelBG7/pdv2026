@@ -713,7 +713,7 @@
                         <Border Grid.Row="2" Padding="18" CornerRadius="10"
                                 Background="{DynamicResource SurfaceRaisedBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}">
-                            <Grid>
+                            <Grid behaviors:EnterCommandBehavior.Command="{Binding Catalog.SearchCommand}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="2.1*" />
                                     <ColumnDefinition Width="14" />
@@ -745,11 +745,7 @@
                                 <TextBox Grid.Row="2"
                                          Text="{Binding Catalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="Buscar produto"
-                                         Style="{StaticResource TextInputStyle}">
-                                    <TextBox.InputBindings>
-                                        <KeyBinding Key="Enter" Command="{Binding Catalog.SearchCommand}" />
-                                    </TextBox.InputBindings>
-                                </TextBox>
+                                         Style="{StaticResource TextInputStyle}" />
                                 <ComboBox Grid.Row="2" Grid.Column="2"
                                           ItemsSource="{Binding Catalog.ActiveFilters}"
                                           SelectedItem="{Binding Catalog.SelectedActiveFilter}"
@@ -781,22 +777,14 @@
                                          behaviors:MoneyInputBehavior.IsTouched="{Binding Catalog.IsMinPriceFilterActive, Mode=TwoWay}"
                                          AutomationProperties.Name="Preço mínimo"
                                          ToolTip="Preço mínimo, por exemplo 10,00"
-                                         Style="{StaticResource TextInputStyle}">
-                                    <TextBox.InputBindings>
-                                        <KeyBinding Key="Enter" Command="{Binding Catalog.SearchCommand}" />
-                                    </TextBox.InputBindings>
-                                </TextBox>
+                                         Style="{StaticResource TextInputStyle}" />
                                 <TextBox Grid.Row="6" Grid.Column="4"
                                          Text="{Binding Catalog.MaxPriceText, UpdateSourceTrigger=PropertyChanged}"
                                          behaviors:MoneyInputBehavior.IsEnabled="True"
                                          behaviors:MoneyInputBehavior.IsTouched="{Binding Catalog.IsMaxPriceFilterActive, Mode=TwoWay}"
                                          AutomationProperties.Name="Preço máximo"
                                          ToolTip="Preço máximo, por exemplo 100,00"
-                                         Style="{StaticResource TextInputStyle}">
-                                    <TextBox.InputBindings>
-                                        <KeyBinding Key="Enter" Command="{Binding Catalog.SearchCommand}" />
-                                    </TextBox.InputBindings>
-                                </TextBox>
+                                         Style="{StaticResource TextInputStyle}" />
                                 <Button Grid.Row="6" Grid.Column="6" Grid.ColumnSpan="3" MinWidth="120"
                                         Command="{Binding Catalog.ClearProductFiltersCommand}"
                                         Content="Limpar filtros" Style="{StaticResource SecondaryButtonStyle}" />
@@ -1491,7 +1479,7 @@
                                 Background="{DynamicResource SurfaceRaisedBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="8">
-                            <Grid>
+                            <Grid behaviors:EnterCommandBehavior.Command="{Binding Catalog.SearchCategoriesCommand}">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
@@ -1509,11 +1497,7 @@
                                                Text="Buscar categoria" />
                                     <TextBox Text="{Binding Catalog.CategorySearchText, UpdateSourceTrigger=PropertyChanged}"
                                              ToolTip="Digite o nome da categoria"
-                                             Style="{StaticResource TextInputStyle}">
-                                        <TextBox.InputBindings>
-                                            <KeyBinding Key="Enter" Command="{Binding Catalog.SearchCategoriesCommand}" />
-                                        </TextBox.InputBindings>
-                                    </TextBox>
+                                             Style="{StaticResource TextInputStyle}" />
                                 </StackPanel>
                                 <Button Grid.Column="2" MinWidth="112" VerticalAlignment="Bottom"
                                         Command="{Binding Catalog.SearchCategoriesCommand}"

@@ -1293,7 +1293,8 @@
                                                        Foreground="{DynamicResource TextSecondaryBrush}" Text="Produto-base" />
                                             <Grid>
                                                 <TextBox x:Name="KitComponentSearchInput"
-                                                         Padding="12,8,38,8"
+                                                         Padding="12,0,38,0"
+                                                         VerticalContentAlignment="Center"
                                                          Text="{Binding Catalog.EditorKitComponentSearchText, UpdateSourceTrigger=PropertyChanged}"
                                                          IsEnabled="{Binding Catalog.EditorIsKit}"
                                                          PreviewKeyDown="KitComponentSearchInput_PreviewKeyDown"

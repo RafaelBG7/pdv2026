@@ -246,6 +246,18 @@
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="8">
                             <Grid>
+                                <TextBox x:Name="PART_EditableTextBox"
+                                         Margin="12,0,44,0"
+                                         Padding="0"
+                                         VerticalContentAlignment="Center"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         CaretBrush="{DynamicResource TextPrimaryBrush}"
+                                         Foreground="{TemplateBinding Foreground}"
+                                         FontSize="{TemplateBinding FontSize}"
+                                         IsReadOnly="{TemplateBinding IsReadOnly}"
+                                         Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource TemplatedParent}}"
+                                         Visibility="Collapsed" />
                                 <ToggleButton x:Name="DropDownToggle"
                                               Background="Transparent"
                                               BorderThickness="0"
@@ -267,6 +279,7 @@
                                     </ToggleButton.Template>
                                 </ToggleButton>
                                 <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                  x:Name="SelectedContent"
                                                   HorizontalAlignment="Left"
                                                   VerticalAlignment="Center"
                                                   IsHitTestVisible="False"
@@ -298,6 +311,12 @@
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="SelectedContent" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="DropDownToggle" Property="Width" Value="44" />
+                            <Setter TargetName="DropDownToggle" Property="HorizontalAlignment" Value="Right" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
                         </Trigger>

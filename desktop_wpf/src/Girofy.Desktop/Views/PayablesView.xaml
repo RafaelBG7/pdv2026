@@ -135,7 +135,9 @@
                         <StackPanel><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Descrição" />
                             <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" ToolTip="Ex.: aluguel, luz ou internet" Style="{StaticResource TextInputStyle}" /></StackPanel>
                         <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Categoria" />
-                            <ComboBox IsEditable="True" ItemsSource="{Binding Categories}" Text="{Binding CategoryText, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                            <ComboBox IsEditable="True"
+                                      ItemsSource="{Binding Categories}"
+                                      Text="{Binding CategoryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
                         <StackPanel Grid.Column="4"><TextBlock Style="{StaticResource PayablesLabelStyle}" Text="Valor" />
                             <TextBox Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" ToolTip="0,00"
                                      TextAlignment="Right" PreviewTextInput="CurrencyInput_PreviewTextInput"

@@ -57,7 +57,12 @@
             <Setter Property="ItemsPanel">
                 <Setter.Value>
                     <ItemsPanelTemplate>
-                        <UniformGrid Rows="1" Columns="10" />
+                        <!--
+                            Duas linhas fixas mantêm todas as abas legíveis em
+                            100%, 125% e 150%, sem alterar a posição delas ao
+                            trocar de seção.
+                        -->
+                        <UniformGrid Rows="2" Columns="5" />
                     </ItemsPanelTemplate>
                 </Setter.Value>
             </Setter>
@@ -94,7 +99,7 @@
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="{DynamicResource FontSizeLabel}" />
-            <Setter Property="Padding" Value="17,11" />
+            <Setter Property="Padding" Value="10,11" />
             <Setter Property="Margin" Value="3" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -157,7 +162,8 @@
                     <TextBlock Margin="0,7,0,0"
                                FontSize="{DynamicResource FontSizeInput}"
                                Foreground="{DynamicResource TextSecondaryBrush}"
-                               Text="Gerencie os dados do usuário conectado e as preferências da adega." />
+                               Text="Gerencie os dados do usuário conectado e as preferências da adega."
+                               TextWrapping="Wrap" />
                 </StackPanel>
                 <ToggleButton Grid.Column="1"
                               Command="{Binding ToggleThemeCommand}"

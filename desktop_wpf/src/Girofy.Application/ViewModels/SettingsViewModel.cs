@@ -809,15 +809,56 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
             }
 
             ApplySnapshot(snapshot);
-            var notificationPreferences = await _apiClient.GetNotificationPreferencesAsync(
-                session.AccessToken,
-                cancellationToken);
-            ApplyNotificationPreferences(notificationPreferences);
+            var supplementalFailures = new List<string>();
+            try
+            {
+                var notificationPreferences = await _apiClient.GetNotificationPreferencesAsync(
+                    session.AccessToken,
+                    cancellationToken);
+                ApplyNotificationPreferences(notificationPreferences);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                supplementalFailures.Add("preferências de notificações");
+            }
+
             if (CanManageTeam)
             {
-                var emailAlerts = await _apiClient.GetEmailAlertSettingsAsync(session.AccessToken, cancellationToken);
-                ApplyEmailAlertSettings(emailAlerts);
-                await LoadTeamDataAsync(session.AccessToken, cancellationToken);
+                try
+                {
+                    var emailAlerts = await _apiClient.GetEmailAlertSettingsAsync(session.AccessToken, cancellationToken);
+                    ApplyEmailAlertSettings(emailAlerts);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception)
+                {
+                    supplementalFailures.Add("alertas por e-mail");
+                }
+
+                try
+                {
+                    await LoadTeamDataAsync(session.AccessToken, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception)
+                {
+                    supplementalFailures.Add("equipe");
+                }
+            }
+
+            if (supplementalFailures.Count > 0)
+            {
+                ErrorMessage = $"As configurações principais foram carregadas, mas não foi possível atualizar: {string.Join(", ", supplementalFailures)}. Tente novamente.";
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

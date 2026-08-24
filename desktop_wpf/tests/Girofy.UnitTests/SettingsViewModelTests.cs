@@ -26,6 +26,24 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task Supplemental_failure_does_not_discard_main_settings()
+    {
+        var apiClient = new ExportApiClient { FailEmailAlertSettings = true };
+        var viewModel = new SettingsViewModel(
+            apiClient, CreateAdminSessionContext(), new StubBrowserService(),
+            new CapturingFileSaveService(), new CapturingFilePickerService(),
+            new Uri("https://girofy.example/configuracoes"));
+
+        await viewModel.InitializeAsync();
+
+        Assert.True(viewModel.HasData);
+        Assert.Equal("Adega JF", viewModel.CompanyName);
+        Assert.Equal("adegajf", viewModel.UsernameText);
+        Assert.Contains("alertas por e-mail", viewModel.ErrorMessage);
+        Assert.DoesNotContain("falha interna", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Notification_preferences_are_loaded_and_saved_by_native_settings()
     {
         var apiClient = new ExportApiClient();
@@ -231,6 +249,8 @@ public sealed class SettingsViewModelTests
 
     private sealed class ExportApiClient : IGirofyApiClient
     {
+        public bool FailEmailAlertSettings { get; init; }
+
         public string ExportAccessToken { get; private set; } = string.Empty;
 
         public string ExportType { get; private set; } = string.Empty;
@@ -253,7 +273,9 @@ public sealed class SettingsViewModelTests
 
         public Task<EmailAlertSettingsSnapshot> GetEmailAlertSettingsAsync(
             string accessToken,
-            CancellationToken cancellationToken) => Task.FromResult(CreateEmailAlertSnapshot());
+            CancellationToken cancellationToken) => FailEmailAlertSettings
+                ? Task.FromException<EmailAlertSettingsSnapshot>(new HttpRequestException("HTTP 500"))
+                : Task.FromResult(CreateEmailAlertSnapshot());
 
         public Task<EmailAlertSettingsSnapshot> UpdateEmailAlertSettingsAsync(
             string accessToken,

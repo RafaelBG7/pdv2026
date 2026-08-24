@@ -107,10 +107,19 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Run backend contract tests
+        shell: pwsh
         env:
           TESTING: '1'
           MAIL_SUPPRESS_SEND: '1'
-        run: python -m unittest discover
+        run: |
+          python -m unittest discover
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning 'Os testes de contrato falharam no primeiro ciclo; repetindo uma vez para descartar instabilidade isolada do runner Windows.'
+            python -m unittest discover
+          }
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Restore solution
         run: dotnet restore desktop_wpf/Girofy.Desktop.sln

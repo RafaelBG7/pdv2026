@@ -4684,6 +4684,42 @@ class RouteTestCase(unittest.TestCase):
         restricted_headers = self.bearer_header(restricted_login.get_json()['data']['access_token'])
         self.assertEqual(self.client.get('/api/v1/payables', headers=restricted_headers).status_code, 403)
 
+    def test_api_payables_list_survives_legacy_amount_above_transaction_limit(self):
+        user, company = self.create_api_user(username='financeiro-legado')
+        login_response = self.api_login(user.username, 'SenhaApi123')
+        token = login_response.get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+
+        with self.app.app_context():
+            db.session.add(Payable(
+                company_id=company.id,
+                description='Conta legada de alto valor',
+                category='Outros',
+                amount=Decimal('7898630000000.00'),
+                due_date=date(2026, 8, 30),
+            ))
+            db.session.commit()
+
+        list_response = self.client.get('/api/v1/payables?status=all', headers=headers)
+
+        self.assertEqual(list_response.status_code, 200)
+        data = list_response.get_json()['data']
+        self.assertEqual(data['items'][0]['amount'], '7898630000000.00')
+        self.assertEqual(data['summary']['open_amount'], '7898630000000.00')
+
+        create_response = self.client.post(
+            '/api/v1/payables',
+            headers=headers,
+            json={
+                'description': 'Conta nova após legado',
+                'category': 'Outros',
+                'amount': '25,90',
+                'due_date': '2026-08-31',
+            },
+        )
+        self.assertEqual(create_response.status_code, 201)
+        self.assertEqual(create_response.get_json()['data']['amount'], '25.90')
+
     def test_web_payable_search_and_status_filters_work_together(self):
         self.login()
         with self.app.app_context():

@@ -96,6 +96,38 @@ jobs:
           if [ -n "$payable_diagnostic" ]; then
             echo "::error title=Diagnóstico temporário da API de contas a pagar::$payable_diagnostic"
           fi
+          docker compose -f docker-compose.oci.yml exec -T app python - <<'PY'
+          from sqlalchemy import create_engine, text
+          from sqlalchemy.orm import sessionmaker
+
+          from app import create_app
+          from app.routes.api.v1 import payable_snapshot
+          from scripts.schema_migrate import central_engine, tenant_names, tenant_url
+
+          application = create_app()
+          central = central_engine()
+          try:
+              names = tenant_names(central)
+          finally:
+              central.dispose()
+          with application.app_context():
+              for name in names:
+                  engine = create_engine(tenant_url(name))
+                  try:
+                      with engine.connect() as connection:
+                          company_ids = [row[0] for row in connection.execute(text('SELECT id FROM companies'))]
+                      session = sessionmaker(bind=engine)()
+                      try:
+                          for company_id in company_ids:
+                              payable_snapshot(session, company_id, 'open', '', 'all', None, None)
+                      finally:
+                          session.close()
+                  except Exception as error:
+                      message = f'{type(error).__name__}: {error}'.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                      print(f'::error title=Diagnóstico direto da API de contas a pagar::{message}')
+                  finally:
+                      engine.dispose()
+          PY
 
       - name: Publicar containers na própria VM
         run: bash scripts/deploy_self_hosted_app.sh

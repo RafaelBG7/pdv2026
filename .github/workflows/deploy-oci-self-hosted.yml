@@ -74,6 +74,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Diagnosticar falhas recentes de contas a pagar
+        shell: bash
+        run: |
+          cd "$OCI_DEPLOY_PATH"
+          {
+            echo '### Diagnóstico de contas a pagar antes do deploy'
+            echo '```text'
+            docker compose -f docker-compose.oci.yml logs --since=24h app 2>&1 |
+              grep -A 24 -B 2 'Falha inesperada ao carregar contas a pagar' |
+              grep -E 'Falha inesperada|Traceback|File ".*", line|Error:|Exception:' |
+              tail -80 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publicar containers na própria VM
         run: bash scripts/deploy_self_hosted_app.sh
 

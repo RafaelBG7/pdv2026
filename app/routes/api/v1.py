@@ -4605,28 +4605,27 @@ def email_alert_setting_data(setting):
 def api_email_alert_settings():
     if not g.api_user.has_permission('can_manage_settings'):
         return api_failure('Você não tem permissão para configurar alertas por e-mail.', 'permission_denied', 403)
-    with api_tenant_database(g.api_user) as tenant_db:
-        company = tenant_db.get(Company, g.api_user.company_id)
-        existing = {
-            item.alert_type: item
-            for item in tenant_db.query(EmailAlertSetting).filter_by(company_id=g.api_user.company_id).all()
-        }
-        default_recipients = ', '.join(
-            user.email for user in tenant_db.query(User).filter_by(company_id=g.api_user.company_id).all()
-            if user.is_active and user.email and user.email_verified and user.role in ('admin', 'master')
-        )
-        for alert_type, metadata in EMAIL_ALERT_TYPES.items():
-            if alert_type not in existing:
-                setting = EmailAlertSetting(
-                    company_id=g.api_user.company_id,
-                    alert_type=alert_type,
-                    enabled=metadata['default_enabled'],
-                    recipients=default_recipients,
-                )
-                tenant_db.add(setting)
-                existing[alert_type] = setting
-        tenant_db.commit()
-        items = [email_alert_setting_data(existing[key]) for key in EMAIL_ALERT_TYPES]
+    company = db.session.get(Company, g.api_user.company_id)
+    existing = {
+        item.alert_type: item
+        for item in EmailAlertSetting.query.filter_by(company_id=g.api_user.company_id).all()
+    }
+    default_recipients = ', '.join(
+        user.email for user in User.query.filter_by(company_id=g.api_user.company_id).all()
+        if user.is_active and user.email and user.email_verified and user.role in ('admin', 'master')
+    )
+    for alert_type, metadata in EMAIL_ALERT_TYPES.items():
+        if alert_type not in existing:
+            setting = EmailAlertSetting(
+                company_id=g.api_user.company_id,
+                alert_type=alert_type,
+                enabled=metadata['default_enabled'],
+                recipients=default_recipients,
+            )
+            db.session.add(setting)
+            existing[alert_type] = setting
+    db.session.commit()
+    items = [email_alert_setting_data(existing[key]) for key in EMAIL_ALERT_TYPES]
     return api_success({
         'company_name': company.name if company else '',
         'smtp_configured': bool(current_app.config.get('MAIL_SMTP_SERVER')),
@@ -4664,27 +4663,26 @@ def api_update_email_alert_settings():
         if set(received) != set(EMAIL_ALERT_TYPES):
             raise ApiAuthError('Envie todos os tipos de alerta.', 'incomplete_alert_settings', 422, 'items')
 
-        with api_tenant_database(g.api_user) as tenant_db:
-            company = tenant_db.get(Company, g.api_user.company_id)
-            existing = {
-                item.alert_type: item
-                for item in tenant_db.query(EmailAlertSetting).filter_by(company_id=g.api_user.company_id).all()
-            }
-            for alert_type, (enabled, recipients) in received.items():
-                setting = existing.get(alert_type)
-                if setting is None:
-                    setting = EmailAlertSetting(company_id=g.api_user.company_id, alert_type=alert_type)
-                    tenant_db.add(setting)
-                    existing[alert_type] = setting
-                setting.enabled = enabled
-                setting.recipients = ', '.join(dict.fromkeys(recipients))
-            record_audit_event(
-                'email_alert_settings_updated', 'email_alert_setting', None,
-                'Alertas por e-mail atualizados pelo aplicativo Windows.',
-                company_id=g.api_user.company_id, db_session=tenant_db,
-            )
-            tenant_db.commit()
-            items = [email_alert_setting_data(existing[key]) for key in EMAIL_ALERT_TYPES]
+        company = db.session.get(Company, g.api_user.company_id)
+        existing = {
+            item.alert_type: item
+            for item in EmailAlertSetting.query.filter_by(company_id=g.api_user.company_id).all()
+        }
+        for alert_type, (enabled, recipients) in received.items():
+            setting = existing.get(alert_type)
+            if setting is None:
+                setting = EmailAlertSetting(company_id=g.api_user.company_id, alert_type=alert_type)
+                db.session.add(setting)
+                existing[alert_type] = setting
+            setting.enabled = enabled
+            setting.recipients = ', '.join(dict.fromkeys(recipients))
+        record_audit_event(
+            'email_alert_settings_updated', 'email_alert_setting', None,
+            'Alertas por e-mail atualizados pela API compartilhada.',
+            company_id=g.api_user.company_id, db_session=db.session,
+        )
+        db.session.commit()
+        items = [email_alert_setting_data(existing[key]) for key in EMAIL_ALERT_TYPES]
         return api_success({
             'company_name': company.name if company else '',
             'smtp_configured': bool(current_app.config.get('MAIL_SMTP_SERVER')),

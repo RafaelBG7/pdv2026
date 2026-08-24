@@ -7477,6 +7477,44 @@ class RouteTestCase(unittest.TestCase):
             ).one()
             self.assertEqual(saved.recipient_list, ['primeiro@girofy.test', 'segundo@girofy.test'])
 
+    def test_email_alert_settings_are_shared_between_web_and_windows_api(self):
+        user, company = self.create_api_user(username='shared-email-alert-settings')
+        token = self.api_login('shared-email-alert-settings', 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+
+        with self.app.app_context():
+            db.session.add(EmailAlertSetting(
+                company_id=company.id,
+                alert_type='product_low_stock',
+                enabled=True,
+                recipients='web@girofy.test',
+            ))
+            db.session.commit()
+
+        loaded_by_app = self.client.get('/api/v1/notifications/email-alert-settings', headers=headers)
+        self.assertEqual(loaded_by_app.status_code, 200)
+        app_items = loaded_by_app.get_json()['data']['items']
+        low_stock = next(item for item in app_items if item['alert_type'] == 'product_low_stock')
+        self.assertTrue(low_stock['enabled'])
+        self.assertEqual(low_stock['recipients'], ['web@girofy.test'])
+
+        low_stock['enabled'] = False
+        low_stock['recipients'] = ['app@girofy.test']
+        updated_by_app = self.client.put(
+            '/api/v1/notifications/email-alert-settings',
+            headers=headers,
+            json={'items': app_items},
+        )
+        self.assertEqual(updated_by_app.status_code, 200)
+
+        with self.app.app_context():
+            loaded_by_web = EmailAlertSetting.query.filter_by(
+                company_id=company.id,
+                alert_type='product_low_stock',
+            ).one()
+            self.assertFalse(loaded_by_web.enabled)
+            self.assertEqual(loaded_by_web.recipient_list, ['app@girofy.test'])
+
     def test_notification_api_materializes_web_stock_and_payable_alerts(self):
         user, company = self.create_api_user(username='notify-operational')
         token = self.api_login('notify-operational', 'SenhaApi123').get_json()['data']['access_token']

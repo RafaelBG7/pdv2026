@@ -460,7 +460,15 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
             {
                 _suppressEditorCategorySearch = false;
             }
-            RefreshEditorCategorySuggestions();
+
+            // Keep the selected object in the ItemsSource. Clearing and rebuilding
+            // the collection here makes WPF clear ComboBox.SelectedItem during the
+            // same selection gesture, so the chosen category appears to disappear.
+            if (!EditorCategorySuggestions.Any(category => category.Id == value.Id))
+            {
+                EditorCategorySuggestions.Add(value);
+            }
+            OnPropertyChanged(nameof(HasNoEditorCategoryResults));
         }
     }
 
@@ -474,8 +482,13 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            if (!_suppressEditorCategorySearch
-                && EditorCategory is not null
+            if (_suppressEditorCategorySearch)
+            {
+                OnPropertyChanged(nameof(HasNoEditorCategoryResults));
+                return;
+            }
+
+            if (EditorCategory is not null
                 && !string.Equals(value.Trim(), EditorCategory.Name, StringComparison.CurrentCultureIgnoreCase))
             {
                 _editorCategory = null;
@@ -503,10 +516,12 @@ public sealed class CatalogViewModel : ObservableObject, IDisposable
 
     public void ShowAllEditorCategorySuggestions()
     {
-        EditorCategorySuggestions.Clear();
         foreach (var category in ProductCategories)
         {
-            EditorCategorySuggestions.Add(category);
+            if (!EditorCategorySuggestions.Any(suggestion => suggestion.Id == category.Id))
+            {
+                EditorCategorySuggestions.Add(category);
+            }
         }
         OnPropertyChanged(nameof(HasNoEditorCategoryResults));
     }

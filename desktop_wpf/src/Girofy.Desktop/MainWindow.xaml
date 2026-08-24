@@ -1201,6 +1201,7 @@
                                                       Text="{Binding Catalog.EditorCategorySearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                       DisplayMemberPath="Name"
                                                       IsEditable="True"
+                                                      IsReadOnly="False"
                                                       IsTextSearchEnabled="False"
                                                       StaysOpenOnEdit="True"
                                                       MaxDropDownHeight="240"
@@ -1609,7 +1610,7 @@
                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                     Background="{DynamicResource HeroGradientBrush}"
                                     BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}">
-                                <Grid>
+                                <Grid behaviors:EnterCommandBehavior.Command="{Binding Catalog.SaveCategoryCommand}">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="20" />

@@ -58,6 +58,16 @@ public partial class MainWindow : Window
 
     private async void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _viewModel.Catalog.IsCategoryEditorOpen)
+        {
+            if (_viewModel.Catalog.CloseCategoryEditorCommand.CanExecute(null))
+            {
+                _viewModel.Catalog.CloseCategoryEditorCommand.Execute(null);
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Escape &&
             _viewModel.IsSalesView &&
             (_viewModel.Sales.IsSaleEditorOpen || _viewModel.Sales.IsOpenCashPromptOpen))

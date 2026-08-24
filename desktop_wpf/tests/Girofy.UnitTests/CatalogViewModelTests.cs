@@ -330,6 +330,25 @@ public sealed class CatalogViewModelTests
     }
 
     [Fact]
+    public async Task Selecting_product_category_preserves_selection_and_visible_text()
+    {
+        var sessionContext = new AppSessionContext();
+        sessionContext.Set(CreateSession());
+        using var viewModel = new CatalogViewModel(new StubApiClient(), sessionContext);
+        await viewModel.InitializeAsync();
+        var beer = new CatalogCategory { Id = 22, Name = "Cerveja" };
+        viewModel.ProductCategories.Add(beer);
+        viewModel.EditorCategorySearchText = "cer";
+        viewModel.RefreshEditorCategorySuggestions();
+
+        viewModel.EditorCategory = beer;
+
+        Assert.Same(beer, viewModel.EditorCategory);
+        Assert.Equal("Cerveja", viewModel.EditorCategorySearchText);
+        Assert.Contains(viewModel.EditorCategorySuggestions, category => category.Id == beer.Id);
+    }
+
+    [Fact]
     public async Task Unselected_category_text_is_rejected_instead_of_reusing_or_generating_category_id()
     {
         var sessionContext = new AppSessionContext();

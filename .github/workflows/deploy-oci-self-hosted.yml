@@ -78,6 +78,12 @@ jobs:
         shell: bash
         run: |
           cd "$OCI_DEPLOY_PATH"
+          payable_diagnostic="$({
+            docker compose -f docker-compose.oci.yml logs --since=24h app 2>&1 |
+              grep -A 24 -B 2 'Falha inesperada ao carregar contas a pagar' |
+              grep -E 'sqlalchemy\.exc\.|pymysql\.|psycopg|OperationalError:|ProgrammingError:|DataError:|TypeError:|ValueError:' |
+              tail -6 || true
+          } | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
           {
             echo '### Diagnóstico de contas a pagar antes do deploy'
             echo '```text'
@@ -87,6 +93,9 @@ jobs:
               tail -80 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$payable_diagnostic" ]; then
+            echo "::error title=Diagnóstico temporário da API de contas a pagar::$payable_diagnostic"
+          fi
 
       - name: Publicar containers na própria VM
         run: bash scripts/deploy_self_hosted_app.sh

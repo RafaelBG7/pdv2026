@@ -90,20 +90,45 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.Key == Key.Escape && _viewModel.Catalog.IsProductEditorOpen)
+        if (_viewModel.Catalog.IsProductEditorOpen && e.Key == Key.Escape)
         {
-            // Preserve the expected two-step Escape behavior: first close an open
-            // autocomplete/dropdown, then close the product editor itself.
-            if (ProductCategoryInput.IsDropDownOpen || _viewModel.Catalog.IsKitComponentSuggestionsOpen)
-            {
-                return;
-            }
+            ProductCategoryInput.IsDropDownOpen = false;
+            _viewModel.Catalog.CloseKitComponentSuggestions();
 
             if (_viewModel.Catalog.CloseProductEditorCommand.CanExecute(null))
             {
                 _viewModel.Catalog.CloseProductEditorCommand.Execute(null);
             }
             e.Handled = true;
+            return;
+        }
+
+        if (_viewModel.Catalog.IsProductEditorOpen && e.Key == Key.Enter)
+        {
+            if (_viewModel.Catalog.IsDeleteConfirmationOpen)
+            {
+                return;
+            }
+
+            // Enter confirma primeiro a sugestão ativa. Um novo Enter envia o
+            // formulário, impedindo que texto ainda não selecionado seja salvo.
+            if (ProductCategoryInput.IsDropDownOpen || _viewModel.Catalog.IsKitComponentSuggestionsOpen)
+            {
+                return;
+            }
+
+            // O leitor de código de barras usa Enter para concluir a leitura e
+            // avançar o foco; não deve salvar o produto no mesmo pressionamento.
+            if (ReferenceEquals(Keyboard.FocusedElement, ProductBarcodeInput))
+            {
+                return;
+            }
+
+            if (_viewModel.Catalog.SaveProductCommand.CanExecute(null))
+            {
+                e.Handled = true;
+                await _viewModel.Catalog.SaveProductCommand.ExecuteAsync();
+            }
             return;
         }
 

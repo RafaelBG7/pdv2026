@@ -765,7 +765,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             {
                 if (showNotFound)
                 {
-                    ErrorMessage = $"Produto não encontrado para o código {normalized}.";
+                    ErrorMessage = "Produto não cadastrado";
                 }
                 return false;
             }
@@ -1188,9 +1188,11 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private void CloseQuantityPopup()
     {
+        ClearMessages();
         IsQuantityPopupOpen = false;
         QuantityText = "1";
         SelectedSearchProduct = null;
+        SearchText = string.Empty;
     }
 
     private void RemoveItem(SaleCartItemViewModel item)
@@ -1531,6 +1533,12 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         if (IsDiscountPopupVisible)
         {
             CloseDiscountPopup();
+            return;
+        }
+
+        if (IsPaymentStepVisible)
+        {
+            BackToProducts();
             return;
         }
 

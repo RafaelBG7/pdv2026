@@ -1661,5 +1661,39 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <!-- Mantém falhas de validação/API acima do modal que originou a ação. -->
+        <Border Panel.ZIndex="200" Margin="28,22,28,0" Padding="14,12"
+                MaxWidth="920" HorizontalAlignment="Center" VerticalAlignment="Top"
+                Background="{DynamicResource ErrorSurfaceBrush}"
+                BorderBrush="{DynamicResource ErrorBorderBrush}"
+                BorderThickness="{DynamicResource AccessibilityBorderThickness}"
+                CornerRadius="8">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Width="30" Height="30" CornerRadius="15"
+                        Background="{DynamicResource ErrorBrush}">
+                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontWeight="Bold" Foreground="White" Text="!" />
+                </Border>
+                <TextBlock Grid.Column="2" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

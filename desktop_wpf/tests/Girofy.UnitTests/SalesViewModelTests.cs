@@ -55,6 +55,8 @@ public sealed class SalesViewModelTests
 
         Assert.False(viewModel.IsQuantityPopupOpen);
         Assert.Null(viewModel.SelectedSearchProduct);
+        Assert.Empty(viewModel.SearchText);
+        Assert.Empty(viewModel.SearchResults);
         Assert.Empty(viewModel.CartItems);
     }
 
@@ -85,7 +87,9 @@ public sealed class SalesViewModelTests
         using var viewModel = new SalesViewModel(apiClient, SessionContext());
 
         Assert.False(await viewModel.SelectExactBarcodeAsync("missing", showNotFound: true));
-        Assert.Contains("não encontrado", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Produto não cadastrado", viewModel.ErrorMessage);
+        Assert.False(viewModel.IsQuantityPopupOpen);
+        Assert.Null(viewModel.SelectedSearchProduct);
 
         Assert.False(await viewModel.SelectExactBarcodeAsync("inactive", showNotFound: true));
         Assert.Contains("inativo", viewModel.ErrorMessage, StringComparison.OrdinalIgnoreCase);
@@ -521,6 +525,33 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Escape_from_payment_returns_to_products_before_leaving_sale()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext());
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.OpenPaymentStepCommand.Execute(null);
+
+        Assert.True(viewModel.IsPaymentStepVisible);
+
+        viewModel.HandleSaleEscapeCommand.Execute(null);
+
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.True(viewModel.IsProductStepOpen);
+        Assert.False(viewModel.IsPaymentStepVisible);
+        Assert.Single(viewModel.CartItems);
+
+        viewModel.HandleSaleEscapeCommand.Execute(null);
+
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.True(viewModel.IsDiscardConfirmationOpen);
+        Assert.Single(viewModel.CartItems);
+    }
+
+    [Fact]
     public async Task Escape_closes_only_the_highest_sale_layer()
     {
         var apiClient = new StubApiClient();
@@ -545,6 +576,8 @@ public sealed class SalesViewModelTests
 
         Assert.True(viewModel.IsSaleEditorOpen);
         Assert.False(viewModel.IsQuantityPopupOpen);
+        Assert.Empty(viewModel.SearchText);
+        Assert.Null(viewModel.SelectedSearchProduct);
 
         viewModel.HandleSaleEscapeCommand.Execute(null);
 

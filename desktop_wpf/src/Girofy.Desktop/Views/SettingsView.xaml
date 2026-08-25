@@ -1103,33 +1103,56 @@
                     <TabItem Header="Suporte">
                         <Border Margin="0,18,0,0"
                                 Style="{StaticResource SettingsInnerPanelStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                            <StackPanel>
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
                                                Text="Suporte" />
                                     <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
-                                               Text="Atualize os dados locais ou abra a versão web para manutenção completa." />
+                                               Text="Fale com a equipe Girofy pelos canais oficiais de atendimento." />
                                 </StackPanel>
-                                <Button Grid.Column="2"
-                                        MinWidth="112"
-                                        VerticalAlignment="Center"
-                                        Command="{Binding RefreshCommand}"
-                                        Content="Atualizar"
-                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                <Button Grid.Column="4"
-                                        MinWidth="168"
-                                        VerticalAlignment="Center"
-                                        Command="{Binding OpenWebSettingsCommand}"
-                                        Content="Abrir versão web"
-                                        Style="{StaticResource PrimaryButtonStyle}" />
-                            </Grid>
+
+                                <Grid Margin="0,20,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" MinWidth="260" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" MinWidth="260" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Padding="18"
+                                            Style="{StaticResource SettingsInnerPanelStyle}">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource SettingsLabelStyle}"
+                                                       Text="WhatsApp" />
+                                            <TextBlock Margin="0,6,0,14"
+                                                       FontSize="18"
+                                                       FontWeight="SemiBold"
+                                                       Text="+55 (11) 94487-6166" />
+                                            <Button HorizontalAlignment="Left"
+                                                    MinWidth="170"
+                                                    Command="{Binding OpenSupportWhatsAppCommand}"
+                                                    Content="Abrir WhatsApp"
+                                                    Style="{StaticResource PrimaryButtonStyle}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="2"
+                                            Padding="18"
+                                            Style="{StaticResource SettingsInnerPanelStyle}">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource SettingsLabelStyle}"
+                                                       Text="E-mail" />
+                                            <TextBlock Margin="0,6,0,14"
+                                                       FontSize="18"
+                                                       FontWeight="SemiBold"
+                                                       Text="suporte.girofy@gmail.com"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <Button HorizontalAlignment="Left"
+                                                    MinWidth="170"
+                                                    Command="{Binding OpenSupportEmailCommand}"
+                                                    Content="Enviar e-mail"
+                                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
                         </Border>
                     </TabItem>
 

@@ -9,6 +9,8 @@ namespace Girofy.Application.ViewModels;
 
 public sealed class SettingsViewModel : ObservableObject, IDisposable
 {
+    private static readonly Uri SupportWhatsAppUri = new("https://wa.me/5511944876166");
+    private static readonly Uri SupportEmailUri = new("mailto:suporte.girofy@gmail.com");
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
     private readonly IThemeService _themeService;
@@ -105,6 +107,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         SaveEmployeeCommand = new AsyncRelayCommand(SaveEmployeeAsync, () => CanManageTeam && HasSelectedEmployee && !IsBusy);
         ClearNewEmployeeCommand = new RelayCommand(ClearNewEmployeeForm);
         OpenWebSettingsCommand = new RelayCommand(() => _browserService.Open(_webSettingsUri));
+        OpenSupportWhatsAppCommand = new RelayCommand(() => _browserService.Open(SupportWhatsAppUri));
+        OpenSupportEmailCommand = new RelayCommand(() => _browserService.Open(SupportEmailUri));
         ToggleThemeCommand = new AsyncRelayCommand(ToggleThemeAsync);
         SaveAccessibilityCommand = new AsyncRelayCommand(SaveAccessibilityAsync, () => !IsBusy);
         ResetAccessibilityCommand = new AsyncRelayCommand(ResetAccessibilityAsync, () => !IsBusy);
@@ -629,6 +633,10 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     public RelayCommand ClearNewEmployeeCommand { get; }
 
     public RelayCommand OpenWebSettingsCommand { get; }
+
+    public RelayCommand OpenSupportWhatsAppCommand { get; }
+
+    public RelayCommand OpenSupportEmailCommand { get; }
 
     public AsyncRelayCommand ToggleThemeCommand { get; }
 

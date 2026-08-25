@@ -560,10 +560,19 @@
     <div class="settings-layout">
       <section class="card card-dark sale-panel">
         <h5 class="mb-3">Suporte</h5>
-        <div class="settings-summary">
-          <div><span>Canal principal</span><strong>{{ current_user.masked_email }}</strong></div>
-          <div><span>Telefone cadastrado</span><strong>{{ current_user.phone or 'Não informado' }}</strong></div>
-          <div><span>Usuário de atendimento</span><strong>{{ current_user.username }}</strong></div>
+        <p class="text-muted">Fale com a equipe Girofy pelos canais oficiais de atendimento.</p>
+        <div class="settings-summary mb-4">
+          <div><span>WhatsApp</span><strong>+55 (11) 94487-6166</strong></div>
+          <div><span>E-mail</span><strong>suporte.girofy@gmail.com</strong></div>
+          <div><span>Atendimento</span><strong>Suporte Girofy</strong></div>
+        </div>
+        <div class="export-action-grid">
+          <a class="btn btn-primary w-100"
+             href="https://wa.me/5511944876166"
+             target="_blank"
+             rel="noopener noreferrer">Abrir WhatsApp</a>
+          <a class="btn btn-outline-light w-100"
+             href="mailto:suporte.girofy@gmail.com">Enviar e-mail</a>
         </div>
       </section>
 

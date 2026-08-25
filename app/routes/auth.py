@@ -14,7 +14,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.backup import BACKUP_FREQUENCIES, backup_frequency_label, create_company_backup
 from app.extensions import db
-from app.models import ActivationKey, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, Notification, NotificationPreference, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.permissions import (
     PERMISSION_LABELS,
     authorize_permission_override,
@@ -1247,6 +1247,67 @@ def master_users():
     )
 
 
+@auth_bp.route('/master/usuarios/<int:user_id>/excluir', methods=['POST'])
+@login_required
+def delete_master_user(user_id):
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    user = db.get_or_404(User, user_id)
+    if user.id == current_user.id:
+        flash('Não é possível excluir a conta master que está em uso.', 'danger')
+        return redirect(url_for('auth.master_users'))
+
+    confirmation = request.form.get('confirmation', '').strip()
+    if confirmation != user.username:
+        flash('A exclusão foi cancelada porque o usuário informado não confere.', 'danger')
+        return redirect(url_for('auth.master_users'))
+
+    if user.role == 'master' and User.query.filter_by(role='master', is_active=True).count() <= 1:
+        flash('Não é possível excluir o último usuário master ativo.', 'danger')
+        return redirect(url_for('auth.master_users'))
+
+    old_values = {
+        'username': user.username,
+        'name': user.full_name,
+        'role': user.role,
+        'company_id': user.company_id,
+    }
+    try:
+        db.session.execute(db.update(Sale).where(Sale.user_id == user.id).values(user_id=None))
+        db.session.execute(
+            db.update(Sale).where(Sale.cancelled_by_user_id == user.id).values(cancelled_by_user_id=None)
+        )
+        db.session.execute(db.update(CashRegister).where(CashRegister.user_id == user.id).values(user_id=None))
+        db.session.execute(db.update(StockMovement).where(StockMovement.user_id == user.id).values(user_id=None))
+        db.session.execute(db.update(Notification).where(Notification.user_id == user.id).values(user_id=None))
+        db.session.execute(db.update(AuditLog).where(AuditLog.user_id == user.id).values(user_id=None))
+        db.session.execute(db.delete(NotificationPreference).where(NotificationPreference.user_id == user.id))
+        db.session.execute(db.delete(ApiRefreshToken).where(ApiRefreshToken.user_id == user.id))
+        db.session.execute(db.delete(EmailVerificationCode).where(EmailVerificationCode.user_id == user.id))
+        db.session.execute(db.delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
+        db.session.execute(db.delete(EmailChangeRequest).where(EmailChangeRequest.user_id == user.id))
+        record_audit_event(
+            'user_deleted',
+            'user',
+            user.id,
+            f'Usuário {user.username} excluído pelo painel master.',
+            old_values=old_values,
+            company_id=user.company_id,
+            db_session=db.session,
+        )
+        db.session.delete(user)
+        db.session.commit()
+    except SQLAlchemyError as error:
+        db.session.rollback()
+        current_app.logger.error('Falha ao excluir usuário %s: %s', user_id, error, exc_info=True)
+        flash('Não foi possível excluir este usuário porque ainda existem vínculos protegidos.', 'danger')
+        return redirect(url_for('auth.master_users'))
+
+    flash('Usuário excluído do banco de dados com sucesso.', 'success')
+    return redirect(url_for('auth.master_users'))
+
+
 @auth_bp.route('/master/assinaturas')
 @login_required
 def master_subscriptions():
@@ -1618,6 +1679,11 @@ def delete_company(company_id):
         flash('Não é possível excluir a adega do usuário master.', 'danger')
         return redirect(url_for('auth.master_companies'))
 
+    confirmation = request.form.get('confirmation', '').strip()
+    if confirmation != company.name:
+        flash('A exclusão foi cancelada porque o nome da adega informado não confere.', 'danger')
+        return redirect(url_for('auth.master_companies'))
+
     database_name = company.database_path
     try:
         ActivationKey.query.filter_by(used_by_company_id=company.id).update(
@@ -1639,10 +1705,15 @@ def delete_company(company_id):
             sale_query = sale_query.union(db.session.query(Sale.id).filter(Sale.cash_register_id.in_(cash_register_ids)))
         sale_ids = [sale_id for (sale_id,) in sale_query.all()]
 
+        db.session.execute(db.delete(ApiSaleRequest).where(ApiSaleRequest.company_id == company.id))
+        db.session.execute(db.delete(NotificationPreference).where(NotificationPreference.company_id == company.id))
+        db.session.execute(db.delete(Notification).where(Notification.company_id == company.id))
         if user_ids:
             db.session.execute(db.delete(EmailVerificationCode).where(EmailVerificationCode.user_id.in_(user_ids)))
             db.session.execute(db.delete(PasswordResetToken).where(PasswordResetToken.user_id.in_(user_ids)))
             db.session.execute(db.delete(EmailChangeRequest).where(EmailChangeRequest.user_id.in_(user_ids)))
+            db.session.execute(db.delete(ApiRefreshToken).where(ApiRefreshToken.user_id.in_(user_ids)))
+            db.session.execute(db.update(AuditLog).where(AuditLog.user_id.in_(user_ids)).values(user_id=None))
         if sale_ids:
             db.session.execute(db.delete(Payment).where(Payment.sale_id.in_(sale_ids)))
             db.session.execute(db.delete(SaleItem).where(SaleItem.sale_id.in_(sale_ids)))

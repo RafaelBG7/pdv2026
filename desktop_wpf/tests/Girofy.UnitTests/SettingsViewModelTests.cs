@@ -88,6 +88,23 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public void Support_commands_open_official_contact_channels()
+    {
+        var browserService = new StubBrowserService();
+        var viewModel = new SettingsViewModel(
+            new ExportApiClient(), CreateAdminSessionContext(), browserService,
+            new CapturingFileSaveService(), new CapturingFilePickerService(),
+            new Uri("https://girofy.example/configuracoes"));
+
+        viewModel.OpenSupportWhatsAppCommand.Execute(null);
+        viewModel.OpenSupportEmailCommand.Execute(null);
+
+        Assert.Equal(
+            ["https://wa.me/5511944876166", "mailto:suporte.girofy@gmail.com"],
+            browserService.OpenedUris.Select(uri => uri.AbsoluteUri));
+    }
+
+    [Fact]
     public async Task ToggleThemeAsync_changes_theme_and_updates_button_text()
     {
         var themeService = new StubThemeService();
@@ -605,8 +622,11 @@ public sealed class SettingsViewModelTests
 
     private sealed class StubBrowserService : IExternalBrowserService
     {
+        public List<Uri> OpenedUris { get; } = [];
+
         public void Open(Uri uri)
         {
+            OpenedUris.Add(uri);
         }
     }
 

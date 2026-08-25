@@ -3989,6 +3989,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('Usuário'.encode(), response.data)
         self.assertIn('Suporte'.encode(), response.data)
+        self.assertIn(b'https://wa.me/5511944876166', response.data)
+        self.assertIn(b'mailto:suporte.girofy@gmail.com', response.data)
         self.assertNotIn('data-settings-tab="appearance"'.encode(), response.data)
         self.assertIn('Sair da conta'.encode(), response.data)
         self.assertIn('Autorizar Gestão'.encode(), response.data)
@@ -4264,6 +4266,7 @@ class RouteTestCase(unittest.TestCase):
         self.login()
         delete_response = self.client.post(
             f'/master/adegas/{company_id}/excluir',
+            data={'confirmation': 'Adega Editada'},
             follow_redirects=True,
         )
 
@@ -4285,6 +4288,75 @@ class RouteTestCase(unittest.TestCase):
             reusable_key = ActivationKey.query.filter_by(key='USED-DELETE-COMPANY').one()
             self.assertIsNone(reusable_key.used_by_company_id)
             self.assertIsNone(reusable_key.used_at)
+
+    def test_master_can_delete_user_but_cannot_delete_own_account(self):
+        with self.app.app_context():
+            master = User.query.filter_by(username='master').one()
+            target = User(
+                username='usuario-removivel',
+                role='operator',
+                company_id=master.company_id,
+                is_active=True,
+            )
+            target.set_password('SenhaForte123')
+            db.session.add(target)
+            db.session.flush()
+            historical_log = AuditLog(
+                company_id=master.company_id,
+                user_id=target.id,
+                user_name=target.username,
+                user_role=target.role,
+                action='sale_created',
+                entity_type='sale',
+                entity_id=99,
+                description='Registro histórico do usuário.',
+            )
+            db.session.add(historical_log)
+            db.session.commit()
+            master_id = master.id
+            target_id = target.id
+            historical_log_id = historical_log.id
+
+        self.login()
+        wrong_confirmation = self.client.post(
+            f'/master/usuarios/{target_id}/excluir',
+            data={'confirmation': 'outro-usuario'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(wrong_confirmation.status_code, 200)
+        self.assertIn('usuário informado não confere'.encode(), wrong_confirmation.data)
+        with self.app.app_context():
+            self.assertIsNotNone(db.session.get(User, target_id))
+
+        delete_response = self.client.post(
+            f'/master/usuarios/{target_id}/excluir',
+            data={'confirmation': 'usuario-removivel'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertIn('Usuário excluído do banco de dados com sucesso.'.encode(), delete_response.data)
+        with self.app.app_context():
+            self.assertIsNone(db.session.get(User, target_id))
+            self.assertIsNone(db.session.get(AuditLog, historical_log_id).user_id)
+            deletion_log = AuditLog.query.filter_by(
+                action='user_deleted',
+                entity_type='user',
+                entity_id=target_id,
+            ).one()
+            self.assertEqual(deletion_log.user_name, 'master')
+
+        self_delete_response = self.client.post(
+            f'/master/usuarios/{master_id}/excluir',
+            data={'confirmation': 'master'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(self_delete_response.status_code, 200)
+        self.assertIn('conta master que está em uso'.encode(), self_delete_response.data)
+        with self.app.app_context():
+            self.assertIsNotNone(db.session.get(User, master_id))
 
     def test_master_settings_can_generate_standalone_key_with_plan_and_period(self):
         self.login()

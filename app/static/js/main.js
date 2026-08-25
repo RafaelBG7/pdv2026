@@ -2317,24 +2317,102 @@ document.querySelectorAll('.stock-operation-card').forEach(function (form) {
   updatePreview();
 });
 
-document.querySelectorAll('form[data-destructive-confirmation]').forEach(function (form) {
-  form.addEventListener('submit', function (event) {
-    const expected = form.dataset.destructiveConfirmation || '';
-    const kind = form.dataset.destructiveKind || 'registro';
-    const value = window.prompt(
-      `Exclusão permanente de ${kind}. Digite exatamente «${expected}» para confirmar:`,
-    );
+const destructiveConfirmationModal = document.querySelector('[data-destructive-confirmation-modal]');
 
-    if (value === null) {
-      event.preventDefault();
+if (destructiveConfirmationModal) {
+  const confirmationInput = destructiveConfirmationModal.querySelector('[data-destructive-confirmation-input]');
+  const confirmationTarget = destructiveConfirmationModal.querySelector('[data-destructive-confirmation-target]');
+  const confirmationKind = destructiveConfirmationModal.querySelector('[data-destructive-confirmation-kind]');
+  const confirmationError = destructiveConfirmationModal.querySelector('[data-destructive-confirmation-error]');
+  const confirmationSubmit = destructiveConfirmationModal.querySelector('[data-destructive-confirmation-submit]');
+  const cancellationButtons = destructiveConfirmationModal.querySelectorAll('[data-destructive-confirmation-cancel]');
+  let pendingDestructiveForm = null;
+  let expectedConfirmation = '';
+  let lastFocusedElement = null;
+
+  function confirmationMatches() {
+    return confirmationInput && confirmationInput.value.trim() === expectedConfirmation;
+  }
+
+  function updateConfirmationState() {
+    const matches = confirmationMatches();
+    if (confirmationSubmit) confirmationSubmit.disabled = !matches;
+    if (confirmationError) confirmationError.hidden = true;
+  }
+
+  function closeDestructiveConfirmation() {
+    destructiveConfirmationModal.classList.remove('is-open');
+    destructiveConfirmationModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('has-destructive-confirmation');
+    pendingDestructiveForm = null;
+    expectedConfirmation = '';
+    if (confirmationInput) confirmationInput.value = '';
+    if (confirmationSubmit) confirmationSubmit.disabled = true;
+    if (confirmationError) confirmationError.hidden = true;
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') lastFocusedElement.focus();
+    lastFocusedElement = null;
+  }
+
+  function openDestructiveConfirmation(form) {
+    pendingDestructiveForm = form;
+    expectedConfirmation = form.dataset.destructiveConfirmation || '';
+    lastFocusedElement = document.activeElement;
+    if (confirmationTarget) confirmationTarget.textContent = expectedConfirmation;
+    if (confirmationKind) confirmationKind.textContent = form.dataset.destructiveKind || 'o registro e seus dados';
+    if (confirmationInput) confirmationInput.value = '';
+    updateConfirmationState();
+    destructiveConfirmationModal.classList.add('is-open');
+    destructiveConfirmationModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('has-destructive-confirmation');
+    window.requestAnimationFrame(function () {
+      if (confirmationInput) confirmationInput.focus();
+    });
+  }
+
+  function confirmDestructiveAction() {
+    if (!pendingDestructiveForm || !confirmationMatches()) {
+      if (confirmationError) confirmationError.hidden = false;
+      if (confirmationInput) confirmationInput.focus();
       return;
     }
 
+    const form = pendingDestructiveForm;
     const confirmationField = form.querySelector('input[name="confirmation"]');
-    if (!confirmationField) {
+    if (!confirmationField) return;
+    confirmationField.value = confirmationInput.value.trim();
+    form.dataset.destructiveConfirmed = 'true';
+    closeDestructiveConfirmation();
+    form.requestSubmit();
+  }
+
+  document.querySelectorAll('form[data-destructive-confirmation]').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      if (form.dataset.destructiveConfirmed === 'true') {
+        delete form.dataset.destructiveConfirmed;
+        return;
+      }
       event.preventDefault();
-      return;
-    }
-    confirmationField.value = value.trim();
+      openDestructiveConfirmation(form);
+    });
   });
-});
+
+  if (confirmationInput) {
+    confirmationInput.addEventListener('input', updateConfirmationState);
+    confirmationInput.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        confirmDestructiveAction();
+      }
+    });
+  }
+  if (confirmationSubmit) confirmationSubmit.addEventListener('click', confirmDestructiveAction);
+  cancellationButtons.forEach(function (button) {
+    button.addEventListener('click', closeDestructiveConfirmation);
+  });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && destructiveConfirmationModal.classList.contains('is-open')) {
+      event.preventDefault();
+      closeDestructiveConfirmation();
+    }
+  });
+}

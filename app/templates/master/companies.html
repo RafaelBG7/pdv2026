@@ -275,7 +275,7 @@
         <button class="btn btn-outline-light btn-sm" type="submit">Acessar adega</button>
       </form>
       {% endif %}
-      <form method="post" action="{{ url_for('auth.delete_master_user', user_id=user.id) }}" data-destructive-confirmation="{{ user.username }}" data-destructive-kind="usuário">
+      <form method="post" action="{{ url_for('auth.delete_master_user', user_id=user.id) }}" data-destructive-confirmation="{{ user.username }}" data-destructive-kind="este usuário e os dados vinculados">
         <input type="hidden" name="confirmation" value="">
         <button class="btn btn-outline-danger btn-sm" type="submit" {% if user.id == current_user.id %}disabled title="A conta master em uso não pode ser excluída"{% endif %}>Excluir usuário</button>
       </form>
@@ -297,7 +297,7 @@
       {{ 'Inativar' if company.active else 'Ativar' }}
     </button>
   </form>
-  <form method="post" action="{{ url_for('auth.delete_company', company_id=company.id) }}" data-destructive-confirmation="{{ company.name }}" data-destructive-kind="adega, usuários e dados">
+  <form method="post" action="{{ url_for('auth.delete_company', company_id=company.id) }}" data-destructive-confirmation="{{ company.name }}" data-destructive-kind="esta adega, seus usuários e todos os dados vinculados">
     <input type="hidden" name="confirmation" value="">
     <button class="btn btn-outline-danger btn-sm" type="submit" {% if company.id == current_user.company_id %}disabled{% endif %}>Excluir</button>
   </form>
@@ -519,4 +519,35 @@
 </div>
 {% endif %}
 {% endif %}
+
+<div class="destructive-confirmation-modal" data-destructive-confirmation-modal aria-hidden="true">
+  <button class="destructive-confirmation-backdrop" type="button" data-destructive-confirmation-cancel aria-label="Cancelar exclusão"></button>
+  <section class="destructive-confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="destructive_confirmation_title" aria-describedby="destructive_confirmation_description">
+    <div class="destructive-confirmation-heading">
+      <span class="destructive-confirmation-icon" aria-hidden="true">!</span>
+      <div>
+        <span class="destructive-confirmation-eyebrow">Ação permanente</span>
+        <h2 id="destructive_confirmation_title">Confirmar exclusão</h2>
+      </div>
+    </div>
+
+    <p id="destructive_confirmation_description" class="destructive-confirmation-description">
+      Esta ação excluirá permanentemente <strong data-destructive-confirmation-kind>o registro e seus dados</strong>.
+      Para continuar, digite exatamente o texto abaixo.
+    </p>
+
+    <div class="destructive-confirmation-target" data-destructive-confirmation-target></div>
+
+    <label class="form-label" for="destructive_confirmation_input">Confirmação</label>
+    <input class="form-control destructive-confirmation-input" id="destructive_confirmation_input" type="text" autocomplete="off" spellcheck="false" data-destructive-confirmation-input>
+    <p class="destructive-confirmation-error" data-destructive-confirmation-error role="alert" aria-live="polite" hidden>
+      O texto informado não confere. Digite exatamente como exibido acima.
+    </p>
+
+    <div class="destructive-confirmation-actions">
+      <button class="btn btn-outline-light" type="button" data-destructive-confirmation-cancel>Cancelar</button>
+      <button class="btn btn-danger" type="button" data-destructive-confirmation-submit disabled>Excluir permanentemente</button>
+    </div>
+  </section>
+</div>
 {% endblock %}

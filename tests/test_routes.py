@@ -4541,7 +4541,7 @@ class RouteTestCase(unittest.TestCase):
 
     def test_payables_create_and_show_due_notification(self):
         self.login()
-        due_date = date.today() + timedelta(days=2)
+        due_date = business_today() + timedelta(days=2)
 
         create_response = self.client.post(
             '/contas-a-pagar',

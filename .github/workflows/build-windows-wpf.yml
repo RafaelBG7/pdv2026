@@ -111,13 +111,14 @@ jobs:
         env:
           TESTING: '1'
           MAIL_SUPPRESS_SEND: '1'
+          PYTHONUTF8: '1'
         run: |
-          python -m unittest discover *> backend-tests-first.log
+          python -m unittest discover -v *> backend-tests-first.log
           $testExitCode = $LASTEXITCODE
           Get-Content backend-tests-first.log
           if ($testExitCode -ne 0) {
             Write-Warning 'Os testes de contrato falharam no primeiro ciclo; repetindo uma vez para descartar instabilidade isolada do runner Windows.'
-            python -m unittest discover *> backend-tests-retry.log
+            python -m unittest discover -v *> backend-tests-retry.log
             $testExitCode = $LASTEXITCODE
             Get-Content backend-tests-retry.log
           }
@@ -127,7 +128,8 @@ jobs:
             Get-Content backend-tests-retry.log -Tail 240 >> $env:GITHUB_STEP_SUMMARY
             '```' >> $env:GITHUB_STEP_SUMMARY
             $diagnostic = (Get-Content backend-tests-retry.log -Tail 160) -join "`n"
-            Write-Error $diagnostic
+            $annotation = $diagnostic.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Backend contract tests failed::$annotation"
             exit $testExitCode
           }
 

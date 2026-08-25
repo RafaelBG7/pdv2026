@@ -34,6 +34,7 @@ from app.models import (
     User,
 )
 from app.services.alert_service import EMAIL_ALERT_TYPES, parse_recipients
+from app.services.email_service import EmailAuthenticationError, send_alert_email
 from app.services.api_auth_service import (
     ApiAuthError,
     authenticate_access_token,
@@ -4690,6 +4691,52 @@ def api_update_email_alert_settings():
         })
     except ApiAuthError as error:
         return api_auth_error_response(error)
+
+
+@api_v1_bp.post('/notifications/email-alert-settings/test')
+@api_auth_required
+def api_test_email_alert_settings():
+    if not g.api_user.has_permission('can_manage_settings'):
+        return api_failure('Você não tem permissão para testar alertas por e-mail.', 'permission_denied', 403)
+    try:
+        payload = json_object_body()
+        raw_recipients = payload.get('recipients')
+        if not isinstance(raw_recipients, list):
+            raise ApiAuthError('Informe a lista de destinatários.', 'invalid_payload', 422, 'recipients')
+        recipients = list(dict.fromkeys(
+            str(value).strip() for value in raw_recipients if str(value).strip()
+        ))
+        if not recipients:
+            raise ApiAuthError('Adicione pelo menos um destinatário.', 'recipients_required', 422, 'recipients')
+        if len(recipients) > 20:
+            raise ApiAuthError('O teste aceita no máximo 20 destinatários.', 'too_many_recipients', 422, 'recipients')
+        invalid = next((email for email in recipients if not EMAIL_PATTERN.match(email)), None)
+        if invalid:
+            raise ApiAuthError('Informe apenas e-mails válidos.', 'invalid_email', 422, 'recipients')
+        company = db.session.get(Company, g.api_user.company_id)
+        if company is None:
+            return api_failure('Adega não encontrada.', 'company_not_found', 404)
+        sent_count = send_alert_email(
+            company,
+            recipients,
+            'Teste de alertas por e-mail',
+            'Este é um envio de teste solicitado nas configurações do Girofy.',
+        )
+        record_audit_event(
+            'email_alert_test_sent', 'email_alert_setting', None,
+            f'Teste de alertas enviado para {sent_count} destinatário(s).',
+            company_id=g.api_user.company_id, db_session=db.session,
+        )
+        db.session.commit()
+        return api_success({'sent_count': sent_count, 'recipients': recipients})
+    except ApiAuthError as error:
+        return api_auth_error_response(error)
+    except EmailAuthenticationError as error:
+        current_app.logger.error('Falha de autenticação SMTP no teste da API: %s', error, exc_info=True)
+        return api_failure('O servidor de e-mail recusou a autenticação. Revise a configuração SMTP.', 'email_authentication_failed', 502)
+    except Exception as error:
+        current_app.logger.error('Falha no teste de alertas por e-mail da API: %s', error, exc_info=True)
+        return api_failure('Não foi possível enviar o teste. Verifique a configuração SMTP.', 'email_delivery_failed', 502)
 
 
 @api_v1_bp.get('/notifications')

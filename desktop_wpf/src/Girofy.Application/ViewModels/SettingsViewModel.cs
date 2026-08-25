@@ -96,6 +96,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         SaveBackupSettingsCommand = new AsyncRelayCommand(SaveBackupSettingsAsync, () => CanManageTeam && !IsBusy);
         SaveNotificationPreferencesCommand = new AsyncRelayCommand(SaveNotificationPreferencesAsync, () => !IsBusy);
         SaveEmailAlertSettingsCommand = new AsyncRelayCommand(SaveEmailAlertSettingsAsync, () => CanManageTeam && !IsBusy);
+        TestEmailAlertSettingsCommand = new AsyncRelayCommand(TestEmailAlertSettingsAsync, () => CanManageTeam && !IsBusy);
         RunManualBackupCommand = new AsyncRelayCommand(RunManualBackupAsync, () => CanManageTeam && !IsBusy);
         ExportDataCommand = new AsyncRelayCommand(ExportDataAsync, () => CanExportData && !IsBusy);
         ImportProductsCommand = new AsyncRelayCommand(ImportProductsAsync, () => CanImportProducts && !IsBusy);
@@ -610,6 +611,8 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand SaveNotificationPreferencesCommand { get; }
 
     public AsyncRelayCommand SaveEmailAlertSettingsCommand { get; }
+
+    public AsyncRelayCommand TestEmailAlertSettingsCommand { get; }
 
     public AsyncRelayCommand RunManualBackupCommand { get; }
 
@@ -1166,6 +1169,52 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task TestEmailAlertSettingsAsync(CancellationToken cancellationToken)
+    {
+        var session = _sessionContext.Current;
+        if (session is null || !CanManageTeam)
+        {
+            return;
+        }
+        var recipients = EmailAlertSettings
+            .SelectMany(item => item.Recipients)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (recipients.Length == 0)
+        {
+            ErrorMessage = "Adicione pelo menos um destinatário antes de testar o envio.";
+            SuccessMessage = string.Empty;
+            return;
+        }
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        try
+        {
+            var result = await _apiClient.TestEmailAlertSettingsAsync(
+                session.AccessToken,
+                new TestEmailAlertSettingsRequest(recipients),
+                cancellationToken);
+            SuccessMessage = $"E-mail de teste enviado para {result.SentCount} destinatário(s).";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (GirofyApiException exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Não foi possível enviar o e-mail de teste.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private async Task RunManualBackupAsync(CancellationToken cancellationToken)
     {
         var session = _sessionContext.Current;
@@ -1590,6 +1639,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         SaveBackupSettingsCommand.NotifyCanExecuteChanged();
         SaveNotificationPreferencesCommand.NotifyCanExecuteChanged();
         SaveEmailAlertSettingsCommand.NotifyCanExecuteChanged();
+        TestEmailAlertSettingsCommand.NotifyCanExecuteChanged();
         RunManualBackupCommand.NotifyCanExecuteChanged();
         ExportDataCommand.NotifyCanExecuteChanged();
         ImportProductsCommand.NotifyCanExecuteChanged();

@@ -94,3 +94,12 @@ public sealed record UpdateEmailAlertSettingItem(
     [property: JsonPropertyName("alert_type")] string AlertType,
     [property: JsonPropertyName("enabled")] bool Enabled,
     [property: JsonPropertyName("recipients")] string Recipients);
+
+public sealed record TestEmailAlertSettingsRequest(
+    [property: JsonPropertyName("recipients")] IReadOnlyList<string> Recipients);
+
+public sealed class EmailAlertTestResult
+{
+    [JsonPropertyName("sent_count")] public int SentCount { get; init; }
+    [JsonPropertyName("recipients")] public IReadOnlyList<string> Recipients { get; init; } = [];
+}

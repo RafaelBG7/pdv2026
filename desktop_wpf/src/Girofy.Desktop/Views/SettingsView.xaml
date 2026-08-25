@@ -916,7 +916,11 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <Button HorizontalAlignment="Left" MinWidth="160" Command="{Binding SaveEmailAlertSettingsCommand}" Content="Salvar alertas" Style="{StaticResource PrimaryButtonStyle}" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button MinWidth="160" Command="{Binding SaveEmailAlertSettingsCommand}" Content="Salvar alertas" Style="{StaticResource PrimaryButtonStyle}" />
+                                            <Button Margin="10,0,0,0" MinWidth="190" Command="{Binding TestEmailAlertSettingsCommand}" Content="Enviar e-mail de teste" Style="{StaticResource SecondaryButtonStyle}" />
+                                        </StackPanel>
+                                        <TextBlock Margin="0,8,0,0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" Text="O teste confirma que o servidor aceitou o envio; a entrega final depende do provedor do destinatário." TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
                                 <Border Grid.Column="2" VerticalAlignment="Top" Style="{StaticResource SettingsInnerPanelStyle}">

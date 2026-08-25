@@ -70,6 +70,24 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task Email_alert_test_uses_unique_configured_recipients()
+    {
+        var apiClient = new ExportApiClient();
+        var viewModel = new SettingsViewModel(
+            apiClient, CreateAdminSessionContext(), new StubBrowserService(),
+            new CapturingFileSaveService(), new CapturingFilePickerService(),
+            new Uri("https://girofy.example/configuracoes"));
+
+        await viewModel.InitializeAsync();
+        await viewModel.TestEmailAlertSettingsCommand.ExecuteAsync();
+
+        Assert.NotNull(apiClient.EmailAlertTestRequest);
+        Assert.Equal(["alertas@girofy.test"], apiClient.EmailAlertTestRequest!.Recipients);
+        Assert.Contains("E-mail de teste enviado", viewModel.SuccessMessage);
+        Assert.Empty(viewModel.ErrorMessage);
+    }
+
+    [Fact]
     public async Task ToggleThemeAsync_changes_theme_and_updates_button_text()
     {
         var themeService = new StubThemeService();
@@ -271,6 +289,8 @@ public sealed class SettingsViewModelTests
 
         public UpdateEmailAlertSettingsRequest? EmailAlertSettingsRequest { get; private set; }
 
+        public TestEmailAlertSettingsRequest? EmailAlertTestRequest { get; private set; }
+
         public Task<EmailAlertSettingsSnapshot> GetEmailAlertSettingsAsync(
             string accessToken,
             CancellationToken cancellationToken) => FailEmailAlertSettings
@@ -294,6 +314,19 @@ public sealed class SettingsViewModelTests
                     Enabled = item.Enabled,
                     Recipients = item.Recipients.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 }).ToArray(),
+            });
+        }
+
+        public Task<EmailAlertTestResult> TestEmailAlertSettingsAsync(
+            string accessToken,
+            TestEmailAlertSettingsRequest request,
+            CancellationToken cancellationToken)
+        {
+            EmailAlertTestRequest = request;
+            return Task.FromResult(new EmailAlertTestResult
+            {
+                SentCount = request.Recipients.Count,
+                Recipients = request.Recipients,
             });
         }
 

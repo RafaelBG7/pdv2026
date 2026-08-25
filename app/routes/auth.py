@@ -33,7 +33,7 @@ from app.security.rate_limit import (
 )
 from app.services.alert_service import EMAIL_ALERT_TYPES, alert_settings_for_company, parse_recipients
 from app.services.audit_service import record_audit_event
-from app.services.email_service import EmailAuthenticationError, send_email_change_confirmation, send_verification_code_email
+from app.services.email_service import EmailAuthenticationError, send_alert_email, send_email_change_confirmation, send_verification_code_email
 from app.services.password_recovery_service import request_password_recovery
 from app.tenant import current_tenant_company, drop_mysql_database, tenant_database_identifier, tenant_engine
 
@@ -1763,6 +1763,35 @@ def settings():
                 return redirect(url_for('auth.settings'))
             if not settings_company:
                 flash('Nenhuma adega selecionada para configurar alertas.', 'danger')
+                return redirect(url_for('auth.settings'))
+
+            if request.form.get('email_alert_action') == 'test':
+                recipients = []
+                for alert_type in EMAIL_ALERT_TYPES:
+                    recipients.extend(parse_recipients(request.form.get(f'alert_recipients_{alert_type}', '')))
+                recipients = list(dict.fromkeys(recipients))
+                invalid_recipient = next((recipient for recipient in recipients if not valid_email(recipient)), None)
+                if invalid_recipient:
+                    flash(f'E-mail inválido: {invalid_recipient}', 'danger')
+                    return redirect(url_for('auth.settings'))
+                if not recipients:
+                    flash('Adicione pelo menos um destinatário antes de testar o envio.', 'danger')
+                    return redirect(url_for('auth.settings'))
+                try:
+                    sent_count = send_alert_email(
+                        settings_company,
+                        recipients,
+                        'Teste de alertas por e-mail',
+                        'Este é um envio de teste solicitado nas configurações do Girofy.',
+                    )
+                except EmailAuthenticationError as error:
+                    current_app.logger.error('Falha de autenticação SMTP no teste de alertas: %s', error, exc_info=True)
+                    flash('O servidor de e-mail recusou a autenticação. Revise a configuração SMTP.', 'danger')
+                except Exception as error:
+                    current_app.logger.error('Falha no teste de alertas por e-mail: %s', error, exc_info=True)
+                    flash('Não foi possível enviar o teste. Verifique a configuração SMTP e tente novamente.', 'danger')
+                else:
+                    flash(f'E-mail de teste enviado para {sent_count} destinatário(s).', 'success')
                 return redirect(url_for('auth.settings'))
 
             existing_settings = alert_settings_for_company(settings_company)

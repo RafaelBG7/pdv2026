@@ -87,6 +87,14 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<EmailAlertSettingsSnapshot>(response, cancellationToken);
     }
 
+    public async Task<EmailAlertTestResult> TestEmailAlertSettingsAsync(string accessToken, TestEmailAlertSettingsRequest settings, CancellationToken cancellationToken)
+    {
+        using var request = CreateAuthenticatedRequest(HttpMethod.Post, "api/v1/notifications/email-alert-settings/test", accessToken);
+        request.Content = JsonContent.Create(settings);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadEnvelopeAsync<EmailAlertTestResult>(response, cancellationToken);
+    }
+
     public async Task<HealthStatus> GetHealthAsync(CancellationToken cancellationToken)
     {
         using var response = await httpClient.GetAsync(

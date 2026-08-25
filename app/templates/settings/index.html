@@ -418,7 +418,11 @@
             </div>
             {% endfor %}
           </div>
-          <button class="btn btn-primary mt-3" type="submit">Salvar alertas</button>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button class="btn btn-primary" type="submit">Salvar alertas</button>
+            <button class="btn btn-outline-light" type="submit" name="email_alert_action" value="test">Enviar e-mail de teste</button>
+          </div>
+          <small class="text-muted d-block mt-2">O teste confirma que o servidor aceitou o envio; a entrega final depende do provedor do destinatário.</small>
         </form>
       </section>
 

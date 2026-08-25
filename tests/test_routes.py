@@ -5369,6 +5369,26 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(out_stock.recipient_list, ['dono@example.com', 'gerente@example.com'])
             self.assertTrue(due_today.enabled)
 
+    @patch('app.routes.auth.send_alert_email', return_value=2)
+    def test_settings_sends_email_alert_test_without_changing_settings(self, send_alert_email_mock):
+        self.login()
+
+        response = self.client.post(
+            '/configuracoes',
+            data={
+                'form_type': 'email_alerts',
+                'email_alert_action': 'test',
+                'alert_recipients_product_out_of_stock': 'dono@example.com, gerente@example.com',
+                'alert_recipients_product_low_stock': 'dono@example.com',
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('E-mail de teste enviado para 2 destinatário(s).'.encode(), response.data)
+        recipients = send_alert_email_mock.call_args.args[1]
+        self.assertEqual(recipients, ['dono@example.com', 'gerente@example.com'])
+
     def test_email_alert_for_out_of_stock_product_is_sent_once(self):
         self.login()
 
@@ -7476,6 +7496,36 @@ class RouteTestCase(unittest.TestCase):
                 alert_type=items[0]['alert_type'],
             ).one()
             self.assertEqual(saved.recipient_list, ['primeiro@girofy.test', 'segundo@girofy.test'])
+
+    @patch('app.routes.api.v1.send_alert_email', return_value=2)
+    def test_email_alert_settings_api_sends_test_message(self, send_alert_email_mock):
+        self.create_api_user(username='email-alert-test')
+        token = self.api_login('email-alert-test', 'SenhaApi123').get_json()['data']['access_token']
+
+        response = self.client.post(
+            '/api/v1/notifications/email-alert-settings/test',
+            headers=self.bearer_header(token),
+            json={'recipients': ['dono@girofy.test', 'dono@girofy.test', 'gerente@girofy.test']},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['sent_count'], 2)
+        self.assertEqual(data['recipients'], ['dono@girofy.test', 'gerente@girofy.test'])
+        self.assertEqual(send_alert_email_mock.call_args.args[1], data['recipients'])
+
+    def test_email_alert_settings_api_rejects_invalid_test_recipient(self):
+        self.create_api_user(username='email-alert-invalid')
+        token = self.api_login('email-alert-invalid', 'SenhaApi123').get_json()['data']['access_token']
+
+        response = self.client.post(
+            '/api/v1/notifications/email-alert-settings/test',
+            headers=self.bearer_header(token),
+            json={'recipients': ['email-invalido']},
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.get_json()['errors'][0]['code'], 'invalid_email')
 
     def test_email_alert_settings_are_shared_between_web_and_windows_api(self):
         user, company = self.create_api_user(username='shared-email-alert-settings')

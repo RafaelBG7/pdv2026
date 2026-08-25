@@ -4266,7 +4266,7 @@ class RouteTestCase(unittest.TestCase):
         self.login()
         delete_response = self.client.post(
             f'/master/adegas/{company_id}/excluir',
-            data={'confirmation': 'Adega Editada'},
+            data={'confirmation': '  ADEGA   editada  '},
             follow_redirects=True,
         )
 

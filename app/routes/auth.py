@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import secrets
 import string
+import unicodedata
 
 from flask import Blueprint, current_app, redirect, render_template, request, send_file, session, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -88,6 +89,12 @@ VERIFICATION_CODE_TTL_MINUTES = 15
 VERIFICATION_ATTEMPT_LIMIT = 5
 VERIFICATION_RESEND_SECONDS = 60
 VERIFICATION_RESEND_HOURLY_LIMIT = 3
+
+
+def _normalized_deletion_confirmation(value):
+    """Normalize harmless typing differences in destructive confirmations."""
+    normalized = unicodedata.normalize('NFKC', value or '')
+    return ' '.join(normalized.split()).casefold()
 PASSWORD_RESET_TTL_MINUTES = 30
 EMAIL_CHANGE_TTL_MINUTES = 30
 LOG_ENTRY_PATTERN = re.compile(
@@ -1258,8 +1265,12 @@ def delete_master_user(user_id):
         flash('Não é possível excluir a conta master que está em uso.', 'danger')
         return redirect(url_for('auth.master_users'))
 
-    confirmation = request.form.get('confirmation', '').strip()
-    if confirmation != user.username:
+    confirmation = request.form.get('confirmation', '')
+    if _normalized_deletion_confirmation(confirmation) != _normalized_deletion_confirmation(user.username):
+        current_app.logger.warning(
+            'Exclusão do usuário %s recusada: confirmação não confere.',
+            user.id,
+        )
         flash('A exclusão foi cancelada porque o usuário informado não confere.', 'danger')
         return redirect(url_for('auth.master_users'))
 
@@ -1679,8 +1690,12 @@ def delete_company(company_id):
         flash('Não é possível excluir a adega do usuário master.', 'danger')
         return redirect(url_for('auth.master_companies'))
 
-    confirmation = request.form.get('confirmation', '').strip()
-    if confirmation != company.name:
+    confirmation = request.form.get('confirmation', '')
+    if _normalized_deletion_confirmation(confirmation) != _normalized_deletion_confirmation(company.name):
+        current_app.logger.warning(
+            'Exclusão da adega %s recusada: confirmação não confere.',
+            company.id,
+        )
         flash('A exclusão foi cancelada porque o nome da adega informado não confere.', 'danger')
         return redirect(url_for('auth.master_companies'))
 

@@ -2316,3 +2316,25 @@ document.querySelectorAll('.stock-operation-card').forEach(function (form) {
   });
   updatePreview();
 });
+
+document.querySelectorAll('form[data-destructive-confirmation]').forEach(function (form) {
+  form.addEventListener('submit', function (event) {
+    const expected = form.dataset.destructiveConfirmation || '';
+    const kind = form.dataset.destructiveKind || 'registro';
+    const value = window.prompt(
+      `Exclusão permanente de ${kind}. Digite exatamente «${expected}» para confirmar:`,
+    );
+
+    if (value === null) {
+      event.preventDefault();
+      return;
+    }
+
+    const confirmationField = form.querySelector('input[name="confirmation"]');
+    if (!confirmationField) {
+      event.preventDefault();
+      return;
+    }
+    confirmationField.value = value.trim();
+  });
+});

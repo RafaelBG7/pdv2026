@@ -275,7 +275,7 @@
         <button class="btn btn-outline-light btn-sm" type="submit">Acessar adega</button>
       </form>
       {% endif %}
-      <form method="post" action="{{ url_for('auth.delete_master_user', user_id=user.id) }}" onsubmit="const expected = {{ user.username|tojson }}; const value = prompt('Exclusão permanente. Digite exatamente «' + expected + '» para confirmar:'); if (value === null) return false; this.elements.confirmation.value = value.trim(); return true;">
+      <form method="post" action="{{ url_for('auth.delete_master_user', user_id=user.id) }}" data-destructive-confirmation="{{ user.username }}" data-destructive-kind="usuário">
         <input type="hidden" name="confirmation" value="">
         <button class="btn btn-outline-danger btn-sm" type="submit" {% if user.id == current_user.id %}disabled title="A conta master em uso não pode ser excluída"{% endif %}>Excluir usuário</button>
       </form>
@@ -297,7 +297,7 @@
       {{ 'Inativar' if company.active else 'Ativar' }}
     </button>
   </form>
-  <form method="post" action="{{ url_for('auth.delete_company', company_id=company.id) }}" onsubmit="const expected = {{ company.name|tojson }}; const value = prompt('Exclusão permanente da adega, usuários e dados. Digite exatamente «' + expected + '» para confirmar:'); if (value === null) return false; this.elements.confirmation.value = value.trim(); return true;">
+  <form method="post" action="{{ url_for('auth.delete_company', company_id=company.id) }}" data-destructive-confirmation="{{ company.name }}" data-destructive-kind="adega, usuários e dados">
     <input type="hidden" name="confirmation" value="">
     <button class="btn btn-outline-danger btn-sm" type="submit" {% if company.id == current_user.company_id %}disabled{% endif %}>Excluir</button>
   </form>

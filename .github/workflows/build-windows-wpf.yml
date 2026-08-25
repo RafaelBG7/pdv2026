@@ -127,7 +127,7 @@ jobs:
             '```text' >> $env:GITHUB_STEP_SUMMARY
             Get-Content backend-tests-retry.log -Tail 240 >> $env:GITHUB_STEP_SUMMARY
             '```' >> $env:GITHUB_STEP_SUMMARY
-            $diagnostic = (Get-Content backend-tests-retry.log -Tail 160) -join "`n"
+            $diagnostic = (Get-Content backend-tests-retry.log -Tail 40) -join "`n"
             $annotation = $diagnostic.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
             Write-Output "::error title=Backend contract tests failed::$annotation"
             exit $testExitCode

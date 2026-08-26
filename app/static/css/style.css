@@ -7587,3 +7587,393 @@ html[data-text-scale='extra'] .sale-payment-summary [data-payment-step-total] {
     max-width: none;
   }
 }
+
+/* Responsive web foundation: shared navigation, content, forms and data views. */
+.mobile-sidebar-toggle,
+.mobile-sidebar-backdrop {
+  display: none;
+}
+
+html,
+body {
+  max-width: 100%;
+}
+
+.app-shell,
+.main-content,
+.content-frame,
+.card,
+.card-body,
+.modal-content,
+.row > * {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.table-responsive {
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.table-responsive:focus-visible {
+  outline: 3px solid rgba(var(--primary-rgb), 0.3);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1024px) {
+  .content-frame {
+    padding: clamp(0.9rem, 2vw, 1.4rem);
+  }
+
+  .dashboard-grid,
+  .cash-summary-grid,
+  .report-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .advanced-filters,
+  .quick-filter-grid,
+  .product-filter-grid,
+  .category-filter-grid,
+  .report-filter-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+  }
+
+  .filter-panel {
+    overflow-x: visible;
+  }
+
+  .filter-actions,
+  .product-filter-grid .filter-actions {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 900px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  body.mobile-navigation-open {
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  .app-shell {
+    display: block;
+    width: 100%;
+    min-height: 100dvh;
+  }
+
+  .sidebar,
+  .app-shell.sidebar-collapsed .sidebar,
+  html[data-sidebar-state='collapsed'] .app-shell .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 1060;
+    width: min(86vw, 320px) !important;
+    min-width: min(86vw, 320px) !important;
+    max-width: 320px !important;
+    min-height: 100dvh;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    contain: none;
+    transform: translateX(-105%);
+    transition: transform 220ms ease, box-shadow 220ms ease;
+    box-shadow: none;
+  }
+
+  .app-shell.mobile-sidebar-open .sidebar {
+    transform: translateX(0);
+    box-shadow: 18px 0 48px rgba(0, 0, 0, 0.42);
+  }
+
+  .sidebar-sticky,
+  .app-shell.sidebar-collapsed .sidebar-sticky,
+  html[data-sidebar-state='collapsed'] .app-shell .sidebar-sticky {
+    position: static;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 100%;
+    padding: max(1rem, env(safe-area-inset-top)) 1rem max(1.25rem, env(safe-area-inset-bottom));
+    overflow: visible !important;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar-header,
+  html[data-sidebar-state='collapsed'] .app-shell .sidebar-header {
+    justify-content: space-between;
+  }
+
+  .app-shell.sidebar-collapsed .brand-block,
+  html[data-sidebar-state='collapsed'] .app-shell .brand-block {
+    display: flex;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar .nav,
+  .app-shell.sidebar-collapsed .sidebar .nav-item,
+  .app-shell.sidebar-collapsed .sidebar .nav-link,
+  html[data-sidebar-state='collapsed'] .app-shell .sidebar .nav,
+  html[data-sidebar-state='collapsed'] .app-shell .sidebar .nav-item,
+  html[data-sidebar-state='collapsed'] .app-shell .sidebar .nav-link {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar .nav-link,
+  html[data-sidebar-state='collapsed'] .app-shell .sidebar .nav-link {
+    justify-content: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 0.95rem;
+  }
+
+  .app-shell.sidebar-collapsed .nav-label,
+  html[data-sidebar-state='collapsed'] .app-shell .nav-label {
+    display: inline;
+  }
+
+  .sidebar-toggle {
+    display: none;
+  }
+
+  .mobile-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgba(2, 6, 23, 0.68);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 220ms ease, visibility 220ms ease;
+  }
+
+  .app-shell.mobile-sidebar-open .mobile-sidebar-backdrop {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .main-content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .content-frame {
+    width: 100%;
+    padding: max(0.85rem, env(safe-area-inset-top)) max(0.85rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(0.85rem, env(safe-area-inset-left));
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    justify-content: space-between;
+    min-height: 56px;
+    margin: -0.85rem -0.85rem 1rem;
+    padding: max(0.55rem, env(safe-area-inset-top)) max(0.85rem, env(safe-area-inset-right)) 0.55rem max(0.85rem, env(safe-area-inset-left));
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-sidebar-toggle {
+    display: inline-flex;
+    flex: 0 0 46px;
+    width: 46px;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 0.65rem;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .mobile-sidebar-toggle span {
+    width: 21px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .topbar-user-area {
+    gap: 0.5rem;
+  }
+
+  .topbar .theme-toggle,
+  .topbar .notification-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .filter-panel {
+    overflow-x: visible;
+  }
+
+  .quick-filter-grid,
+  .product-filter-grid,
+  .category-filter-grid,
+  .report-filter-form,
+  .advanced-filters {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-actions,
+  .product-filter-grid .filter-actions {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .modal-dialog {
+    max-width: calc(100vw - 1.5rem);
+    margin: 0.75rem auto;
+  }
+
+  .modal-content {
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
+  }
+
+  .table-responsive {
+    margin-inline: -0.35rem;
+    padding-inline: 0.35rem;
+    border-radius: 0.35rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-frame > .d-flex.justify-content-between,
+  .card-header.d-flex.justify-content-between {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .quick-filter-grid,
+  .product-filter-grid,
+  .category-filter-grid,
+  .report-filter-form,
+  .advanced-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-actions,
+  .product-filter-grid .filter-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .filter-actions .btn {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .app-table th,
+  .app-table td {
+    padding: 0.75rem;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-inline: 1rem;
+  }
+
+  .modal-footer {
+    gap: 0.6rem;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-frame {
+    padding-inline: max(0.65rem, env(safe-area-inset-left));
+  }
+
+  .topbar {
+    margin-inline: -0.65rem;
+    padding-inline: max(0.65rem, env(safe-area-inset-left));
+    gap: 0.4rem;
+  }
+
+  .dashboard-grid,
+  .cash-summary-grid,
+  .report-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .theme-toggle {
+    margin-right: 0;
+  }
+
+  .user-menu-button {
+    display: flex;
+    min-width: 46px;
+    width: 46px;
+    padding: 0.3rem;
+  }
+
+  .user-menu-identity,
+  .user-menu-chevron {
+    display: none;
+  }
+
+  .notification-dropdown,
+  .user-menu-dropdown {
+    position: fixed;
+    top: calc(62px + env(safe-area-inset-top));
+    right: max(0.65rem, env(safe-area-inset-right));
+    left: max(0.65rem, env(safe-area-inset-left));
+    width: auto;
+    max-width: none;
+  }
+
+  .filter-panel,
+  .card-body {
+    padding: 0.9rem;
+  }
+
+  .filter-actions,
+  .product-filter-grid .filter-actions,
+  .modal-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-dialog {
+    max-width: calc(100vw - 1rem);
+    margin: 0.5rem auto;
+  }
+
+  .modal-content {
+    max-height: calc(100dvh - 1rem);
+    border-radius: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .mobile-sidebar-backdrop {
+    transition-duration: 0.01ms !important;
+  }
+}

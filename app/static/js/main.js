@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const appShell = document.querySelector('.app-shell');
   const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
   const sidebarToggleIcon = document.querySelector('[data-sidebar-toggle-icon]');
+  const mobileSidebarToggle = document.querySelector('[data-mobile-sidebar-toggle]');
+  const mobileSidebarClose = document.querySelector('[data-mobile-sidebar-close]');
+  const mobileSidebarQuery = window.matchMedia('(max-width: 900px)');
   const storedSidebar = localStorage.getItem('adega-jf-sidebar');
   const advancedFilterToggle = document.querySelector('[data-advanced-filter-toggle]');
   const advancedFilterPanel = document.querySelector('[data-advanced-filter-panel]');
@@ -326,6 +329,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
   applySidebar(storedSidebar === 'collapsed');
 
+  function setMobileSidebar(open) {
+    if (!appShell) {
+      return;
+    }
+
+    const shouldOpen = Boolean(open && mobileSidebarQuery.matches);
+    appShell.classList.toggle('mobile-sidebar-open', shouldOpen);
+    document.body.classList.toggle('mobile-navigation-open', shouldOpen);
+    if (mobileSidebarToggle) {
+      mobileSidebarToggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+      mobileSidebarToggle.setAttribute('aria-label', shouldOpen ? 'Fechar menu' : 'Abrir menu');
+    }
+  }
+
+  if (mobileSidebarToggle) {
+    mobileSidebarToggle.addEventListener('click', function () {
+      setMobileSidebar(!appShell.classList.contains('mobile-sidebar-open'));
+    });
+  }
+
+  if (mobileSidebarClose) {
+    mobileSidebarClose.addEventListener('click', function () {
+      setMobileSidebar(false);
+    });
+  }
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && appShell && appShell.classList.contains('mobile-sidebar-open')) {
+      setMobileSidebar(false);
+      if (mobileSidebarToggle) {
+        mobileSidebarToggle.focus();
+      }
+    }
+  });
+
+  mobileSidebarQuery.addEventListener('change', function () {
+    setMobileSidebar(false);
+  });
+
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', function () {
       const collapsed = appShell && appShell.classList.contains('sidebar-collapsed');
@@ -359,7 +401,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.querySelectorAll('.sidebar .nav-link').forEach(function (link) {
     link.addEventListener('pointerdown', lockCollapsedSidebarDuringNavigation, { passive: true });
-    link.addEventListener('click', lockCollapsedSidebarDuringNavigation, { passive: true });
+    link.addEventListener('click', function () {
+      lockCollapsedSidebarDuringNavigation();
+      setMobileSidebar(false);
+    }, { passive: true });
+  });
+
+  document.querySelectorAll('.table-responsive').forEach(function (tableRegion) {
+    if (!tableRegion.hasAttribute('tabindex')) {
+      tableRegion.setAttribute('tabindex', '0');
+    }
+    if (!tableRegion.hasAttribute('role')) {
+      tableRegion.setAttribute('role', 'region');
+    }
+    if (!tableRegion.hasAttribute('aria-label')) {
+      tableRegion.setAttribute('aria-label', 'Tabela com rolagem horizontal');
+    }
   });
 
   document.querySelectorAll('[data-settings-theme-choice]').forEach(function (button) {

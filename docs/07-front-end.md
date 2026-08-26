@@ -43,6 +43,37 @@ Elementos:
 - JavaScript Bootstrap via CDN.
 - JavaScript local.
 
+## Responsividade da versão Web
+
+A versão Web usa o mesmo HTML em celular, tablet e computador. Não existe uma
+segunda interface móvel nem duplicação das regras de negócio.
+
+Breakpoints centrais:
+
+- até `480px`: celulares compactos, ações e indicadores em uma coluna;
+- até `768px`: celulares grandes e tablets em modo retrato;
+- até `900px`: navegação lateral off-canvas acionada pelo botão do topo;
+- até `1024px`: grades e filtros reorganizados em duas colunas;
+- acima de `1024px`: navegação lateral e densidade de desktop.
+
+Comportamentos compartilhados:
+
+- o menu móvel fecha ao tocar no fundo, escolher uma seção ou pressionar `Esc`;
+- abertura do menu bloqueia a rolagem do conteúdo atrás dele;
+- topo e espaçamentos consideram as safe areas do dispositivo;
+- filtros passam de duas colunas para uma coluna em telas menores;
+- tabelas largas permanecem dentro de uma região com rolagem horizontal
+  controlada, acessível por teclado e identificada para leitores de tela;
+- modais respeitam a altura dinâmica do viewport e mantêm o conteúdo rolável;
+- imagens, gráficos, cards e formulários nunca ampliam a largura global da página;
+- animações respeitam `prefers-reduced-motion`.
+
+Matriz de verificação visual recomendada: `320x568`, `375x667`, `390x844`,
+`430x932`, `768x1024`, `1024x768`, `1366x768` e `1920x1080`, nos temas claro
+e escuro. As rotas de dashboard, produtos, categorias, vendas, PDV, caixa,
+estoque, contas, relatórios, configurações e auditoria devem ser verificadas sem
+rolagem horizontal global.
+
 ## Identidade Visual — WEB
 
 Arquivo: `app/static/css/style.css`.

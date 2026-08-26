@@ -315,8 +315,9 @@ public sealed class SalesViewModelTests
         Assert.Single(viewModel.Receipt!.Items);
         Assert.Single(viewModel.Receipt.Payments);
 
-        viewModel.CloseHistoricalReceiptCommand.Execute(null);
+        viewModel.ReturnToInitialState();
         Assert.Null(viewModel.Receipt);
+        Assert.False(viewModel.IsHistoricalReceipt);
     }
 
     [Fact]

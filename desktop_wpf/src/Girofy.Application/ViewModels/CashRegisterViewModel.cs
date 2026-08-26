@@ -253,6 +253,12 @@ public sealed class CashRegisterViewModel : ObservableObject, IDisposable
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         LoadAsync(cancellationToken);
 
+    public void ReturnToInitialState()
+    {
+        ShowCurrentRegisterTab();
+        CollapseSelectedRegisterDetail();
+    }
+
     private void HandleSessionChanged(object? sender, EventArgs e)
     {
         Reset();

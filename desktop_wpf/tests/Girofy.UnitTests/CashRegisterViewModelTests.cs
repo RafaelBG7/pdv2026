@@ -154,7 +154,7 @@ public sealed class CashRegisterViewModelTests
         Assert.True(viewModel.IsPreviousRegistersTabSelected);
         Assert.False(viewModel.IsCurrentRegisterTabSelected);
 
-        viewModel.ShowCurrentRegisterTabCommand.Execute(null);
+        viewModel.ReturnToInitialState();
 
         Assert.True(viewModel.IsCurrentRegisterTabSelected);
     }

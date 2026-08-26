@@ -727,6 +727,21 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         await LoadTodaySalesAsync(reset: true, cancellationToken);
     }
 
+    public void ReturnToInitialState()
+    {
+        Receipt = null;
+        IsHistoricalReceipt = false;
+        IsSaleEditorOpen = false;
+        IsPaymentStepOpen = false;
+        IsOpenCashPromptOpen = false;
+        IsDiscardConfirmationOpen = false;
+        IsQuantityPopupOpen = false;
+        IsDiscountPopupOpen = false;
+        IsCancellationPopupOpen = false;
+        PendingCancellationSale = null;
+        ClearMessages();
+    }
+
     private Task SearchAsync(CancellationToken cancellationToken) =>
         SearchProductsAsync(showMessages: true, cancellationToken);
 

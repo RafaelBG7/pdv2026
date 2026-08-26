@@ -201,10 +201,18 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
             () => Catalog.ShowCategoriesCommand.Execute(null));
 
     private Task ShowCashRegisterAsync(CancellationToken cancellationToken) =>
-        NavigateAsync("cash-register", CashRegister.InitializeAsync, cancellationToken);
+        NavigateAsync(
+            "cash-register",
+            CashRegister.InitializeAsync,
+            cancellationToken,
+            CashRegister.ReturnToInitialState);
 
     private Task ShowSalesAsync(CancellationToken cancellationToken) =>
-        NavigateAsync("sales", Sales.InitializeAsync, cancellationToken);
+        NavigateAsync(
+            "sales",
+            Sales.InitializeAsync,
+            cancellationToken,
+            Sales.ReturnToInitialState);
 
     private async Task StartSaleAsync(CancellationToken cancellationToken)
     {
@@ -240,13 +248,21 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     }
 
     private Task ShowStockAsync(CancellationToken cancellationToken) =>
-        NavigateAsync("stock", Stock.InitializeAsync, cancellationToken);
+        NavigateAsync(
+            "stock",
+            Stock.InitializeAsync,
+            cancellationToken,
+            () => Stock.ShowMovementsTabCommand.Execute(null));
 
     private Task ShowPayablesAsync(CancellationToken cancellationToken) =>
         NavigateAsync("payables", Payables.InitializeAsync, cancellationToken);
 
     private Task ShowReportsAsync(CancellationToken cancellationToken) =>
-        NavigateAsync("reports", Reports.InitializeAsync, cancellationToken);
+        NavigateAsync(
+            "reports",
+            Reports.InitializeAsync,
+            cancellationToken,
+            () => Reports.ShowSummaryTabCommand.Execute(null));
 
     private Task ShowAuditAsync(CancellationToken cancellationToken) =>
         NavigateAsync("audit", Audit.InitializeAsync, cancellationToken);

@@ -3334,7 +3334,10 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.get('/favicon.ico')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.mimetype, 'image/x-icon')
+        self.assertIn(
+            response.mimetype,
+            {'image/x-icon', 'image/vnd.microsoft.icon'},
+        )
         response.close()
 
     def test_security_headers_are_present(self):

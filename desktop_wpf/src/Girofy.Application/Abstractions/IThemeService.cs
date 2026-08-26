@@ -10,5 +10,7 @@ public interface IThemeService
 
     Task ToggleAsync(CancellationToken cancellationToken = default);
 
+    void SetAuthenticationState(bool isAuthenticated);
+
     void Apply();
 }

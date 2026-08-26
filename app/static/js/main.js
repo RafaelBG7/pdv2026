@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const storedTextScale = localStorage.getItem('girofy-text-scale') || 'normal';
   const storedContrast = localStorage.getItem('girofy-contrast') || 'default';
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const initialTheme = storedTheme || (prefersDark ? 'dark' : 'light');
+  const isAuthenticated = document.documentElement.dataset.authenticated === 'true';
+  const initialTheme = isAuthenticated ? (storedTheme || (prefersDark ? 'dark' : 'light')) : 'dark';
   const appShell = document.querySelector('.app-shell');
   const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
   const sidebarToggleIcon = document.querySelector('[data-sidebar-toggle-icon]');
@@ -62,9 +63,11 @@ document.addEventListener('DOMContentLoaded', function () {
     };
   }
 
-  function applyTheme(theme) {
+  function applyTheme(theme, persist = true) {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('girofy-theme', theme);
+    if (persist) {
+      localStorage.setItem('girofy-theme', theme);
+    }
     document.querySelectorAll('[data-settings-theme-label]').forEach(function (label) {
       label.textContent = theme === 'dark' ? 'Dark' : 'Light';
     });
@@ -166,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function () {
     refreshAccessibilityUi();
   }
 
-  applyTheme(initialTheme);
+  applyTheme(initialTheme, isAuthenticated);
   localStorage.setItem('girofy-text-scale', normalizeAccessibilityValue(storedTextScale, textScaleLabels, 'normal'));
   localStorage.setItem('girofy-contrast', normalizeAccessibilityValue(storedContrast, contrastLabels, 'default'));
   refreshAccessibilityUi();

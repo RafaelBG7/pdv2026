@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,7 +14,8 @@
     <link rel="manifest" href="{{ url_for('static', filename='brand/site.webmanifest', v='20260826-skygest') }}">
     <script>
       (function () {
-        var theme = localStorage.getItem('girofy-theme');
+        var isAuthenticated = document.documentElement.getAttribute('data-authenticated') === 'true';
+        var theme = isAuthenticated ? localStorage.getItem('girofy-theme') : 'dark';
         var accessibilityEnabled = localStorage.getItem('girofy-accessibility-enabled') !== 'false';
         var textScale = localStorage.getItem('girofy-text-scale') || 'normal';
         var contrast = localStorage.getItem('girofy-contrast') || 'default';
@@ -65,21 +66,6 @@
           }
         }());
       </script>
-        {% if not current_user.is_authenticated %}
-        <div class="login-theme-toggle">
-          <button class="theme-toggle" type="button" data-theme-toggle aria-label="Ativar tema escuro" aria-pressed="false" title="Alternar tema">
-            <span class="theme-toggle-track" aria-hidden="true">
-              <span class="theme-toggle-icon theme-toggle-sun">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg>
-              </span>
-              <span class="theme-toggle-icon theme-toggle-moon">
-                <svg viewBox="0 0 24 24"><path d="M20.4 15.5A8.5 8.5 0 0 1 8.5 3.6 8.5 8.5 0 1 0 20.4 15.5Z"></path></svg>
-              </span>
-              <span class="theme-toggle-thumb"></span>
-            </span>
-          </button>
-        </div>
-        {% endif %}
         {% if current_user.is_authenticated %}
         <nav class="sidebar" id="appSidebar" aria-label="Navegação principal">
           <div class="sidebar-sticky">
@@ -288,6 +274,6 @@
     {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js', v='20260826-mobile-responsive') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js', v='20260826-auth-dark') }}"></script>
   </body>
 </html>

@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using System.Windows.Input;
 using System.Windows.Media;
+using Girofy.Application.Abstractions;
 using Girofy.Application.ViewModels;
 using Girofy.Desktop.Behaviors;
 using Microsoft.Extensions.Logging;
@@ -17,15 +18,20 @@ public partial class MainWindow : Window
     private const uint MonitorDefaultToNearest = 2;
 
     private readonly ConnectionViewModel _viewModel;
+    private readonly IThemeService _themeService;
     private readonly ILogger<MainWindow> _logger;
     private bool _initialized;
     private bool _syncingPassword;
     private readonly SmoothScrollController _smoothScrollController;
 
-    public MainWindow(ConnectionViewModel viewModel, ILogger<MainWindow> logger)
+    public MainWindow(
+        ConnectionViewModel viewModel,
+        IThemeService themeService,
+        ILogger<MainWindow> logger)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _themeService = themeService;
         _logger = logger;
         DataContext = viewModel;
         _smoothScrollController = new SmoothScrollController(this);
@@ -455,6 +461,7 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName == nameof(LoginViewModel.IsAuthenticated))
         {
+            _themeService.SetAuthenticationState(_viewModel.Login.IsAuthenticated);
             if (!_viewModel.Login.IsAuthenticated)
             {
                 CloseNotificationsPanel();

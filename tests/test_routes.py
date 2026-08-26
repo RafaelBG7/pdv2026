@@ -152,6 +152,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('SkyGest'.encode(), response.data)
         self.assertIn('brand/skygest-logo-horizontal.png'.encode(), response.data)
+        self.assertIn('data-authenticated="false"'.encode(), response.data)
+        self.assertNotIn('login-theme-toggle'.encode(), response.data)
         self.assertIn('brand/favicon.ico'.encode(), response.data)
         self.assertNotIn('Logo Girofy'.encode(), response.data)
         self.assertNotIn('logo-girofy'.encode(), response.data)
@@ -163,7 +165,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Cadastrar'.encode(), response.data)
         self.assertNotIn('Key de ativação'.encode(), response.data)
         self.assertNotIn('Não tenho key'.encode(), response.data)
-        self.assertIn('data-theme-toggle'.encode(), response.data)
+        self.assertNotIn('data-theme-toggle'.encode(), response.data)
+        self.assertIn(": 'dark'".encode(), response.data)
         self.assertIn("localStorage.getItem('girofy-theme')".encode(), response.data)
         self.assertIn("prefers-color-scheme: dark".encode(), response.data)
 

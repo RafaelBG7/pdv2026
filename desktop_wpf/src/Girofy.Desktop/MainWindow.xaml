@@ -53,7 +53,6 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="76" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Width="62" Height="62" Background="{DynamicResource LogoTileBrush}" CornerRadius="8">
                                 <Image Margin="5" Source="Resources/skygest-app-icon.png" Stretch="Uniform" />
@@ -62,12 +61,6 @@
                                 <TextBlock FontSize="{DynamicResource FontSizeHero}" FontWeight="Bold"
                                            Foreground="{DynamicResource TextPrimaryBrush}" Text="SkyGest" />
                             </StackPanel>
-                            <ToggleButton Grid.Column="2"
-                                          VerticalAlignment="Center"
-                                          Command="{Binding Settings.ToggleThemeCommand}"
-                                          IsChecked="{Binding Settings.IsDarkMode, Mode=OneWay}"
-                                          AutomationProperties.Name="Alternar tema"
-                                          Style="{StaticResource ThemeToggleButtonStyle}" />
                         </Grid>
 
                         <Border Grid.Row="2" Padding="16" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="6">

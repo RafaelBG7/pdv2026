@@ -645,6 +645,10 @@ public sealed class SettingsViewModelTests
             return Task.CompletedTask;
         }
 
+        public void SetAuthenticationState(bool isAuthenticated)
+        {
+        }
+
         public void Apply()
         {
         }

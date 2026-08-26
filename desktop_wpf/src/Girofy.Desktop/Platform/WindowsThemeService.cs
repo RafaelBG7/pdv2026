@@ -6,6 +6,9 @@ namespace Girofy.Desktop.Platform;
 
 public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) : IThemeService
 {
+    private bool _isAuthenticated;
+    private bool _preferredIsDarkMode = true;
+
     private static readonly IReadOnlyDictionary<string, string> DarkPalette =
         new Dictionary<string, string>
         {
@@ -101,18 +104,22 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         var preferences = await preferencesStore.LoadAsync(cancellationToken);
-        IsDarkMode = !string.Equals(preferences.Theme, "light", StringComparison.OrdinalIgnoreCase);
-        if (!IsDarkMode)
-        {
-            ApplyPalette();
-        }
+        _preferredIsDarkMode = !string.Equals(preferences.Theme, "light", StringComparison.OrdinalIgnoreCase);
+        IsDarkMode = _isAuthenticated ? _preferredIsDarkMode : true;
+        ApplyPalette();
 
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task ToggleAsync(CancellationToken cancellationToken = default)
     {
+        if (!_isAuthenticated)
+        {
+            return;
+        }
+
         IsDarkMode = !IsDarkMode;
+        _preferredIsDarkMode = IsDarkMode;
         ApplyPalette();
 
         var current = await preferencesStore.LoadAsync(cancellationToken);
@@ -125,6 +132,20 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
                 Accessibility = current.Accessibility,
             },
             cancellationToken);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void SetAuthenticationState(bool isAuthenticated)
+    {
+        _isAuthenticated = isAuthenticated;
+        var requestedDarkMode = isAuthenticated ? _preferredIsDarkMode : true;
+        if (IsDarkMode == requestedDarkMode)
+        {
+            return;
+        }
+
+        IsDarkMode = requestedDarkMode;
+        ApplyPalette();
         Changed?.Invoke(this, EventArgs.Empty);
     }
 

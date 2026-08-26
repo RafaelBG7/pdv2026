@@ -1729,6 +1729,10 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
         public Task ToggleAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+        public void SetAuthenticationState(bool isAuthenticated)
+        {
+        }
+
         public void Apply()
         {
         }

@@ -63,7 +63,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Resolve GiroFy version
+      - name: Resolve SkyGest version
         id: version
         shell: pwsh
         run: |
@@ -73,7 +73,7 @@ jobs:
             throw "Versão inválida em Directory.Build.props: $version"
           }
           "version=$version" >> $env:GITHUB_OUTPUT
-          "Versão GiroFy: $version" >> $env:GITHUB_STEP_SUMMARY
+          "Versão SkyGest: $version" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Validate inline WPF bindings
         shell: pwsh
@@ -154,18 +154,18 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
           -p:DebugType=None
-          --output desktop_wpf/artifacts/Girofy-Windows-WPF
+          --output desktop_wpf/artifacts/SkyGest-Windows-WPF
 
       - name: Smoke test desktop startup
         shell: pwsh
         run: |
-          $executable = Resolve-Path 'desktop_wpf/artifacts/Girofy-Windows-WPF/Girofy.exe'
+          $executable = Resolve-Path 'desktop_wpf/artifacts/SkyGest-Windows-WPF/SkyGest.exe'
           $process = Start-Process -FilePath $executable -PassThru
           try {
             Start-Sleep -Seconds 8
             $process.Refresh()
             if ($process.HasExited) {
-              throw "Girofy encerrou durante a inicialização com código $($process.ExitCode)."
+              throw "SkyGest encerrou durante a inicialização com código $($process.ExitCode)."
             }
           }
           finally {
@@ -194,16 +194,16 @@ jobs:
       - name: Upload portable Windows preview artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GiroFy-Windows-${{ steps.version.outputs.version }}
-          path: desktop_wpf/artifacts/Girofy-Windows-WPF/Girofy.exe
+          name: SkyGest-Windows-${{ steps.version.outputs.version }}
+          path: desktop_wpf/artifacts/SkyGest-Windows-WPF/SkyGest.exe
           if-no-files-found: error
           retention-days: 7
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GiroFy-Installer-${{ steps.version.outputs.version }}
-          path: desktop_wpf/artifacts/installer/GiroFy-Setup-${{ steps.version.outputs.version }}.exe
+          name: SkyGest-Installer-${{ steps.version.outputs.version }}
+          path: desktop_wpf/artifacts/installer/SkyGest-Setup-${{ steps.version.outputs.version }}.exe
           if-no-files-found: error
           retention-days: 7
 
@@ -213,8 +213,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $executable = 'desktop_wpf/artifacts/Girofy-Windows-WPF/Girofy.exe'
-          $installer = 'desktop_wpf/artifacts/installer/GiroFy-Setup-${{ steps.version.outputs.version }}.exe'
+          $executable = 'desktop_wpf/artifacts/SkyGest-Windows-WPF/SkyGest.exe'
+          $installer = 'desktop_wpf/artifacts/installer/SkyGest-Setup-${{ steps.version.outputs.version }}.exe'
           if (-not (Test-Path $executable)) {
             throw "Executável não encontrado em $executable"
           }
@@ -226,13 +226,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create windows-preview `
               --repo $env:GITHUB_REPOSITORY `
-              --title 'Girofy Windows Preview' `
-              --notes 'Canal de desenvolvimento do GiroFy Windows. Não é uma versão comercial estável.' `
+              --title 'SkyGest Windows Preview' `
+              --notes 'Canal de desenvolvimento do SkyGest Windows. Não é uma versão comercial estável.' `
               --prerelease
           }
 
           gh release edit windows-preview `
             --repo $env:GITHUB_REPOSITORY `
+            --title 'SkyGest Windows Preview' `
+            --notes 'Canal de desenvolvimento do SkyGest Windows. Não é uma versão comercial estável.' `
             --prerelease
 
           gh release upload windows-preview $executable $installer `

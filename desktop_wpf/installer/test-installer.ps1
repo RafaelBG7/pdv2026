@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Version,
-    [string]$InstallerPath = (Join-Path $PSScriptRoot "..\artifacts\installer\GiroFy-Setup-$Version.exe")
+    [string]$InstallerPath = (Join-Path $PSScriptRoot "..\artifacts\installer\SkyGest-Setup-$Version.exe")
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,9 +12,9 @@ if ([string]::IsNullOrWhiteSpace($Version) -or $Version -notmatch '^\d+\.\d+\.\d
 }
 
 $installer = (Resolve-Path $InstallerPath).Path
-$installDir = Join-Path $env:LOCALAPPDATA 'Programs\GiroFy'
-$installedExe = Join-Path $installDir 'Girofy.exe'
-$startMenuShortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\GiroFy.lnk'
+$installDir = Join-Path $env:LOCALAPPDATA 'Programs\SkyGest'
+$installedExe = Join-Path $installDir 'SkyGest.exe'
+$startMenuShortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\SkyGest.lnk'
 $dataDir = Join-Path $env:LOCALAPPDATA 'Girofy'
 $preservationMarker = Join-Path $dataDir 'installer-smoke.marker'
 $uninstallRegistryRoots = @(
@@ -31,14 +31,14 @@ function Invoke-Installer {
     }
 }
 
-function Get-GiroFyUninstallEntry {
+function Get-SkyGestUninstallEntry {
     foreach ($root in $uninstallRegistryRoots) {
         if (-not (Test-Path $root)) {
             continue
         }
         $entry = Get-ChildItem $root |
             Get-ItemProperty |
-            Where-Object { $_.DisplayName -eq 'GiroFy' } |
+            Where-Object { $_.DisplayName -eq 'SkyGest' } |
             Select-Object -First 1
         if ($null -ne $entry) {
             return $entry
@@ -54,17 +54,17 @@ function Assert-Installed {
     if (-not (Test-Path -LiteralPath $startMenuShortcut -PathType Leaf)) {
         throw "Atalho do Menu Iniciar não encontrado: $startMenuShortcut"
     }
-    $entry = Get-GiroFyUninstallEntry
+    $entry = Get-SkyGestUninstallEntry
     if ($null -eq $entry) {
-        throw 'GiroFy não foi registrado em Aplicativos instalados.'
+        throw 'SkyGest não foi registrado em Aplicativos instalados.'
     }
     if ($entry.DisplayVersion -ne $Version) {
         throw "Versão registrada ($($entry.DisplayVersion)) difere de $Version."
     }
 }
 
-function Stop-GiroFyProcesses {
-    Get-Process -Name 'Girofy' -ErrorAction SilentlyContinue |
+function Stop-SkyGestProcesses {
+    Get-Process -Name 'SkyGest' -ErrorAction SilentlyContinue |
         Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 500
 }
@@ -74,7 +74,7 @@ function Assert-AppStartsAndIsSingleInstance {
     Start-Sleep -Seconds 5
     $first.Refresh()
     if ($first.HasExited) {
-        throw "GiroFy instalado encerrou durante a inicialização com código $($first.ExitCode)."
+        throw "SkyGest instalado encerrou durante a inicialização com código $($first.ExitCode)."
     }
 
     $second = Start-Process -FilePath $installedExe -PassThru
@@ -83,16 +83,16 @@ function Assert-AppStartsAndIsSingleInstance {
         throw 'A segunda abertura não encerrou como esperado pelo controle de instância única.'
     }
 
-    $running = @(Get-Process -Name 'Girofy' -ErrorAction SilentlyContinue)
+    $running = @(Get-Process -Name 'SkyGest' -ErrorAction SilentlyContinue)
     if ($running.Count -ne 1) {
-        throw "Quantidade inesperada de processos Girofy após segunda abertura: $($running.Count)."
+        throw "Quantidade inesperada de processos SkyGest após segunda abertura: $($running.Count)."
     }
 
-    Stop-GiroFyProcesses
+    Stop-SkyGestProcesses
 }
 
 function Invoke-Uninstaller {
-    Stop-GiroFyProcesses
+    Stop-SkyGestProcesses
     $uninstaller = Join-Path $installDir 'unins000.exe'
     if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) {
         throw "Desinstalador não encontrado: $uninstaller"
@@ -104,12 +104,12 @@ function Invoke-Uninstaller {
         throw "Desinstalador encerrou com código $($process.ExitCode)."
     }
     if (Test-Path -LiteralPath $installedExe) {
-        throw 'Girofy.exe permaneceu após a desinstalação.'
+        throw 'SkyGest.exe permaneceu após a desinstalação.'
     }
     if (Test-Path -LiteralPath $startMenuShortcut) {
         throw 'Atalho do Menu Iniciar permaneceu após a desinstalação.'
     }
-    if ($null -ne (Get-GiroFyUninstallEntry)) {
+    if ($null -ne (Get-SkyGestUninstallEntry)) {
         throw 'Registro de Aplicativos instalados permaneceu após a desinstalação.'
     }
 }
@@ -134,7 +134,7 @@ try {
     Write-Host 'Smoke test de instalação, abertura, instância única, desinstalação e reinstalação aprovado.'
 }
 finally {
-    Stop-GiroFyProcesses
+    Stop-SkyGestProcesses
     if (Test-Path -LiteralPath (Join-Path $installDir 'unins000.exe')) {
         try { Invoke-Uninstaller } catch { Write-Warning $_ }
     }

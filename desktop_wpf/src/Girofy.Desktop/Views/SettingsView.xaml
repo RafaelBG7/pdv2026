@@ -518,7 +518,7 @@
                                         <StackPanel>
                                             <TextBlock Style="{StaticResource SettingsLabelStyle}" Text="Usuário" />
                                             <TextBox Text="{Binding NewEmployeeUsername, UpdateSourceTrigger=PropertyChanged}"
-                                                     ToolTip="Nome usado para entrar no Girofy"
+                                                     ToolTip="Nome usado para entrar no SkyGest"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
@@ -1108,7 +1108,7 @@
                                     <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
                                                Text="Suporte" />
                                     <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
-                                               Text="Fale com a equipe Girofy pelos canais oficiais de atendimento." />
+                                               Text="Fale com a equipe SkyGest pelos canais oficiais de atendimento." />
                                 </StackPanel>
 
                                 <Grid Margin="0,20,0,0">
@@ -1170,7 +1170,7 @@
                                         <TextBlock Style="{StaticResource SettingsSectionTitleStyle}"
                                                    Text="Acessibilidade visual" />
                                         <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}"
-                                                   Text="Ajuste a leitura e o movimento do Girofy. As mudanças aparecem imediatamente e permanecem neste computador após salvar." />
+                                                   Text="Ajuste a leitura e o movimento do SkyGest. As mudanças aparecem imediatamente e permanecem neste computador após salvar." />
 
                                         <Grid Margin="0,20,0,0">
                                             <Grid.ColumnDefinitions>

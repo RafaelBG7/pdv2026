@@ -27,12 +27,12 @@ public sealed class SystemBrowserService(ILogger<SystemBrowserService> logger) :
         try
         {
             Open(uri);
-            logger.LogInformation("Opened an external Girofy web page.");
+            logger.LogInformation("Opened an external SkyGest web page.");
             return Task.FromResult(true);
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to open an external Girofy web page.");
+            logger.LogWarning(exception, "Failed to open an external SkyGest web page.");
             return Task.FromResult(false);
         }
     }

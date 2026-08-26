@@ -3,13 +3,13 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <AssemblyName>Girofy</AssemblyName>
+    <AssemblyName>SkyGest</AssemblyName>
     <RootNamespace>Girofy.Desktop</RootNamespace>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Product>GiroFy</Product>
-    <Title>GiroFy</Title>
-    <Description>Sistema de gestão e ponto de venda GiroFy</Description>
-    <ApplicationIcon>Resources\Girofy.ico</ApplicationIcon>
+    <Product>SkyGest</Product>
+    <Title>SkyGest</Title>
+    <Description>SkyGest — o seu gestor inteligente</Description>
+    <ApplicationIcon>Resources\SkyGest.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="..\..\..\app\static\logo-girofy-v2.png" Link="Resources\logo-girofy.png" />
-    <Resource Include="Resources\Girofy.ico" />
+    <Resource Include="Resources\skygest-app-icon.png" />
+    <Resource Include="Resources\SkyGest.ico" />
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

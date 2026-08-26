@@ -1899,7 +1899,7 @@ def settings():
                         settings_company,
                         recipients,
                         'Teste de alertas por e-mail',
-                        'Este é um envio de teste solicitado nas configurações do Girofy.',
+                        'Este é um envio de teste solicitado nas configurações do SkyGest.',
                     )
                 except EmailAuthenticationError as error:
                     current_app.logger.error('Falha de autenticação SMTP no teste de alertas: %s', error, exc_info=True)

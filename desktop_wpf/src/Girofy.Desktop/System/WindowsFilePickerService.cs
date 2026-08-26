@@ -16,7 +16,7 @@ public sealed class WindowsFilePickerService : IFilePickerService
             CheckFileExists = true,
             Filter = filter,
             Multiselect = false,
-            Title = "Importar produtos no Girofy",
+            Title = "Importar produtos no SkyGest",
         };
 
         if (dialog.ShowDialog() != true)

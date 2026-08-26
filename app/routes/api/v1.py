@@ -1898,7 +1898,7 @@ def api_export_payables_rows(tenant_db):
 API_EXPORT_DEFINITIONS = {
     'produtos': {
         'label': 'Produtos',
-        'filename': 'girofy_produtos',
+        'filename': 'skygest_produtos',
         'headers': [
             'ID',
             'Nome',
@@ -1918,7 +1918,7 @@ API_EXPORT_DEFINITIONS = {
     },
     'vendas': {
         'label': 'Vendas',
-        'filename': 'girofy_vendas',
+        'filename': 'skygest_vendas',
         'headers': [
             'ID',
             'Data',
@@ -1934,7 +1934,7 @@ API_EXPORT_DEFINITIONS = {
     },
     'caixas': {
         'label': 'Caixas',
-        'filename': 'girofy_caixas',
+        'filename': 'skygest_caixas',
         'headers': [
             'ID',
             'Abertura',
@@ -1950,7 +1950,7 @@ API_EXPORT_DEFINITIONS = {
     },
     'contas': {
         'label': 'Contas a pagar',
-        'filename': 'girofy_contas_a_pagar',
+        'filename': 'skygest_contas_a_pagar',
         'headers': [
             'ID',
             'Descrição',
@@ -4745,7 +4745,7 @@ def api_test_email_alert_settings():
             company,
             recipients,
             'Teste de alertas por e-mail',
-            'Este é um envio de teste solicitado nas configurações do Girofy.',
+            'Este é um envio de teste solicitado nas configurações do SkyGest.',
         )
         record_audit_event(
             'email_alert_test_sent', 'email_alert_setting', None,

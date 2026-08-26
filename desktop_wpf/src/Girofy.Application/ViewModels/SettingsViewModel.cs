@@ -1279,7 +1279,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
                 cancellationToken);
             var savedPath = await _fileSaveService.SaveFileAsync(
                 file.FileName,
-                "CSV do Girofy (*.csv)|*.csv|Todos os arquivos (*.*)|*.*",
+                "CSV do SkyGest (*.csv)|*.csv|Todos os arquivos (*.*)|*.*",
                 file.Content,
                 cancellationToken);
 
@@ -1319,7 +1319,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         try
         {
             var file = await _filePickerService.PickFileAsync(
-                "Planilhas Girofy (*.csv;*.xlsx)|*.csv;*.xlsx|CSV (*.csv)|*.csv|Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*",
+                "Planilhas SkyGest (*.csv;*.xlsx)|*.csv;*.xlsx|CSV (*.csv)|*.csv|Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*",
                 cancellationToken);
             if (file is null)
             {

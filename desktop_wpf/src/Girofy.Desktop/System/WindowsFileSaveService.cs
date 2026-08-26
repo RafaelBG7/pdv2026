@@ -19,7 +19,7 @@ public sealed class WindowsFileSaveService : IFileSaveService
             FileName = suggestedFileName,
             Filter = filter,
             OverwritePrompt = true,
-            Title = "Salvar exportação do Girofy",
+            Title = "Salvar exportação do SkyGest",
         };
 
         if (dialog.ShowDialog() != true)

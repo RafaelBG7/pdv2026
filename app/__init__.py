@@ -436,7 +436,7 @@ def create_app(config_class=Config):
             if users_without_company:
                 company = Company.query.order_by(Company.id.asc()).first()
                 if not company:
-                    company = Company(name='Girofy')
+                    company = Company(name='SkyGest')
                     db.session.add(company)
                     db.session.flush()
                 tenant_database_identifier(company)
@@ -458,7 +458,7 @@ def create_app(config_class=Config):
 
     @app.get('/favicon.ico')
     def favicon():
-        response = app.send_static_file('favicon-v2.png')
+        response = app.send_static_file('brand/favicon.ico')
         response.cache_control.no_cache = True
         return response
 

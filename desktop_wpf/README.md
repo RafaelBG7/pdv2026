@@ -1,10 +1,10 @@
-# GiroFy para Windows - WPF
+# SkyGest para Windows - WPF
 
-Esta pasta contém a aplicação Windows nativa experimental do Girofy. Ela é independente da interface Flask/Jinja e não acessa o MySQL diretamente.
+Esta pasta contém a aplicação Windows nativa experimental do SkyGest. Ela é independente da interface Flask/Jinja e não acessa o MySQL diretamente.
 
 ## Relação com a versão web
 
-A versão Windows é um cliente nativo conectado à API do Girofy. Ela usa os mesmos usuários,
+A versão Windows é um cliente nativo conectado à API do SkyGest. Ela usa os mesmos usuários,
 permissões, assinatura/key, bancos por adega e regras de negócio da versão web.
 
 A comparação detalhada entre a versão web e a versão Windows está em:
@@ -151,7 +151,7 @@ Décimo sétimo corte vertical implementado:
 - integração com `GET /api/v1/settings/account`, sempre restrita ao usuário autenticado e
   à adega presente no token;
 - abertura opcional da versão web no navegador externo;
-- logs locais em `%LOCALAPPDATA%\Girofy\logs`;
+- logs locais no diretório legado `%LOCALAPPDATA%\Girofy\logs`, preservado para compatibilidade;
 - catálogo carregado somente quando Produtos ou Categorias é aberto, evitando consultas
   e uso de memória desnecessários na inicialização;
 - testes unitários de conexão, login, restauração de sessão, logout, dashboard, catálogo,
@@ -213,9 +213,9 @@ Execute manualmente:
 GitHub > Actions > Build Windows WPF preview > Run workflow
 ```
 
-O workflow gera `GiroFy-Windows-0.8.0`, com o executável self-contained, e `GiroFy-Installer-0.8.0`, com `GiroFy-Setup-0.8.0.exe`. O cliente de teste não precisa instalar .NET, Python, MySQL ou ferramentas de desenvolvimento.
+O workflow gera `SkyGest-Windows-0.8.9`, com o executável self-contained, e `SkyGest-Installer-0.8.9`, com `SkyGest-Setup-0.8.9.exe`. O cliente de teste não precisa instalar .NET, Python, MySQL ou ferramentas de desenvolvimento.
 
-O Setup usa Inno Setup, instala por usuário em `%LocalAppData%\Programs\GiroFy`, cria atalho no Menu Iniciar, oferece atalho opcional na Área de Trabalho e registra o desinstalador no Windows. Consulte `docs/WINDOWS_INSTALLER.md` para build local, segurança, upgrade e homologação.
+O Setup usa Inno Setup, instala por usuário em `%LocalAppData%\Programs\SkyGest`, cria atalho no Menu Iniciar, oferece atalho opcional na Área de Trabalho e registra o desinstalador no Windows. Consulte `docs/WINDOWS_INSTALLER.md` para build local, segurança, upgrade e homologação.
 
 Esta prévia valida a base nativa, o ciclo completo de autenticação, o dashboard operacional,
 a consulta e manutenção básica do catálogo, o fluxo de abertura/fechamento de caixa, o

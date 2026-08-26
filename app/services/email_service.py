@@ -30,7 +30,7 @@ def send_email(to_email, subject, html_body, text_body):
     login = current_app.config.get('MAIL_SMTP_LOGIN')
     password = current_app.config.get('MAIL_SMTP_PASSWORD')
     from_email = configured_sender()
-    from_name = current_app.config.get('MAIL_FROM_NAME') or 'Girofy'
+    from_name = current_app.config.get('MAIL_FROM_NAME') or 'SkyGest'
 
     if not all([server, port, login, password, from_email]):
         raise RuntimeError('Configuração de email incompleta. Verifique MAIL_SMTP_* e MAIL_FROM_EMAIL no .env.')
@@ -72,7 +72,7 @@ def send_verification_code_email(user, code):
         f'Olá, {user.full_name or user.username}.\n\n'
         f'Seu código de verificação é: {code}\n'
         'Este código expira em 15 minutos.\n\n'
-        'Girofy'
+        'SkyGest'
     )
     return send_email(user.email, 'Código de verificação da sua conta', html_body, text_body)
 
@@ -83,7 +83,7 @@ def send_password_reset_email(user, reset_url):
         f'Olá, {user.full_name or user.username}.\n\n'
         f'Use este link para redefinir sua senha: {reset_url}\n'
         'O link expira em 30 minutos.\n\n'
-        'Girofy'
+        'SkyGest'
     )
     return send_email(user.email, 'Redefinição de senha', html_body, text_body)
 
@@ -101,7 +101,7 @@ def send_email_change_confirmation(user, new_email, confirmation_url):
         f'Confirme pelo link: {confirmation_url}\n'
         'O link expira em 30 minutos.\n\n'
         'Se você não solicitou essa alteração, ignore este e-mail e altere sua senha.\n\n'
-        'Girofy'
+        'SkyGest'
     )
     return send_email(user.email, 'Confirme a troca de e-mail da conta', html_body, text_body)
 
@@ -121,5 +121,5 @@ def send_alert_email(company, recipients, alert_title, alert_message, alert_url=
     )
     if alert_url:
         text_body += f'\nAcesse: {alert_url}\n'
-    text_body += '\nGirofy'
+    text_body += '\nSkyGest'
     return send_bulk_email(recipients, f'Alerta crítico: {alert_title}', html_body, text_body)

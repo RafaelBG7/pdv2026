@@ -150,7 +150,11 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.get('/login')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Girofy'.encode(), response.data)
+        self.assertIn('SkyGest'.encode(), response.data)
+        self.assertIn('brand/skygest-logo-horizontal.png'.encode(), response.data)
+        self.assertIn('brand/favicon.ico'.encode(), response.data)
+        self.assertNotIn('Logo Girofy'.encode(), response.data)
+        self.assertNotIn('logo-girofy'.encode(), response.data)
         self.assertNotIn('Gestão que faz girar o seu negócio'.encode(), response.data)
         self.assertNotIn('Sistema PDV Local'.encode(), response.data)
         self.assertIn('Entrar'.encode(), response.data)
@@ -783,7 +787,7 @@ class RouteTestCase(unittest.TestCase):
             backup_path = Path(updated_company.backup_last_path)
         self.assertEqual(updated_company.backup_last_status, 'success')
         self.assertTrue(backup_path.exists())
-        self.assertIn('Backup Girofy', backup_path.read_text(encoding='utf-8'))
+        self.assertIn('Backup SkyGest', backup_path.read_text(encoding='utf-8'))
         self.assertIn(data['backup']['file_name'], audit_log.description)
 
     def test_api_settings_export_products_returns_tenant_csv_for_admin(self):
@@ -816,7 +820,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('text/csv', response.content_type)
         self.assertIn('attachment;', response.headers.get('Content-Disposition', ''))
-        self.assertIn('girofy_produtos_', response.headers.get('Content-Disposition', ''))
+        self.assertIn('skygest_produtos_', response.headers.get('Content-Disposition', ''))
         self.assertIn('Nome;Código de barras;Categoria', csv_text)
         self.assertIn('Skol 269ml unidade;789000000001;Cerveja', csv_text)
         self.assertIn('2,50;4,00;12;3;Sim;Não', csv_text)
@@ -3330,7 +3334,7 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.get('/favicon.ico')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.mimetype, 'image/png')
+        self.assertEqual(response.mimetype, 'image/x-icon')
         response.close()
 
     def test_security_headers_are_present(self):
@@ -5545,7 +5549,7 @@ class RouteTestCase(unittest.TestCase):
             company = User.query.filter_by(username='master').one().company
             self.assertEqual(company.backup_last_status, 'success')
             self.assertTrue(Path(company.backup_last_path).exists())
-            self.assertIn('Backup Girofy', Path(company.backup_last_path).read_text(encoding='utf-8'))
+            self.assertIn('Backup SkyGest', Path(company.backup_last_path).read_text(encoding='utf-8'))
 
     def test_settings_updates_password_with_current_password(self):
         self.login()

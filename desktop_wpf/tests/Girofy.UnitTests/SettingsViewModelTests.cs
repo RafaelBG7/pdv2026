@@ -167,7 +167,7 @@ public sealed class SettingsViewModelTests
 
         Assert.Equal("access-token", apiClient.ExportAccessToken);
         Assert.Equal("vendas", apiClient.ExportType);
-        Assert.Equal("girofy_vendas.csv", fileSaveService.SuggestedFileName);
+        Assert.Equal("skygest_vendas.csv", fileSaveService.SuggestedFileName);
         Assert.Equal("id;total", Encoding.UTF8.GetString(fileSaveService.Content));
         Assert.Contains("Exportação salva", viewModel.SuccessMessage);
         Assert.Empty(viewModel.ErrorMessage);
@@ -516,7 +516,7 @@ public sealed class SettingsViewModelTests
             ExportAccessToken = accessToken;
             ExportType = exportType;
             return Task.FromResult(new ExportFile(
-                "girofy_vendas.csv",
+                "skygest_vendas.csv",
                 "text/csv",
                 Encoding.UTF8.GetBytes("id;total")));
         }
@@ -606,7 +606,7 @@ public sealed class SettingsViewModelTests
         {
             SuggestedFileName = suggestedFileName;
             Content = content;
-            return Task.FromResult<string?>("C:\\Exports\\girofy_vendas.csv");
+            return Task.FromResult<string?>("C:\\Exports\\skygest_vendas.csv");
         }
     }
 

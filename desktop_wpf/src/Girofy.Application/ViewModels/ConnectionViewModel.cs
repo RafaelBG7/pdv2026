@@ -12,7 +12,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
     private readonly IExternalBrowserService _browserService;
     private readonly Uri _serverUri;
     private string _statusTitle = "Preparando conexão";
-    private string _statusDescription = "Verificando se o servidor Girofy está disponível.";
+    private string _statusDescription = "Verificando se o servidor SkyGest está disponível.";
     private string _lastCheckedText = "Ainda não verificado";
     private bool _isBusy;
     private bool _isConnected;
@@ -316,7 +316,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
         IsBusy = true;
         IsConnected = false;
         HasConnectionError = false;
-        StatusTitle = "Conectando ao Girofy";
+        StatusTitle = "Conectando ao SkyGest";
         StatusDescription = "Validando a disponibilidade da API do sistema.";
 
         try

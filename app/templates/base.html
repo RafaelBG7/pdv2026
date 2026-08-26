@@ -4,9 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Girofy</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-v2.png') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon-v2.png') }}">
+    <title>{% block title %}{% if request.endpoint == 'main.dashboard' %}Dashboard | {% elif request.endpoint in ['catalog.products', 'catalog.new_product', 'catalog.edit_product'] %}Produtos | {% elif request.endpoint == 'catalog.categories' %}Categorias | {% elif request.endpoint in ['main.sales', 'main.new_sale', 'main.sale_detail'] %}Vendas | {% elif request.endpoint == 'main.cash_register' %}Caixa | {% elif request.endpoint in ['main.stock_movements', 'main.stock_entry', 'main.stock_adjustment'] %}Estoque | {% elif request.endpoint == 'main.payables' %}Contas a pagar | {% elif request.endpoint == 'main.reports' %}Relatórios | {% elif request.endpoint == 'auth.settings' %}Configurações | {% endif %}SkyGest{% endblock %}</title>
+    <meta name="application-name" content="SkyGest">
+    <meta name="theme-color" content="#090713">
+    <link rel="icon" href="{{ url_for('static', filename='brand/favicon.ico', v='20260826-skygest') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='brand/skygest-icon-32.png', v='20260826-skygest') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='brand/skygest-icon-192.png', v='20260826-skygest') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='brand/skygest-icon-180.png', v='20260826-skygest') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='brand/site.webmanifest', v='20260826-skygest') }}">
     <script>
       (function () {
         var theme = localStorage.getItem('girofy-theme');
@@ -80,9 +85,9 @@
           <div class="sidebar-sticky">
             <div class="sidebar-header">
               <div class="brand-block">
-                <img class="brand-logo" src="{{ url_for('static', filename='logo-girofy-v2.png') }}" alt="Logo Girofy">
+                <img class="brand-logo" src="{{ url_for('static', filename='brand/skygest-symbol-circle.png', v='20260826-skygest') }}" alt="Símbolo SkyGest">
                 <div class="brand-copy">
-                  <h4>Girofy</h4>
+                  <h4>SkyGest</h4>
                 </div>
               </div>
               <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Minimizar menu" title="Minimizar menu">

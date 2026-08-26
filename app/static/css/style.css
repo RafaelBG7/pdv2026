@@ -435,6 +435,13 @@ body.sidebar-navigation-lock .app-shell .sidebar {
   margin: 0;
 }
 
+.login-brand-logo-horizontal {
+  width: min(100%, 430px);
+  height: auto;
+  max-height: 150px;
+  object-fit: contain;
+}
+
 .login-brand h2 {
   font-weight: 900;
 }
@@ -7975,5 +7982,23 @@ canvas {
   .sidebar,
   .mobile-sidebar-backdrop {
     transition-duration: 0.01ms !important;
+  }
+}
+
+.login-screen .login-brand-logo-horizontal {
+  width: min(100%, 430px);
+  height: auto;
+  max-height: 150px;
+  flex: 1 1 auto;
+  border-radius: 0.75rem;
+  object-fit: contain;
+}
+
+@media (max-height: 760px) {
+  .login-screen .login-brand-logo-horizontal {
+    width: min(100%, 360px);
+    height: auto;
+    max-height: 100px;
+    flex-basis: auto;
   }
 }

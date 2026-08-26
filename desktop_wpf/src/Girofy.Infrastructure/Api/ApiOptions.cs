@@ -29,12 +29,12 @@ public sealed class ApiOptions
     {
         if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out var baseUri))
         {
-            throw new InvalidOperationException("A URL da API Girofy não foi configurada corretamente.");
+            throw new InvalidOperationException("A URL da API SkyGest não foi configurada corretamente.");
         }
 
         if (baseUri.Scheme != Uri.UriSchemeHttps && baseUri.Scheme != Uri.UriSchemeHttp)
         {
-            throw new InvalidOperationException("A API Girofy deve usar HTTP ou HTTPS.");
+            throw new InvalidOperationException("A API SkyGest deve usar HTTP ou HTTPS.");
         }
 
         if (baseUri.Scheme == Uri.UriSchemeHttp && !AllowInsecureHttp)

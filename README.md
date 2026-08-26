@@ -1,4 +1,8 @@
-# Girofy — PDV Web/API e aplicativo Windows
+# SkyGest — PDV Web/API e aplicativo Windows
+
+> SkyGest é o nome oficial atual do produto. **Girofy** foi o nome anterior e
+> permanece apenas em identificadores técnicos legados necessários para preservar
+> sessões, dados locais, integrações e compatibilidade de atualização.
 
 > **Marco documentado:** estado oficial em 17/08/2026. O inventário completo, a separação entre plataformas e o ponto de continuidade estão em [docs/31-estado-atual-17-08-2026.md](docs/31-estado-atual-17-08-2026.md).
 
@@ -10,7 +14,7 @@ Sistema PDV web para adegas, pequenos mercados e comércios locais. O projeto ro
 
 ## Visão Geral
 
-O Girofy é um sistema de ponto de venda criado para organizar a operação diária de uma adega. Ele substitui controles manuais em papel ou planilhas por uma interface web acessível pelo navegador.
+O SkyGest é um sistema de ponto de venda criado para organizar a operação diária de uma adega. Ele substitui controles manuais em papel ou planilhas por uma interface web acessível pelo navegador.
 
 O sistema cobre:
 
@@ -65,7 +69,7 @@ Pontos mais maduros:
 - movimentações de estoque com origem, usuário e saldo antes/depois;
 - auditoria de ações críticas com mascaramento de dados sensíveis;
 - dashboard operacional com indicadores úteis;
-- identidade visual Girofy com paleta menos monocromática, status coloridos e tema claro/escuro;
+- identidade visual SkyGest com paleta menos monocromática, status coloridos e tema claro/escuro;
 - ambiente OCI Free Tier publicado em porta alta;
 - deploy automatizado por GitHub Actions.
 
@@ -78,7 +82,7 @@ Pontos que ainda merecem prioridade antes de produção pública:
 
 ## Versões do Projeto
 
-O Girofy hoje está dividido em duas frentes.
+O SkyGest hoje está dividido em duas frentes.
 
 | Versão | Estado atual | Uso recomendado |
 |---|---|---|
@@ -1130,7 +1134,7 @@ PORT=5002 python app.py
 
 ### 8. Acesso oficial pela OCI
 
-O Girofy web é usado diretamente pelo navegador. Não é necessário instalar MySQL,
+O SkyGest web é usado diretamente pelo navegador. Não é necessário instalar MySQL,
 Python ou um aplicativo no computador do cliente.
 
 Endereço atual:
@@ -1206,7 +1210,7 @@ Nesta etapa ele já possui:
   quando ocorre uma falha;
 - comprovante de venda nativo com total, pagamentos, troco e avisos de estoque;
 - timeout, cancelamento e mensagens seguras de falha;
-- logs locais rotativos em `%LOCALAPPDATA%\Girofy\logs`;
+- logs locais rotativos no diretório legado `%LOCALAPPDATA%\Girofy\logs`, preservado em upgrades;
 - testes unitários da camada de apresentação;
 - workflow Windows para teste e publicação `win-x64` autocontida.
 
@@ -1219,7 +1223,7 @@ GitHub > Actions > Build Windows WPF preview > Run workflow
 O artefato gerado se chama:
 
 ```text
-Girofy-Windows-WPF-preview
+SkyGest-Windows-WPF-preview
 ```
 
 Essa prévia não é o canal oficial para os clientes. Dashboard, catálogo, manutenção básica
@@ -1242,7 +1246,7 @@ docs/24-estado-versoes-web-windows.md
 
 ### 10. Deploy automatizado na OCI
 
-O repositório possui o workflow `.github/workflows/deploy-oci-self-hosted.yml` para publicar o Girofy na VM da Oracle Cloud. Esse é o fluxo recomendado: o deploy roda dentro da própria VM por um GitHub Actions self-hosted runner, sem depender do IP público do desenvolvedor nem de sessão OCI CLI.
+O repositório possui o workflow `.github/workflows/deploy-oci-self-hosted.yml` para publicar o SkyGest na VM da Oracle Cloud. Esse é o fluxo recomendado: o deploy roda dentro da própria VM por um GitHub Actions self-hosted runner, sem depender do IP público do desenvolvedor nem de sessão OCI CLI.
 
 A pipeline faz:
 
@@ -1298,7 +1302,7 @@ O ambiente online atual roda em uma VM Always Free compatível:
 - SSH restrito ao IP administrativo;
 - portas 80 e 443 fechadas enquanto não houver domínio/HTTPS;
 - fail2ban ativo para SSH;
-- UFW com entrada pública apenas na porta alta do Girofy.
+- UFW com entrada pública apenas na porta alta do SkyGest.
 
 Para detalhes, veja:
 
@@ -1378,7 +1382,7 @@ MAIL_SMTP_PORT=587
 MAIL_SMTP_LOGIN=girofy2026@gmail.com
 MAIL_SMTP_PASSWORD=sua-senha-de-app-do-gmail
 MAIL_FROM_EMAIL=girofy2026@gmail.com
-MAIL_FROM_NAME=Girofy
+MAIL_FROM_NAME=SkyGest
 MAIL_SUPPRESS_SEND=0
 AUTO_AUDIT_CLEANUP_ENABLED=1
 AUTO_AUDIT_CLEANUP_INTERVAL_SECONDS=259200
@@ -1559,7 +1563,7 @@ ip addr
 
 ## Templates e Interface
 
-A interface usa a identidade visual Girofy com roxo como cor principal da marca e
+A interface usa a identidade visual SkyGest com roxo como cor principal da marca e
 ciano como cor de destaque. Estados operacionais usam cores semânticas: verde para
 sucesso/ativo/pago, âmbar para avisos, vermelho para erro/inativo/vencido e azul para
 informação. Essa paleta é centralizada em tokens CSS e aplicada em botões, sidebar,
@@ -1596,14 +1600,14 @@ badges, cards, tabelas, formulários e gráficos.
 
 | Arquivo | Função |
 |---|---|
-| `app/static/css/style.css` | Tema visual Girofy, tokens de cor, modo claro/escuro, layout responsivo, sidebar, cards, tabelas, formulários, vendas, caixa, relatórios, notificações e badges de status. |
+| `app/static/css/style.css` | Tema visual SkyGest, tokens de cor, modo claro/escuro, layout responsivo, sidebar, cards, tabelas, formulários, vendas, caixa, relatórios, notificações e badges de status. |
 | `app/static/js/main.js` | Tema light/dark, sidebar colapsável, abas, filtros avançados, autocomplete, moeda, kits, venda, pagamento, desconto e atalhos F2/F3. |
 
-O repositório possui assets de marca do Girofy em `app/static/img/` e usa CSS/Bootstrap para compor a interface.
+O repositório possui assets oficiais de marca do SkyGest em `app/static/brand/` e usa CSS/Bootstrap para compor a interface.
 
 ## Segurança
 
-Em produção, o Girofy usa Flask-Limiter com Redis compartilhado para proteger login,
+Em produção, o SkyGest usa Flask-Limiter com Redis compartilhado para proteger login,
 recuperação, reenvio de confirmação, cadastro, ativação, refresh token, importação, backup,
 exportação e operações administrativas. Web e Windows recebem HTTP 429 com `Retry-After`; os
 eventos ficam em `logs/security.log`. Veja [docs/28-rate-limit-redis.md](docs/28-rate-limit-redis.md).
@@ -1818,7 +1822,7 @@ Próximos passos para SaaS completo:
 - [x] Alertas de contas vencendo
 - [x] Funcionários e permissões
 - [x] Tema claro/escuro
-- [x] Paleta visual Girofy com cores semânticas
+- [x] Paleta visual SkyGest com cores semânticas
 - [x] Navbar colapsável
 - [x] Logs de erro
 - [x] Auditoria de ações críticas
@@ -1867,4 +1871,4 @@ Este projeto ainda não possui uma licença definida.
 ## Autor
 
 Desenvolvido por Rafael Borges Pontes  
-Projeto Girofy
+Projeto SkyGest

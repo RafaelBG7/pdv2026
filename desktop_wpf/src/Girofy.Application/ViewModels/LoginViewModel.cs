@@ -356,7 +356,7 @@ public sealed class LoginViewModel : ObservableObject
         }
         catch (HttpRequestException)
         {
-            ErrorMessage = "Não foi possível acessar o servidor Girofy.";
+            ErrorMessage = "Não foi possível acessar o servidor SkyGest.";
         }
         catch (Exception)
         {
@@ -436,7 +436,7 @@ public sealed class LoginViewModel : ObservableObject
         }
         catch (HttpRequestException)
         {
-            ErrorMessage = "Não foi possível acessar o servidor Girofy.";
+            ErrorMessage = "Não foi possível acessar o servidor SkyGest.";
         }
         catch (Exception)
         {

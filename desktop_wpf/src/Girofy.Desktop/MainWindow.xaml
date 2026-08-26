@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:Girofy.Desktop.Views"
         xmlns:behaviors="clr-namespace:Girofy.Desktop.Behaviors"
-        Title="Girofy"
-        Icon="Resources/logo-girofy.png"
+        Title="SkyGest"
+        Icon="Resources/SkyGest.ico"
         Width="470"
         Height="700"
         MinWidth="470"
@@ -56,11 +56,11 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border Width="62" Height="62" Background="{DynamicResource LogoTileBrush}" CornerRadius="8">
-                                <Image Margin="5" Source="Resources/logo-girofy.png" Stretch="Uniform" />
+                                <Image Margin="5" Source="Resources/skygest-app-icon.png" Stretch="Uniform" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock FontSize="{DynamicResource FontSizeHero}" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="Girofy" />
+                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="SkyGest" />
                             </StackPanel>
                             <ToggleButton Grid.Column="2"
                                           VerticalAlignment="Center"
@@ -139,7 +139,7 @@
                                            Foreground="{DynamicResource TextPrimaryBrush}" Text="Entrar" />
                                 <TextBlock Margin="0,6,0,22" FontSize="{DynamicResource FontSizeLabel}"
                                            Foreground="{DynamicResource TextSecondaryBrush}"
-                                           Text="Use o mesmo acesso da sua conta Girofy." TextWrapping="Wrap" />
+                                           Text="Use o mesmo acesso da sua conta SkyGest." TextWrapping="Wrap" />
                                 <TextBlock Margin="0,0,0,7" FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}"
                                            Foreground="{DynamicResource TextPrimaryBrush}" Text="Usuário ou e-mail" />
                                 <TextBox x:Name="IdentifierInput"
@@ -325,11 +325,11 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Width="46" Height="46" Background="{DynamicResource LogoTileBrush}" CornerRadius="6">
-                            <Image Margin="4" Source="Resources/logo-girofy.png" Stretch="Uniform" />
+                            <Image Margin="4" Source="Resources/skygest-app-icon.png" Stretch="Uniform" />
                         </Border>
                         <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBlock FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold"
-                                       Foreground="{DynamicResource TextPrimaryBrush}" Text="Girofy" />
+                                       Foreground="{DynamicResource TextPrimaryBrush}" Text="SkyGest" />
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

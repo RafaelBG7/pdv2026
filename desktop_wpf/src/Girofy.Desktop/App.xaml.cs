@@ -21,6 +21,7 @@ namespace Girofy.Desktop;
 
 public partial class App : System.Windows.Application
 {
+    // Identificadores legados preservados para impedir duas instâncias durante upgrades.
     private const string SingleInstanceMutexName = @"Local\Girofy.Desktop.SingleInstance";
     private const string ActivationPipeName = "Girofy.Desktop.Activation";
     private readonly Mutex _singleInstanceMutex = new(false, SingleInstanceMutexName);
@@ -63,7 +64,7 @@ public partial class App : System.Windows.Application
                 var apiOptions = ApiOptions.FromConfiguration(context.Configuration);
                 var serverUri = apiOptions.GetValidatedBaseUri();
                 var productVersion = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "unknown";
-                var userAgent = $"GiroFy-Windows/{productVersion}";
+                var userAgent = $"SkyGest-Windows/{productVersion}";
 
                 services.AddSingleton(apiOptions);
                 services.AddSingleton<IExternalBrowserService, SystemBrowserService>();
@@ -173,7 +174,7 @@ public partial class App : System.Windows.Application
             {
                 _logger.LogWarning(themeException, "Saved desktop theme could not be applied; using the default theme.");
             }
-            _logger.LogInformation("Girofy Windows started.");
+            _logger.LogInformation("SkyGest Windows started.");
             _host.Services.GetRequiredService<MainWindow>().Show();
             _ = ListenForActivationsAsync();
             var callback = e.Args.FirstOrDefault(argument => Uri.TryCreate(argument, UriKind.Absolute, out var uri)
@@ -186,11 +187,11 @@ public partial class App : System.Windows.Application
         }
         catch (Exception exception)
         {
-            WriteEmergencyLog(exception, "Falha ao iniciar o Girofy Windows.");
+            WriteEmergencyLog(exception, "Falha ao iniciar o SkyGest Windows.");
             _logger?.LogCritical(exception, "Desktop startup failed.");
             MessageBox.Show(
                 BuildUnexpectedErrorMessage(),
-                "Girofy",
+                "SkyGest",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(1);
@@ -203,7 +204,7 @@ public partial class App : System.Windows.Application
         {
             if (_host is not null)
             {
-                _logger?.LogInformation("Girofy Windows stopped.");
+                _logger?.LogInformation("SkyGest Windows stopped.");
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 await _host.StopAsync(timeout.Token);
                 _host.Dispose();
@@ -286,14 +287,14 @@ public partial class App : System.Windows.Application
 
     private void HandleDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        WriteEmergencyLog(e.Exception, "Falha inesperada na interface do Girofy Windows.");
+        WriteEmergencyLog(e.Exception, "Falha inesperada na interface do SkyGest Windows.");
         _logger?.LogError(e.Exception, "Unhandled desktop UI error.");
 
         if (!HasVisibleWindow())
         {
             MessageBox.Show(
                 BuildUnexpectedErrorMessage(),
-                "Girofy",
+                "SkyGest",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -317,19 +318,19 @@ public partial class App : System.Windows.Application
     private void HandleDomainException(object? sender, UnhandledExceptionEventArgs e)
     {
         var exception = e.ExceptionObject as Exception;
-        WriteEmergencyLog(exception, "Falha inesperada no processo do Girofy Windows.");
+        WriteEmergencyLog(exception, "Falha inesperada no processo do SkyGest Windows.");
         _logger?.LogCritical(exception, "Unhandled desktop process error.");
     }
 
     private void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
     {
-        WriteEmergencyLog(e.Exception, "Falha inesperada em tarefa assíncrona do Girofy Windows.");
+        WriteEmergencyLog(e.Exception, "Falha inesperada em tarefa assíncrona do SkyGest Windows.");
         _logger?.LogError(e.Exception, "Unobserved desktop task error.");
         e.SetObserved();
     }
 
     private static string BuildUnexpectedErrorMessage() =>
-        "O Girofy encontrou uma falha inesperada. Tente novamente." +
+        "O SkyGest encontrou uma falha inesperada. Tente novamente." +
         Environment.NewLine +
         Environment.NewLine +
         "Detalhes técnicos foram salvos em:" +

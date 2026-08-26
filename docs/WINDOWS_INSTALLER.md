@@ -82,7 +82,7 @@ Metadados visíveis:
 - descrição: `Sistema de gestão e ponto de venda GiroFy`;
 - executável: `Girofy.exe` para preservar compatibilidade;
 - instalador: `GiroFy-Setup-0.8.0.exe`;
-- ícone: `desktop_wpf/src/Girofy.Desktop/Resources/Girofy.ico`.
+- ícone multirresolução: `desktop_wpf/src/Girofy.Desktop/Resources/SkyGest.ico`.
 
 Não foi definido Publisher, CNPJ ou empresa inexistente.
 

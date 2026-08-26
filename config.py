@@ -116,7 +116,7 @@ class Config:
     MAIL_SMTP_LOGIN = os.environ.get('MAIL_SMTP_LOGIN', os.environ.get('GMAIL_SMTP_LOGIN', os.environ.get('BREVO_SMTP_LOGIN', '')))
     MAIL_SMTP_PASSWORD = os.environ.get('MAIL_SMTP_PASSWORD', os.environ.get('GMAIL_APP_PASSWORD', os.environ.get('BREVO_SMTP_PASSWORD', '')))
     MAIL_FROM_EMAIL = os.environ.get('MAIL_FROM_EMAIL', os.environ.get('BREVO_FROM_EMAIL', MAIL_SMTP_LOGIN))
-    MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', os.environ.get('BREVO_FROM_NAME', 'Girofy'))
+    MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', os.environ.get('BREVO_FROM_NAME', 'SkyGest'))
     MAIL_SUPPRESS_SEND = env_bool('MAIL_SUPPRESS_SEND', TESTING)
     PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get('SESSION_LIFETIME_HOURS', '8')))
     SESSION_COOKIE_HTTPONLY = True

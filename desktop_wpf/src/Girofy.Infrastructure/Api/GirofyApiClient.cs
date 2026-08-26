@@ -105,7 +105,7 @@ public sealed class GirofyApiClient(
         if (!response.IsSuccessStatusCode)
         {
             logger.LogWarning("API health check returned HTTP {StatusCode}.", (int)response.StatusCode);
-            throw new HttpRequestException("O servidor Girofy respondeu com erro.", null, response.StatusCode);
+            throw new HttpRequestException("O servidor SkyGest respondeu com erro.", null, response.StatusCode);
         }
 
         var payload = await response.Content.ReadFromJsonAsync<ApiEnvelope<HealthStatus>>(
@@ -115,7 +115,7 @@ public sealed class GirofyApiClient(
             !string.Equals(payload.Data.Status, "ok", StringComparison.OrdinalIgnoreCase))
         {
             logger.LogWarning("API health check returned an invalid response envelope.");
-            throw new InvalidOperationException("A resposta da API Girofy é inválida.");
+            throw new InvalidOperationException("A resposta da API SkyGest é inválida.");
         }
 
         return payload.Data;
@@ -282,7 +282,7 @@ public sealed class GirofyApiClient(
         var contentType = response.Content.Headers.ContentType?.ToString() ?? "text/csv";
         var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
             ?? response.Content.Headers.ContentDisposition?.FileName
-            ?? $"girofy_{safeExportType}.csv";
+            ?? $"skygest_{safeExportType}.csv";
 
         return new ExportFile(fileName.Trim('"'), contentType, content);
     }
@@ -1027,10 +1027,10 @@ public sealed class GirofyApiClient(
             {
                 HttpStatusCode.Unauthorized => "Sua sessão expirou. Entre novamente para continuar.",
                 HttpStatusCode.Forbidden => "Seu usuário não possui permissão para esta operação.",
-                HttpStatusCode.NotFound => "Este recurso ainda não está disponível no servidor Girofy conectado.",
+                HttpStatusCode.NotFound => "Este recurso ainda não está disponível no servidor SkyGest conectado.",
                 HttpStatusCode.UnprocessableEntity => "O servidor rejeitou um ou mais dados informados.",
-                _ when (int)response.StatusCode >= 500 => "O servidor Girofy apresentou uma falha interna. Tente novamente.",
-                _ => "O servidor Girofy não conseguiu concluir a solicitação.",
+                _ when (int)response.StatusCode >= 500 => "O servidor SkyGest apresentou uma falha interna. Tente novamente.",
+                _ => "O servidor SkyGest não conseguiu concluir a solicitação.",
             };
         var code = firstError?.Code ?? "api_request_failed";
         logger.LogWarning(

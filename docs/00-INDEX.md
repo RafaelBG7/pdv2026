@@ -1,9 +1,10 @@
-# Índice da documentação Girofy
+# Índice da documentação SkyGest
 
 Este índice é o ponto inicial oficial. A documentação separa interface Web, aplicativo Windows e regras compartilhadas no servidor.
 
 ## Marco atual
 
+- [Rebranding SkyGest](33-rebranding-skygest.md) — nome oficial, novos assets e compatibilidade legada.
 - [Documentação consolidada atual](../documentacao/DOCUMENTACAO_COMPLETA.txt) —
   fonte completa atualizada em 20/08/2026, separando Web, App, API e infraestrutura.
 - [Estado completo em 17/08/2026](31-estado-atual-17-08-2026.md) — marco histórico detalhado.

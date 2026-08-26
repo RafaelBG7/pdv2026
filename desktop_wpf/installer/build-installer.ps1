@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Version,
-    [string]$PublishDir = (Join-Path $PSScriptRoot '..\artifacts\Girofy-Windows-WPF'),
+    [string]$PublishDir = (Join-Path $PSScriptRoot '..\artifacts\SkyGest-Windows-WPF'),
     [string]$OutputDir = (Join-Path $PSScriptRoot '..\artifacts\installer'),
     [string]$IsccPath
 )
@@ -27,7 +27,7 @@ if ($Version -notmatch '^\d+\.\d+\.\d+$') {
 }
 
 $resolvedPublishDir = (Resolve-Path $PublishDir).Path
-$executable = Join-Path $resolvedPublishDir 'Girofy.exe'
+$executable = Join-Path $resolvedPublishDir 'SkyGest.exe'
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Executável publicado não encontrado: $executable"
 }
@@ -46,7 +46,7 @@ if ($forbiddenFiles) {
 
 $publishedVersion = (Get-Item -LiteralPath $executable).VersionInfo.ProductVersion
 if ([string]::IsNullOrWhiteSpace($publishedVersion) -or -not $publishedVersion.StartsWith($Version)) {
-    throw "Versão do Girofy.exe ($publishedVersion) não corresponde ao instalador ($Version)."
+    throw "Versão do SkyGest.exe ($publishedVersion) não corresponde ao instalador ($Version)."
 }
 
 if ([string]::IsNullOrWhiteSpace($IsccPath)) {
@@ -80,7 +80,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup encerrou com código $LASTEXITCODE."
 }
 
-$installer = Join-Path $resolvedOutputDir "GiroFy-Setup-$Version.exe"
+$installer = Join-Path $resolvedOutputDir "SkyGest-Setup-$Version.exe"
 if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
     throw "Instalador esperado não foi gerado: $installer"
 }

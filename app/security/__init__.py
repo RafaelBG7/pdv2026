@@ -1,2 +1,1 @@
-"""Security helpers used by the Girofy application."""
-
+"""Security helpers used by the SkyGest application."""

@@ -32,6 +32,13 @@ public interface IGirofyApiClient
         string password,
         CancellationToken cancellationToken);
 
+    Task<RegistrationCallbackResult> ExchangeRegistrationCallbackAsync(
+        string code,
+        string state,
+        string codeVerifier,
+        CancellationToken cancellationToken) =>
+        Task.FromException<RegistrationCallbackResult>(new NotSupportedException());
+
     Task<AuthSession> ActivateSubscriptionAsync(
         string identifier,
         string password,

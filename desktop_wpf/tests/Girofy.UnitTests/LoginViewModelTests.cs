@@ -197,9 +197,13 @@ public sealed class LoginViewModelTests
 
         await viewModel.OpenRegistrationCommand.ExecuteAsync();
 
-        Assert.Equal(
-            new Uri("https://girofy.example/login?auth_tab=register"),
-            browser.LastUri);
+        Assert.NotNull(browser.LastUri);
+        Assert.Equal("https", browser.LastUri!.Scheme);
+        Assert.Equal("girofy.example", browser.LastUri.Host);
+        Assert.Contains("auth_tab=register", browser.LastUri.Query);
+        Assert.Contains("source=desktop", browser.LastUri.Query);
+        Assert.Contains("state=", browser.LastUri.Query);
+        Assert.Contains("code_challenge=", browser.LastUri.Query);
         Assert.False(viewModel.HasError);
     }
 

@@ -1,11 +1,13 @@
 GIROFY — DOCUMENTAÇÃO COMPLETA DO PROJETO
 =========================================
 
-Marco de referência: 22/08/2026
+Marco de referência: 25/08/2026
 Repositório: https://github.com/RafaelBG7/pdv2026
 Produto: PDV SaaS Web/API com aplicativo nativo para Windows
-Versão do App documentada: 0.8.0-preview
-Commit-base deste marco funcional: 87f5dca
+Versão do App documentada: 0.8.9-preview
+Commit-base deste marco funcional: a4ef333
+Canal de distribuição Windows: windows-preview
+Último deploy OCI validado: GitHub Actions run 32894419386
 Classificação: documento técnico, funcional, operacional e de segurança
 
 
@@ -60,7 +62,7 @@ Executável Windows:
 https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/Girofy.exe
 
 Instalador Windows:
-https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.0.exe
+https://github.com/RafaelBG7/pdv2026/releases/download/windows-preview/GiroFy-Setup-0.8.9.exe
 
 
 3. ARQUITETURA GERAL

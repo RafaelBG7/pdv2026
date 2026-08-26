@@ -55,5 +55,11 @@ Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Name: "{userprograms}\GiroFy"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"
 Name: "{userdesktop}\GiroFy"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\girofy"; ValueType: string; ValueData: "URL:GiroFy Protocol"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\girofy"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\girofy\DefaultIcon"; ValueType: string; ValueData: "{app}\{#AppExeName},0"
+Root: HKCU; Subkey: "Software\Classes\girofy\shell\open\command"; ValueType: string; ValueData: """{app}\{#AppExeName}"" ""%1"""
+
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Abrir o GiroFy"; Flags: nowait postinstall skipifsilent

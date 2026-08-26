@@ -134,6 +134,19 @@ public sealed class GirofyApiClient(
             .WithCalculatedAccessExpiration(DateTimeOffset.UtcNow);
     }
 
+    public async Task<RegistrationCallbackResult> ExchangeRegistrationCallbackAsync(
+        string code,
+        string state,
+        string codeVerifier,
+        CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.PostAsJsonAsync(
+            "api/v1/auth/registration-callback/exchange",
+            new RegistrationCallbackExchangeRequest(code, state, codeVerifier),
+            cancellationToken);
+        return await ReadEnvelopeAsync<RegistrationCallbackResult>(response, cancellationToken);
+    }
+
     public async Task<AuthSession> ActivateSubscriptionAsync(
         string identifier,
         string password,
@@ -1030,6 +1043,11 @@ public sealed class GirofyApiClient(
     private sealed record LoginRequest(
         [property: global::System.Text.Json.Serialization.JsonPropertyName("identifier")] string Identifier,
         [property: global::System.Text.Json.Serialization.JsonPropertyName("password")] string Password);
+
+    private sealed record RegistrationCallbackExchangeRequest(
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("code")] string Code,
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("state")] string State,
+        [property: global::System.Text.Json.Serialization.JsonPropertyName("code_verifier")] string CodeVerifier);
 
     private sealed record RefreshRequest(
         [property: global::System.Text.Json.Serialization.JsonPropertyName("refresh_token")] string RefreshToken);

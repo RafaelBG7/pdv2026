@@ -6,6 +6,7 @@ import re
 import secrets
 import string
 import unicodedata
+from urllib.parse import urlencode
 
 from flask import Blueprint, current_app, redirect, render_template, request, send_file, session, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -36,6 +37,7 @@ from app.services.alert_service import EMAIL_ALERT_TYPES, alert_settings_for_com
 from app.services.audit_service import record_audit_event
 from app.services.email_service import EmailAuthenticationError, send_alert_email, send_email_change_confirmation, send_verification_code_email
 from app.services.password_recovery_service import request_password_recovery
+from app.services.app_registration_service import APP_CALLBACK_URI, create_registration_code, valid_callback_request
 from app.tenant import current_tenant_company, drop_mysql_database, tenant_database_identifier, tenant_engine
 
 
@@ -784,6 +786,18 @@ def login():
         flash(LOGIN_FAILED_MESSAGE, 'danger')
         return render_auth_form('login', login_form_values(), {'password': LOGIN_FAILED_MESSAGE})
 
+    if request.args.get('source') == 'desktop':
+        state = request.args.get('state', '')
+        code_challenge = request.args.get('code_challenge', '')
+        if valid_callback_request(state, code_challenge):
+            session['app_registration'] = {
+                'state': state,
+                'code_challenge': code_challenge,
+            }
+        else:
+            session.pop('app_registration', None)
+            flash('O retorno ao aplicativo é inválido. Você ainda pode se cadastrar pela Web.', 'warning')
+
     return render_auth_form(
         'register' if request.args.get('auth_tab') == 'register' else 'login'
     )
@@ -844,6 +858,23 @@ def verify_email():
         db.session.commit()
         clear_verification_user()
         login_user(user)
+        app_registration = session.pop('app_registration', None)
+        if app_registration and valid_callback_request(
+            app_registration.get('state'),
+            app_registration.get('code_challenge'),
+        ):
+            code = create_registration_code(
+                user,
+                app_registration['state'],
+                app_registration['code_challenge'],
+            )
+            callback_uri = f"{APP_CALLBACK_URI}?{urlencode({'code': code, 'state': app_registration['state']})}"
+            return render_template(
+                'app_registration_complete.html',
+                callback_uri=callback_uri,
+                web_continue_url=url_for('auth.subscriptions') if company_requires_activation(user.company)
+                else url_for('main.dashboard'),
+            )
         current_app.logger.info('Email confirmado para user_id=%s', user.id)
         flash('E-mail confirmado com sucesso.', 'success')
         if user.role == 'master':

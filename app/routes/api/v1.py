@@ -74,6 +74,7 @@ from app.services.product_service import (
     update_product,
 )
 from app.services.password_recovery_service import request_password_recovery
+from app.services.app_registration_service import exchange_registration_code
 from app.security.rate_limit import (
     authenticated_identity_key,
     api_identity_key,
@@ -1437,6 +1438,30 @@ def api_login():
                 db_session=db.session,
             )
             db.session.commit()
+        return api_auth_error_response(error)
+
+
+@api_v1_bp.post('/auth/registration-callback/exchange')
+@limiter.limit(
+    configured_limit('RATELIMIT_REGISTRATION_CALLBACK', '10 per minute'),
+    key_func=login_identity_key,
+    override_defaults=False,
+)
+def api_exchange_registration_callback():
+    try:
+        require_secure_auth_transport()
+        payload = json_object_body()
+        user = exchange_registration_code(
+            payload.get('code'),
+            payload.get('state'),
+            payload.get('code_verifier'),
+        )
+        return api_success({
+            'identifier': user.email or user.username,
+            'subscription_activation_required': not bool(user.company and user.company.subscription_valid),
+        })
+    except ApiAuthError as error:
+        db.session.rollback()
         return api_auth_error_response(error)
 
 

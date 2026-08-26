@@ -255,6 +255,17 @@ public partial class SalesView : UserControl
 
         if (e.Key == Key.Enter)
         {
+            // When the user navigates the suggestions with the arrow keys, confirm
+            // that selection before starting an asynchronous barcode lookup. The
+            // lookup can yield long enough for the live search to refresh the list
+            // and reset its selection to the first product.
+            if (viewModel.HasSearchResults)
+            {
+                ConfirmSelectedProductAndFocusQuantity(viewModel);
+                e.Handled = true;
+                return;
+            }
+
             var exactMatch = await viewModel.SelectExactBarcodeAsync(
                 viewModel.SearchText,
                 showNotFound: false);

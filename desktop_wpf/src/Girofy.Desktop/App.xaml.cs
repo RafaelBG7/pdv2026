@@ -1,4 +1,5 @@
 using System.IO;
+using System.IO.Pipes;
 using System.Globalization;
 using System.Threading;
 using System.Windows;
@@ -21,6 +22,7 @@ namespace Girofy.Desktop;
 public partial class App : System.Windows.Application
 {
     private const string SingleInstanceMutexName = @"Local\Girofy.Desktop.SingleInstance";
+    private const string ActivationPipeName = "Girofy.Desktop.Activation";
     private readonly Mutex _singleInstanceMutex = new(false, SingleInstanceMutexName);
     private readonly bool _ownsSingleInstance;
     private readonly IHost? _host;
@@ -68,6 +70,7 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<IFileSaveService, WindowsFileSaveService>();
                 services.AddSingleton<IFilePickerService, WindowsFilePickerService>();
                 services.AddSingleton<ISecureSessionStore, DpapiSessionStore>();
+                services.AddSingleton<IRegistrationHandoffStore, DpapiRegistrationHandoffStore>();
                 services.AddSingleton<IUserPreferencesStore, JsonUserPreferencesStore>();
                 services.AddSingleton<IThemeService, WindowsThemeService>();
                 services.AddSingleton<IAccessibilityService, AccessibilityService>();
@@ -101,6 +104,7 @@ public partial class App : System.Windows.Application
                     provider.GetRequiredService<IExternalBrowserService>(),
                     provider.GetRequiredService<IAppSessionContext>(),
                     provider.GetRequiredService<ForgotPasswordViewModel>(),
+                    provider.GetRequiredService<IRegistrationHandoffStore>(),
                     new Uri(serverUri, "login?auth_tab=register")));
                 services.AddSingleton<CatalogViewModel>();
                 services.AddSingleton<DashboardViewModel>();
@@ -150,6 +154,7 @@ public partial class App : System.Windows.Application
 
         if (!_ownsSingleInstance || _host is null)
         {
+            await ForwardActivationAsync(e.Args);
             Shutdown();
             return;
         }
@@ -170,6 +175,14 @@ public partial class App : System.Windows.Application
             }
             _logger.LogInformation("Girofy Windows started.");
             _host.Services.GetRequiredService<MainWindow>().Show();
+            _ = ListenForActivationsAsync();
+            var callback = e.Args.FirstOrDefault(argument => Uri.TryCreate(argument, UriKind.Absolute, out var uri)
+                && string.Equals(uri.Scheme, "girofy", StringComparison.OrdinalIgnoreCase));
+            if (callback is not null)
+            {
+                await _host.Services.GetRequiredService<LoginViewModel>()
+                    .HandleRegistrationCallbackAsync(new Uri(callback));
+            }
         }
         catch (Exception exception)
         {
@@ -216,6 +229,58 @@ public partial class App : System.Windows.Application
         catch (AbandonedMutexException)
         {
             return true;
+        }
+    }
+
+    private async Task ListenForActivationsAsync()
+    {
+        while (_ownsSingleInstance)
+        {
+            try
+            {
+                await using var pipe = new NamedPipeServerStream(
+                    ActivationPipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte,
+                    PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                await pipe.WaitForConnectionAsync();
+                using var reader = new StreamReader(pipe);
+                var argument = await reader.ReadLineAsync();
+                if (Uri.TryCreate(argument, UriKind.Absolute, out var callback)
+                    && string.Equals(callback.Scheme, "girofy", StringComparison.OrdinalIgnoreCase)
+                    && _host is not null)
+                {
+                    await Dispatcher.InvokeAsync(async () =>
+                    {
+                        var window = _host.Services.GetRequiredService<MainWindow>();
+                        window.Show();
+                        window.Activate();
+                        await _host.Services.GetRequiredService<LoginViewModel>()
+                            .HandleRegistrationCallbackAsync(callback);
+                    });
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(exception, "Desktop activation callback could not be processed.");
+            }
+        }
+    }
+
+    private static async Task ForwardActivationAsync(string[] arguments)
+    {
+        var callback = arguments.FirstOrDefault(argument => Uri.TryCreate(argument, UriKind.Absolute, out var uri)
+            && string.Equals(uri.Scheme, "girofy", StringComparison.OrdinalIgnoreCase));
+        if (callback is null) return;
+        try
+        {
+            await using var pipe = new NamedPipeClientStream(".", ActivationPipeName, PipeDirection.Out, PipeOptions.Asynchronous);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await pipe.ConnectAsync(timeout.Token);
+            await using var writer = new StreamWriter(pipe) { AutoFlush = true };
+            await writer.WriteLineAsync(callback);
+        }
+        catch
+        {
+            // The browser fallback remains available when the running instance cannot be reached.
         }
     }
 

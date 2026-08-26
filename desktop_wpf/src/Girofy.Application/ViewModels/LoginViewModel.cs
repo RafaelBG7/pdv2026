@@ -2,16 +2,26 @@ using Girofy.Application.Abstractions;
 using Girofy.Application.Exceptions;
 using Girofy.Application.Models;
 using Girofy.Application.Mvvm;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Girofy.Application.ViewModels;
 
 public sealed class LoginViewModel : ObservableObject
 {
+    private sealed class EphemeralRegistrationHandoffStore : IRegistrationHandoffStore
+    {
+        private PendingRegistrationHandoff? _value;
+        public Task SaveAsync(PendingRegistrationHandoff handoff, CancellationToken cancellationToken) { _value = handoff; return Task.CompletedTask; }
+        public Task<PendingRegistrationHandoff?> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(_value);
+        public Task ClearAsync(CancellationToken cancellationToken) { _value = null; return Task.CompletedTask; }
+    }
     private readonly IGirofyApiClient _apiClient;
     private readonly ISecureSessionStore _sessionStore;
     private readonly IUserPreferencesStore _preferencesStore;
     private readonly IExternalBrowserService _browserService;
     private readonly IAppSessionContext _sessionContext;
+    private readonly IRegistrationHandoffStore _registrationHandoffStore;
     private readonly Uri _registrationUri;
     private AuthSession? _session;
     private string _identifier = string.Empty;
@@ -35,6 +45,20 @@ public sealed class LoginViewModel : ObservableObject
         IAppSessionContext sessionContext,
         ForgotPasswordViewModel forgotPassword,
         Uri registrationUri)
+        : this(apiClient, sessionStore, preferencesStore, browserService, sessionContext,
+            forgotPassword, new EphemeralRegistrationHandoffStore(), registrationUri)
+    {
+    }
+
+    public LoginViewModel(
+        IGirofyApiClient apiClient,
+        ISecureSessionStore sessionStore,
+        IUserPreferencesStore preferencesStore,
+        IExternalBrowserService browserService,
+        IAppSessionContext sessionContext,
+        ForgotPasswordViewModel forgotPassword,
+        IRegistrationHandoffStore registrationHandoffStore,
+        Uri registrationUri)
     {
         _apiClient = apiClient;
         _sessionStore = sessionStore;
@@ -42,6 +66,7 @@ public sealed class LoginViewModel : ObservableObject
         _browserService = browserService;
         _sessionContext = sessionContext;
         ForgotPassword = forgotPassword;
+        _registrationHandoffStore = registrationHandoffStore;
         _registrationUri = registrationUri;
         _sessionContext.Changed += HandleSessionContextChanged;
         LoginCommand = new AsyncRelayCommand(LoginAsync);
@@ -165,12 +190,67 @@ public sealed class LoginViewModel : ObservableObject
     private async Task OpenRegistrationAsync(CancellationToken cancellationToken)
     {
         ErrorMessage = string.Empty;
-        if (!await _browserService.OpenAsync(_registrationUri, cancellationToken))
+        var state = RandomUrlToken(32);
+        var verifier = RandomUrlToken(48);
+        var challenge = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        await _registrationHandoffStore.SaveAsync(new PendingRegistrationHandoff(state, verifier), cancellationToken);
+        var separator = string.IsNullOrEmpty(_registrationUri.Query) ? "?" : "&";
+        var registrationUri = new Uri(
+            _registrationUri.AbsoluteUri + separator +
+            $"source=desktop&state={Uri.EscapeDataString(state)}&code_challenge={Uri.EscapeDataString(challenge)}");
+        if (!await _browserService.OpenAsync(registrationUri, cancellationToken))
         {
+            await _registrationHandoffStore.ClearAsync(cancellationToken);
             ErrorMessage =
                 "Não foi possível abrir a página de cadastro. Verifique seu navegador padrão e tente novamente.";
         }
     }
+
+    public async Task HandleRegistrationCallbackAsync(Uri callbackUri, CancellationToken cancellationToken = default)
+    {
+        ErrorMessage = string.Empty;
+        if (!string.Equals(callbackUri.Scheme, "girofy", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(callbackUri.Host, "auth", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(callbackUri.AbsolutePath, "/callback", StringComparison.Ordinal))
+        {
+            ErrorMessage = "O retorno do cadastro é inválido. Inicie o cadastro novamente.";
+            return;
+        }
+        var query = ParseQuery(callbackUri.Query);
+        var pending = await _registrationHandoffStore.LoadAsync(cancellationToken);
+        if (pending is null || !query.TryGetValue("state", out var state)
+            || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(pending.State), Encoding.UTF8.GetBytes(state))
+            || !query.TryGetValue("code", out var code))
+        {
+            ErrorMessage = "O retorno do cadastro é inválido ou expirou. Inicie o cadastro novamente.";
+            return;
+        }
+        try
+        {
+            var result = await _apiClient.ExchangeRegistrationCallbackAsync(code, state, pending.CodeVerifier, cancellationToken);
+            Identifier = result.Identifier;
+            RememberUsername = true;
+            ErrorMessage = result.SubscriptionActivationRequired
+                ? "Conta criada. Entre com sua senha e ative a assinatura para continuar."
+                : "Conta criada. Digite sua senha para entrar.";
+        }
+        catch (GirofyApiException exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+        finally
+        {
+            await _registrationHandoffStore.ClearAsync(cancellationToken);
+        }
+    }
+
+    private static string RandomUrlToken(int byteCount) => Base64Url(RandomNumberGenerator.GetBytes(byteCount));
+    private static string Base64Url(byte[] value) => Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    private static Dictionary<string, string> ParseQuery(string query) => query.TrimStart('?')
+        .Split('&', StringSplitOptions.RemoveEmptyEntries)
+        .Select(part => part.Split('=', 2))
+        .Where(part => part.Length == 2)
+        .ToDictionary(part => Uri.UnescapeDataString(part[0]), part => Uri.UnescapeDataString(part[1]), StringComparer.Ordinal);
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

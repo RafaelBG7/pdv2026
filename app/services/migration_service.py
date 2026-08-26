@@ -86,14 +86,18 @@ def validate_baseline_schema(engine, kind):
         )
 
 
-def validate_current_schema(engine):
+def validate_current_schema(engine, kind):
     inspector = inspect(engine)
     tables = set(inspector.get_table_names())
     expected_tables = set(db.Model.metadata.tables)
+    if kind == 'tenant':
+        expected_tables.discard('app_registration_codes')
     missing_tables = sorted(expected_tables - tables)
     if missing_tables:
         raise MigrationError(f'Tabelas ausentes após migration: {", ".join(missing_tables)}.')
     for table_name, table in db.Model.metadata.tables.items():
+        if table_name not in expected_tables:
+            continue
         actual_columns = {column['name'] for column in inspector.get_columns(table_name)}
         missing_columns = sorted(set(table.columns.keys()) - actual_columns)
         if missing_columns:
@@ -128,7 +132,7 @@ def upgrade_database(engine, kind, allow_baseline=True, logger=None):
                 baseline_applied = True
             command.upgrade(config, 'head')
             connection.commit()
-        validate_current_schema(engine)
+        validate_current_schema(engine, kind)
         current = database_revision(engine)
         if current != head:
             raise MigrationError(f'Revisão inesperada após upgrade: {current}; esperado: {head}.')
@@ -154,5 +158,5 @@ def assert_database_at_head(engine, kind):
         raise MigrationError(
             f'Banco {database_label(engine)} desatualizado: revisão atual {current or "não versionada"}, esperada {head}.'
         )
-    validate_current_schema(engine)
+    validate_current_schema(engine, kind)
     return current

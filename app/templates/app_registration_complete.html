@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100">
+  <div class="col-md-5">
+    <div class="card card-dark p-4 shadow text-center">
+      <h2 class="mb-3">Conta criada com sucesso!</h2>
+      <p class="text-muted">Retornando ao GiroFy...</p>
+      <a id="open-girofy-app" class="btn btn-primary w-100 mt-2" href="{{ callback_uri }}">Abrir GiroFy App</a>
+      <a class="btn btn-outline-light w-100 mt-3" href="{{ web_continue_url }}">Continuar pela Web</a>
+      <p class="small text-muted mt-3 mb-0">Se o aplicativo não abrir, verifique se o GiroFy está instalado e tente novamente.</p>
+    </div>
+  </div>
+</div>
+<script nonce="{{ csp_nonce }}">
+  window.setTimeout(function () {
+    window.location.href = {{ callback_uri|tojson }};
+  }, 300);
+</script>
+{% endblock %}

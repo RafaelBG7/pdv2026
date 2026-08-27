@@ -5,13 +5,11 @@
         xmlns:behaviors="clr-namespace:Girofy.Desktop.Behaviors"
         Title="SkyGest"
         Icon="Resources/SkyGest.ico"
-        Width="470"
-        Height="700"
-        MinWidth="470"
+        Width="520"
+        Height="780"
+        MinWidth="440"
         MinHeight="640"
-        MaxWidth="470"
-        MaxHeight="700"
-        ResizeMode="CanMinimize"
+        ResizeMode="CanResizeWithGrip"
         FontFamily="Segoe UI"
         WindowStartupLocation="CenterScreen"
         PreviewKeyDown="MainWindow_PreviewKeyDown"
@@ -29,9 +27,9 @@
                     </Style.Triggers>
                 </Style>
             </ScrollViewer.Style>
-            <Grid Margin="12">
-                <Border MaxWidth="860"
-                        Padding="34"
+            <Grid Margin="18">
+                <Border MaxWidth="440"
+                        Padding="38,34"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Background="{DynamicResource HeroGradientBrush}"
@@ -41,25 +39,33 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="18" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="20" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="24" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="24" />
+                            <RowDefinition Height="20" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <Grid Grid.Row="0">
+                        <Grid Grid.Row="0" HorizontalAlignment="Center">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="76" />
-                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="64" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <Border Width="62" Height="62" Background="{DynamicResource LogoTileBrush}" CornerRadius="8">
-                                <Image Margin="5" Source="Resources/skygest-app-icon.png" Stretch="Uniform" />
+                            <Border Width="54" Height="54" CornerRadius="12">
+                                <Border.Background>
+                                    <ImageBrush ImageSource="Resources/skygest-app-icon.png"
+                                                Stretch="UniformToFill"
+                                                Viewbox="90,90,332,332"
+                                                ViewboxUnits="Absolute" />
+                                </Border.Background>
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock FontSize="{DynamicResource FontSizeHero}" FontWeight="Bold"
                                            Foreground="{DynamicResource TextPrimaryBrush}" Text="SkyGest" />
+                                <TextBlock Margin="1,2,0,0" FontSize="{DynamicResource FontSizeCaption}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Text="SEU GESTOR INTELIGENTE" />
                             </StackPanel>
                         </Grid>
 
@@ -114,7 +120,7 @@
                         </Border>
 
                         <Grid Grid.Row="4">
-                            <StackPanel Width="340" MaxWidth="340" HorizontalAlignment="Center">
+                            <StackPanel MaxWidth="360" HorizontalAlignment="Stretch">
                                 <StackPanel.Style>
                                     <Style TargetType="StackPanel">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -128,9 +134,11 @@
                                         </Style.Triggers>
                                     </Style>
                                 </StackPanel.Style>
-                                <TextBlock FontSize="{DynamicResource FontSizePageTitle}" FontWeight="Bold"
+                                <TextBlock FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryHoverBrush}" Text="ACESSO SEGURO" />
+                                <TextBlock Margin="0,5,0,0" FontSize="{DynamicResource FontSizePageTitle}" FontWeight="Bold"
                                            Foreground="{DynamicResource TextPrimaryBrush}" Text="Entrar" />
-                                <TextBlock Margin="0,6,0,22" FontSize="{DynamicResource FontSizeLabel}"
+                                <TextBlock Margin="0,6,0,20" FontSize="{DynamicResource FontSizeLabel}"
                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="Use o mesmo acesso da sua conta SkyGest." TextWrapping="Wrap" />
                                 <TextBlock Margin="0,0,0,7" FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}"
@@ -245,20 +253,24 @@
                                         </Style>
                                     </Button.Style>
                                 </Button>
-                                <StackPanel Margin="0,12,0,0" Orientation="Horizontal"
-                                            HorizontalAlignment="Center">
-                                    <Button Command="{Binding Login.ForgotPasswordCommand}"
-                                            Content="Esqueci minha senha"
-                                            Style="{StaticResource LinkButtonStyle}" />
-                                    <TextBlock Margin="8,0" Foreground="{DynamicResource TextMutedBrush}"
-                                               VerticalAlignment="Center" Text="•" />
-                                    <Button Command="{Binding Login.OpenRegistrationCommand}"
-                                            Content="Criar uma conta"
-                                            Style="{StaticResource LinkButtonStyle}" />
-                                </StackPanel>
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Height="42"
+                                            Command="{Binding Login.ForgotPasswordCommand}"
+                                            Content="Esqueci a senha"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Grid.Column="2" Height="42"
+                                            Command="{Binding Login.OpenRegistrationCommand}"
+                                            Content="Criar conta"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                </Grid>
                             </StackPanel>
 
-                            <StackPanel Width="340" MaxWidth="340" HorizontalAlignment="Center">
+                            <StackPanel MaxWidth="360" HorizontalAlignment="Stretch">
                                 <StackPanel.Style>
                                     <Style TargetType="StackPanel">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -283,7 +295,7 @@
                         </Grid>
 
                         <Grid Grid.Row="6">
-                            <Button MinWidth="150" HorizontalAlignment="Right"
+                            <Button MinWidth="160" HorizontalAlignment="Center"
                                     Command="{Binding OpenWebCommand}" Content="Abrir versão web"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </Grid>
@@ -317,8 +329,13 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="46" Height="46" Background="{DynamicResource LogoTileBrush}" CornerRadius="6">
-                            <Image Margin="4" Source="Resources/skygest-app-icon.png" Stretch="Uniform" />
+                        <Border Width="46" Height="46" CornerRadius="9">
+                            <Border.Background>
+                                <ImageBrush ImageSource="Resources/skygest-app-icon.png"
+                                            Stretch="UniformToFill"
+                                            Viewbox="90,90,332,332"
+                                            ViewboxUnits="Absolute" />
+                            </Border.Background>
                         </Border>
                         <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBlock FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold"

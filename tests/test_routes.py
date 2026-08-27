@@ -3378,6 +3378,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('Confirmar e-mail'.encode(), response.data)
         self.assertIn('Cadastro criado. Confirme seu e-mail para acessar o sistema.'.encode(), response.data)
+        self.assertEqual(response.data.count(b'data-auto-dismiss-ms="6000"'), 2)
         with self.app.app_context():
             user = User.query.filter_by(username='operador').one()
             self.assertEqual(user.email, 'operador@example.com')

@@ -28,6 +28,23 @@ document.addEventListener('DOMContentLoaded', function () {
   let pendingPermissionForm = null;
   let pendingPermissionSubmitter = null;
 
+  document.querySelectorAll('.system-flash[data-auto-dismiss-ms]').forEach(function (notification) {
+    const duration = Number.parseInt(notification.dataset.autoDismissMs || '', 10);
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return;
+    }
+    window.setTimeout(function () {
+      if (!notification.isConnected) {
+        return;
+      }
+      if (window.bootstrap && window.bootstrap.Alert) {
+        window.bootstrap.Alert.getOrCreateInstance(notification).close();
+        return;
+      }
+      notification.remove();
+    }, duration);
+  });
+
   function ensureCsrfField(form) {
     if (!csrfToken || !form || (form.method || '').toLowerCase() === 'get') {
       return;

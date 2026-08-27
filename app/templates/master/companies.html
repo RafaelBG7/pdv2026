@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+<div class="master-page master-page-{{ master_section }}">
+<div class="master-page-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
     <span class="master-eyebrow">Painel master</span>
     <h2>{{ master_title }}</h2>
@@ -147,7 +148,7 @@
     </div>
     {% if activation_keys %}
     <div class="table-responsive">
-      <table class="table table-dark table-hover align-middle mb-0 app-table">
+      <table class="table table-dark table-hover align-middle mb-0 app-table master-responsive-table master-key-table">
         <thead>
           <tr>
             <th>Key</th>
@@ -162,17 +163,17 @@
           {% for activation_key in activation_keys %}
           {% set key_status = activation_key_statuses.get(activation_key.id, {}) %}
           <tr>
-            <td>
+            <td data-label="Key">
               <div class="activation-key-copy">
                 <strong class="activation-key-display">{{ activation_key.key }}</strong>
                 <button class="btn btn-outline-light btn-sm copy-key-button" type="button" data-copy-key="{{ activation_key.key }}" aria-label="Copiar key {{ activation_key.key }}">Copiar</button>
               </div>
             </td>
-            <td><span class="subscription-pill subscription-{{ key_status.get('state', 'neutral') }}">{{ key_status.get('label', '-') }}</span></td>
-            <td>{{ activation_key.plan }}</td>
-            <td>{{ activation_key.renews_at.strftime('%d/%m/%Y') if activation_key.renews_at else '-' }}</td>
-            <td>{{ activation_key.company.name if activation_key.company else 'Avulsa' }}</td>
-            <td class="text-end">
+            <td data-label="Status"><span class="subscription-pill subscription-{{ key_status.get('state', 'neutral') }}">{{ key_status.get('label', '-') }}</span></td>
+            <td data-label="Plano">{{ activation_key.plan }}</td>
+            <td data-label="Vencimento">{{ activation_key.renews_at.strftime('%d/%m/%Y') if activation_key.renews_at else '-' }}</td>
+            <td data-label="Adega">{{ activation_key.company.name if activation_key.company else 'Avulsa' }}</td>
+            <td data-label="Ações" class="text-end">
               {% if key_status.get('available') %}
               <form method="post" action="{{ url_for('auth.cancel_master_activation_key', key_id=activation_key.id) }}" onsubmit="return confirm('Cancelar esta key? Ela não poderá mais ser usada.');">
                 <button class="btn btn-outline-danger btn-sm" type="submit">Remover</button>
@@ -388,7 +389,7 @@
 {% else %}
 <div class="card card-dark table-card p-0">
   <div class="table-responsive">
-    <table class="table table-dark table-hover align-middle mb-0 app-table company-table">
+    <table class="table table-dark table-hover align-middle mb-0 app-table company-table master-responsive-table">
       <thead>
         <tr>
           <th>Adega</th>
@@ -405,7 +406,7 @@
         {% set stats = company_stats.get(company.id, {}) %}
         {% set subscription = subscription_statuses.get(company.id, {}) %}
         <tr class="product-summary-row">
-          <td>
+          <td data-label="Adega">
             <button class="product-name-button" type="button" data-bs-toggle="collapse" data-bs-target="#company-details-{{ company.id }}" aria-expanded="false" aria-controls="company-details-{{ company.id }}">
               <span>{{ company.name }}</span>
               <small>
@@ -419,21 +420,21 @@
               </small>
             </button>
           </td>
-          <td>
+          <td data-label="Status">
             {% if company.active %}
             <span class="badge text-bg-success">Ativa</span>
             {% else %}
             <span class="badge text-bg-secondary">Inativa</span>
             {% endif %}
           </td>
-          <td>{{ company.subscription_plan or 'Essencial' }}</td>
-          <td>
+          <td data-label="Plano">{{ company.subscription_plan or 'Essencial' }}</td>
+          <td data-label="Renovação">
             <span class="subscription-pill subscription-{{ subscription.get('state', 'neutral') }}">{{ subscription.get('days_label', 'Sem renovação') }}</span>
             <small class="d-block text-muted">{{ subscription.get('renewal_label', '-') }}</small>
           </td>
-          <td>{{ user_counts.get(company.id, 0) }}</td>
-          <td>{{ stats.get('products', 0) }}</td>
-          <td>{{ stats.get('sales', 0) }}</td>
+          <td data-label="Usuários">{{ user_counts.get(company.id, 0) }}</td>
+          <td data-label="Produtos">{{ stats.get('products', 0) }}</td>
+          <td data-label="Vendas">{{ stats.get('sales', 0) }}</td>
         </tr>
         <tr class="product-details-row">
           <td colspan="7" class="p-0">
@@ -549,5 +550,6 @@
       <button class="btn btn-danger" type="button" data-destructive-confirmation-submit disabled>Excluir permanentemente</button>
     </div>
   </section>
+</div>
 </div>
 {% endblock %}

@@ -5,17 +5,73 @@
         xmlns:behaviors="clr-namespace:Girofy.Desktop.Behaviors"
         Title="SkyGest"
         Icon="Resources/SkyGest.ico"
-        Width="520"
-        Height="780"
-        MinWidth="440"
-        MinHeight="640"
+        Width="700"
+        Height="860"
+        MinWidth="540"
+        MinHeight="680"
         ResizeMode="CanResizeWithGrip"
         FontFamily="Segoe UI"
         WindowStartupLocation="CenterScreen"
         PreviewKeyDown="MainWindow_PreviewKeyDown"
         Background="{DynamicResource AppBackgroundBrush}">
+    <Window.Resources>
+        <Style x:Key="AuthSegmentStyle" TargetType="RadioButton">
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeLabel}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="SegmentBorder" Padding="16,0" Background="Transparent" CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SegmentBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SegmentBorder" Property="Background" Value="{DynamicResource PrimaryGradientBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="AuthEyeToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="EyeSurface" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="EyeSurface" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Grid>
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+        <ScrollViewer x:Name="AuthScrollViewer"
+                      HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <ScrollViewer.Style>
                 <Style TargetType="ScrollViewer">
@@ -27,47 +83,49 @@
                     </Style.Triggers>
                 </Style>
             </ScrollViewer.Style>
-            <Grid Margin="18">
-                <Border MaxWidth="440"
-                        Padding="38,34"
+            <Grid MinHeight="{Binding ActualHeight, ElementName=AuthScrollViewer}" Margin="22">
+                <Ellipse Width="420" Height="420" Margin="-280,-260,0,0"
+                         HorizontalAlignment="Left" VerticalAlignment="Top" Opacity="0.13" IsHitTestVisible="False">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#8B5CF6" Offset="0" />
+                            <GradientStop Color="#008B5CF6" Offset="1" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Ellipse Width="360" Height="360" Margin="0,0,-250,-230"
+                         HorizontalAlignment="Right" VerticalAlignment="Bottom" Opacity="0.1" IsHitTestVisible="False">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#22D3EE" Offset="0" />
+                            <GradientStop Color="#0022D3EE" Offset="1" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Border MaxWidth="560"
+                        Padding="46,38"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Background="{DynamicResource HeroGradientBrush}"
-                        BorderBrush="{DynamicResource InfoBorderBrush}"
+                        BorderBrush="{DynamicResource BorderStrongBrush}"
                         BorderThickness="{DynamicResource AccessibilityBorderThickness}"
-                        CornerRadius="14">
+                        CornerRadius="22"
+                        Effect="{DynamicResource CardShadowEffect}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="10" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="16" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="18" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="20" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="20" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <Grid Grid.Row="0" HorizontalAlignment="Center">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="64" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="54" Height="54" CornerRadius="12">
-                                <Border.Background>
-                                    <ImageBrush ImageSource="Resources/skygest-app-icon.png"
-                                                Stretch="UniformToFill"
-                                                Viewbox="90,90,332,332"
-                                                ViewboxUnits="Absolute" />
-                                </Border.Background>
-                            </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock FontSize="{DynamicResource FontSizeHero}" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="SkyGest" />
-                                <TextBlock Margin="1,2,0,0" FontSize="{DynamicResource FontSizeCaption}"
-                                           Foreground="{DynamicResource TextSecondaryBrush}"
-                                           Text="SEU GESTOR INTELIGENTE" />
-                            </StackPanel>
-                        </Grid>
+                        <Image Grid.Row="0" Width="400" MaxWidth="400" Height="126"
+                               HorizontalAlignment="Center"
+                               Source="Resources/skygest-logo-horizontal.png"
+                               Stretch="Uniform" />
 
                         <Border Grid.Row="2" Padding="16" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="6">
                             <Border.Style>
@@ -120,7 +178,7 @@
                         </Border>
 
                         <Grid Grid.Row="4">
-                            <StackPanel MaxWidth="360" HorizontalAlignment="Stretch">
+                            <StackPanel MaxWidth="468" HorizontalAlignment="Stretch">
                                 <StackPanel.Style>
                                     <Style TargetType="StackPanel">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -134,143 +192,256 @@
                                         </Style.Triggers>
                                     </Style>
                                 </StackPanel.Style>
-                                <TextBlock FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource PrimaryHoverBrush}" Text="ACESSO SEGURO" />
-                                <TextBlock Margin="0,5,0,0" FontSize="{DynamicResource FontSizePageTitle}" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="Entrar" />
-                                <TextBlock Margin="0,6,0,20" FontSize="{DynamicResource FontSizeLabel}"
+                                <TextBlock HorizontalAlignment="Center"
+                                           FontSize="{DynamicResource FontSizePageTitle}" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           Text="Bem-vindo ao SkyGest" />
+                                <TextBlock Margin="0,6,0,22" HorizontalAlignment="Center"
+                                           FontSize="{DynamicResource FontSizeLabel}"
                                            Foreground="{DynamicResource TextSecondaryBrush}"
-                                           Text="Use o mesmo acesso da sua conta SkyGest." TextWrapping="Wrap" />
-                                <TextBlock Margin="0,0,0,7" FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}"
-                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="Usuário ou e-mail" />
-                                <TextBox x:Name="IdentifierInput"
-                                         Text="{Binding Login.Identifier, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource TextInputStyle}" />
-                                <TextBlock Margin="0,18,0,7" FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}"
-                                           Foreground="{DynamicResource TextPrimaryBrush}" Text="Senha" />
-                                <Grid>
-                                    <PasswordBox x:Name="PasswordInput" PasswordChanged="HandlePasswordChanged">
-                                        <PasswordBox.Style>
-                                            <Style TargetType="PasswordBox" BasedOn="{StaticResource PasswordInputStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Login.ShowPassword}" Value="True">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </PasswordBox.Style>
-                                    </PasswordBox>
-                                    <TextBox x:Name="VisiblePasswordInput"
-                                             Text="{Binding Login.Password, UpdateSourceTrigger=PropertyChanged}">
-                                        <TextBox.Style>
-                                            <Style TargetType="TextBox" BasedOn="{StaticResource TextInputStyle}">
+                                           Text="Acesse sua conta para continuar" />
+
+                                <Border Padding="4" Background="{DynamicResource SurfaceBrush}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="{DynamicResource AccessibilityBorderThickness}"
+                                        CornerRadius="12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <RadioButton x:Name="LoginAuthTab" IsChecked="True" GroupName="AuthenticationMode"
+                                                     Content="Entrar" Style="{StaticResource AuthSegmentStyle}" />
+                                        <RadioButton x:Name="RegisterAuthTab" Grid.Column="1" GroupName="AuthenticationMode"
+                                                     Content="Cadastrar" Style="{StaticResource AuthSegmentStyle}" />
+                                    </Grid>
+                                </Border>
+
+                                <StackPanel Margin="0,24,0,0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=LoginAuthTab}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=LoginAuthTab}" Value="True">
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="0" To="1" Duration="0:0:0.18" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Margin="0,0,0,8" FontSize="{DynamicResource FontSizeLabel}"
+                                               FontWeight="{DynamicResource FontWeightStrong}"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" Text="Usuário ou e-mail" />
+                                    <TextBox x:Name="IdentifierInput" Height="52" ToolTip="Digite seu usuário ou e-mail"
+                                             Text="{Binding Login.Identifier, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource TextInputStyle}" />
+                                    <TextBlock Margin="0,18,0,8" FontSize="{DynamicResource FontSizeLabel}"
+                                               FontWeight="{DynamicResource FontWeightStrong}"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" Text="Senha" />
+                                    <Grid>
+                                        <PasswordBox x:Name="PasswordInput" Height="52" Padding="14,0,52,0"
+                                                     PasswordChanged="HandlePasswordChanged">
+                                            <PasswordBox.Style>
+                                                <Style TargetType="PasswordBox" BasedOn="{StaticResource PasswordInputStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Login.ShowPassword}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </PasswordBox.Style>
+                                        </PasswordBox>
+                                        <TextBox x:Name="VisiblePasswordInput" Height="52" Padding="14,0,52,0"
+                                                 Text="{Binding Login.Password, UpdateSourceTrigger=PropertyChanged}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource TextInputStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Login.ShowPassword}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <ToggleButton Width="42" Margin="0,0,5,0" HorizontalAlignment="Right"
+                                                      IsChecked="{Binding Login.ShowPassword}"
+                                                      Checked="HandlePasswordVisibilityChanged"
+                                                      Unchecked="HandlePasswordVisibilityChanged"
+                                                      ToolTip="Mostrar ou ocultar senha"
+                                                      Content="◉" Style="{StaticResource AuthEyeToggleStyle}" />
+                                    </Grid>
+                                    <CheckBox Margin="2,14,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
+                                              IsChecked="{Binding Login.RememberUsername}"
+                                              Content="Lembre de mim" />
+
+                                    <Border Margin="0,16,0,0" Padding="13"
+                                            Background="{DynamicResource ErrorSurfaceBrush}"
+                                            BorderBrush="{DynamicResource ErrorBorderBrush}"
+                                            BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="8">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Login.ShowPassword}" Value="True">
+                                                    <DataTrigger Binding="{Binding Login.HasError}" Value="True">
                                                         <Setter Property="Visibility" Value="Visible" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </TextBox.Style>
-                                    </TextBox>
-                                </Grid>
-                                <Grid Margin="0,12,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <CheckBox Foreground="{DynamicResource TextSecondaryBrush}"
-                                              IsChecked="{Binding Login.RememberUsername}"
-                                              Content="Lembrar usuário" />
-                                    <CheckBox Grid.Column="1" Foreground="{DynamicResource TextSecondaryBrush}"
-                                              IsChecked="{Binding Login.ShowPassword}"
-                                              Checked="HandlePasswordVisibilityChanged"
-                                              Unchecked="HandlePasswordVisibilityChanged"
-                                              Content="Mostrar senha" />
-                                </Grid>
-                                <Border Margin="0,16,0,0" Padding="12"
-                                        Background="{DynamicResource ErrorSurfaceBrush}"
-                                        BorderBrush="{DynamicResource ErrorBorderBrush}"
-                                        BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="5">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Login.HasError}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
-                                               Text="{Binding Login.ErrorMessage}" TextWrapping="Wrap" />
-                                </Border>
-                                <Border Margin="0,16,0,0" Padding="14"
-                                        Background="{DynamicResource InfoSurfaceBrush}"
-                                        BorderBrush="{DynamicResource InfoBorderBrush}"
-                                        BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="6">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Login.RequiresSubscriptionActivation}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <StackPanel>
-                                        <TextBlock FontSize="{DynamicResource FontSizeSubtitle}" FontWeight="{DynamicResource FontWeightStrong}"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                                   Text="Ativar assinatura" />
-                                        <TextBlock Margin="0,4,0,12"
-                                                   FontSize="{DynamicResource FontSizeBody}"
-                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                   Text="Informe a key gerada no painel master para liberar esta adega."
-                                                   TextWrapping="Wrap" />
-                                        <TextBlock Margin="0,0,0,7" FontSize="{DynamicResource FontSizeBody}" FontWeight="{DynamicResource FontWeightStrong}"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}" Text="Key de ativação" />
-                                        <TextBox Text="{Binding Login.ActivationKey, UpdateSourceTrigger=PropertyChanged}"
-                                                 CharacterCasing="Upper"
-                                                 Style="{StaticResource TextInputStyle}" />
-                                        <Button Margin="0,12,0,0" Height="46"
-                                                Command="{Binding Login.ActivateSubscriptionCommand}"
-                                                Content="{Binding Login.ActivationButtonText}"
-                                                Style="{StaticResource PrimaryButtonStyle}" />
-                                    </StackPanel>
-                                </Border>
-                                <Button Margin="0,20,0,0" Height="50" IsDefault="True"
-                                        Command="{Binding Login.LoginCommand}"
-                                        Content="{Binding Login.LoginButtonText}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Login.ShowLoginButton}" Value="False">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                                <Grid Margin="0,12,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="10" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Button Height="42"
+                                        </Border.Style>
+                                        <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   Text="{Binding Login.ErrorMessage}" TextWrapping="Wrap" />
+                                    </Border>
+
+                                    <Border Margin="0,16,0,0" Padding="16"
+                                            Background="{DynamicResource InfoSurfaceBrush}"
+                                            BorderBrush="{DynamicResource InfoBorderBrush}"
+                                            BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="10">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Login.RequiresSubscriptionActivation}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <TextBlock FontSize="{DynamicResource FontSizeSubtitle}" FontWeight="{DynamicResource FontWeightStrong}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" Text="Ativar assinatura" />
+                                            <TextBlock Margin="0,4,0,12" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       Text="Informe a key gerada no painel master para liberar esta adega."
+                                                       TextWrapping="Wrap" />
+                                            <TextBox Height="50" ToolTip="Key de ativação"
+                                                     Text="{Binding Login.ActivationKey, UpdateSourceTrigger=PropertyChanged}"
+                                                     CharacterCasing="Upper" Style="{StaticResource TextInputStyle}" />
+                                            <Button Margin="0,12,0,0" Height="48"
+                                                    Command="{Binding Login.ActivateSubscriptionCommand}"
+                                                    Content="{Binding Login.ActivationButtonText}"
+                                                    Style="{StaticResource PrimaryButtonStyle}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Button Margin="0,20,0,0" Height="52" IsDefault="True"
+                                            Command="{Binding Login.LoginCommand}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Login.ShowLoginButton}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Grid Width="17" Height="17" Margin="0,0,9,0">
+                                                <Grid.Style>
+                                                    <Style TargetType="Grid">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Login.IsBusy}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Grid.Style>
+                                                <Ellipse Stroke="{DynamicResource OnAccentTextBrush}" StrokeThickness="2"
+                                                         StrokeDashArray="2,2" RenderTransformOrigin="0.5,0.5">
+                                                    <Ellipse.RenderTransform><RotateTransform /></Ellipse.RenderTransform>
+                                                    <Ellipse.Triggers>
+                                                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                                            <BeginStoryboard>
+                                                                <Storyboard RepeatBehavior="Forever">
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                     From="0" To="360" Duration="0:0:0.8" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </EventTrigger>
+                                                    </Ellipse.Triggers>
+                                                </Ellipse>
+                                            </Grid>
+                                            <TextBlock VerticalAlignment="Center" Text="{Binding Login.LoginButtonText}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Margin="0,12,0,0" HorizontalAlignment="Center"
                                             Command="{Binding Login.ForgotPasswordCommand}"
-                                            Content="Esqueci a senha"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Grid.Column="2" Height="42"
-                                            Command="{Binding Login.OpenRegistrationCommand}"
-                                            Content="Criar conta"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                </Grid>
+                                            Content="Esqueci minha senha"
+                                            Style="{StaticResource LinkButtonStyle}" />
+                                </StackPanel>
+
+                                <StackPanel Margin="0,24,0,0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=RegisterAuthTab}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="0" To="1" Duration="0:0:0.18" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <Border Padding="22" Background="{DynamicResource SurfaceBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="14">
+                                        <StackPanel>
+                                            <TextBlock HorizontalAlignment="Center" FontSize="{DynamicResource FontSizeCardTitle}"
+                                                       FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       Text="Crie sua conta SkyGest" />
+                                            <TextBlock Margin="0,8,0,0" TextAlignment="Center"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       Text="O cadastro seguro será aberto no navegador e, ao concluir, você retornará automaticamente para o aplicativo."
+                                                       TextWrapping="Wrap" />
+                                            <Button Margin="0,22,0,0" Height="52"
+                                                    Command="{Binding Login.OpenRegistrationCommand}"
+                                                    Content="Continuar cadastro seguro"
+                                                    Style="{StaticResource PrimaryButtonStyle}" />
+                                            <Border Margin="0,14,0,0" Padding="13"
+                                                    Background="{DynamicResource ErrorSurfaceBrush}"
+                                                    BorderBrush="{DynamicResource ErrorBorderBrush}"
+                                                    BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="8">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Login.HasError}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}"
+                                                           Text="{Binding Login.ErrorMessage}" TextWrapping="Wrap" />
+                                            </Border>
+                                            <TextBlock Margin="0,12,0,0" TextAlignment="Center"
+                                                       FontSize="{DynamicResource FontSizeCaption}"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       Text="Seus dados e sua senha não ficam armazenados nesta tela."
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
                             </StackPanel>
 
-                            <StackPanel MaxWidth="360" HorizontalAlignment="Stretch">
+                            <StackPanel MaxWidth="468" HorizontalAlignment="Stretch">
                                 <StackPanel.Style>
                                     <Style TargetType="StackPanel">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -288,9 +459,8 @@
                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="Verifique sua internet e tente conectar novamente."
                                            TextAlignment="Center" TextWrapping="Wrap" />
-                                <Button Command="{Binding RetryConnectionCommand}"
-                                        Content="Tentar novamente"
-                                        Style="{StaticResource PrimaryButtonStyle}" />
+                                <Button Height="50" Command="{Binding RetryConnectionCommand}"
+                                        Content="Tentar novamente" Style="{StaticResource PrimaryButtonStyle}" />
                             </StackPanel>
                         </Grid>
 

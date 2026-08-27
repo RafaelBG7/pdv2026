@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <Resource Include="Resources\skygest-app-icon.png" />
+    <Resource Include="Resources\skygest-logo-horizontal.png" />
     <Resource Include="Resources\SkyGest.ico" />
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

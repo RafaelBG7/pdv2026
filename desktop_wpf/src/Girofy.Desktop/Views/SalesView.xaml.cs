@@ -402,18 +402,6 @@ public partial class SalesView : UserControl
         e.Handled = true;
     }
 
-    private void QuantityInput_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        if (sender is TextBox textBox)
-        {
-            Dispatcher.BeginInvoke((Action)(() =>
-            {
-                textBox.Focus();
-                textBox.SelectAll();
-            }));
-        }
-    }
-
     private void QuantityInput_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (DataContext is SalesViewModel viewModel)
@@ -479,11 +467,6 @@ public partial class SalesView : UserControl
         if (sender is TextBox textBox && textBox.Tag is string method && DataContext is SalesViewModel viewModel)
         {
             viewModel.AutoCompletePaymentIfEmpty(method);
-            Dispatcher.BeginInvoke((Action)(() =>
-            {
-                textBox.Focus();
-                textBox.SelectAll();
-            }));
         }
     }
 

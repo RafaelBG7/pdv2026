@@ -1147,9 +1147,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Campos de moeda sao exibidos em formato brasileiro (0,00); pattern numerico bloqueia o envio.
     input.removeAttribute('pattern');
     input.value = formatCurrencyInputValue(input.value);
-    input.addEventListener('focus', function () {
-      moveCurrencyCaretToEnd(input);
-    });
     input.addEventListener('keydown', function (event) {
       if (isCurrencyInputControlKey(event) || /^[0-9]$/.test(event.key)) {
         return;

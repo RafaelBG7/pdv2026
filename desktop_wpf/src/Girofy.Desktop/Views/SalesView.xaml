@@ -1446,7 +1446,6 @@
                         <TextBox x:Name="QuantityInput" Height="48"
                                  Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="Quantidade do produto"
-                                 GotKeyboardFocus="QuantityInput_GotKeyboardFocus"
                                  LostKeyboardFocus="QuantityInput_LostKeyboardFocus"
                                  PreviewKeyDown="QuantityInput_PreviewKeyDown"
                                  PreviewTextInput="QuantityInput_PreviewTextInput"

@@ -107,6 +107,9 @@
         <Setter Property="BorderThickness" Value="{DynamicResource AccessibilityBorderThickness}" />
         <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="FontSize" Value="{DynamicResource FontSizeInput}" />
+        <Setter Property="FlowDirection" Value="LeftToRight" />
+        <Setter Property="TextAlignment" Value="Left" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="SelectionBrush" Value="{DynamicResource PrimaryHoverBrush}" />
         <Setter Property="Template">
@@ -134,9 +137,13 @@
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="Text" Value="">
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="Text" Value="" />
+                                <Condition Property="IsKeyboardFocused" Value="False" />
+                            </MultiTrigger.Conditions>
                             <Setter TargetName="InputHint" Property="Visibility" Value="Visible" />
-                        </Trigger>
+                        </MultiTrigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
                         </Trigger>
@@ -162,6 +169,8 @@
         <Setter Property="BorderThickness" Value="{DynamicResource AccessibilityBorderThickness}" />
         <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="FontSize" Value="{DynamicResource FontSizeInput}" />
+        <Setter Property="FlowDirection" Value="LeftToRight" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="SelectionBrush" Value="{DynamicResource PrimaryHoverBrush}" />
         <Setter Property="Template">
@@ -249,6 +258,8 @@
                                 <TextBox x:Name="PART_EditableTextBox"
                                          Margin="12,0,44,0"
                                          Padding="0"
+                                         FlowDirection="LeftToRight"
+                                         TextAlignment="Left"
                                          VerticalContentAlignment="Center"
                                          Background="Transparent"
                                          BorderThickness="0"

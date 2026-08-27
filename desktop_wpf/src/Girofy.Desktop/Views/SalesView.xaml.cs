@@ -109,6 +109,12 @@ public partial class SalesView : UserControl
             return;
         }
 
+        if (e.PropertyName == nameof(SalesViewModel.IsPaymentStepVisible) && viewModel.IsPaymentStepVisible)
+        {
+            FocusPaymentMethod();
+            return;
+        }
+
         if (e.PropertyName == nameof(SalesViewModel.IsDiscountPopupVisible) && viewModel.IsDiscountPopupVisible)
         {
             FocusDiscountInput();

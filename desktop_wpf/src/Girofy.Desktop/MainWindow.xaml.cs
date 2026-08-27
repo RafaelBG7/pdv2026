@@ -504,31 +504,21 @@ public partial class MainWindow : Window
     {
         var workArea = GetCurrentMonitorWorkArea();
 
+        MaxWidth = double.PositiveInfinity;
+        MaxHeight = double.PositiveInfinity;
+        ResizeMode = ResizeMode.CanResize;
+
         if (_viewModel.Login.IsAuthenticated)
         {
-            WindowState = WindowState.Normal;
-            MaxWidth = double.PositiveInfinity;
-            MaxHeight = double.PositiveInfinity;
             MinWidth = Math.Min(900, workArea.Width);
             MinHeight = Math.Min(640, workArea.Height);
-            ResizeMode = ResizeMode.CanResize;
-            Width = Math.Min(1180, workArea.Width);
-            Height = Math.Min(780, workArea.Height);
-            CenterInside(workArea);
+            WindowState = WindowState.Maximized;
             return;
         }
 
-        WindowState = WindowState.Normal;
-        ResizeMode = ResizeMode.CanMinimize;
-        var loginWidth = Math.Min(470, workArea.Width);
-        var loginHeight = Math.Min(700, workArea.Height);
-        MinWidth = loginWidth;
+        MinWidth = Math.Min(540, workArea.Width);
         MinHeight = Math.Min(640, workArea.Height);
-        MaxWidth = loginWidth;
-        MaxHeight = loginHeight;
-        Width = loginWidth;
-        Height = loginHeight;
-        CenterInside(workArea);
+        WindowState = WindowState.Maximized;
         QueueLoginFocus();
     }
 
@@ -564,12 +554,6 @@ public partial class MainWindow : Window
             _logger.LogWarning(exception, "Current monitor work area could not be resolved; using the primary monitor.");
             return SystemParameters.WorkArea;
         }
-    }
-
-    private void CenterInside(Rect workArea)
-    {
-        Left = workArea.Left + Math.Max(0, (workArea.Width - Width) / 2);
-        Top = workArea.Top + Math.Max(0, (workArea.Height - Height) / 2);
     }
 
     [DllImport("user32.dll")]

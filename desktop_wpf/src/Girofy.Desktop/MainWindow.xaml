@@ -10,6 +10,7 @@
         MinWidth="540"
         MinHeight="680"
         ResizeMode="CanResizeWithGrip"
+        WindowState="Maximized"
         FontFamily="Segoe UI"
         WindowStartupLocation="CenterScreen"
         PreviewKeyDown="MainWindow_PreviewKeyDown"

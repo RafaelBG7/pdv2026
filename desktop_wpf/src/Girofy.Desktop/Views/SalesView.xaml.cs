@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Girofy.Application.Models;
 using Girofy.Application.Services;
 using Girofy.Application.ViewModels;
@@ -26,7 +27,28 @@ public partial class SalesView : UserControl
     {
         InitializeComponent();
         DataContextChanged += SalesView_DataContextChanged;
+        Loaded += SalesView_Loaded;
         Unloaded += SalesView_Unloaded;
+    }
+
+    private void SalesView_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SalesViewModel viewModel)
+        {
+            return;
+        }
+
+        viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        if (viewModel.IsProductStepOpen)
+        {
+            FocusProductSearch();
+        }
+        else if (viewModel.IsPaymentStepVisible)
+        {
+            FocusPaymentMethod();
+        }
     }
 
     private void ProductStepRoot_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -667,9 +689,16 @@ public partial class SalesView : UserControl
     private void FocusProductSearch() =>
         Dispatcher.BeginInvoke((Action)(() =>
         {
+            if (!ProductSearchInput.IsVisible || !ProductSearchInput.IsEnabled)
+            {
+                return;
+            }
+
             ProductSearchInput.Focus();
-            ProductSearchInput.SelectAll();
-        }));
+            Keyboard.Focus(ProductSearchInput);
+            ProductSearchInput.CaretIndex = 0;
+            ProductSearchInput.SelectionLength = 0;
+        }), DispatcherPriority.Input);
 
     private void FocusQuantityInput() =>
         Dispatcher.BeginInvoke((Action)(() =>
@@ -681,9 +710,15 @@ public partial class SalesView : UserControl
     private void FocusPaymentMethod() =>
         Dispatcher.BeginInvoke((Action)(() =>
         {
+            if (!MoneyInput.IsVisible || !MoneyInput.IsEnabled)
+            {
+                return;
+            }
+
             MoneyInput.Focus();
+            Keyboard.Focus(MoneyInput);
             MoneyInput.SelectAll();
-        }));
+        }), DispatcherPriority.Input);
 
     private void FocusOpeningCashInput() =>
         Dispatcher.BeginInvoke((Action)(() =>

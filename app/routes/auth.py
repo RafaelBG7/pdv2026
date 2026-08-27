@@ -611,6 +611,22 @@ def register_form_values():
     }
 
 
+def pending_registration_matches(user, email):
+    return bool(
+        user
+        and not user.email_verified
+        and (user.email or '').strip().casefold() == (email or '').strip().casefold()
+    )
+
+
+def resume_pending_registration(user):
+    remember_verification_user(user)
+    sent, message = create_email_verification_code(user, force=True)
+    flash(message, 'success' if sent else 'warning')
+    flash('Seu cadastro já foi iniciado. Continue pela confirmação do e-mail.', 'info')
+    return redirect(url_for('auth.verify_email'))
+
+
 def render_auth_form(auth_tab='login', form_values=None, field_errors=None):
     return render_template(
         'login.html',
@@ -666,7 +682,10 @@ def login():
             if password != confirm_password:
                 flash('A confirmação da senha não confere.', 'danger')
                 return render_auth_form('register', form_values, {'confirm_password': 'A confirmação não confere com a senha.'})
-            if User.query.filter_by(username=username).first():
+            existing_user = User.query.filter_by(username=username).first()
+            if pending_registration_matches(existing_user, email):
+                return resume_pending_registration(existing_user)
+            if existing_user:
                 flash('Já existe um usuário com este login.', 'danger')
                 return render_auth_form('register', form_values, {'username': 'Este usuário já está em uso.'})
 
@@ -719,6 +738,9 @@ def login():
                 db.session.commit()
             except IntegrityError:
                 db.session.rollback()
+                existing_user = User.query.filter_by(username=username).first()
+                if pending_registration_matches(existing_user, email):
+                    return resume_pending_registration(existing_user)
                 flash('Já existe um usuário com este login.', 'danger')
                 return render_auth_form('register', form_values, {'username': 'Este usuário já está em uso.'})
 

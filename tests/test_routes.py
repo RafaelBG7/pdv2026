@@ -4533,6 +4533,29 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('value="master"'.encode(), response.data)
         self.assertIn('value="master2@example.com"'.encode(), response.data)
 
+    def test_register_resumes_an_unverified_registration_with_the_same_email(self):
+        registration_data = {
+            'form_type': 'register',
+            'username': 'cadastro-pendente',
+            'company_name': 'Adega Pendente',
+            'email': 'pendente@example.com',
+            'password': self.STRONG_PASSWORD,
+            'confirm_password': self.STRONG_PASSWORD,
+        }
+        first_response = self.client.post('/login', data=registration_data)
+        second_response = self.client.post('/login', data=registration_data, follow_redirects=True)
+
+        self.assertEqual(first_response.status_code, 302)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertIn('Confirmar e-mail'.encode(), second_response.data)
+        self.assertIn('Seu cadastro já foi iniciado. Continue pela confirmação do e-mail.'.encode(), second_response.data)
+        self.assertNotIn('Já existe um usuário com este login.'.encode(), second_response.data)
+        with self.app.app_context():
+            user = User.query.filter_by(username='cadastro-pendente').one()
+            self.assertFalse(user.email_verified)
+            self.assertEqual(Company.query.filter_by(name='Adega Pendente').count(), 1)
+            self.assertEqual(EmailVerificationCode.query.filter_by(user_id=user.id, used=False).count(), 1)
+
     def test_register_error_preserves_entered_fields(self):
         response = self.client.post(
             '/login',

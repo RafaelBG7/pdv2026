@@ -646,7 +646,6 @@ def login_form_values():
 def register_form_values():
     return {
         'username': request.form.get('username', '').strip(),
-        'company_name': request.form.get('company_name', '').strip(),
         'email': request.form.get('email', '').strip(),
     }
 
@@ -702,8 +701,6 @@ def login():
 
         if form_type == 'register':
             email = request.form.get('email', '').strip()
-            company_name = request.form.get('company_name', '').strip() or username
-            confirm_password = request.form.get('confirm_password', '')
             form_values = register_form_values()
 
             if not username:
@@ -719,9 +716,6 @@ def login():
             if password_error:
                 flash(password_error, 'danger')
                 return render_auth_form('register', form_values, {'password': password_error})
-            if password != confirm_password:
-                flash('A confirmação da senha não confere.', 'danger')
-                return render_auth_form('register', form_values, {'confirm_password': 'A confirmação não confere com a senha.'})
             existing_user = User.query.filter_by(username=username).first()
             if pending_registration_matches(existing_user, email):
                 return resume_pending_registration(existing_user)
@@ -730,7 +724,7 @@ def login():
                 return render_auth_form('register', form_values, {'username': 'Este usuário já está em uso.'})
 
             company = Company(
-                name=company_name,
+                name=username,
                 activation_key='',
                 activation_key_updated_at=None,
                 subscription_started_at=None,

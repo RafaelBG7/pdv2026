@@ -409,7 +409,7 @@
                                                        Text="Crie sua conta SkyGest" />
                                             <TextBlock Margin="0,8,0,0" TextAlignment="Center"
                                                        Foreground="{DynamicResource TextSecondaryBrush}"
-                                                       Text="O cadastro seguro será aberto no navegador e, ao concluir, você retornará automaticamente para o aplicativo."
+                                                       Text="Informe somente usuário, e-mail e senha no cadastro seguro. Ao concluir, você retornará automaticamente para o aplicativo."
                                                        TextWrapping="Wrap" />
                                             <Button Margin="0,22,0,0" Height="52"
                                                     Command="{Binding Login.OpenRegistrationCommand}"

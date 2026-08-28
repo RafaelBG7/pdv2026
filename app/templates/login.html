@@ -55,13 +55,6 @@
             {% endif %}
           </div>
           <div class="mb-3">
-            <label for="company_name" class="form-label">Nome da adega</label>
-            <input type="text" class="form-control {{ 'is-invalid' if field_errors.get('company_name') else '' }}" id="company_name" name="company_name" value="{{ form_values.get('company_name', '') }}" placeholder="Ex: Adega Central">
-            {% if field_errors.get('company_name') %}
-            <div class="invalid-feedback">{{ field_errors.get('company_name') }}</div>
-            {% endif %}
-          </div>
-          <div class="mb-3">
             <label for="register_email" class="form-label">Email</label>
             <input type="email" class="form-control {{ 'is-invalid' if field_errors.get('email') else '' }}" id="register_email" name="email" value="{{ form_values.get('email', '') }}" placeholder="email@exemplo.com" required>
             {% if field_errors.get('email') %}
@@ -73,13 +66,6 @@
             <input type="password" class="form-control {{ 'is-invalid' if field_errors.get('password') else '' }}" id="register_password" name="password" minlength="{{ password_min_length }}" required>
             {% if field_errors.get('password') %}
             <div class="invalid-feedback">{{ field_errors.get('password') }}</div>
-            {% endif %}
-          </div>
-          <div class="mb-3">
-            <label for="confirm_password" class="form-label">Confirmar senha</label>
-            <input type="password" class="form-control {{ 'is-invalid' if field_errors.get('confirm_password') else '' }}" id="confirm_password" name="confirm_password" minlength="{{ password_min_length }}" required>
-            {% if field_errors.get('confirm_password') %}
-            <div class="invalid-feedback">{{ field_errors.get('confirm_password') }}</div>
             {% endif %}
           </div>
           <button type="submit" class="btn btn-primary w-100">Cadastrar</button>

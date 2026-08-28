@@ -3367,10 +3367,8 @@ class RouteTestCase(unittest.TestCase):
             data={
                 'form_type': 'register',
                 'username': 'operador',
-                'company_name': 'Adega Operador',
                 'email': 'operador@example.com',
                 'password': self.STRONG_PASSWORD,
-                'confirm_password': self.STRONG_PASSWORD,
             },
             follow_redirects=True,
         )
@@ -3383,7 +3381,7 @@ class RouteTestCase(unittest.TestCase):
             user = User.query.filter_by(username='operador').one()
             self.assertEqual(user.email, 'operador@example.com')
             self.assertFalse(user.email_verified)
-            self.assertEqual(user.company.name, 'Adega Operador')
+            self.assertEqual(user.company.name, 'operador')
             self.assertEqual(user.company.activation_key, '')
             self.assertIsNone(user.company.subscription_renews_at)
             self.assertTrue(user.check_password(self.STRONG_PASSWORD))
@@ -3393,6 +3391,17 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(blocked_response.status_code, 200)
         self.assertIn('Entrar'.encode(), blocked_response.data)
+
+    def test_register_form_requests_only_username_email_and_password(self):
+        response = self.client.get('/login?auth_tab=register')
+
+        self.assertEqual(response.status_code, 200)
+        register_panel = response.data.split(b'id="register-panel"', 1)[1]
+        self.assertIn(b'name="username"', register_panel)
+        self.assertIn(b'name="email"', register_panel)
+        self.assertIn(b'name="password"', register_panel)
+        self.assertNotIn(b'name="company_name"', register_panel)
+        self.assertNotIn(b'name="confirm_password"', register_panel)
 
     def test_register_ignores_activation_key_and_shows_plans_after_email_confirmation(self):
         with self.app.app_context():
@@ -3404,11 +3413,9 @@ class RouteTestCase(unittest.TestCase):
             data={
                 'form_type': 'register',
                 'username': 'operadorcomkey',
-                'company_name': 'Adega Com Key',
                 'email': 'key@example.com',
                 'activation_key': 'ABCD-1234-EFGH-5678',
                 'password': self.STRONG_PASSWORD,
-                'confirm_password': self.STRONG_PASSWORD,
             },
             follow_redirects=True,
         )
@@ -4645,7 +4652,6 @@ class RouteTestCase(unittest.TestCase):
                 'username': 'master',
                 'email': 'master2@example.com',
                 'password': self.STRONG_PASSWORD,
-                'confirm_password': self.STRONG_PASSWORD,
             },
         )
 
@@ -4658,10 +4664,8 @@ class RouteTestCase(unittest.TestCase):
         registration_data = {
             'form_type': 'register',
             'username': 'cadastro-pendente',
-            'company_name': 'Adega Pendente',
             'email': 'pendente@example.com',
             'password': self.STRONG_PASSWORD,
-            'confirm_password': self.STRONG_PASSWORD,
         }
         first_response = self.client.post('/login', data=registration_data)
         second_response = self.client.post('/login', data=registration_data, follow_redirects=True)
@@ -4674,7 +4678,7 @@ class RouteTestCase(unittest.TestCase):
         with self.app.app_context():
             user = User.query.filter_by(username='cadastro-pendente').one()
             self.assertFalse(user.email_verified)
-            self.assertEqual(Company.query.filter_by(name='Adega Pendente').count(), 1)
+            self.assertEqual(Company.query.filter_by(name='cadastro-pendente').count(), 1)
             self.assertEqual(EmailVerificationCode.query.filter_by(user_id=user.id, used=False).count(), 1)
 
     def test_register_error_preserves_entered_fields(self):
@@ -4683,17 +4687,14 @@ class RouteTestCase(unittest.TestCase):
             data={
                 'form_type': 'register',
                 'username': 'cliente',
-                'company_name': 'Adega Cliente',
                 'email': 'email-invalido',
                 'password': self.STRONG_PASSWORD,
-                'confirm_password': self.STRONG_PASSWORD,
             },
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('Este e-mail não parece válido.'.encode(), response.data)
         self.assertIn('value="cliente"'.encode(), response.data)
-        self.assertIn('value="Adega Cliente"'.encode(), response.data)
         self.assertIn('value="email-invalido"'.encode(), response.data)
         self.assertNotIn('Key de ativação'.encode(), response.data)
 

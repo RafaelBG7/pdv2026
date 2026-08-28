@@ -571,6 +571,35 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  document.querySelectorAll('[data-company-row-toggle]').forEach(function (row) {
+    const selector = row.dataset.companyRowToggle || '';
+    const details = selector ? document.querySelector(selector) : null;
+    if (!details) return;
+
+    const toggleDetails = function () {
+      if (!window.bootstrap || !window.bootstrap.Collapse) return;
+      window.bootstrap.Collapse.getOrCreateInstance(details, { toggle: false }).toggle();
+    };
+
+    row.addEventListener('click', function (event) {
+      if (event.target.closest('a, button, input, select, textarea, form')) return;
+      toggleDetails();
+    });
+    row.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      toggleDetails();
+    });
+    details.addEventListener('show.bs.collapse', function () {
+      row.setAttribute('aria-expanded', 'true');
+      row.classList.add('is-expanded');
+    });
+    details.addEventListener('hide.bs.collapse', function () {
+      row.setAttribute('aria-expanded', 'false');
+      row.classList.remove('is-expanded');
+    });
+  });
+
   function copyTextToClipboard(text) {
     if (navigator.clipboard && window.isSecureContext) {
       return navigator.clipboard.writeText(text);

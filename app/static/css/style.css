@@ -8928,6 +8928,8 @@ canvas {
 }
 
 .master-key-list-heading > span { color: var(--muted); white-space: nowrap; }
+.master-key-list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.65rem; }
+.master-key-list-tools > span { color: var(--muted); white-space: nowrap; }
 .master-key-filters { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(5, minmax(120px, 1fr)) auto auto; gap: 0.65rem; align-items: end; margin-bottom: 1rem; }
 .master-key-filters > * { min-width: 0; }
 
@@ -8958,6 +8960,37 @@ canvas {
 .master-inline-preview { color: var(--muted); font-size: 0.85rem; }
 .master-key-empty { display: grid; place-items: center; gap: 0.3rem; min-height: 160px; text-align: center; }
 .master-key-list .pagination-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; margin-top: 1rem; }
+
+.master-company-list-row {
+  cursor: pointer;
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.master-company-list-row:hover,
+.master-company-list-row:focus-visible,
+.master-company-list-row.is-expanded {
+  background: rgba(var(--primary-rgb), 0.08);
+  box-shadow: inset 3px 0 0 var(--primary);
+  outline: none;
+}
+
+.master-company-list-row .product-name-button {
+  cursor: inherit;
+  pointer-events: none;
+}
+
+.master-company-list-row td:last-child::after {
+  content: "⌄";
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  min-height: 28px;
+  margin-left: 0.45rem;
+  color: var(--muted);
+  transition: transform 180ms ease;
+}
+
+.master-company-list-row.is-expanded td:last-child::after { transform: rotate(180deg); }
 
 @container master-panel (max-width: 1200px) {
   .master-subscription-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -10,7 +10,7 @@
   </div>
   {% if master_section == 'companies' %}
   <div class="master-toolbar">
-    <a class="settings-theme-choice {{ 'is-active' if view_mode == 'table' else '' }}" href="{{ url_for('auth.master_companies', view='table') }}">Colunas</a>
+    <a class="settings-theme-choice {{ 'is-active' if view_mode == 'table' else '' }}" href="{{ url_for('auth.master_companies', view='table') }}">Lista</a>
     <a class="settings-theme-choice {{ 'is-active' if view_mode == 'cards' else '' }}" href="{{ url_for('auth.master_companies', view='cards') }}">Blocos</a>
   </div>
   {% endif %}
@@ -83,7 +83,7 @@
   </div>
 
   <section class="card card-dark master-key-list">
-    <header class="master-key-list-heading"><div><h3>Keys de acesso</h3><p>Pesquise, acompanhe e gerencie todas as licenças.</p></div><span>{{ total_keys }} registro{{ 's' if total_keys != 1 else '' }}</span></header>
+    <header class="master-key-list-heading"><div><h3>Keys de acesso</h3><p>Pesquise, acompanhe e gerencie todas as licenças.</p></div><div class="master-key-list-tools"><span>{{ total_keys }} registro{{ 's' if total_keys != 1 else '' }}</span><form method="post" action="{{ url_for('auth.clear_master_activation_key_history') }}" data-destructive-confirmation="LIMPAR HISTORICO" data-destructive-kind="o histórico de keys revogadas ou vencidas que nunca foram utilizadas"><input type="hidden" name="confirmation" value=""><button class="btn btn-outline-danger btn-sm" type="submit">Limpar histórico</button></form></div></header>
     <form class="master-key-filters" method="get" action="{{ url_for('auth.master_subscriptions') }}">
       <div class="master-key-search"><label class="visually-hidden" for="key_search">Pesquisar keys</label><input class="form-control" id="key_search" name="q" value="{{ filters.q }}" placeholder="Buscar por key, empresa ou plano..."></div>
       <select class="form-select" name="status" aria-label="Filtrar por status"><option value="">Todos os status</option><option value="available" {% if filters.status == 'available' %}selected{% endif %}>Disponível</option><option value="used" {% if filters.status == 'used' %}selected{% endif %}>Utilizada</option><option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Vencida</option><option value="revoked" {% if filters.status == 'revoked' %}selected{% endif %}>Revogada</option></select>
@@ -323,9 +323,9 @@
         {% for company in companies %}
         {% set stats = company_stats.get(company.id, {}) %}
         {% set subscription = subscription_statuses.get(company.id, {}) %}
-        <tr class="product-summary-row">
+        <tr class="product-summary-row master-company-list-row" role="button" tabindex="0" data-company-row-toggle="#company-details-{{ company.id }}" aria-expanded="false" aria-controls="company-details-{{ company.id }}">
           <td data-label="Adega">
-            <button class="product-name-button" type="button" data-bs-toggle="collapse" data-bs-target="#company-details-{{ company.id }}" aria-expanded="false" aria-controls="company-details-{{ company.id }}">
+            <div class="product-name-button">
               <span>{{ company.name }}</span>
               <small>
                 Banco {{ company.id }}
@@ -336,7 +336,7 @@
                 · Adega do master
                 {% endif %}
               </small>
-            </button>
+            </div>
           </td>
           <td data-label="Status">
             {% if company.active %}

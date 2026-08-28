@@ -3588,6 +3588,38 @@ class RouteTestCase(unittest.TestCase):
             self.assertFalse(activation_key.active)
             self.assertIsNotNone(activation_key.revoked_at)
 
+    def test_master_can_clear_unused_key_history_and_preserve_used_keys(self):
+        self.login()
+        with self.app.app_context():
+            company = Company(name='Adega com histórico')
+            db.session.add(company)
+            db.session.flush()
+            revoked = ActivationKey(key='OLD1-OLD2-OLD3-OLD4', plan='Basic', renews_at=date.today(), active=False)
+            expired = ActivationKey(key='EXP1-EXP2-EXP3-EXP4', plan='Pro', renews_at=date.today() - timedelta(days=1), active=True)
+            used = ActivationKey(key='USED-KEY1-KEY2-KEY3', plan='Pro', renews_at=date.today() - timedelta(days=1), active=False, used_by_company_id=company.id)
+            db.session.add_all([revoked, expired, used])
+            db.session.commit()
+            used_id = used.id
+
+        refused = self.client.post('/master/assinaturas/keys/historico/limpar', data={'confirmation': 'errado'}, follow_redirects=True)
+        self.assertIn('confirmação não confere'.encode(), refused.data)
+
+        response = self.client.post('/master/assinaturas/keys/historico/limpar', data={'confirmation': 'LIMPAR HISTORICO'}, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Histórico limpo: 2 key(s) removida(s).'.encode(), response.data)
+        with self.app.app_context():
+            self.assertIsNone(ActivationKey.query.filter_by(key='OLD1-OLD2-OLD3-OLD4').first())
+            self.assertIsNone(ActivationKey.query.filter_by(key='EXP1-EXP2-EXP3-EXP4').first())
+            self.assertIsNotNone(db.session.get(ActivationKey, used_id))
+
+    def test_master_company_table_is_an_expandable_list(self):
+        self.login()
+        response = self.client.get('/master/adegas?view=table')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('>Lista<'.encode(), response.data)
+        self.assertIn('data-company-row-toggle='.encode(), response.data)
+        self.assertIn('role="button"'.encode(), response.data)
+
     def test_master_can_renew_subscription_without_activation_key(self):
         self.login()
         with self.app.app_context():

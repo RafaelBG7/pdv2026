@@ -1690,6 +1690,39 @@ def cancel_master_activation_key(key_id):
     return redirect(url_for('auth.master_subscriptions'))
 
 
+@auth_bp.route('/master/assinaturas/keys/historico/limpar', methods=['POST'])
+@login_required
+def clear_master_activation_key_history():
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    confirmation = request.form.get('confirmation', '')
+    if _normalized_deletion_confirmation(confirmation) != 'limpar historico':
+        flash('A limpeza foi cancelada porque a confirmação não confere.', 'danger')
+        return redirect(url_for('auth.master_subscriptions'))
+
+    historical_keys = ActivationKey.query.filter(
+        ActivationKey.used_by_company_id.is_(None),
+        or_(ActivationKey.active.is_(False), ActivationKey.renews_at < date.today()),
+    ).all()
+    if not historical_keys:
+        flash('Não há keys revogadas ou vencidas disponíveis para limpar.', 'info')
+        return redirect(url_for('auth.master_subscriptions'))
+
+    removed_ids = [activation_key.id for activation_key in historical_keys]
+    record_audit_event(
+        'activation_key_history_cleared', 'activation_key', None,
+        f'Histórico de {len(removed_ids)} keys foi limpo pelo painel master.',
+        old_values={'activation_key_ids': removed_ids, 'count': len(removed_ids)},
+        company_id=current_user.company_id, db_session=db.session,
+    )
+    for activation_key in historical_keys:
+        db.session.delete(activation_key)
+    db.session.commit()
+    flash(f'Histórico limpo: {len(removed_ids)} key(s) removida(s). Keys utilizadas foram preservadas.', 'success')
+    return redirect(url_for('auth.master_subscriptions'))
+
+
 @auth_bp.route('/master/assinaturas/keys/<int:key_id>/renovar', methods=['POST'])
 @login_required
 def renew_master_activation_key(key_id):

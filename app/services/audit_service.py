@@ -50,6 +50,7 @@ AUDIT_ACTION_LABELS = {
     'activation_key_updated': 'Key atualizada',
     'activation_key_renewed': 'Key renovada',
     'activation_key_revoked': 'Key revogada',
+    'activation_key_history_cleared': 'Histórico de keys limpo',
     'product_created': 'Produto criado',
     'product_updated': 'Produto atualizado',
     'product_activated': 'Produto ativado',

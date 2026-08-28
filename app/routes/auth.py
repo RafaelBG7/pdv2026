@@ -1224,7 +1224,7 @@ def master_companies():
     view_mode = request.args.get('view', 'table')
     if view_mode not in ('table', 'cards'):
         view_mode = 'table'
-    companies = Company.query.order_by(Company.id.asc()).all()
+    companies = Company.query.filter(Company.is_system.is_(False)).order_by(Company.id.asc()).all()
     user_counts = {
         company.id: User.query.filter_by(company_id=company.id).count()
         for company in companies
@@ -1280,8 +1280,8 @@ def master_dashboard():
     if not master_required():
         return redirect(url_for('main.dashboard'))
 
-    companies = Company.query.order_by(Company.id.desc()).all()
-    users = User.query.order_by(User.created_at.desc(), User.id.desc()).all()
+    companies = Company.query.filter(Company.is_system.is_(False)).order_by(Company.id.desc()).all()
+    users = User.query.filter(User.role != 'master').order_by(User.created_at.desc(), User.id.desc()).all()
     recent_error_logs = read_recent_error_logs()
     available_keys = ActivationKey.query.filter(
         ActivationKey.active.is_(True),
@@ -1404,7 +1404,7 @@ def master_subscriptions():
     if not master_required():
         return redirect(url_for('main.dashboard'))
 
-    companies = Company.query.order_by(Company.name.asc()).all()
+    companies = Company.query.filter(Company.is_system.is_(False)).order_by(Company.name.asc()).all()
     search = request.args.get('q', '').strip()
     status_filter = request.args.get('status', '').strip()
     plan_filter = request.args.get('plan', '').strip()
@@ -1570,6 +1570,8 @@ def generate_master_activation_key():
     display_name = request.form.get('display_name', '').strip()[:160]
     assigned_company_id = request.form.get('company_id', '').strip()
     assigned_company = db.session.get(Company, int(assigned_company_id)) if assigned_company_id.isdigit() else None
+    if assigned_company and assigned_company.is_system:
+        assigned_company = None
 
     if renews_at < date.today():
         flash('A data de vencimento da key não pode estar no passado.', 'danger')
@@ -1627,7 +1629,7 @@ def renew_master_subscription():
         linked_company_id = 0
 
     company = db.session.get(Company, linked_company_id)
-    if not company:
+    if not company or company.is_system:
         flash('Selecione uma adega para renovar a assinatura.', 'danger')
         return redirect(url_for('auth.master_subscriptions'))
 
@@ -1774,6 +1776,8 @@ def edit_master_activation_key(key_id):
         flash('Plano ou pagamento inválido.', 'danger')
         return redirect(url_for('auth.master_subscriptions'))
     assigned_company = db.session.get(Company, int(company_id)) if company_id.isdigit() else None
+    if assigned_company and assigned_company.is_system:
+        assigned_company = None
     old_values = {'plan': activation_key.plan, 'payment_cycle': activation_key.payment_cycle, 'assigned_company_id': activation_key.assigned_company_id}
     activation_key.plan = plan
     activation_key.payment_cycle = payment_cycle
@@ -1797,6 +1801,9 @@ def edit_company(company_id):
         return redirect(url_for('main.dashboard'))
 
     company = db.get_or_404(Company, company_id)
+    if company.is_system:
+        flash('O Painel Master é um contexto do sistema e não pode ser editado como adega.', 'danger')
+        return redirect(url_for('auth.master_companies'))
     old_values = {
         'name': company.name,
         'active': company.active,
@@ -1900,6 +1907,9 @@ def access_company(company_id):
         return redirect(url_for('main.dashboard'))
 
     company = db.get_or_404(Company, company_id)
+    if company.is_system:
+        flash('O Painel Master não é uma adega para acesso operacional.', 'danger')
+        return redirect(url_for('auth.master_companies'))
     tenant_engine(company)
     session['master_company_id'] = company.id
     record_audit_event(
@@ -1942,6 +1952,9 @@ def toggle_company_status(company_id):
         return redirect(url_for('main.dashboard'))
 
     company = db.get_or_404(Company, company_id)
+    if company.is_system:
+        flash('O contexto do Painel Master não pode ser alterado como adega.', 'danger')
+        return redirect(url_for('auth.master_companies'))
     if company.id == current_user.company_id:
         flash('Não é possível inativar a adega do usuário master.', 'danger')
         return redirect(url_for('auth.master_companies'))
@@ -1970,6 +1983,9 @@ def delete_company(company_id):
         return redirect(url_for('main.dashboard'))
 
     company = db.get_or_404(Company, company_id)
+    if company.is_system:
+        flash('O contexto do Painel Master não pode ser excluído como adega.', 'danger')
+        return redirect(url_for('auth.master_companies'))
     if company.id == current_user.company_id:
         flash('Não é possível excluir a adega do usuário master.', 'danger')
         return redirect(url_for('auth.master_companies'))

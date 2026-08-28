@@ -178,12 +178,12 @@
     <details class="master-user-item">
       <summary>
         <span class="master-user-avatar">{{ (user.full_name or user.username)[0]|upper }}</span>
-        <span class="master-user-name"><strong>{{ user.full_name or user.username }}</strong><small>@{{ user.username }} · {{ user.company.name if user.company else 'Sem adega' }}</small></span>
+        <span class="master-user-name"><strong>{{ user.full_name or user.username }}</strong><small>@{{ user.username }} · {{ 'Sistema SkyGest' if user.company and user.company.is_system else (user.company.name if user.company else 'Sem adega') }}</small></span>
         <span class="badge {{ 'text-bg-success' if user.is_active else 'text-bg-secondary' }}">{{ 'Ativo' if user.is_active else 'Inativo' }}</span>
       </summary>
       <div class="master-user-details">
         <div><span>Perfil</span><strong>{{ user.role_label }}</strong></div>
-        <div><span>Adega</span><strong>{{ user.company.name if user.company else '-' }}</strong></div>
+        <div><span>Contexto</span><strong>{{ 'Sistema SkyGest' if user.company and user.company.is_system else (user.company.name if user.company else '-') }}</strong></div>
         <div><span>E-mail</span><strong>{{ user.masked_email }}</strong></div>
         <div><span>CPF</span><strong>{{ user.cpf or 'Não informado' }}</strong></div>
         <div><span>E-mail confirmado</span><strong>{{ 'Sim' if user.email_verified else 'Não' }}</strong></div>

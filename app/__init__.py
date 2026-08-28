@@ -419,9 +419,10 @@ def create_app(config_class=Config):
         if not User.query.filter_by(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master')).first():
             company = Company.query.filter_by(name='Painel Master').order_by(Company.id.asc()).first()
             if not company:
-                company = Company(name='Painel Master')
+                company = Company(name='Painel Master', is_system=True)
                 db.session.add(company)
                 db.session.flush()
+            company.is_system = True
             company.activation_key = 'MASTER-SYSTEM-KEY'
             company.activation_key_updated_at = datetime.now(timezone.utc)
             tenant_database_identifier(company)
@@ -445,6 +446,11 @@ def create_app(config_class=Config):
                 for table_name in ('categories', 'products', 'cash_registers', 'sales'):
                     if table_name in inspect(db.engine).get_table_names():
                         db.session.execute(text(f'UPDATE {table_name} SET company_id = :company_id WHERE company_id IS NULL'), {'company_id': company.id})
+                db.session.commit()
+
+            system_company = Company.query.filter_by(activation_key='MASTER-SYSTEM-KEY').first()
+            if system_company and not system_company.is_system:
+                system_company.is_system = True
                 db.session.commit()
 
             for company in Company.query.all():
@@ -506,6 +512,8 @@ def create_app(config_class=Config):
         if not current_user.is_authenticated or not request.endpoint or request.endpoint == 'static':
             return None
         if current_user.role not in ('admin', 'master'):
+            return None
+        if current_user.role == 'master' and not session.get('master_company_id'):
             return None
 
         from app.backup import backup_due, create_company_backup

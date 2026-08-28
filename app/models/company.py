@@ -10,6 +10,7 @@ class Company(db.Model):
     name = db.Column(db.String(160), nullable=False)
     database_path = db.Column(db.String(255), default='')
     active = db.Column(db.Boolean, default=True)
+    is_system = db.Column(db.Boolean, default=False, server_default=db.false(), nullable=False)
     allow_negative_stock = db.Column(db.Boolean, default=False)
     subscription_plan = db.Column(db.String(80), default='Essencial')
     billing_cycle = db.Column(db.String(20), default='monthly')

@@ -1292,7 +1292,7 @@ def master_audit_logs():
     total_pages = max((total_logs + per_page - 1) // per_page, 1)
     page = min(page, total_pages)
     logs = query.offset((page - 1) * per_page).limit(per_page).all()
-    companies = db.session.query(Company).order_by(Company.name.asc()).all()
+    companies = db.session.query(Company).filter(Company.is_system.is_(False)).order_by(Company.name.asc()).all()
     users = db.session.query(User).order_by(User.username.asc()).all()
     available_actions = [action for (action,) in db.session.query(AuditLog.action).distinct().order_by(AuditLog.action.asc()).all()]
     filters = {

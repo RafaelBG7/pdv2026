@@ -3614,11 +3614,37 @@ class RouteTestCase(unittest.TestCase):
 
     def test_master_company_table_is_an_expandable_list(self):
         self.login()
+        with self.app.app_context():
+            db.session.add(Company(name='Adega expansível', is_system=False))
+            db.session.commit()
         response = self.client.get('/master/adegas?view=table')
         self.assertEqual(response.status_code, 200)
         self.assertIn('>Lista<'.encode(), response.data)
         self.assertIn('data-company-row-toggle='.encode(), response.data)
         self.assertIn('role="button"'.encode(), response.data)
+
+    def test_master_system_context_is_not_treated_as_customer_company(self):
+        self.login()
+        with self.app.app_context():
+            system_company = db.session.get(Company, self.master_company_id())
+            system_company.is_system = True
+            customer = Company(name='Adega Cliente Real', is_system=False)
+            db.session.add(customer)
+            db.session.commit()
+            system_company_id = system_company.id
+
+        companies_response = self.client.get('/master/adegas')
+        subscriptions_response = self.client.get('/master/assinaturas')
+        audit_response = self.client.get('/master/auditoria')
+        self.assertIn('Adega Cliente Real'.encode(), companies_response.data)
+        self.assertNotIn('Painel Master'.encode(), companies_response.data)
+        self.assertIn('Adega Cliente Real'.encode(), subscriptions_response.data)
+        self.assertNotIn('Painel Master'.encode(), subscriptions_response.data)
+        self.assertIn('Adega Cliente Real'.encode(), audit_response.data)
+        self.assertNotIn('>Painel Master<'.encode(), audit_response.data)
+
+        blocked_access = self.client.post(f'/master/adegas/{system_company_id}/acessar', follow_redirects=True)
+        self.assertIn('não é uma adega'.encode(), blocked_access.data)
 
     def test_master_can_renew_subscription_without_activation_key(self):
         self.login()

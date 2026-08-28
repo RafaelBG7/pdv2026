@@ -3673,7 +3673,7 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.post(
             '/master/assinaturas/renovar',
             data={
-                'plan': 'Premium',
+                'plan': 'Ultimate',
                 'billing_cycle': 'annual',
                 'renews_at': (date.today() + timedelta(days=365)).isoformat(),
                 'company_id': str(company_id),
@@ -3686,7 +3686,7 @@ class RouteTestCase(unittest.TestCase):
         with self.app.app_context():
             company = db.session.get(Company, company_id)
             self.assertEqual(company.activation_key, '')
-            self.assertEqual(company.subscription_plan, 'Premium')
+            self.assertEqual(company.subscription_plan, 'Ultimate')
             self.assertEqual(company.billing_cycle, 'annual')
             self.assertTrue(company.subscription_valid)
 
@@ -4314,7 +4314,7 @@ class RouteTestCase(unittest.TestCase):
                 'name': 'Adega Editada',
                 'active': 'on',
                 'view_mode': 'cards',
-                'subscription_plan': 'Premium',
+                'subscription_plan': 'Ultimate',
                 'billing_cycle': 'annual',
                 'subscription_started_at': '2026-07-01',
                 'subscription_renews_at': '2027-07-01',
@@ -4325,12 +4325,12 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(edit_response.status_code, 200)
         self.assertIn('Adega atualizada com sucesso.'.encode(), edit_response.data)
         self.assertIn('Adega Editada'.encode(), edit_response.data)
-        self.assertIn('Premium'.encode(), edit_response.data)
+        self.assertIn('Ultimate'.encode(), edit_response.data)
         self.assertIn('Anual'.encode(), edit_response.data)
         with self.app.app_context():
             updated_company = db.session.get(Company, company_id)
             self.assertTrue(updated_company.active)
-            self.assertEqual(updated_company.subscription_plan, 'Premium')
+            self.assertEqual(updated_company.subscription_plan, 'Ultimate')
             self.assertEqual(updated_company.billing_cycle, 'annual')
             self.assertEqual(updated_company.activation_key, '')
 
@@ -4340,7 +4340,7 @@ class RouteTestCase(unittest.TestCase):
                 'name': 'Adega Editada',
                 'active': 'on',
                 'view_mode': 'cards',
-                'subscription_plan': 'Premium',
+                'subscription_plan': 'Ultimate',
                 'billing_cycle': 'annual',
                 'subscription_started_at': '2026-07-01',
                 'subscription_renews_at': '2027-07-01',
@@ -5466,7 +5466,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Importação'.encode(), response.data)
         self.assertIn('Baixar planilha exemplo'.encode(), response.data)
 
-    def test_subscriptions_page_shows_basic_and_pro_plans(self):
+    def test_subscriptions_page_shows_only_the_three_supported_plans(self):
         self.login()
         with self.app.app_context():
             company = Company(
@@ -5488,6 +5488,10 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Ver planos'.encode(), response.data)
         self.assertIn('Basic'.encode(), response.data)
         self.assertIn('Pro'.encode(), response.data)
+        self.assertIn('Ultimate'.encode(), response.data)
+        self.assertNotIn('Essencial'.encode(), response.data)
+        self.assertNotIn('Profissional'.encode(), response.data)
+        self.assertNotIn('Premium'.encode(), response.data)
         self.assertIn('R$ 89,90'.encode(), response.data)
         self.assertIn('R$ 149,90'.encode(), response.data)
         self.assertIn('Solicitar contratação'.encode(), response.data)

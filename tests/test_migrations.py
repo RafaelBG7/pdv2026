@@ -22,8 +22,8 @@ class VersionedMigrationTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             central = self.engine(directory, 'central.db')
             tenant = self.engine(directory, 'tenant.db')
-            self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0006')
-            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0007')
+            self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0007')
+            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0008')
             self.assertEqual(assert_database_at_head(central, 'central'), migration_head('central'))
             self.assertEqual(assert_database_at_head(tenant, 'tenant'), migration_head('tenant'))
             self.assertIn('sales', inspect(tenant).get_table_names())
@@ -43,7 +43,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
                 ))
                 connection.commit()
 
-            self.assertEqual(upgrade_database(engine, 'tenant').current_revision, 'tenant_0007')
+            self.assertEqual(upgrade_database(engine, 'tenant').current_revision, 'tenant_0008')
             columns = {column['name']: column for column in inspect(engine).get_columns('payables')}
             with engine.connect() as connection:
                 amount = connection.execute(text('SELECT amount FROM payables WHERE id = 3')).scalar_one()
@@ -67,7 +67,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
             self.assertTrue(first.baseline_applied)
             self.assertFalse(second.baseline_applied)
             self.assertEqual(name, 'Cliente')
-            self.assertEqual(database_revision(engine), 'central_0006')
+            self.assertEqual(database_revision(engine), 'central_0007')
             engine.dispose()
 
     def test_incompatible_legacy_database_fails_without_stamp(self):
@@ -101,8 +101,44 @@ class VersionedMigrationTestCase(unittest.TestCase):
                 connection.commit()
             with self.assertRaises(MigrationError):
                 assert_database_at_head(engine, 'central')
-            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0006')
+            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0007')
             engine.dispose()
+
+    def test_legacy_subscription_plan_names_are_standardized(self):
+        cases = (
+            ('central', 'central_0006'),
+            ('tenant', 'tenant_0007'),
+        )
+        for database_kind, previous_revision in cases:
+            with self.subTest(database_kind=database_kind), tempfile.TemporaryDirectory() as directory:
+                engine = self.engine(directory, f'{database_kind}-legacy-plans.db')
+                with engine.connect() as connection:
+                    command.upgrade(migration_config(database_kind, connection), previous_revision)
+                    connection.execute(text(
+                        "INSERT INTO companies (id, name, subscription_plan) VALUES "
+                        "(1, 'Essencial', 'Essencial'), "
+                        "(2, 'Profissional', 'Profissional'), "
+                        "(3, 'Premium', 'Premium')"
+                    ))
+                    connection.execute(text(
+                        "INSERT INTO activation_keys (key, plan, renews_at, created_at) VALUES "
+                        "('KEY-BASIC', 'Essencial', '2027-08-28', '2026-08-28'), "
+                        "('KEY-ULTIMATE', 'Premium', '2027-08-28', '2026-08-28')"
+                    ))
+                    connection.commit()
+
+                upgrade_database(engine, database_kind)
+                with engine.connect() as connection:
+                    company_plans = connection.execute(text(
+                        'SELECT subscription_plan FROM companies ORDER BY id'
+                    )).scalars().all()
+                    key_plans = connection.execute(text(
+                        'SELECT plan FROM activation_keys ORDER BY key'
+                    )).scalars().all()
+
+                self.assertEqual(company_plans, ['Basic', 'Ultimate', 'Ultimate'])
+                self.assertEqual(key_plans, ['Basic', 'Ultimate'])
+                engine.dispose()
 
     def test_migration_failure_is_not_swallowed(self):
         with tempfile.TemporaryDirectory() as directory:

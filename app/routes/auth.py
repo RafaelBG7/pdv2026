@@ -43,8 +43,8 @@ from app.tenant import current_tenant_company, drop_mysql_database, tenant_datab
 
 
 auth_bp = Blueprint('auth', __name__)
-SUBSCRIPTION_PLANS = ('Basic', 'Pro', 'Essencial', 'Profissional', 'Premium')
-MASTER_KEY_PLANS = ('Basic', 'Pro')
+SUBSCRIPTION_PLANS = ('Basic', 'Pro', 'Ultimate')
+MASTER_KEY_PLANS = SUBSCRIPTION_PLANS
 KEY_PAYMENT_CYCLES = {
     'monthly': 'Mensal',
     'quarterly': 'Trimestral',
@@ -79,6 +79,18 @@ BASIC_PRO_PLANS = (
             'Taxas de maquininha no lucro',
             'Relatórios completos e gráfico',
             'Controle de assinatura e key',
+        ),
+    },
+    {
+        'name': 'Ultimate',
+        'monthly_price': 'Sob consulta',
+        'annual_price': 'Sob consulta',
+        'tagline': 'Para operações que precisam do máximo de controle e escala.',
+        'features': (
+            'Tudo do plano Pro',
+            'Recursos avançados de gestão',
+            'Relatórios e auditoria completos',
+            'Prioridade no suporte',
         ),
     },
 )
@@ -617,7 +629,9 @@ def company_uses_key_license(company):
 def current_basic_pro_plan(company):
     if not company:
         return None
-    if company.subscription_plan in ('Pro', 'Premium', 'Profissional'):
+    if company.subscription_plan in ('Ultimate', 'Premium', 'Profissional'):
+        return 'Ultimate'
+    if company.subscription_plan == 'Pro':
         return 'Pro'
     return 'Basic'
 

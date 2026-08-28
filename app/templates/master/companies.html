@@ -232,7 +232,7 @@
     <div class="company-card-header">
       <div>
         <h5 class="mb-1">{{ company.name }}</h5>
-        <p class="text-muted mb-0">Banco {{ company.id }} · {{ company.subscription_plan or 'Essencial' }} · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }} · Key {{ mask_secret(company.activation_key) }}</p>
+        <p class="text-muted mb-0">Banco {{ company.id }} · {{ company.subscription_plan or 'Basic' }} · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }} · Key {{ mask_secret(company.activation_key) }}</p>
       </div>
       {% if company.active %}
       <span class="badge text-bg-success">Ativa</span>
@@ -329,7 +329,7 @@
               <span>{{ company.name }}</span>
               <small>
                 Banco {{ company.id }}
-                · {{ company.subscription_plan or 'Essencial' }}
+                · {{ company.subscription_plan or 'Basic' }}
                 · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }}
                 · Key {{ mask_secret(company.activation_key) }}
                 {% if company.id == current_user.company_id %}
@@ -345,7 +345,7 @@
             <span class="badge text-bg-secondary">Inativa</span>
             {% endif %}
           </td>
-          <td data-label="Plano">{{ company.subscription_plan or 'Essencial' }}</td>
+          <td data-label="Plano">{{ company.subscription_plan or 'Basic' }}</td>
           <td data-label="Renovação">
             <span class="subscription-pill subscription-{{ subscription.get('state', 'neutral') }}">{{ subscription.get('days_label', 'Sem renovação') }}</span>
             <small class="d-block text-muted">{{ subscription.get('renewal_label', '-') }}</small>
@@ -363,7 +363,7 @@
                   <div><span>Produtos</span><strong>{{ stats.get('products', 0) }}</strong></div>
                   <div><span>Vendas</span><strong>{{ stats.get('sales', 0) }}</strong></div>
                   <div><span>Caixas</span><strong>{{ stats.get('cash_registers', 0) }}</strong></div>
-                  <div><span>Plano</span><strong>{{ company.subscription_plan or 'Essencial' }}</strong></div>
+                  <div><span>Plano</span><strong>{{ company.subscription_plan or 'Basic' }}</strong></div>
                   <div><span>Pagamento</span><strong>{{ billing_cycles.get(company.billing_cycle, 'Mensal') }}</strong></div>
                   <div><span>Renova em</span><strong>{{ subscription.get('renewal_label', '-') }}</strong></div>
                   <div><span>Prazo</span><strong>{{ subscription.get('days_label', 'Sem renovação') }}</strong></div>

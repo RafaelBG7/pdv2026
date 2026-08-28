@@ -244,7 +244,7 @@ def ensure_company_subscription_columns():
 
     columns = {column['name'] for column in inspector.get_columns('companies')}
     migrations = {
-        'subscription_plan': 'ALTER TABLE companies ADD COLUMN subscription_plan VARCHAR(80) DEFAULT "Essencial"',
+        'subscription_plan': 'ALTER TABLE companies ADD COLUMN subscription_plan VARCHAR(80) DEFAULT "Basic"',
         'billing_cycle': 'ALTER TABLE companies ADD COLUMN billing_cycle VARCHAR(20) DEFAULT "monthly"',
         'subscription_started_at': 'ALTER TABLE companies ADD COLUMN subscription_started_at DATE',
         'subscription_renews_at': 'ALTER TABLE companies ADD COLUMN subscription_renews_at DATE',
@@ -262,8 +262,16 @@ def ensure_company_subscription_columns():
     today = date.today()
     renewal = today + timedelta(days=30)
     db.session.execute(text(
-        'UPDATE companies SET subscription_plan = "Essencial" '
+        'UPDATE companies SET subscription_plan = "Basic" '
         'WHERE subscription_plan IS NULL OR subscription_plan = ""'
+    ))
+    db.session.execute(text(
+        'UPDATE companies SET subscription_plan = "Basic" '
+        'WHERE subscription_plan = "Essencial"'
+    ))
+    db.session.execute(text(
+        'UPDATE companies SET subscription_plan = "Ultimate" '
+        'WHERE subscription_plan IN ("Profissional", "Premium")'
     ))
     db.session.execute(text(
         'UPDATE companies SET billing_cycle = "monthly" '

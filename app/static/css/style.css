@@ -8966,6 +8966,31 @@ canvas {
   transition: background 180ms ease, box-shadow 180ms ease;
 }
 
+.master-page-companies .company-table {
+  table-layout: fixed;
+  min-width: 0;
+}
+
+.master-page-companies .company-table th:first-child,
+.master-page-companies .company-table td:first-child {
+  width: 38%;
+}
+
+.master-page-companies .company-table th:nth-child(2),
+.master-page-companies .company-table td:nth-child(2) {
+  width: 16%;
+}
+
+.master-page-companies .company-table th:nth-child(3),
+.master-page-companies .company-table td:nth-child(3) {
+  width: 16%;
+}
+
+.master-page-companies .company-table th:last-child,
+.master-page-companies .company-table td:last-child {
+  width: 30%;
+}
+
 .master-company-list-row:hover,
 .master-company-list-row:focus-visible,
 .master-company-list-row.is-expanded {
@@ -8991,6 +9016,17 @@ canvas {
 }
 
 .master-company-list-row.is-expanded td:last-child::after { transform: rotate(180deg); }
+
+.company-details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.company-details-heading h4 {
+  margin: 0.15rem 0 0;
+}
 
 @container master-panel (max-width: 1200px) {
   .master-subscription-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }

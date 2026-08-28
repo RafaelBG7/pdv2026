@@ -311,12 +311,9 @@
       <thead>
         <tr>
           <th>Adega</th>
-          <th>Status</th>
           <th>Plano</th>
+          <th>Status</th>
           <th>Renovação</th>
-          <th>Usuários</th>
-          <th>Produtos</th>
-          <th>Vendas</th>
         </tr>
       </thead>
       <tbody>
@@ -327,17 +324,10 @@
           <td data-label="Adega">
             <div class="product-name-button">
               <span>{{ company.name }}</span>
-              <small>
-                Banco {{ company.id }}
-                · {{ company.subscription_plan or 'Basic' }}
-                · {{ billing_cycles.get(company.billing_cycle, 'Mensal') }}
-                · Key {{ mask_secret(company.activation_key) }}
-                {% if company.id == current_user.company_id %}
-                · Adega do master
-                {% endif %}
-              </small>
+              <small>Clique para ver detalhes</small>
             </div>
           </td>
+          <td data-label="Plano"><strong>{{ company.subscription_plan or 'Basic' }}</strong></td>
           <td data-label="Status">
             {% if company.active %}
             <span class="badge text-bg-success">Ativa</span>
@@ -345,19 +335,22 @@
             <span class="badge text-bg-secondary">Inativa</span>
             {% endif %}
           </td>
-          <td data-label="Plano">{{ company.subscription_plan or 'Basic' }}</td>
           <td data-label="Renovação">
             <span class="subscription-pill subscription-{{ subscription.get('state', 'neutral') }}">{{ subscription.get('days_label', 'Sem renovação') }}</span>
             <small class="d-block text-muted">{{ subscription.get('renewal_label', '-') }}</small>
           </td>
-          <td data-label="Usuários">{{ user_counts.get(company.id, 0) }}</td>
-          <td data-label="Produtos">{{ stats.get('products', 0) }}</td>
-          <td data-label="Vendas">{{ stats.get('sales', 0) }}</td>
         </tr>
         <tr class="product-details-row">
-          <td colspan="7" class="p-0">
+          <td colspan="4" class="p-0">
             <div class="collapse" id="company-details-{{ company.id }}">
               <div class="product-details-panel">
+                <div class="company-details-heading">
+                  <div>
+                    <span class="master-eyebrow">Detalhes da adega</span>
+                    <h4>{{ company.name }}</h4>
+                  </div>
+                  <span class="badge {{ 'text-bg-success' if company.active else 'text-bg-secondary' }}">{{ 'Ativa' if company.active else 'Inativa' }}</span>
+                </div>
                 <div class="company-stat-grid company-details-stats">
                   <div><span>Usuários</span><strong>{{ user_counts.get(company.id, 0) }}</strong></div>
                   <div><span>Produtos</span><strong>{{ stats.get('products', 0) }}</strong></div>
@@ -368,6 +361,7 @@
                   <div><span>Renova em</span><strong>{{ subscription.get('renewal_label', '-') }}</strong></div>
                   <div><span>Prazo</span><strong>{{ subscription.get('days_label', 'Sem renovação') }}</strong></div>
                   <div><span>Key</span><strong>{{ mask_secret(company.activation_key) }}</strong></div>
+                  <div><span>Identificador</span><strong>Banco {{ company.id }}</strong></div>
                 </div>
 
                 <div>
@@ -429,7 +423,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="text-center text-muted py-4">Nenhuma adega cadastrada.</td>
+          <td colspan="4" class="text-center text-muted py-4">Nenhuma adega cadastrada.</td>
         </tr>
         {% endfor %}
       </tbody>

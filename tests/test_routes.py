@@ -3622,6 +3622,11 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('>Lista<'.encode(), response.data)
         self.assertIn('data-company-row-toggle='.encode(), response.data)
         self.assertIn('role="button"'.encode(), response.data)
+        self.assertIn('Clique para ver detalhes'.encode(), response.data)
+        self.assertIn('Detalhes da adega'.encode(), response.data)
+        self.assertNotIn('<th>Usuários</th>'.encode(), response.data)
+        self.assertNotIn('<th>Produtos</th>'.encode(), response.data)
+        self.assertNotIn('<th>Vendas</th>'.encode(), response.data)
 
     def test_master_system_context_is_not_treated_as_customer_company(self):
         self.login()

@@ -5799,6 +5799,40 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(first_page.data.count(b'id="kit-product-autocomplete-options"'), 1)
         self.assertNotIn(b'<select class="form-select" id="kit_component_', first_page.data)
 
+    def test_product_form_uses_responsive_sections_and_remote_kit_search(self):
+        self.login()
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            db.session.add(Product(
+                name='Coca-Cola Zero 2L',
+                barcode='7894900700046',
+                sale_price=12.9,
+                stock_quantity=12,
+                active=True,
+                company_id=company_id,
+            ))
+            db.session.commit()
+
+        response = self.client.get('/catalogo/produtos/novo')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('product-create-form'.encode(), response.data)
+        self.assertIn('Informações básicas'.encode(), response.data)
+        self.assertIn('data-product-profit-margin'.encode(), response.data)
+        self.assertIn('data-autocomplete-url="/catalogo/produtos/sugestoes-kit"'.encode(), response.data)
+        self.assertIn('Pesquisar por nome ou código de barras...'.encode(), response.data)
+        self.assertNotIn('Coca-Cola Zero 2L'.encode(), response.data)
+
+        by_name = self.client.get('/catalogo/produtos/sugestoes-kit?q=coca')
+        by_barcode = self.client.get('/catalogo/produtos/sugestoes-kit?q=7894900700046')
+        too_short = self.client.get('/catalogo/produtos/sugestoes-kit?q=c')
+
+        self.assertEqual(by_name.status_code, 200)
+        self.assertEqual(by_barcode.status_code, 200)
+        self.assertEqual(by_name.get_json()['items'][0]['value'], 'Coca-Cola Zero 2L')
+        self.assertEqual(by_barcode.get_json()['items'][0]['barcode'], '7894900700046')
+        self.assertEqual(too_short.get_json(), {'items': []})
+
     def test_import_products_from_csv_creates_categories_and_products(self):
         self.login()
         csv_content = (

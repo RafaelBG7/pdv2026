@@ -1,96 +1,134 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-  <div>
-    <h2>{{ 'Editar produto' if product.id else 'Novo produto' }}</h2>
-    <p class="text-muted mb-0">Preencha os dados usados no estoque e no PDV.</p>
-  </div>
-  <a class="btn btn-outline-light" href="{{ url_for('catalog.products') }}">Voltar</a>
-</div>
+<div class="product-create-page">
+  <header class="product-create-header">
+    <div>
+      <span class="product-create-eyebrow">Catálogo</span>
+      <h2>{{ 'Editar produto' if product.id else 'Novo produto' }}</h2>
+      <p class="text-muted mb-0">Preencha os dados do produto para adicionar ao seu estoque e PDV.</p>
+    </div>
+    <a class="btn btn-outline-light" href="{{ url_for('catalog.products') }}">← Voltar para produtos</a>
+  </header>
 
-<form class="card card-dark p-4 product-form-card" method="post" {% if needs_permission_override('can_manage_products') %}data-permission-override="true"{% endif %}>
-  <div class="row g-3">
-    <div class="col-md-8">
-      <label class="form-label" for="name">Nome do produto</label>
-      <input class="form-control" id="name" name="name" value="{{ product.name or '' }}" required>
-    </div>
-    <div class="col-md-4">
-      <label class="form-label" for="barcode">Código de barras</label>
-      <input class="form-control" id="barcode" name="barcode" value="{{ product.barcode or '' }}">
-    </div>
-    <div class="col-md-6">
-      <label class="form-label" for="category_id">Categoria</label>
-      <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode>
-        <input class="form-control" id="category_id" value="{{ product.category.name if product.category else '' }}" placeholder="Buscar categoria" autocomplete="off" data-autocomplete-input>
-        <input name="category_id" type="hidden" value="{{ product.category_id or '' }}" data-autocomplete-hidden>
-        <div class="product-suggestion-list" data-autocomplete-list></div>
-        <div class="d-none" data-autocomplete-options>
-        {% for category in categories %}
-          <span
-            data-autocomplete-option
-            data-id="{{ category.id }}"
-            data-value="{{ category.name }}"
-            data-title="{{ category.name }}"
-            data-meta="{{ category.products|length }} produto{{ '' if category.products|length == 1 else 's' }}"
-          ></span>
-        {% endfor %}
+  <form class="card card-dark product-form-card product-create-form" method="post" {% if needs_permission_override('can_manage_products') %}data-permission-override="true"{% endif %}>
+    <section class="product-form-section">
+      <header class="product-form-section-heading">
+        <span class="product-form-section-number">1</span>
+        <div><h3>Informações básicas</h3><p>Dados principais do produto</p></div>
+      </header>
+      <div class="product-form-grid product-identity-grid">
+        <div class="product-field product-field-name">
+          <label class="form-label" for="name">Nome do produto</label>
+          <input class="form-control" id="name" name="name" value="{{ product.name or '' }}" placeholder="Digite o nome do produto" autocomplete="off" required autofocus>
         </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label" for="cost_price">Preço de custo</label>
-      <input class="form-control" id="cost_price" name="cost_price" inputmode="numeric" value="{{ '%.2f'|format(product.cost_price or 0)|replace('.', ',') }}" data-currency-input>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label" for="sale_price">Preço de venda</label>
-      <input class="form-control" id="sale_price" name="sale_price" inputmode="numeric" value="{{ '%.2f'|format(product.sale_price or 0)|replace('.', ',') }}" data-currency-input>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label" for="stock_quantity">Estoque</label>
-      <input class="form-control" id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}">
-    </div>
-    <div class="col-md-6">
-      <label class="form-label" for="stock_reason">Motivo do ajuste de estoque</label>
-      <input class="form-control" id="stock_reason" name="stock_reason" placeholder="{{ 'Estoque inicial informado no cadastro' if not product.id else 'Motivo do ajuste, se alterar o estoque' }}">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label" for="min_stock_quantity">Estoque mínimo</label>
-      <input class="form-control" id="min_stock_quantity" name="min_stock_quantity" type="number" min="0" value="{{ product.min_stock_quantity or 0 }}">
-    </div>
-    <div class="col-12">
-      <div class="form-check form-switch">
-        <input class="form-check-input" id="active" name="active" type="checkbox" {% if product.active %}checked{% endif %}>
-        <label class="form-check-label" for="active">Produto ativo</label>
-      </div>
-    </div>
-    <div class="col-12">
-      <div class="form-check form-switch">
-        <input class="form-check-input" id="is_kit" name="is_kit" type="checkbox" data-kit-toggle data-kit-target="product-form-kit-fields" {% if product.is_kit %}checked{% endif %}>
-        <label class="form-check-label" for="is_kit">Kit</label>
-      </div>
-    </div>
-    <div class="col-12 kit-fields" id="product-form-kit-fields">
-      <div class="row g-3">
-        <div class="col-md-8">
-          <label class="form-label" for="kit_component_product_id">Produto base do kit</label>
-          <select class="form-select" id="kit_component_product_id" name="kit_component_product_id">
-            <option value="">Selecione o produto unitário</option>
-            {% for kit_product in kit_products %}
-            <option value="{{ kit_product.id }}" {% if product.kit_component_product_id == kit_product.id %}selected{% endif %}>{{ kit_product.name }}</option>
+        <div class="product-field">
+          <label class="form-label" for="barcode">Código de barras</label>
+          <input class="form-control" id="barcode" name="barcode" value="{{ product.barcode or '' }}" placeholder="Ex: 7891234567890" inputmode="numeric" autocomplete="off">
+        </div>
+        <div class="product-field product-field-category">
+          <label class="form-label" for="category_id">Categoria</label>
+          <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode>
+            <input class="form-control" id="category_id" value="{{ product.category.name if product.category else '' }}" placeholder="Selecione uma categoria" autocomplete="off" data-autocomplete-input>
+            <input name="category_id" type="hidden" value="{{ product.category_id or '' }}" data-autocomplete-hidden>
+            <div class="product-suggestion-list" data-autocomplete-list></div>
+            <div class="d-none" data-autocomplete-options>
+            {% for category in categories %}
+              <span data-autocomplete-option data-id="{{ category.id }}" data-value="{{ category.name }}" data-title="{{ category.name }}" data-meta="{{ category.products|length }} produto{{ '' if category.products|length == 1 else 's' }}"></span>
             {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label" for="kit_component_quantity">Unidades descontadas</label>
-          <input class="form-control" id="kit_component_quantity" name="kit_component_quantity" type="number" min="0" value="{{ product.kit_component_quantity or 0 }}">
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="d-flex justify-content-end gap-2 mt-4">
-    <a class="btn btn-outline-light" href="{{ url_for('catalog.products') }}">Cancelar</a>
-    <button class="btn btn-primary" type="submit">Salvar produto</button>
-  </div>
-</form>
+    </section>
+
+    <section class="product-form-section">
+      <header class="product-form-section-heading">
+        <span class="product-form-section-number">2</span>
+        <div><h3>Preços</h3><p>Defina os valores do produto</p></div>
+      </header>
+      <div class="product-form-grid product-commercial-grid">
+        <div class="product-field">
+          <label class="form-label" for="cost_price">Preço de custo</label>
+          <div class="product-money-field"><span>R$</span><input class="form-control" id="cost_price" name="cost_price" inputmode="numeric" value="{{ '%.2f'|format(product.cost_price or 0)|replace('.', ',') }}" data-currency-input></div>
+        </div>
+        <div class="product-field">
+          <label class="form-label" for="sale_price">Preço de venda</label>
+          <div class="product-money-field"><span>R$</span><input class="form-control" id="sale_price" name="sale_price" inputmode="numeric" value="{{ '%.2f'|format(product.sale_price or 0)|replace('.', ',') }}" data-currency-input></div>
+        </div>
+        <div class="product-field product-profit-field" aria-live="polite">
+          <span>Margem de lucro</span>
+          <strong data-product-profit-margin>{{ '%.2f'|format(product.profit_margin_percent or 0)|replace('.', ',') }}%</strong>
+          <small data-product-profit-amount>Lucro R$ {{ '%.2f'|format(product.profit_amount or 0)|replace('.', ',') }}</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="product-form-section">
+      <header class="product-form-section-heading">
+        <span class="product-form-section-number">3</span>
+        <div><h3>Estoque</h3><p>Controle de estoque do produto</p></div>
+      </header>
+      <div class="product-form-grid product-stock-grid">
+        <div class="product-field">
+          <label class="form-label" for="stock_quantity">Estoque inicial</label>
+          <input class="form-control" id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}">
+        </div>
+        <div class="product-field">
+          <label class="form-label" for="min_stock_quantity">Estoque mínimo</label>
+          <input class="form-control" id="min_stock_quantity" name="min_stock_quantity" type="number" min="0" value="{{ product.min_stock_quantity or 0 }}">
+        </div>
+        <div class="product-field product-field-wide">
+          <label class="form-label" for="stock_reason">Motivo do ajuste de estoque</label>
+          <input class="form-control" id="stock_reason" name="stock_reason" placeholder="{{ 'Ex: Estoque inicial, compra, ajuste...' if not product.id else 'Descreva o motivo caso altere o estoque' }}">
+          <small>Esse motivo ficará registrado no histórico de estoque.</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="product-form-section product-options-section">
+      <header class="product-form-section-heading">
+        <span class="product-form-section-number">4</span>
+        <div><h3>Configurações</h3><p>Defina as características do produto</p></div>
+      </header>
+      <div class="product-option-grid">
+        <label class="product-option-card" for="active">
+          <span><strong>Produto ativo</strong><small>Produto disponível para venda</small></span>
+          <span class="form-check form-switch"><input class="form-check-input" id="active" name="active" type="checkbox" {% if product.active %}checked{% endif %}></span>
+        </label>
+        <label class="product-option-card" for="is_kit">
+          <span><strong>Produto é kit</strong><small>Produto composto por outros itens</small></span>
+          <span class="form-check form-switch"><input class="form-check-input" id="is_kit" name="is_kit" type="checkbox" data-kit-toggle data-kit-target="product-form-kit-fields" {% if product.is_kit %}checked{% endif %}></span>
+        </label>
+      </div>
+
+      <div class="kit-fields product-kit-builder" id="product-form-kit-fields">
+        <div class="product-kit-builder-heading">
+          <div><strong>Produtos do kit</strong><small>Pesquise por nome ou código de barras e escolha o produto que terá o estoque baixado.</small></div>
+          <span class="badge badge-accent">Kit</span>
+        </div>
+        <div class="product-kit-builder-grid">
+          <div class="product-field">
+            <label class="form-label" for="kit_component_product_search">Produto base do kit</label>
+            <div class="catalog-autocomplete" data-catalog-autocomplete data-autocomplete-id-mode data-autocomplete-url="{{ url_for('catalog.kit_product_suggestions') }}" data-autocomplete-exclude-id="{{ product.id or '' }}">
+              <input class="form-control" id="kit_component_product_search" value="{{ product.kit_component.name if product.kit_component else '' }}" placeholder="Pesquisar por nome ou código de barras..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="kit_component_suggestions" data-autocomplete-input>
+              <input id="kit_component_product_id" name="kit_component_product_id" type="hidden" value="{{ product.kit_component_product_id or '' }}" data-autocomplete-hidden>
+              <div class="product-suggestion-list" id="kit_component_suggestions" role="listbox" data-autocomplete-list></div>
+            </div>
+          </div>
+          <div class="product-field">
+            <label class="form-label" for="kit_component_quantity">Unidades por kit</label>
+            <input class="form-control" id="kit_component_quantity" name="kit_component_quantity" type="number" min="1" value="{{ product.kit_component_quantity or 1 }}">
+            <small>Quantidade baixada a cada venda deste kit.</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="product-form-actions">
+      <button class="btn btn-outline-light" type="reset" data-product-form-reset>Limpar formulário</button>
+      <button class="btn btn-primary" type="submit" data-product-form-submit data-loading-text="Salvando...">{{ 'Salvar alterações' if product.id else 'Salvar produto' }}</button>
+    </footer>
+  </form>
+</div>
 {% endblock %}

@@ -4,10 +4,10 @@ import re
 import zipfile
 from xml.etree import ElementTree
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
-from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
@@ -40,6 +40,15 @@ def product_barcode_exists(barcode, product_id=None):
     if not barcode:
         return False
     query = tenant_query(Product).filter(Product.barcode == barcode)
+    if product_id:
+        query = query.filter(Product.id != product_id)
+    return query.first() is not None
+
+
+def kit_component_is_valid(component_id, product_id=None):
+    if not component_id:
+        return False
+    query = tenant_query(Product).filter(Product.id == component_id, Product.active.is_(True))
     if product_id:
         query = query.filter(Product.id != product_id)
     return query.first() is not None
@@ -493,13 +502,51 @@ def import_products():
     return import_redirect_target()
 
 
+@catalog_bp.route('/produtos/sugestoes-kit')
+@login_required
+@permission_required('can_manage_products')
+def kit_product_suggestions():
+    search = request.args.get('q', '').strip()[:120]
+    exclude_id = request.args.get('exclude_id', type=int)
+    if len(search) < 2:
+        return jsonify({'items': []})
+
+    pattern = f'%{search}%'
+    query = tenant_query(Product).filter(
+        Product.active.is_(True),
+        or_(Product.name.ilike(pattern), Product.barcode.ilike(pattern)),
+    )
+    if exclude_id:
+        query = query.filter(Product.id != exclude_id)
+
+    products = query.order_by(Product.name.asc()).limit(12).all()
+    return jsonify({
+        'items': [
+            {
+                'id': product.id,
+                'value': product.name,
+                'title': product.name,
+                'barcode': product.barcode or '',
+                'stock': int(product.effective_stock_quantity or 0),
+                'sale_price': float(product.sale_price or 0),
+                'meta': (
+                    f"Código: {product.barcode or 'sem código'} · "
+                    f"Estoque: {int(product.effective_stock_quantity or 0)} un. · "
+                    f"R$ {format(float(product.sale_price or 0), '.2f').replace('.', ',')}"
+                ),
+            }
+            for product in products
+        ],
+    })
+
+
 @catalog_bp.route('/produtos/novo', methods=['GET', 'POST'])
 @login_required
 @permission_required('can_manage_products')
 def new_product():
     product = Product(active=True)
     categories = current_company_categories_query().order_by(Category.name.asc()).all()
-    kit_products = tenant_query(Product).filter_by(active=True).order_by(Product.name.asc()).all()
+    kit_products = []
 
     if request.method == 'POST':
         initial_stock = parse_int(request.form.get('stock_quantity'))
@@ -513,6 +560,9 @@ def new_product():
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
         if product.is_kit and (not product.kit_component_product_id or product.kit_component_quantity <= 0):
             flash('Informe o produto base e a quantidade do kit.', 'danger')
+            return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
+        if product.is_kit and not kit_component_is_valid(product.kit_component_product_id):
+            flash('Selecione um produto base válido e ativo para o kit.', 'danger')
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
         if product.id and product.kit_component_product_id == product.id:
             flash('O produto base do kit não pode ser o próprio kit.', 'danger')
@@ -532,7 +582,7 @@ def new_product():
                     initial_stock,
                     user_id=current_user.id,
                     unit_cost=product.cost_price,
-                    reason='Estoque inicial informado no cadastro',
+                    reason=request.form.get('stock_reason', '').strip() or 'Estoque inicial informado no cadastro',
                 )
             record_audit_event(
                 'product_created',
@@ -565,7 +615,7 @@ def new_product():
 def edit_product(product_id):
     product = tenant_get_or_404(Product, product_id)
     categories = current_company_categories_query().order_by(Category.name.asc()).all()
-    kit_products = tenant_query(Product).filter(Product.id != product.id, Product.active.is_(True)).order_by(Product.name.asc()).all()
+    kit_products = []
 
     if request.method == 'POST':
         tenant_db = tenant_session()
@@ -584,6 +634,9 @@ def edit_product(product_id):
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
         if product.id and product.kit_component_product_id == product.id:
             flash('O produto base do kit não pode ser o próprio kit.', 'danger')
+            return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
+        if product.is_kit and not kit_component_is_valid(product.kit_component_product_id, product.id):
+            flash('Selecione um produto base válido e ativo para o kit.', 'danger')
             return render_template('catalog/product_form.html', product=product, categories=categories, kit_products=kit_products)
 
         try:

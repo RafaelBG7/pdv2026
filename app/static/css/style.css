@@ -2713,6 +2713,321 @@ html[data-accessibility-bold='true'] .sales-table .sales-total-column {
   display: none;
 }
 
+/* Product create/edit: structured, fluid form for desktop and mobile. */
+.product-create-page {
+  width: min(100%, 1440px);
+  margin-inline: auto;
+}
+
+.product-create-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.product-create-header h2 {
+  margin: 0.15rem 0 0.35rem;
+}
+
+.product-create-eyebrow {
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.product-create-form {
+  display: grid;
+  gap: 0;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  overflow: visible;
+}
+
+.product-form-section {
+  display: grid;
+  gap: 1.15rem;
+  min-width: 0;
+  padding: 0.25rem 0 1.5rem;
+}
+
+.product-form-section + .product-form-section {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.product-form-section-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.product-form-section-heading h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.product-form-section-heading p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.product-form-section-number {
+  display: inline-grid;
+  flex: 0 0 30px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(var(--primary-rgb), 0.5);
+  border-radius: 50%;
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.product-form-grid {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.product-identity-grid {
+  grid-template-columns: minmax(260px, 1.5fr) minmax(220px, 0.8fr);
+}
+
+.product-field-category,
+.product-field-wide {
+  grid-column: 1 / -1;
+}
+
+.product-commercial-grid {
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+}
+
+.product-stock-grid {
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.product-field {
+  min-width: 0;
+}
+
+.product-field > small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.product-money-field {
+  position: relative;
+}
+
+.product-money-field > span {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 0.85rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.product-money-field .form-control {
+  padding-left: 2.75rem;
+}
+
+.product-profit-field {
+  display: grid;
+  align-content: center;
+  gap: 0.15rem;
+  min-height: 72px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface-2);
+}
+
+.product-profit-field > span,
+.product-profit-field small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.product-profit-field strong {
+  color: var(--success);
+  font-size: 1.15rem;
+}
+
+.product-profit-field strong.is-negative {
+  color: var(--danger);
+}
+
+.product-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.product-option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.product-option-card:hover,
+.product-option-card:focus-within {
+  border-color: rgba(var(--primary-rgb), 0.65);
+  background: rgba(var(--primary-rgb), 0.08);
+}
+
+.product-option-card > span:first-child {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.product-option-card small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.product-option-card .form-check {
+  flex: 0 0 auto;
+  margin: 0;
+  padding-left: 2.5rem;
+}
+
+.product-kit-builder {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(var(--primary-rgb), 0.45);
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), var(--surface-2));
+}
+
+.product-kit-builder-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.product-kit-builder-heading > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.product-kit-builder-heading small {
+  color: var(--muted);
+}
+
+.product-kit-builder-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(160px, 0.3fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.product-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 900px) {
+  .product-commercial-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .product-create-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .product-create-header .btn {
+    width: 100%;
+  }
+
+  .product-create-form {
+    padding: 0.9rem;
+  }
+
+  .product-identity-grid,
+  .product-commercial-grid,
+  .product-stock-grid,
+  .product-option-grid,
+  .product-kit-builder-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-field-category,
+  .product-field-wide {
+    grid-column: auto;
+  }
+
+  .product-option-card {
+    padding: 0.85rem;
+  }
+
+  .product-kit-builder-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .product-kit-builder-heading .badge {
+    align-self: flex-start;
+  }
+
+  .product-form-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+.product-form-actions .btn {
+    width: 100%;
+  }
+
+  .product-form-actions .btn-primary {
+    grid-row: 1;
+  }
+}
+
+.product-suggestion-loading,
+.product-suggestion-error {
+  padding: 0.8rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.product-suggestion-error {
+  color: var(--danger);
+}
+
+.product-form-actions .btn.is-loading {
+  cursor: wait;
+  opacity: 0.75;
+}
+
 .product-danger-actions {
   display: flex;
   gap: 0.75rem;

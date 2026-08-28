@@ -1023,7 +1023,144 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  function setupRemoteCatalogAutocomplete(autocomplete) {
+    const input = autocomplete.querySelector('[data-autocomplete-input]');
+    const hiddenInput = autocomplete.querySelector('[data-autocomplete-hidden]');
+    const list = autocomplete.querySelector('[data-autocomplete-list]');
+    const endpoint = autocomplete.dataset.autocompleteUrl;
+    const excludeId = autocomplete.dataset.autocompleteExcludeId || '';
+    let debounceTimer = null;
+    let requestController = null;
+    let options = [];
+    let activeOptionIndex = -1;
+
+    function setExpanded(expanded) {
+      input.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      list.classList.toggle('is-open', expanded);
+    }
+
+    function renderMessage(message, className) {
+      list.innerHTML = '';
+      const state = document.createElement('div');
+      state.className = className || 'product-suggestion-empty';
+      state.textContent = message;
+      list.appendChild(state);
+      setExpanded(true);
+    }
+
+    function selectOption(option) {
+      input.value = option.value;
+      hiddenInput.value = option.id;
+      options = [];
+      list.innerHTML = '';
+      setExpanded(false);
+      input.focus();
+    }
+
+    function renderOptions() {
+      list.innerHTML = '';
+      if (!options.length) {
+        renderMessage('Nenhum produto encontrado.', 'product-suggestion-empty');
+        return;
+      }
+      options.forEach(function (option, index) {
+        const button = document.createElement('button');
+        const title = document.createElement('span');
+        const meta = document.createElement('span');
+        button.type = 'button';
+        button.id = `${list.id || 'product-suggestion'}-${index}`;
+        button.className = 'product-suggestion-item';
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', index === activeOptionIndex ? 'true' : 'false');
+        button.classList.toggle('is-active', index === activeOptionIndex);
+        title.className = 'product-suggestion-title';
+        meta.className = 'product-suggestion-meta';
+        title.textContent = option.title || option.value;
+        meta.textContent = option.meta || '';
+        button.appendChild(title);
+        if (option.meta) button.appendChild(meta);
+        button.addEventListener('mousedown', function (event) {
+          event.preventDefault();
+          selectOption(option);
+        });
+        list.appendChild(button);
+      });
+      setExpanded(true);
+      const active = list.querySelector('.is-active');
+      if (active) {
+        input.setAttribute('aria-activedescendant', active.id);
+        active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } else {
+        input.removeAttribute('aria-activedescendant');
+      }
+    }
+
+    async function loadOptions(term) {
+      if (requestController) requestController.abort();
+      requestController = new AbortController();
+      renderMessage('Buscando produtos...', 'product-suggestion-loading');
+      const query = new URLSearchParams({ q: term });
+      if (excludeId) query.set('exclude_id', excludeId);
+      try {
+        const response = await fetch(`${endpoint}?${query.toString()}`, {
+          headers: { Accept: 'application/json' },
+          signal: requestController.signal,
+        });
+        if (!response.ok) throw new Error('request_failed');
+        const payload = await response.json();
+        options = Array.isArray(payload.items) ? payload.items : [];
+        activeOptionIndex = options.length ? 0 : -1;
+        renderOptions();
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        options = [];
+        activeOptionIndex = -1;
+        renderMessage('Não foi possível buscar os produtos. Tente novamente.', 'product-suggestion-error');
+      }
+    }
+
+    input.addEventListener('input', function () {
+      hiddenInput.value = '';
+      options = [];
+      activeOptionIndex = -1;
+      window.clearTimeout(debounceTimer);
+      if (input.value.trim().length < 2) {
+        list.innerHTML = '';
+        setExpanded(false);
+        return;
+      }
+      debounceTimer = window.setTimeout(function () {
+        loadOptions(input.value.trim());
+      }, 320);
+    });
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown' && options.length) {
+        event.preventDefault();
+        activeOptionIndex = (activeOptionIndex + 1) % options.length;
+        renderOptions();
+      } else if (event.key === 'ArrowUp' && options.length) {
+        event.preventDefault();
+        activeOptionIndex = (activeOptionIndex - 1 + options.length) % options.length;
+        renderOptions();
+      } else if (event.key === 'Enter' && options.length && list.classList.contains('is-open')) {
+        event.preventDefault();
+        selectOption(options[Math.max(activeOptionIndex, 0)]);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        list.innerHTML = '';
+        setExpanded(false);
+      }
+    });
+    input.addEventListener('blur', function () {
+      window.setTimeout(function () { setExpanded(false); }, 140);
+    });
+  }
+
   document.querySelectorAll('[data-catalog-autocomplete]').forEach(function (autocomplete) {
+    if (autocomplete.dataset.autocompleteUrl) {
+      setupRemoteCatalogAutocomplete(autocomplete);
+      return;
+    }
     const input = autocomplete.querySelector('[data-autocomplete-input]');
     const hiddenInput = autocomplete.querySelector('[data-autocomplete-hidden]');
     const list = autocomplete.querySelector('[data-autocomplete-list]');
@@ -1264,6 +1401,85 @@ document.addEventListener('DOMContentLoaded', function () {
     toggle.addEventListener('change', function () {
       applyKitVisibility(toggle);
     });
+  });
+
+  document.querySelectorAll('.product-create-form').forEach(function (form) {
+    const costInput = form.querySelector('#cost_price');
+    const saleInput = form.querySelector('#sale_price');
+    const marginOutput = form.querySelector('[data-product-profit-margin]');
+    const amountOutput = form.querySelector('[data-product-profit-amount]');
+    const submitButton = form.querySelector('[data-product-form-submit]');
+    const resetButton = form.querySelector('[data-product-form-reset]');
+    let submitting = false;
+
+    function currencyNumber(value) {
+      const normalized = String(value || '0').replace(/\./g, '').replace(',', '.');
+      const number = Number.parseFloat(normalized);
+      return Number.isFinite(number) ? Math.max(number, 0) : 0;
+    }
+
+    function renderProfit() {
+      if (!costInput || !saleInput || !marginOutput || !amountOutput) return;
+      const cost = currencyNumber(costInput.value);
+      const sale = currencyNumber(saleInput.value);
+      const profit = sale - cost;
+      const margin = sale > 0 ? (profit / sale) * 100 : 0;
+      marginOutput.textContent = margin.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+      amountOutput.textContent = 'Lucro ' + profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      marginOutput.classList.toggle('is-negative', profit < 0);
+    }
+
+    [costInput, saleInput].filter(Boolean).forEach(function (input) {
+      input.addEventListener('input', renderProfit);
+      input.addEventListener('currencychange', renderProfit);
+    });
+    renderProfit();
+
+    form.addEventListener('submit', function (event) {
+      if (submitting) {
+        event.preventDefault();
+        return;
+      }
+      if (!form.checkValidity()) return;
+      submitting = true;
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.classList.add('is-loading');
+        submitButton.dataset.originalText = submitButton.textContent;
+        submitButton.textContent = submitButton.dataset.loadingText || 'Salvando...';
+      }
+    });
+
+    if (resetButton) {
+      resetButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        const hasContent = Boolean(
+          (form.querySelector('#name')?.value || '').trim()
+          || (form.querySelector('#barcode')?.value || '').trim()
+          || (form.querySelector('[name="category_id"]')?.value || '').trim()
+          || currencyNumber(costInput?.value) > 0
+          || currencyNumber(saleInput?.value) > 0
+          || Number.parseInt(form.querySelector('#stock_quantity')?.value || '0', 10) > 0
+          || Number.parseInt(form.querySelector('#min_stock_quantity')?.value || '0', 10) > 0
+          || form.querySelector('#is_kit')?.checked
+        );
+        if (hasContent && !window.confirm('Limpar formulário?\n\nTodos os dados preenchidos serão removidos.')) return;
+        form.querySelectorAll('input:not([type="checkbox"]):not([type="hidden"])').forEach(function (input) {
+          input.value = input.hasAttribute('data-currency-input') ? '0,00' : (input.type === 'number' ? '0' : '');
+        });
+        form.querySelectorAll('[data-autocomplete-hidden]').forEach(function (input) { input.value = ''; });
+        const activeToggle = form.querySelector('#active');
+        const kitToggle = form.querySelector('#is_kit');
+        if (activeToggle) activeToggle.checked = true;
+        if (kitToggle) {
+          kitToggle.checked = false;
+          applyKitVisibility(kitToggle);
+        }
+        renderProfit();
+        const firstInput = form.querySelector('#name');
+        if (firstInput) firstInput.focus();
+      });
+    }
   });
 
   document.querySelectorAll('[data-cash-register-toggle]').forEach(function (row) {

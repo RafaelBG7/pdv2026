@@ -8471,3 +8471,350 @@ canvas {
     min-width: 0;
   }
 }
+
+/* Master panel: respond to its real content width, not only to the viewport. */
+.master-page {
+  container-name: master-panel;
+  container-type: inline-size;
+  overflow: visible;
+}
+
+.master-page-header,
+.master-subscription-panel,
+.master-subscription-box,
+.master-key-list,
+.master-user-panel,
+.master-log-panel,
+.company-card-grid,
+.company-card,
+.company-details-form,
+.master-page .table-card,
+.master-page .table-responsive {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.master-subscription-panel,
+.master-user-panel,
+.master-log-panel,
+.company-card {
+  padding: clamp(0.85rem, 1.5cqi, 1.25rem);
+}
+
+.master-subscription-actions {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+}
+
+.master-key-form,
+.company-subscription-form,
+.company-main-form,
+.company-details-stats,
+.master-user-details,
+.company-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+}
+
+.master-key-form > .btn,
+.master-key-form > div,
+.company-subscription-form > div,
+.company-main-form > div {
+  width: 100%;
+  min-width: 0;
+}
+
+.master-key-presets {
+  align-items: stretch;
+}
+
+.master-key-presets .btn {
+  flex: 1 1 82px;
+  min-width: 0;
+}
+
+.master-key-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.master-key-table th,
+.master-key-table td {
+  min-width: 0 !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.master-key-table th:first-child,
+.master-key-table td:first-child {
+  width: 36%;
+}
+
+.master-key-table th:nth-child(2),
+.master-key-table td:nth-child(2) {
+  width: 16%;
+}
+
+.master-key-table th:nth-child(3),
+.master-key-table td:nth-child(3),
+.master-key-table th:nth-child(4),
+.master-key-table td:nth-child(4),
+.master-key-table th:nth-child(5),
+.master-key-table td:nth-child(5) {
+  width: 14%;
+}
+
+.master-key-table th:last-child,
+.master-key-table td:last-child {
+  width: 6%;
+}
+
+.master-key-table .activation-key-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.master-key-table .activation-key-copy .btn,
+.master-key-table td:last-child .btn {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@container master-panel (max-width: 1100px) {
+  .master-page-header {
+    align-items: stretch !important;
+  }
+
+  .master-page-header > div:first-child,
+  .master-toolbar {
+    width: 100%;
+  }
+
+  .master-toolbar > a {
+    flex: 1 1 120px;
+  }
+
+  .master-subscription-actions,
+  .master-user-search,
+  .company-main-form {
+    grid-template-columns: 1fr;
+  }
+
+  .master-user-search {
+    display: grid;
+  }
+
+  .master-user-search > div,
+  .master-user-search .btn {
+    width: 100%;
+  }
+
+  .master-page .table-responsive {
+    overflow: visible;
+  }
+
+  .master-responsive-table,
+  .master-responsive-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .master-responsive-table thead {
+    display: none;
+  }
+
+  .master-responsive-table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .master-responsive-table tbody > tr:not(.product-details-row) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    padding: 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 0.65rem;
+    background: var(--surface-2);
+  }
+
+  .master-responsive-table tbody > tr:not(.product-details-row) > td {
+    display: grid;
+    width: 100%;
+    align-content: start;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 0.55rem;
+    border: 0;
+    text-align: left !important;
+    overflow-wrap: anywhere;
+  }
+
+  .master-responsive-table tbody > tr:not(.product-details-row) > td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .master-responsive-table .product-details-row,
+  .master-responsive-table .product-details-row > td {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .master-responsive-table .product-details-row {
+    margin-top: -0.75rem;
+  }
+
+  .master-responsive-table .activation-key-copy,
+  .master-responsive-table .table-actions,
+  .master-responsive-table .table-actions form,
+  .master-responsive-table .table-actions .btn {
+    width: 100%;
+  }
+
+  .master-key-table .activation-key-copy {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container master-panel (max-width: 680px) {
+  .master-overview-grid,
+  .company-card-grid,
+  .master-user-details,
+  .company-stat-grid,
+  .company-subscription-form,
+  .master-key-form {
+    grid-template-columns: 1fr;
+  }
+
+  .master-responsive-table tbody > tr:not(.product-details-row) {
+    grid-template-columns: 1fr;
+  }
+
+  .master-user-item summary {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .master-user-item summary > .badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .master-compact-list > a,
+  .company-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .master-page .btn,
+  .master-user-item > form .btn {
+    max-width: 100%;
+  }
+}
+
+/* The master audit route lives outside .master-page, so it owns its container. */
+.audit-page-master {
+  container-name: master-audit-panel;
+  container-type: inline-size;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.audit-page-master > *,
+.audit-page-master .audit-table-card,
+.audit-page-master .audit-log-table {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+@container master-audit-panel (max-width: 900px) {
+  .audit-page-master .audit-log-table {
+    overflow-x: visible;
+  }
+
+  .audit-page-master .audit-table {
+    min-width: 0;
+  }
+
+  .audit-page-master .audit-table thead {
+    display: none;
+  }
+
+  .audit-page-master .audit-table,
+  .audit-page-master .audit-table tbody,
+  .audit-page-master .audit-table tr,
+  .audit-page-master .audit-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .audit-page-master .audit-table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .audit-page-master .audit-table tbody tr.expandable-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem 0.8rem;
+    min-width: 0;
+    padding: 0.85rem;
+  }
+
+  .audit-page-master .audit-table tbody tr.expandable-row > td {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.38fr) minmax(0, 1fr);
+    gap: 0.6rem;
+    min-width: 0;
+    padding: 0.5rem;
+    border: 0;
+  }
+
+  .audit-page-master .audit-table tbody tr.expandable-row > td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .audit-page-master .expandable-detail-row,
+  .audit-page-master .expandable-detail-row > td {
+    display: block;
+    width: 100%;
+  }
+}
+
+@container master-audit-panel (max-width: 560px) {
+  .audit-page-master .audit-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .audit-page-master .audit-table tbody tr.expandable-row {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-page-master .audit-table tbody tr.expandable-row > td {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-page-master .audit-change-grid,
+  .audit-page-master .audit-value-item,
+  .audit-page-master .audit-request-item {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-page-master .audit-request-item strong {
+    text-align: left;
+  }
+}

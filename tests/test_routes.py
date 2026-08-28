@@ -3480,7 +3480,60 @@ class RouteTestCase(unittest.TestCase):
             self.assertTrue(all(key.used_by_company_id is None for key in activation_keys))
             self.assertEqual(len({key.key for key in activation_keys}), 3)
 
-    def test_master_key_generation_does_not_link_company(self):
+    def test_master_can_manage_filter_and_renew_assigned_activation_key(self):
+        self.login()
+        with self.app.app_context():
+            company = Company(name='Adega Licenciada', activation_key='')
+            db.session.add(company)
+            db.session.commit()
+            company_id = company.id
+
+        generated = self.client.post(
+            '/master/assinaturas/keys/gerar',
+            data={
+                'display_name': 'Unidade Centro',
+                'plan': 'Pro',
+                'billing_cycle': 'quarterly',
+                'preset_days': '90',
+                'company_id': str(company_id),
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(generated.status_code, 200)
+        self.assertIn('Unidade Centro'.encode(), generated.data)
+        with self.app.app_context():
+            activation_key = ActivationKey.query.filter_by(display_name='Unidade Centro').one()
+            key_id = activation_key.id
+            original_expiry = activation_key.renews_at
+            self.assertEqual(activation_key.assigned_company_id, company_id)
+            self.assertEqual(activation_key.payment_cycle, 'quarterly')
+
+        filtered = self.client.get('/master/assinaturas?q=Licenciada&plan=Pro')
+        self.assertEqual(filtered.status_code, 200)
+        self.assertIn('Unidade Centro'.encode(), filtered.data)
+
+        edited = self.client.post(
+            f'/master/assinaturas/keys/{key_id}/editar',
+            data={'display_name': 'Unidade Norte', 'plan': 'Basic', 'payment_cycle': 'annual', 'company_id': ''},
+            follow_redirects=True,
+        )
+        self.assertIn('Key atualizada com sucesso.'.encode(), edited.data)
+
+        renewed = self.client.post(
+            f'/master/assinaturas/keys/{key_id}/renovar',
+            data={'preset_days': '30'},
+            follow_redirects=True,
+        )
+        self.assertIn('Key renovada até'.encode(), renewed.data)
+        with self.app.app_context():
+            activation_key = db.session.get(ActivationKey, key_id)
+            self.assertEqual(activation_key.display_name, 'Unidade Norte')
+            self.assertEqual(activation_key.plan, 'Basic')
+            self.assertEqual(activation_key.payment_cycle, 'annual')
+            self.assertIsNone(activation_key.assigned_company_id)
+            self.assertEqual(activation_key.renews_at, original_expiry + timedelta(days=30))
+
+    def test_master_key_generation_can_assign_company_without_activating_it(self):
         self.login()
         with self.app.app_context():
             company = Company(name='Adega Renovar', activation_key='', subscription_renews_at=None)
@@ -3500,15 +3553,16 @@ class RouteTestCase(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Key avulsa gerada'.encode(), response.data)
+        self.assertIn('Key vinculada gerada'.encode(), response.data)
         with self.app.app_context():
             company = db.session.get(Company, company_id)
             activation_key = ActivationKey.query.filter_by(plan='Basic').one()
             self.assertEqual(company.activation_key, '')
+            self.assertEqual(activation_key.assigned_company_id, company_id)
             self.assertIsNone(activation_key.used_by_company_id)
             self.assertIsNone(activation_key.used_at)
 
-    def test_master_removing_available_key_deletes_it_from_list(self):
+    def test_master_revoking_available_key_preserves_history(self):
         self.login()
         with self.app.app_context():
             activation_key = ActivationKey(
@@ -3526,10 +3580,13 @@ class RouteTestCase(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Key removida da lista com sucesso.'.encode(), response.data)
-        self.assertNotIn('DROP-KEY1-DROP-KEY2'.encode(), response.data)
+        self.assertIn('Key revogada com sucesso'.encode(), response.data)
+        self.assertIn('DROP-KEY1-DROP-KEY2'.encode(), response.data)
         with self.app.app_context():
-            self.assertIsNone(db.session.get(ActivationKey, key_id))
+            activation_key = db.session.get(ActivationKey, key_id)
+            self.assertIsNotNone(activation_key)
+            self.assertFalse(activation_key.active)
+            self.assertIsNotNone(activation_key.revoked_at)
 
     def test_master_can_renew_subscription_without_activation_key(self):
         self.login()

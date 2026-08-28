@@ -518,14 +518,56 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!target || !days) {
         return;
       }
-      const date = new Date();
+      const form = button.closest('form');
+      const companySelect = form ? form.querySelector('#renew_company_id') : null;
+      const selectedCompany = companySelect ? companySelect.options[companySelect.selectedIndex] : null;
+      const currentExpiry = selectedCompany ? selectedCompany.dataset.currentExpiry : '';
+      const date = currentExpiry ? new Date(currentExpiry + 'T12:00:00') : new Date();
+      if (date < new Date()) {
+        date.setTime(Date.now());
+      }
       date.setDate(date.getDate() + days);
       target.value = date.toISOString().slice(0, 10);
-      const form = button.closest('form');
       const presetInput = form ? form.querySelector('input[name="preset_days"]') : null;
       if (presetInput) {
         presetInput.value = String(days);
       }
+      target.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+
+  const renewalPreview = document.querySelector('[data-renewal-preview-value]');
+  const renewalDateInput = document.getElementById('renew_renews_at');
+  if (renewalPreview && renewalDateInput) {
+    const updateRenewalPreview = function () {
+      if (!renewalDateInput.value) {
+        renewalPreview.textContent = 'Selecione uma data';
+        return;
+      }
+      renewalPreview.textContent = new Intl.DateTimeFormat('pt-BR').format(new Date(renewalDateInput.value + 'T12:00:00'));
+    };
+    renewalDateInput.addEventListener('change', updateRenewalPreview);
+  }
+
+  document.querySelectorAll('.master-key-renew-form').forEach(function (form) {
+    const period = form.querySelector('select[name="preset_days"]');
+    const preview = form.querySelector('[data-key-renew-preview]');
+    const renderPreview = function () {
+      if (!period || !preview) return;
+      const current = form.dataset.currentExpiry || '';
+      const base = current ? new Date(current + 'T12:00:00') : new Date();
+      if (base < new Date()) base.setTime(Date.now());
+      base.setDate(base.getDate() + Number.parseInt(period.value || '0', 10));
+      preview.textContent = 'Novo vencimento: ' + new Intl.DateTimeFormat('pt-BR').format(base);
+    };
+    if (period) period.addEventListener('change', renderPreview);
+    renderPreview();
+  });
+
+  document.querySelectorAll('[data-revoke-key-form]').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      const message = 'Tem certeza que deseja revogar esta key?\n\nKey: ' + (form.dataset.key || '-') + '\nEmpresa: ' + (form.dataset.company || 'Avulsa') + '\nVencimento: ' + (form.dataset.expiry || '-');
+      if (!window.confirm(message)) event.preventDefault();
     });
   });
 

@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 
 from flask import Blueprint, current_app, redirect, render_template, request, send_file, session, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
+from sqlalchemy import or_
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -44,6 +45,13 @@ from app.tenant import current_tenant_company, drop_mysql_database, tenant_datab
 auth_bp = Blueprint('auth', __name__)
 SUBSCRIPTION_PLANS = ('Basic', 'Pro', 'Essencial', 'Profissional', 'Premium')
 MASTER_KEY_PLANS = ('Basic', 'Pro')
+KEY_PAYMENT_CYCLES = {
+    'monthly': 'Mensal',
+    'quarterly': 'Trimestral',
+    'semiannual': 'Semestral',
+    'annual': 'Anual',
+    'custom': 'Personalizado',
+}
 BASIC_PRO_PLANS = (
     {
         'name': 'Basic',
@@ -76,7 +84,10 @@ BASIC_PRO_PLANS = (
 )
 BILLING_CYCLES = {
     'monthly': 'Mensal',
+    'quarterly': 'Trimestral',
+    'semiannual': 'Semestral',
     'annual': 'Anual',
+    'custom': 'Personalizado',
 }
 KEY_PRESETS = (
     ('1d', '1 dia', 1),
@@ -84,6 +95,7 @@ KEY_PRESETS = (
     ('7d', '7 dias', 7),
     ('1m', '1 mês', 30),
     ('3m', '3 meses', 90),
+    ('6m', '6 meses', 180),
     ('1y', '1 ano', 365),
 )
 LOGIN_FAILED_MESSAGE = 'Usuário/e-mail ou senha inválidos.'
@@ -329,7 +341,7 @@ def generate_unique_activation_key():
     raise RuntimeError('Não foi possível gerar uma key única.')
 
 
-def available_activation_key(value):
+def available_activation_key(value, company=None):
     key = (value or '').strip().upper()
     if not key:
         return None
@@ -337,6 +349,8 @@ def available_activation_key(value):
     if not activation_key:
         return None
     if activation_key.renews_at and activation_key.renews_at < date.today():
+        return None
+    if activation_key.assigned_company_id and (not company or activation_key.assigned_company_id != company.id):
         return None
     return activation_key
 
@@ -372,7 +386,13 @@ def renewal_date_from_request(default_cycle='monthly'):
     elif days:
         renews_at = date.today() + timedelta(days=days)
     else:
-        renews_at = date.today() + timedelta(days=365 if billing_cycle == 'annual' else 30)
+        renews_at = date.today() + timedelta(days={
+            'monthly': 30,
+            'quarterly': 90,
+            'semiannual': 180,
+            'annual': 365,
+            'custom': 30,
+        }.get(billing_cycle, 30))
 
     return billing_cycle, renews_at
 
@@ -392,14 +412,8 @@ def activation_key_status(activation_key):
     today = date.today()
     if not activation_key.active:
         return {
-            'label': 'Cancelada',
+            'label': 'Revogada',
             'state': 'danger',
-            'available': False,
-        }
-    if activation_key.used_by_company_id:
-        return {
-            'label': 'Usada',
-            'state': 'ok',
             'available': False,
         }
     if activation_key.renews_at and activation_key.renews_at < today:
@@ -408,9 +422,21 @@ def activation_key_status(activation_key):
             'state': 'danger',
             'available': False,
         }
+    if activation_key.used_by_company_id:
+        return {
+            'label': 'Utilizada',
+            'state': 'ok',
+            'available': False,
+        }
+    if activation_key.renews_at and (activation_key.renews_at - today).days <= 7:
+        return {
+            'label': 'Vencendo',
+            'state': 'warning',
+            'available': True,
+        }
     return {
         'label': 'Disponível',
-        'state': 'warning',
+        'state': 'ok',
         'available': True,
     }
 
@@ -1106,7 +1132,7 @@ def subscription_activation():
         expected_key = (company.activation_key or '').strip().upper() if company else ''
 
         if not expected_key:
-            generated_key = available_activation_key(activation_key)
+            generated_key = available_activation_key(activation_key, company)
             if not generated_key:
                 flash('Key de ativação inválida ou já utilizada.', 'danger')
                 return redirect(url_for('auth.subscription_activation'))
@@ -1124,7 +1150,7 @@ def subscription_activation():
             flash('Assinatura ativada com sucesso.', 'success')
             return redirect(url_for('main.dashboard'))
         if activation_key != expected_key:
-            generated_key = available_activation_key(activation_key)
+            generated_key = available_activation_key(activation_key, company)
             if not generated_key:
                 flash('Key de ativação inválida.', 'danger')
                 return redirect(url_for('auth.subscription_activation'))
@@ -1379,15 +1405,88 @@ def master_subscriptions():
         return redirect(url_for('main.dashboard'))
 
     companies = Company.query.order_by(Company.name.asc()).all()
-    activation_keys = ActivationKey.query.filter(
-        ActivationKey.active.is_(True)
-    ).order_by(ActivationKey.created_at.desc(), ActivationKey.id.desc()).limit(80).all()
+    search = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    plan_filter = request.args.get('plan', '').strip()
+    company_filter = request.args.get('company_id', '').strip()
+    expiry_filter = request.args.get('expiry', '').strip()
+    sort = request.args.get('sort', 'created_desc').strip()
+    try:
+        page = max(int(request.args.get('page', '1')), 1)
+    except ValueError:
+        page = 1
+
+    query = ActivationKey.query
+    today = date.today()
+    if search:
+        pattern = f'%{search}%'
+        matching_company_ids = [
+            company.id for company in companies if search.casefold() in company.name.casefold()
+        ]
+        search_clauses = [
+            ActivationKey.key.ilike(pattern),
+            ActivationKey.display_name.ilike(pattern),
+            ActivationKey.plan.ilike(pattern),
+        ]
+        if matching_company_ids:
+            search_clauses.extend((
+                ActivationKey.assigned_company_id.in_(matching_company_ids),
+                ActivationKey.used_by_company_id.in_(matching_company_ids),
+            ))
+        query = query.filter(or_(*search_clauses))
+    if plan_filter in MASTER_KEY_PLANS:
+        query = query.filter(ActivationKey.plan == plan_filter)
+    if company_filter.isdigit():
+        company_id = int(company_filter)
+        query = query.filter(or_(
+            ActivationKey.assigned_company_id == company_id,
+            ActivationKey.used_by_company_id == company_id,
+        ))
+    if status_filter == 'available':
+        query = query.filter(ActivationKey.active.is_(True), ActivationKey.used_by_company_id.is_(None), ActivationKey.renews_at >= today)
+    elif status_filter == 'used':
+        query = query.filter(ActivationKey.active.is_(True), ActivationKey.used_by_company_id.is_not(None))
+    elif status_filter == 'expired':
+        query = query.filter(ActivationKey.active.is_(True), ActivationKey.renews_at < today)
+    elif status_filter == 'revoked':
+        query = query.filter(ActivationKey.active.is_(False))
+    if expiry_filter == '7':
+        query = query.filter(ActivationKey.renews_at.between(today, today + timedelta(days=7)))
+    elif expiry_filter == '30':
+        query = query.filter(ActivationKey.renews_at.between(today, today + timedelta(days=30)))
+    elif expiry_filter == 'expired':
+        query = query.filter(ActivationKey.renews_at < today)
+
+    ordering = {
+        'created_asc': (ActivationKey.created_at.asc(), ActivationKey.id.asc()),
+        'expiry_asc': (ActivationKey.renews_at.asc(), ActivationKey.id.asc()),
+        'expiry_desc': (ActivationKey.renews_at.desc(), ActivationKey.id.desc()),
+        'plan': (ActivationKey.plan.asc(), ActivationKey.created_at.desc()),
+    }.get(sort, (ActivationKey.created_at.desc(), ActivationKey.id.desc()))
+    per_page = 20
+    total_keys = query.count()
+    total_pages = max((total_keys + per_page - 1) // per_page, 1)
+    page = min(page, total_pages)
+    activation_keys = query.order_by(*ordering).offset((page - 1) * per_page).limit(per_page).all()
+
+    all_keys = ActivationKey.query.all()
+    active_keys = [key for key in all_keys if key.active and key.renews_at >= today]
+    linked_company_ids = {
+        key.used_by_company_id or key.assigned_company_id
+        for key in active_keys if key.used_by_company_id or key.assigned_company_id
+    }
+    upcoming_dates = [key.renews_at for key in active_keys if key.renews_at]
+    plan_counts = {}
+    for activation_key in active_keys:
+        plan_counts[activation_key.plan] = plan_counts.get(activation_key.plan, 0) + 1
+    main_plan = max(plan_counts, key=plan_counts.get) if plan_counts else '-'
+    next_expiry = min(upcoming_dates) if upcoming_dates else None
 
     return render_template(
         'master/companies.html',
         master_section='subscriptions',
         master_title='Assinaturas',
-        master_description='Gere keys, renove planos e acompanhe os vencimentos.',
+        master_description='Gerencie assinaturas, licenças e keys de acesso do sistema.',
         companies=companies,
         activation_keys=activation_keys,
         activation_key_statuses={
@@ -1397,7 +1496,20 @@ def master_subscriptions():
         subscription_plans=SUBSCRIPTION_PLANS,
         master_key_plans=MASTER_KEY_PLANS,
         billing_cycles=BILLING_CYCLES,
+        key_payment_cycles=KEY_PAYMENT_CYCLES,
         key_presets=KEY_PRESETS,
+        subscription_summary={
+            'active': len(active_keys),
+            'total': len(all_keys),
+            'main_plan': main_plan,
+            'next_expiry': next_expiry,
+            'next_expiry_days': (next_expiry - today).days if next_expiry else None,
+            'linked_companies': len(linked_company_ids),
+        },
+        filters={'q': search, 'status': status_filter, 'plan': plan_filter, 'company_id': company_filter, 'expiry': expiry_filter, 'sort': sort},
+        page=page,
+        total_pages=total_pages,
+        total_keys=total_keys,
     )
 
 
@@ -1452,6 +1564,12 @@ def generate_master_activation_key():
         return redirect(url_for('auth.master_subscriptions'))
 
     billing_cycle, renews_at = renewal_date_from_request()
+    if billing_cycle not in KEY_PAYMENT_CYCLES:
+        billing_cycle = 'monthly'
+
+    display_name = request.form.get('display_name', '').strip()[:160]
+    assigned_company_id = request.form.get('company_id', '').strip()
+    assigned_company = db.session.get(Company, int(assigned_company_id)) if assigned_company_id.isdigit() else None
 
     if renews_at < date.today():
         flash('A data de vencimento da key não pode estar no passado.', 'danger')
@@ -1467,8 +1585,12 @@ def generate_master_activation_key():
         activation_key = ActivationKey(
             key=generate_unique_activation_key(),
             plan=plan,
+            display_name=display_name,
+            payment_cycle=billing_cycle,
             renews_at=renews_at,
             active=True,
+            assigned_company_id=assigned_company.id if assigned_company else None,
+            created_by_user_id=current_user.id,
         )
         db.session.add(activation_key)
         generated_keys.append(activation_key)
@@ -1479,13 +1601,14 @@ def generate_master_activation_key():
             'activation_key',
             None,
             f'Key {activation_key.plan} gerada pelo painel master.',
-            new_values={'plan': activation_key.plan, 'renews_at': activation_key.renews_at, 'activation_key': activation_key.key},
-            company_id=current_user.company_id,
+            new_values={'plan': activation_key.plan, 'renews_at': activation_key.renews_at, 'activation_key': activation_key.key, 'assigned_company_id': activation_key.assigned_company_id, 'payment_cycle': activation_key.payment_cycle},
+            company_id=activation_key.assigned_company_id or current_user.company_id,
             db_session=db.session,
         )
     db.session.commit()
     if len(generated_keys) == 1:
-        flash(f'Key avulsa gerada: {generated_keys[0].key}', 'success')
+        label = 'Key vinculada gerada' if assigned_company else 'Key avulsa gerada'
+        flash(f'{label}: {generated_keys[0].key}', 'success')
     else:
         flash(f'{len(generated_keys)} keys avulsas geradas: {", ".join(key.key for key in generated_keys)}', 'success')
     return redirect(url_for('auth.master_subscriptions'))
@@ -1514,6 +1637,15 @@ def renew_master_subscription():
         return redirect(url_for('auth.master_subscriptions'))
 
     billing_cycle, renews_at = renewal_date_from_request(default_cycle=company.billing_cycle or 'monthly')
+    preset_days = request.form.get('preset_days', '').strip()
+    if preset_days and not request.form.get('renews_at', '').strip():
+        try:
+            days = max(int(preset_days), 1)
+        except ValueError:
+            days = 0
+        if days:
+            base_date = company.subscription_renews_at if company.subscription_renews_at and company.subscription_renews_at >= date.today() else date.today()
+            renews_at = base_date + timedelta(days=days)
     if renews_at < date.today():
         flash('A data de renovação não pode estar no passado.', 'danger')
         return redirect(url_for('auth.master_subscriptions'))
@@ -1540,22 +1672,88 @@ def cancel_master_activation_key(key_id):
         return redirect(url_for('main.dashboard'))
 
     activation_key = db.get_or_404(ActivationKey, key_id)
-    if activation_key.used_by_company_id:
-        flash('Não é possível remover uma key já usada por uma adega.', 'danger')
-        return redirect(url_for('auth.master_subscriptions'))
-
     record_audit_event(
-        'activation_key_generated',
+        'activation_key_revoked',
         'activation_key',
         activation_key.id,
-        'Key avulsa removida pelo painel master.',
+        'Key revogada pelo painel master.',
         old_values={'activation_key': activation_key.key, 'plan': activation_key.plan, 'renews_at': activation_key.renews_at},
         company_id=current_user.company_id,
         db_session=db.session,
     )
-    db.session.delete(activation_key)
+    activation_key.active = False
+    activation_key.revoked_at = datetime.now(timezone.utc)
+    if activation_key.company:
+        activation_key.company.subscription_renews_at = date.today() - timedelta(days=1)
     db.session.commit()
-    flash('Key removida da lista com sucesso.', 'success')
+    flash('Key revogada com sucesso. O histórico foi preservado.', 'success')
+    return redirect(url_for('auth.master_subscriptions'))
+
+
+@auth_bp.route('/master/assinaturas/keys/<int:key_id>/renovar', methods=['POST'])
+@login_required
+def renew_master_activation_key(key_id):
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    activation_key = db.get_or_404(ActivationKey, key_id)
+    try:
+        days = max(int(request.form.get('preset_days', '30')), 1)
+    except ValueError:
+        days = 30
+    if days not in {1, 3, 7, 30, 90, 180, 365}:
+        flash('Período de renovação inválido.', 'danger')
+        return redirect(url_for('auth.master_subscriptions'))
+
+    old_expiry = activation_key.renews_at
+    base_date = old_expiry if old_expiry and old_expiry >= date.today() else date.today()
+    activation_key.renews_at = base_date + timedelta(days=days)
+    activation_key.active = True
+    activation_key.revoked_at = None
+    if activation_key.used_by_company_id:
+        company = activation_key.company
+        company.subscription_renews_at = activation_key.renews_at
+        company.active = True
+    record_audit_event(
+        'activation_key_renewed', 'activation_key', activation_key.id,
+        'Key renovada pelo painel master.',
+        old_values={'renews_at': old_expiry},
+        new_values={'renews_at': activation_key.renews_at, 'days': days},
+        company_id=activation_key.used_by_company_id or activation_key.assigned_company_id or current_user.company_id,
+        db_session=db.session,
+    )
+    db.session.commit()
+    flash(f'Key renovada até {activation_key.renews_at.strftime("%d/%m/%Y")}.', 'success')
+    return redirect(url_for('auth.master_subscriptions'))
+
+
+@auth_bp.route('/master/assinaturas/keys/<int:key_id>/editar', methods=['POST'])
+@login_required
+def edit_master_activation_key(key_id):
+    if not master_required():
+        return redirect(url_for('main.dashboard'))
+
+    activation_key = db.get_or_404(ActivationKey, key_id)
+    plan = request.form.get('plan', '').strip()
+    payment_cycle = request.form.get('payment_cycle', '').strip()
+    company_id = request.form.get('company_id', '').strip()
+    if plan not in MASTER_KEY_PLANS or payment_cycle not in KEY_PAYMENT_CYCLES:
+        flash('Plano ou pagamento inválido.', 'danger')
+        return redirect(url_for('auth.master_subscriptions'))
+    assigned_company = db.session.get(Company, int(company_id)) if company_id.isdigit() else None
+    old_values = {'plan': activation_key.plan, 'payment_cycle': activation_key.payment_cycle, 'assigned_company_id': activation_key.assigned_company_id}
+    activation_key.plan = plan
+    activation_key.payment_cycle = payment_cycle
+    activation_key.assigned_company_id = assigned_company.id if assigned_company else None
+    activation_key.display_name = request.form.get('display_name', '').strip()[:160]
+    record_audit_event(
+        'activation_key_updated', 'activation_key', activation_key.id,
+        'Key atualizada pelo painel master.', old_values=old_values,
+        new_values={'plan': plan, 'payment_cycle': payment_cycle, 'assigned_company_id': activation_key.assigned_company_id},
+        company_id=activation_key.assigned_company_id or current_user.company_id, db_session=db.session,
+    )
+    db.session.commit()
+    flash('Key atualizada com sucesso.', 'success')
     return redirect(url_for('auth.master_subscriptions'))
 
 

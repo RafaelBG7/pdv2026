@@ -254,7 +254,7 @@ def api_auth_error_response(error):
     )
 
 
-def available_activation_key(value):
+def available_activation_key(value, company=None):
     key = (value or '').strip().upper()
     if not key:
         return None
@@ -266,6 +266,8 @@ def available_activation_key(value):
     if not activation_key:
         return None
     if activation_key.renews_at and activation_key.renews_at < date.today():
+        return None
+    if activation_key.assigned_company_id and (not company or activation_key.assigned_company_id != company.id):
         return None
     return activation_key
 
@@ -1561,7 +1563,7 @@ def api_activate_subscription():
                 403,
             )
 
-        activation_key = available_activation_key(activation_key_value)
+        activation_key = available_activation_key(activation_key_value, company)
         if activation_key is None:
             raise ApiAuthError(
                 'Key inválida, expirada ou já utilizada.',

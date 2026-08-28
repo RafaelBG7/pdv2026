@@ -46,152 +46,70 @@
 </section>
 
 {% elif master_section == 'subscriptions' %}
-<section class="card card-dark sale-panel master-subscription-panel mb-4">
-  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
-    <div>
-      <h5 class="mb-1">Assinaturas e keys</h5>
-      <p class="text-muted mb-0">Gere keys para uso futuro do cliente ou renove uma assinatura vinculada a uma adega.</p>
-    </div>
-  </div>
+<div class="master-subscription-dashboard">
+  <span class="visually-hidden">Assinaturas e keys</span>
+  <section class="master-subscription-summary" aria-label="Resumo de assinaturas">
+    <article class="master-subscription-metric metric-purple"><span>Keys ativas</span><strong>{{ subscription_summary.active }}</strong><small>{{ subscription_summary.active }} de {{ subscription_summary.total }} registradas</small><i style="--usage: {{ ((subscription_summary.active / subscription_summary.total * 100) if subscription_summary.total else 0)|round }}%"></i></article>
+    <article class="master-subscription-metric metric-cyan"><span>Plano principal</span><strong>{{ subscription_summary.main_plan }}</strong><small>Plano mais utilizado</small></article>
+    <article class="master-subscription-metric metric-blue"><span>Próximo vencimento</span><strong>{{ subscription_summary.next_expiry.strftime('%d/%m/%Y') if subscription_summary.next_expiry else '-' }}</strong><small>{% if subscription_summary.next_expiry_days is not none %}Vence em {{ subscription_summary.next_expiry_days }} dia{{ 's' if subscription_summary.next_expiry_days != 1 else '' }}{% else %}Sem vencimentos ativos{% endif %}</small></article>
+    <article class="master-subscription-metric metric-gold"><span>Adegas vinculadas</span><strong>{{ subscription_summary.linked_companies }}</strong><small>Empresas com licença</small></article>
+  </section>
 
   <div class="master-subscription-actions">
-    <div class="master-subscription-box">
-      <div>
-        <strong>Gerar key</strong>
-        <p class="text-muted mb-0">Crie keys avulsas para copiar e enviar ao cliente quando ele for ativar o sistema.</p>
-      </div>
+    <section class="card card-dark master-subscription-box master-key-create-card">
+      <header><span class="master-section-icon" aria-hidden="true">+</span><div><h3>Gerar nova key de acesso</h3><p>Crie uma licença para ativação de uma empresa ou instalação.</p></div></header>
       <form class="master-key-form" method="post" action="{{ url_for('auth.generate_master_activation_key') }}">
-        <div>
-          <label class="form-label" for="key_plan">Plano</label>
-          <select class="form-select" id="key_plan" name="plan">
-            {% for plan in master_key_plans %}
-            <option value="{{ plan }}">{{ plan }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="form-label" for="key_billing_cycle">Pagamento</label>
-          <select class="form-select" id="key_billing_cycle" name="billing_cycle">
-            {% for cycle, label in billing_cycles.items() %}
-            <option value="{{ cycle }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="form-label" for="key_quantity">Quantidade</label>
-          <input class="form-control" id="key_quantity" name="quantity" type="number" min="1" max="50" value="1">
-        </div>
-        <div>
-          <label class="form-label" for="key_renews_at">Vencimento</label>
-          <input class="form-control" id="key_renews_at" name="renews_at" type="date" value="">
-        </div>
-        <div class="master-key-presets" aria-label="Presets de vencimento">
-          {% for preset_id, label, days in key_presets %}
-          <button class="btn btn-outline-light btn-sm" type="button" data-key-preset-days="{{ days }}" data-key-preset-target="key_renews_at">{{ label }}</button>
-          {% endfor %}
-          <input type="hidden" name="preset_days" value="">
-        </div>
-        <button class="btn btn-primary" type="submit">Gerar key</button>
+        <div class="master-form-wide"><label class="form-label" for="key_display_name">Nome da empresa/adega <small>opcional</small></label><input class="form-control" id="key_display_name" name="display_name" maxlength="160" placeholder="Ex.: Adega Centro"></div>
+        <div><label class="form-label" for="key_plan">Plano</label><select class="form-select" id="key_plan" name="plan">{% for plan in master_key_plans %}<option value="{{ plan }}">{{ plan }}</option>{% endfor %}</select></div>
+        <div><label class="form-label" for="key_company_id">Empresa/Adega</label><select class="form-select" id="key_company_id" name="company_id"><option value="">Avulsa</option>{% for company in companies %}<option value="{{ company.id }}">{{ company.name }}</option>{% endfor %}</select></div>
+        <div><label class="form-label" for="key_billing_cycle">Pagamento</label><select class="form-select" id="key_billing_cycle" name="billing_cycle">{% for cycle, label in key_payment_cycles.items() %}<option value="{{ cycle }}">{{ label }}</option>{% endfor %}</select></div>
+        <div><label class="form-label" for="key_quantity">Quantidade</label><input class="form-control" id="key_quantity" name="quantity" type="number" min="1" max="50" value="1"></div>
+        <fieldset class="master-form-wide master-expiry-field"><legend>Vencimento da key</legend><div class="master-key-presets" aria-label="Atalhos de vencimento">{% for preset_id, label, days in key_presets %}<button class="btn btn-outline-light btn-sm" type="button" data-key-preset-days="{{ days }}" data-key-preset-target="key_renews_at">{{ label }}</button>{% endfor %}</div><label class="form-label" for="key_renews_at">Data personalizada</label><input class="form-control" id="key_renews_at" name="renews_at" type="date"><input type="hidden" name="preset_days" value=""></fieldset>
+        <button class="btn btn-primary master-generate-key" type="submit">Gerar Key</button>
       </form>
-    </div>
+    </section>
 
-    <div class="master-subscription-box">
-      <div>
-        <strong>Renovar assinatura</strong>
-        <p class="text-muted mb-0">Vincule ou renove plano e vencimento diretamente em uma adega.</p>
-      </div>
+    <details class="card card-dark master-subscription-box master-company-renewal" open>
+      <summary><span class="master-section-icon" aria-hidden="true">↻</span><div><h3>Gerenciar assinatura</h3><p>Renove diretamente o plano de uma adega.</p></div></summary>
       <form class="master-key-form" method="post" action="{{ url_for('auth.renew_master_subscription') }}">
-        <div>
-          <label class="form-label" for="renew_plan">Plano</label>
-          <select class="form-select" id="renew_plan" name="plan">
-            {% for plan in subscription_plans %}
-            <option value="{{ plan }}">{{ plan }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="form-label" for="renew_billing_cycle">Pagamento</label>
-          <select class="form-select" id="renew_billing_cycle" name="billing_cycle">
-            {% for cycle, label in billing_cycles.items() %}
-            <option value="{{ cycle }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="form-label" for="renew_company_id">Adega</label>
-          <select class="form-select" id="renew_company_id" name="company_id" required>
-            <option value="">Selecione</option>
-            {% for company in companies %}
-            <option value="{{ company.id }}">{{ company.name }} · {{ company.subscription_plan or 'Sem plano' }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="form-label" for="renew_renews_at">Renova em</label>
-          <input class="form-control" id="renew_renews_at" name="renews_at" type="date" value="">
-        </div>
-        <div class="master-key-presets" aria-label="Presets de renovação">
-          {% for preset_id, label, days in key_presets %}
-          <button class="btn btn-outline-light btn-sm" type="button" data-key-preset-days="{{ days }}" data-key-preset-target="renew_renews_at">{{ label }}</button>
-          {% endfor %}
-          <input type="hidden" name="preset_days" value="">
-        </div>
-        <button class="btn btn-outline-light" type="submit">Renovar</button>
+        <div class="master-form-wide"><label class="form-label" for="renew_company_id">Empresa/Adega</label><select class="form-select" id="renew_company_id" name="company_id" required><option value="">Selecione uma adega</option>{% for company in companies %}<option value="{{ company.id }}" data-current-expiry="{{ company.subscription_renews_at.isoformat() if company.subscription_renews_at else '' }}">{{ company.name }} · {{ company.subscription_plan or 'Sem plano' }}</option>{% endfor %}</select></div>
+        <div><label class="form-label" for="renew_plan">Plano</label><select class="form-select" id="renew_plan" name="plan">{% for plan in subscription_plans %}<option value="{{ plan }}">{{ plan }}</option>{% endfor %}</select></div>
+        <div><label class="form-label" for="renew_billing_cycle">Pagamento</label><select class="form-select" id="renew_billing_cycle" name="billing_cycle">{% for cycle, label in billing_cycles.items() %}<option value="{{ cycle }}">{{ label }}</option>{% endfor %}</select></div>
+        <fieldset class="master-form-wide master-expiry-field"><legend>Nova validade</legend><div class="master-key-presets">{% for preset_id, label, days in key_presets %}<button class="btn btn-outline-light btn-sm" type="button" data-key-preset-days="{{ days }}" data-key-preset-target="renew_renews_at">+{{ label }}</button>{% endfor %}</div><label class="form-label" for="renew_renews_at">Data personalizada</label><input class="form-control" id="renew_renews_at" name="renews_at" type="date"><input type="hidden" name="preset_days" value=""></fieldset>
+        <div class="master-renewal-preview" data-renewal-preview><span>Novo vencimento</span><strong data-renewal-preview-value>Selecione uma data</strong></div>
+        <button class="btn btn-outline-light" type="submit">Renovar assinatura</button>
       </form>
-    </div>
+    </details>
   </div>
 
-  <div class="master-key-list mt-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-      <strong>Keys recentes</strong>
-      <span class="text-muted">{{ activation_keys|length }} registro{{ 's' if activation_keys|length != 1 else '' }}</span>
-    </div>
+  <section class="card card-dark master-key-list">
+    <header class="master-key-list-heading"><div><h3>Keys de acesso</h3><p>Pesquise, acompanhe e gerencie todas as licenças.</p></div><span>{{ total_keys }} registro{{ 's' if total_keys != 1 else '' }}</span></header>
+    <form class="master-key-filters" method="get" action="{{ url_for('auth.master_subscriptions') }}">
+      <div class="master-key-search"><label class="visually-hidden" for="key_search">Pesquisar keys</label><input class="form-control" id="key_search" name="q" value="{{ filters.q }}" placeholder="Buscar por key, empresa ou plano..."></div>
+      <select class="form-select" name="status" aria-label="Filtrar por status"><option value="">Todos os status</option><option value="available" {% if filters.status == 'available' %}selected{% endif %}>Disponível</option><option value="used" {% if filters.status == 'used' %}selected{% endif %}>Utilizada</option><option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Vencida</option><option value="revoked" {% if filters.status == 'revoked' %}selected{% endif %}>Revogada</option></select>
+      <select class="form-select" name="plan" aria-label="Filtrar por plano"><option value="">Todos os planos</option>{% for plan in master_key_plans %}<option value="{{ plan }}" {% if filters.plan == plan %}selected{% endif %}>{{ plan }}</option>{% endfor %}</select>
+      <select class="form-select" name="company_id" aria-label="Filtrar por empresa"><option value="">Todas as empresas</option>{% for company in companies %}<option value="{{ company.id }}" {% if filters.company_id == company.id|string %}selected{% endif %}>{{ company.name }}</option>{% endfor %}</select>
+      <select class="form-select" name="expiry" aria-label="Filtrar por vencimento"><option value="">Todo vencimento</option><option value="7" {% if filters.expiry == '7' %}selected{% endif %}>Próximos 7 dias</option><option value="30" {% if filters.expiry == '30' %}selected{% endif %}>Próximos 30 dias</option><option value="expired" {% if filters.expiry == 'expired' %}selected{% endif %}>Vencidas</option></select>
+      <select class="form-select" name="sort" aria-label="Ordenar keys"><option value="created_desc" {% if filters.sort == 'created_desc' %}selected{% endif %}>Mais recentes</option><option value="created_asc" {% if filters.sort == 'created_asc' %}selected{% endif %}>Mais antigas</option><option value="expiry_asc" {% if filters.sort == 'expiry_asc' %}selected{% endif %}>Vencimento próximo</option><option value="expiry_desc" {% if filters.sort == 'expiry_desc' %}selected{% endif %}>Vencimento distante</option><option value="plan" {% if filters.sort == 'plan' %}selected{% endif %}>Plano</option></select>
+      <button class="btn btn-primary" type="submit">Aplicar</button><a class="btn btn-outline-light" href="{{ url_for('auth.master_subscriptions') }}">Limpar</a>
+    </form>
+
     {% if activation_keys %}
-    <div class="table-responsive">
-      <table class="table table-dark table-hover align-middle mb-0 app-table master-responsive-table master-key-table">
-        <thead>
-          <tr>
-            <th>Key</th>
-            <th>Status</th>
-            <th>Plano</th>
-            <th>Vencimento</th>
-            <th>Adega</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for activation_key in activation_keys %}
-          {% set key_status = activation_key_statuses.get(activation_key.id, {}) %}
-          <tr>
-            <td data-label="Key">
-              <div class="activation-key-copy">
-                <strong class="activation-key-display">{{ activation_key.key }}</strong>
-                <button class="btn btn-outline-light btn-sm copy-key-button" type="button" data-copy-key="{{ activation_key.key }}" aria-label="Copiar key {{ activation_key.key }}">Copiar</button>
-              </div>
-            </td>
-            <td data-label="Status"><span class="subscription-pill subscription-{{ key_status.get('state', 'neutral') }}">{{ key_status.get('label', '-') }}</span></td>
-            <td data-label="Plano">{{ activation_key.plan }}</td>
-            <td data-label="Vencimento">{{ activation_key.renews_at.strftime('%d/%m/%Y') if activation_key.renews_at else '-' }}</td>
-            <td data-label="Adega">{{ activation_key.company.name if activation_key.company else 'Avulsa' }}</td>
-            <td data-label="Ações" class="text-end">
-              {% if key_status.get('available') %}
-              <form method="post" action="{{ url_for('auth.cancel_master_activation_key', key_id=activation_key.id) }}" onsubmit="return confirm('Cancelar esta key? Ela não poderá mais ser usada.');">
-                <button class="btn btn-outline-danger btn-sm" type="submit">Remover</button>
-              </form>
-              {% else %}
-              <span class="text-muted">-</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="text-muted mb-0">Nenhuma key gerada até agora.</p>
-    {% endif %}
-  </div>
-</section>
+    <div class="table-responsive"><table class="table table-dark table-hover align-middle mb-0 master-responsive-table master-key-table"><thead><tr><th>Key</th><th>Status</th><th>Plano</th><th>Vencimento</th><th>Empresa/Adega</th><th>Pagamento</th><th>Criada em</th><th>Ações</th></tr></thead><tbody>
+      {% for activation_key in activation_keys %}{% set key_status = activation_key_statuses.get(activation_key.id, {}) %}{% set linked_company = activation_key.company or activation_key.assigned_company %}
+      <tr>
+        <td data-label="Key"><strong class="activation-key-display">{{ activation_key.key }}</strong>{% if activation_key.display_name %}<small class="d-block text-muted">{{ activation_key.display_name }}</small>{% endif %}</td>
+        <td data-label="Status"><span class="subscription-pill subscription-{{ key_status.get('state', 'neutral') }}">{{ key_status.get('label', '-') }}</span></td><td data-label="Plano">{{ activation_key.plan }}</td><td data-label="Vencimento">{{ activation_key.renews_at.strftime('%d/%m/%Y') }}</td><td data-label="Empresa/Adega">{{ linked_company.name if linked_company else 'Avulsa' }}</td><td data-label="Pagamento">{{ key_payment_cycles.get(activation_key.payment_cycle, 'Mensal') }}</td><td data-label="Criada em">{{ activation_key.created_at.strftime('%d/%m/%Y') if activation_key.created_at else '-' }}</td>
+        <td data-label="Ações"><div class="master-key-row-actions"><button class="btn btn-outline-light btn-sm copy-key-button" type="button" data-copy-key="{{ activation_key.key }}">Copiar</button><details><summary class="btn btn-outline-light btn-sm" aria-label="Mais ações para {{ activation_key.key }}">•••</summary><div class="master-key-action-menu"><button type="button" data-bs-toggle="collapse" data-bs-target="#key-details-{{ activation_key.id }}">Visualizar e editar</button>{% if activation_key.active %}<form method="post" action="{{ url_for('auth.cancel_master_activation_key', key_id=activation_key.id) }}" data-revoke-key-form data-key="{{ activation_key.key }}" data-company="{{ linked_company.name if linked_company else 'Avulsa' }}" data-expiry="{{ activation_key.renews_at.strftime('%d/%m/%Y') }}"><button class="is-danger" type="submit">Revogar key</button></form>{% endif %}</div></details></div></td>
+      </tr>
+      <tr class="product-details-row"><td colspan="8"><div class="collapse" id="key-details-{{ activation_key.id }}"><div class="master-key-details"><div class="master-key-detail-grid"><div><span>Key</span><strong>{{ activation_key.key }}</strong></div><div><span>Ativada em</span><strong>{{ activation_key.used_at.strftime('%d/%m/%Y') if activation_key.used_at else '-' }}</strong></div><div><span>Criada por</span><strong>{{ activation_key.created_by.full_name if activation_key.created_by else '-' }}</strong></div><div><span>Vencimento atual</span><strong>{{ activation_key.renews_at.strftime('%d/%m/%Y') }}</strong></div></div>
+        <div class="master-key-management-forms"><form method="post" action="{{ url_for('auth.edit_master_activation_key', key_id=activation_key.id) }}"><input class="form-control" name="display_name" value="{{ activation_key.display_name or '' }}" placeholder="Nome de referência"><select class="form-select" name="plan">{% for plan in master_key_plans %}<option value="{{ plan }}" {% if activation_key.plan == plan %}selected{% endif %}>{{ plan }}</option>{% endfor %}</select><select class="form-select" name="payment_cycle">{% for cycle, label in key_payment_cycles.items() %}<option value="{{ cycle }}" {% if activation_key.payment_cycle == cycle %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><select class="form-select" name="company_id"><option value="">Avulsa</option>{% for company in companies %}<option value="{{ company.id }}" {% if activation_key.assigned_company_id == company.id %}selected{% endif %}>{{ company.name }}</option>{% endfor %}</select><button class="btn btn-outline-light" type="submit">Salvar alterações</button></form><form class="master-key-renew-form" method="post" action="{{ url_for('auth.renew_master_activation_key', key_id=activation_key.id) }}" data-current-expiry="{{ activation_key.renews_at.isoformat() }}"><label>Renovar a partir de {{ activation_key.renews_at.strftime('%d/%m/%Y') }}</label><select class="form-select" name="preset_days">{% for preset_id, label, days in key_presets %}<option value="{{ days }}">+{{ label }}</option>{% endfor %}</select><span class="master-inline-preview" data-key-renew-preview></span><button class="btn btn-primary" type="submit">Renovar key</button></form></div></div></div></td></tr>
+      {% endfor %}
+    </tbody></table></div>
+    {% else %}<div class="master-key-empty"><strong>Nenhuma key encontrada.</strong><p>Altere os filtros ou crie uma nova key de acesso para começar.</p></div>{% endif %}
+    {% if total_pages > 1 %}<nav class="pagination-bar" aria-label="Paginação de keys">{% for item_page in range(1, total_pages + 1) %}<a class="btn btn-sm {{ 'btn-primary' if item_page == page else 'btn-outline-light' }}" href="{{ url_for('auth.master_subscriptions', page=item_page, q=filters.q, status=filters.status, plan=filters.plan, company_id=filters.company_id, expiry=filters.expiry, sort=filters.sort) }}">{{ item_page }}</a>{% endfor %}</nav>{% endif %}
+  </section>
+</div>
 
 {% elif master_section == 'logs' %}
 <section class="card card-dark sale-panel master-log-panel mb-4">

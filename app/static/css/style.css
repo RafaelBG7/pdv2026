@@ -8818,3 +8818,176 @@ canvas {
     text-align: left;
   }
 }
+
+/* Master subscriptions workspace */
+.master-subscription-dashboard {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.master-subscription-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.master-subscription-metric {
+  --metric-color: 139, 92, 246;
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(var(--metric-color), 0.3);
+  border-radius: 0.75rem;
+  background: linear-gradient(145deg, rgba(var(--metric-color), 0.13), transparent 68%), var(--surface);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.12);
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.master-subscription-metric:hover {
+  border-color: rgba(var(--metric-color), 0.5);
+  transform: translateY(-2px);
+}
+
+.master-subscription-metric span,
+.master-subscription-metric small { color: var(--muted); }
+.master-subscription-metric strong { font-size: clamp(1.35rem, 2.2cqi, 2rem); overflow-wrap: anywhere; }
+.master-subscription-metric i { height: 4px; margin-top: 0.4rem; border-radius: 999px; background: linear-gradient(90deg, rgb(var(--metric-color)) var(--usage), rgba(var(--metric-color), 0.15) var(--usage)); }
+.master-subscription-metric.metric-cyan { --metric-color: 34, 211, 238; }
+.master-subscription-metric.metric-blue { --metric-color: 59, 130, 246; }
+.master-subscription-metric.metric-gold { --metric-color: 245, 158, 11; }
+
+.master-subscription-box {
+  padding: clamp(0.9rem, 1.6cqi, 1.25rem);
+  border-radius: 0.75rem;
+}
+
+.master-subscription-box > header,
+.master-company-renewal > summary {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.master-company-renewal > summary { cursor: pointer; list-style: none; }
+.master-company-renewal > summary::-webkit-details-marker { display: none; }
+.master-subscription-box h3,
+.master-key-list h3 { margin: 0 0 0.2rem; font-size: 1.05rem; }
+.master-subscription-box p,
+.master-key-list p { margin: 0; color: var(--muted); }
+
+.master-section-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  min-height: 36px;
+  border: 1px solid rgba(var(--primary-rgb), 0.35);
+  border-radius: 0.6rem;
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.master-key-create-card .master-key-form,
+.master-company-renewal .master-key-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.master-form-wide { grid-column: 1 / -1; }
+.master-form-wide small { color: var(--muted); font-weight: 500; }
+.master-expiry-field { display: grid; gap: 0.6rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.master-expiry-field legend { margin: 0; font-size: 0.9rem; font-weight: 800; }
+.master-generate-key { grid-column: 1 / -1; }
+
+.master-renewal-preview {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface);
+}
+
+.master-key-list {
+  min-width: 0;
+  padding: clamp(0.85rem, 1.5cqi, 1.2rem);
+  border-radius: 0.75rem;
+}
+
+.master-key-list-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.master-key-list-heading > span { color: var(--muted); white-space: nowrap; }
+.master-key-filters { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(5, minmax(120px, 1fr)) auto auto; gap: 0.65rem; align-items: end; margin-bottom: 1rem; }
+.master-key-filters > * { min-width: 0; }
+
+.master-key-list .master-key-table { width: 100%; min-width: 1050px; table-layout: auto; }
+.master-key-list .master-key-table th,
+.master-key-list .master-key-table td { width: auto; min-width: 0 !important; }
+.master-key-list .master-key-table th:first-child { min-width: 210px !important; }
+.master-key-list .master-key-table th:last-child { width: 120px; }
+
+.master-key-row-actions { display: flex; gap: 0.4rem; align-items: center; }
+.master-key-row-actions details { position: relative; }
+.master-key-row-actions summary { list-style: none; cursor: pointer; }
+.master-key-row-actions summary::-webkit-details-marker { display: none; }
+.master-key-action-menu { position: absolute; z-index: 20; top: calc(100% + 0.35rem); right: 0; display: grid; min-width: 180px; padding: 0.35rem; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--surface); box-shadow: 0 18px 38px rgba(0, 0, 0, 0.3); }
+.master-key-action-menu button { width: 100%; padding: 0.65rem; border: 0; border-radius: 0.4rem; background: transparent; color: var(--text); text-align: left; }
+.master-key-action-menu button:hover,
+.master-key-action-menu button:focus-visible { background: var(--surface-2); }
+.master-key-action-menu button.is-danger { color: var(--danger); }
+
+.master-key-details { display: grid; gap: 1rem; padding: 1rem; background: var(--surface-2); }
+.master-key-detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; }
+.master-key-detail-grid > div { display: grid; gap: 0.2rem; min-width: 0; padding: 0.7rem; border: 1px solid var(--border); border-radius: 0.55rem; }
+.master-key-detail-grid span { color: var(--muted); font-size: 0.78rem; }
+.master-key-detail-grid strong { overflow-wrap: anywhere; }
+.master-key-management-forms { display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem; }
+.master-key-management-forms form { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.65rem; align-items: end; min-width: 0; }
+.master-key-renew-form label { grid-column: 1 / -1; color: var(--muted); }
+.master-inline-preview { color: var(--muted); font-size: 0.85rem; }
+.master-key-empty { display: grid; place-items: center; gap: 0.3rem; min-height: 160px; text-align: center; }
+.master-key-list .pagination-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; margin-top: 1rem; }
+
+@container master-panel (max-width: 1200px) {
+  .master-subscription-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .master-key-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .master-key-search { grid-column: 1 / -1; }
+  .master-key-management-forms { grid-template-columns: 1fr; }
+  .master-key-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container master-panel (max-width: 760px) {
+  .master-subscription-actions,
+  .master-key-create-card .master-key-form,
+  .master-company-renewal .master-key-form { grid-template-columns: 1fr; }
+  .master-form-wide,
+  .master-generate-key,
+  .master-renewal-preview { grid-column: auto; }
+  .master-company-renewal:not([open]) > form { display: none; }
+  .master-key-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .master-key-search { grid-column: 1 / -1; }
+  .master-key-list .table-responsive { overflow: visible; }
+  .master-key-list .master-key-table { min-width: 0; }
+}
+
+@container master-panel (max-width: 480px) {
+  .master-subscription-summary,
+  .master-key-filters,
+  .master-key-detail-grid { grid-template-columns: 1fr; }
+  .master-key-search { grid-column: auto; }
+  .master-key-presets .btn { min-height: 44px; flex-basis: calc(50% - 0.25rem); }
+  .master-key-list-heading { flex-direction: column; }
+  .master-key-management-forms form { grid-template-columns: 1fr; }
+  .master-key-row-actions .btn { min-height: 44px; }
+}

@@ -1165,6 +1165,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const hiddenInput = autocomplete.querySelector('[data-autocomplete-hidden]');
     const list = autocomplete.querySelector('[data-autocomplete-list]');
     const idMode = autocomplete.hasAttribute('data-autocomplete-id-mode');
+    const showOnFocus = autocomplete.hasAttribute('data-autocomplete-show-on-focus');
     const optionsSourceSelector = autocomplete.dataset.autocompleteOptionsSource;
     const optionsSource = optionsSourceSelector ? document.querySelector(optionsSourceSelector) : autocomplete;
     let activeOptionIndex = 0;
@@ -1180,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function matchingOptions() {
       const term = normalizeSuggestionText(input.value);
       if (!term) {
-        return [];
+        return showOnFocus ? options.slice(0, 8) : [];
       }
 
       return options.filter(function (option) {
@@ -1217,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderSuggestions() {
-      if (!input.value.trim()) {
+      if (!input.value.trim() && !showOnFocus) {
         list.classList.remove('is-open');
         list.innerHTML = '';
         return;
@@ -1267,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', function () {
     input.addEventListener('input', function () {
       activeOptionIndex = 0;
       syncHiddenInput();
-      if (input.value.trim()) {
+      if (input.value.trim() || showOnFocus) {
         renderSuggestions();
       } else {
         list.classList.remove('is-open');
@@ -1275,13 +1276,19 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
     input.addEventListener('change', syncHiddenInput);
+    input.addEventListener('focus', function () {
+      if (showOnFocus) {
+        activeOptionIndex = 0;
+        renderSuggestions();
+      }
+    });
     input.addEventListener('blur', function () {
       setTimeout(function () {
         list.classList.remove('is-open');
       }, 120);
     });
     input.addEventListener('keydown', function (event) {
-      const matches = input.value.trim() ? matchingOptions() : [];
+      const matches = matchingOptions();
       if (event.key === 'ArrowDown' && matches.length) {
         event.preventDefault();
         activeOptionIndex = (activeOptionIndex + 1) % matches.length;

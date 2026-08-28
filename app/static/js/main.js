@@ -1597,6 +1597,43 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
+    function syncActiveProductSuggestion(scrollBehavior) {
+      if (!productPickerList) {
+        return;
+      }
+
+      const suggestionButtons = Array.from(productPickerList.querySelectorAll('.product-suggestion-item'));
+      suggestionButtons.forEach(function (button, index) {
+        const isActive = index === activeProductIndex;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+
+      const activeButton = suggestionButtons[activeProductIndex];
+      if (!activeButton) {
+        return;
+      }
+
+      const visibleTop = productPickerList.scrollTop;
+      const visibleBottom = visibleTop + productPickerList.clientHeight;
+      const itemTop = activeButton.offsetTop;
+      const itemBottom = itemTop + activeButton.offsetHeight;
+      let targetTop = null;
+
+      if (itemTop < visibleTop) {
+        targetTop = itemTop;
+      } else if (itemBottom > visibleBottom) {
+        targetTop = itemBottom - productPickerList.clientHeight;
+      }
+
+      if (targetTop !== null) {
+        productPickerList.scrollTo({
+          top: Math.max(targetTop, 0),
+          behavior: scrollBehavior || 'smooth',
+        });
+      }
+    }
+
     function setRowProduct(row, product, quantity) {
       row.querySelector('[data-product-search]').value = product.name;
       row.querySelector('[data-product-id]').value = product.id;
@@ -1660,6 +1697,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
           button.type = 'button';
           button.className = 'product-suggestion-item';
+          button.setAttribute('role', 'option');
           title.className = 'product-suggestion-title';
           meta.className = 'product-suggestion-meta';
           title.textContent = product.name;
@@ -1677,6 +1715,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         productPickerList.classList.add('is-open');
+        window.requestAnimationFrame(function () {
+          syncActiveProductSuggestion('auto');
+        });
       });
     }
 
@@ -2066,11 +2107,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.key === 'ArrowDown' && products.length) {
           event.preventDefault();
           activeProductIndex = (activeProductIndex + 1) % products.length;
-          renderProductSuggestions();
+          syncActiveProductSuggestion('smooth');
         } else if (event.key === 'ArrowUp' && products.length) {
           event.preventDefault();
           activeProductIndex = (activeProductIndex - 1 + products.length) % products.length;
-          renderProductSuggestions();
+          syncActiveProductSuggestion('smooth');
+        } else if (event.key === 'Home' && products.length) {
+          event.preventDefault();
+          activeProductIndex = 0;
+          syncActiveProductSuggestion('smooth');
+        } else if (event.key === 'End' && products.length) {
+          event.preventDefault();
+          activeProductIndex = products.length - 1;
+          syncActiveProductSuggestion('smooth');
         } else if (event.key === 'Enter' && products.length) {
           event.preventDefault();
           openQuantityModal(products[activeProductIndex] || products[0]);

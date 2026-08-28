@@ -6169,7 +6169,7 @@ th {
   gap: 0.45rem;
   position: fixed;
   top: clamp(0.65rem, 1.4vw, 1rem);
-  left: clamp(0.65rem, 1.4vw, 1rem);
+  right: clamp(0.65rem, 1.4vw, 1rem);
   width: min(320px, calc(100vw - 1.3rem));
   margin: 0;
   z-index: 1080;
@@ -6264,7 +6264,7 @@ body:has(.login-screen) {
 }
 
 body:has(.login-screen) .system-flash-stack {
-  right: auto;
+  left: auto;
 }
 
 @media (max-width: 575.98px) {

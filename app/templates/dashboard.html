@@ -1,129 +1,42 @@
 {% extends 'base.html' %}
-
+{% macro money(value) -%}R$ {{ '%.2f'|format(value or 0)|replace('.', ',') }}{%- endmacro %}
+{% macro change(value) -%}{% if value is none %}<span class="dashboard-change neutral">Sem base anterior</span>{% elif value >= 0 %}<span class="dashboard-change positive">↑ {{ '%.1f'|format(value)|replace('.', ',') }}%</span>{% else %}<span class="dashboard-change negative">↓ {{ '%.1f'|format(value|abs)|replace('.', ',') }}%</span>{% endif %}{%- endmacro %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-  <div>
-    <h2>Dashboard</h2>
-    <p class="text-muted mb-0">Visão rápida da operação de hoje.</p>
+<div class="dashboard-page" data-dashboard-page>
+  <span class="visually-hidden">Vendido hoje</span>{% if dashboard.permissions.can_view_reports %}<span class="visually-hidden">Lucro hoje</span>{% endif %}
+  <header class="dashboard-toolbar">
+    <div><span class="dashboard-eyebrow">VISÃO GERAL</span><h2>Dashboard</h2><p class="text-muted mb-0">{{ dashboard.period.label }} · {{ dashboard.period.start_date|replace('-', '/') }} a {{ dashboard.period.end_date|replace('-', '/') }}</p></div>
+    <div class="dashboard-toolbar-actions">
+      <form class="dashboard-period-form" method="get" action="{{ url_for('main.dashboard') }}">
+        <select name="period" aria-label="Período do dashboard" data-dashboard-period>
+          {% for value, label in [('today','Hoje'),('7d','7 dias'),('30d','30 dias'),('month','Este mês'),('previous_month','Mês anterior'),('3m','3 meses'),('6m','6 meses'),('year','Este ano'),('custom','Personalizado')] %}<option value="{{ value }}" {{ 'selected' if dashboard.period.key == value else '' }}>{{ label }}</option>{% endfor %}
+        </select>
+        <div class="dashboard-custom-dates {{ '' if dashboard.period.key == 'custom' else 'd-none' }}" data-dashboard-custom-dates><input type="date" name="start_date" value="{{ dashboard.period.start_date }}" aria-label="Data inicial"><input type="date" name="end_date" value="{{ dashboard.period.end_date }}" aria-label="Data final"></div>
+        <button class="btn btn-outline-light" type="submit">Aplicar</button>
+      </form>
+      <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}" data-global-new-sale>Realizar Venda - F3</a>
+    </div>
+  </header>
+  <section class="dashboard-kpis-modern" aria-label="Indicadores principais">
+    <article class="dashboard-metric dashboard-metric-featured"><span>Faturamento</span><strong>{{ money(dashboard.summary.sales_total) }}</strong><small>{{ change(dashboard.summary.sales_total_change) }} vs. período anterior</small></article>
+    <article class="dashboard-metric"><span>Vendas</span><strong>{{ dashboard.summary.sales_count }}</strong><small>{{ change(dashboard.summary.sales_count_change) }} · ticket {{ money(dashboard.summary.average_ticket) }}</small></article>
+    <article class="dashboard-metric"><span>Clientes</span><strong>—</strong><small class="dashboard-unavailable">Disponível quando o módulo Clientes for ativado</small></article>
+    {% if dashboard.permissions.can_view_reports %}<article class="dashboard-metric"><span>Lucro estimado</span><strong>{{ money(dashboard.summary.profit) }}</strong><small>{{ change(dashboard.summary.profit_change) }} vs. período anterior</small></article>{% endif %}
+  </section>
+  {% if dashboard.permissions.can_view_reports %}
+  <div class="dashboard-analytics-grid">
+    <section class="dashboard-card dashboard-revenue-card"><div class="dashboard-card-heading"><div><span>DESEMPENHO</span><h5>Faturamento no período</h5></div><strong>{{ money(dashboard.summary.sales_total) }}</strong></div>{% if dashboard.revenue_series.points and dashboard.summary.sales_count %}<canvas class="dashboard-line-chart" height="260" data-dashboard-line aria-label="Gráfico de faturamento"></canvas>{% else %}<div class="dashboard-empty"><strong>Nenhuma venda neste período</strong><span>As vendas concluídas aparecerão aqui.</span></div>{% endif %}</section>
+    <section class="dashboard-card dashboard-category-card"><div class="dashboard-card-heading"><div><span>DISTRIBUIÇÃO</span><h5>Vendas por categoria</h5></div></div>{% if dashboard.category_sales %}<div class="dashboard-category-content"><canvas class="dashboard-donut-chart" width="210" height="210" data-dashboard-donut aria-label="Gráfico por categoria"></canvas><div class="dashboard-legend">{% for item in dashboard.category_sales[:6] %}<div><i style="--legend-index:{{ loop.index0 }}"></i><span>{{ item.category }}</span><strong>{{ '%.1f'|format(item.percent)|replace('.', ',') }}%</strong></div>{% endfor %}</div></div>{% else %}<div class="dashboard-empty"><strong>Sem categorias vendidas</strong><span>A distribuição será calculada após a primeira venda.</span></div>{% endif %}</section>
   </div>
-  <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-primary" href="{{ url_for('main.new_sale') }}" data-global-new-sale>Realizar Venda - F3</a>
-    {% if not open_cash_register %}
-    <a class="btn btn-primary" href="{{ url_for('main.cash_register') }}">Abrir caixa</a>
-    {% endif %}
+  {% endif %}
+  <div class="dashboard-operations-grid">
+    <section class="dashboard-card"><div class="dashboard-card-heading"><div><span>RANKING</span><h5>Produtos mais vendidos</h5></div>{% if dashboard.permissions.can_view_reports %}<a href="{{ url_for('main.reports') }}">Ver relatórios</a>{% endif %}</div><div class="dashboard-ranking">{% for product in dashboard.top_products %}<div class="dashboard-ranking-row"><b>{{ loop.index }}</b><div><strong>{{ product.name }}</strong><small>{{ product.category }} · {{ product.quantity }} un.</small></div><span>{{ money(product.total) }}</span></div>{% else %}<div class="dashboard-empty compact"><strong>Nenhum produto vendido</strong></div>{% endfor %}</div></section>
+    <section class="dashboard-card"><div class="dashboard-card-heading"><div><span>ATIVIDADE</span><h5>Vendas recentes</h5></div><a href="{{ url_for('main.sales') }}">Todas as vendas</a></div><div class="dashboard-sales-list">{% for sale in dashboard.recent_sales %}<div><b>#{{ sale.id }}</b><span>{{ sale.user_name }}<small>{{ sale.payment_methods|join(' + ') or 'Pagamento não informado' }}</small></span><strong>{{ money(sale.final_amount) }}</strong></div>{% else %}<div class="dashboard-empty compact"><strong>Nenhuma venda no período</strong></div>{% endfor %}</div></section>
+  </div>
+  <div class="dashboard-operations-grid">
+    <section class="dashboard-card"><div class="dashboard-card-heading"><div><span>OPERAÇÃO</span><h5>Estoque baixo</h5></div><a href="{{ url_for('catalog.products', stock='low') }}">Ver produtos</a></div><div class="dashboard-ranking">{% for product in dashboard.low_stock_products %}<div class="dashboard-ranking-row"><b>!</b><div><strong>{{ product.name }}</strong><small>Mínimo {{ product.min_stock_quantity }} un.</small></div><span>{{ product.stock_quantity }} un.</span></div>{% else %}<div class="dashboard-empty compact"><strong>Estoque em dia</strong></div>{% endfor %}</div></section>
+    {% if dashboard.permissions.can_manage_payables %}<section class="dashboard-card"><div class="dashboard-card-heading"><div><span>FINANCEIRO</span><h5>Contas próximas</h5></div><a href="{{ url_for('main.payables') }}">Ver contas</a></div><div class="dashboard-sales-list">{% for payable in dashboard.upcoming_payables %}<div><b>R$</b><span>{{ payable.description }}<small>Vence em {{ payable.due_date|replace('-', '/') }}</small></span><strong>{{ money(payable.amount) }}</strong></div>{% else %}<div class="dashboard-empty compact"><strong>Nenhuma conta crítica</strong></div>{% endfor %}</div></section>{% endif %}
   </div>
 </div>
-
-<div class="dashboard-grid dashboard-kpi-grid mb-4">
-  <section class="card card-dark dashboard-kpi">
-    <span>Vendido hoje</span>
-    <strong>R$ {{ '%.2f'|format(dashboard_summary.sales_total or 0)|replace('.', ',') }}</strong>
-    <small>{{ dashboard_summary.sales_count }} venda{{ 's' if dashboard_summary.sales_count != 1 else '' }}</small>
-  </section>
-  {% if can_view_permission('can_view_reports') %}
-  <section class="card card-dark dashboard-kpi">
-    <span>Lucro hoje</span>
-    <strong>R$ {{ '%.2f'|format(dashboard_summary.profit or 0)|replace('.', ',') }}</strong>
-    <small>Ticket médio R$ {{ '%.2f'|format(dashboard_summary.average_ticket or 0)|replace('.', ',') }}</small>
-  </section>
-  {% endif %}
-  <section class="card card-dark dashboard-kpi">
-    <span>Caixa</span>
-    <strong>{{ dashboard_summary.cash_status }}</strong>
-    {% if can_view_permission('can_view_reports') %}
-    <small>Vendas no caixa R$ {{ '%.2f'|format(dashboard_summary.cash_total or 0)|replace('.', ',') }}</small>
-    {% else %}
-    <small>{{ 'Caixa em operação' if open_cash_register else 'Sem caixa aberto' }}</small>
-    {% endif %}
-  </section>
-  <section class="card card-dark dashboard-kpi">
-    <span>Estoque baixo</span>
-    <strong>{{ dashboard_summary.low_stock_count }}</strong>
-    <small>produto{{ 's' if dashboard_summary.low_stock_count != 1 else '' }} para revisar</small>
-  </section>
-  {% if can_view_permission('can_manage_payables') %}
-  <section class="card card-dark dashboard-kpi">
-    <span>Contas próximas</span>
-    <strong>{{ dashboard_summary.payables_due_count }}</strong>
-    <small>vencidas ou até 3 dias</small>
-  </section>
-  {% endif %}
-  {% if can_view_permission('can_view_reports') %}
-  <section class="card card-dark dashboard-kpi">
-    <span>Lucro do caixa</span>
-    <strong>R$ {{ '%.2f'|format(dashboard_summary.cash_profit or 0)|replace('.', ',') }}</strong>
-    <small>{{ 'Caixa em operação' if open_cash_register else 'Sem caixa aberto' }}</small>
-  </section>
-  {% endif %}
-</div>
-
-<div class="dashboard-detail-grid">
-  <section class="card card-dark dashboard-panel">
-    <div class="dashboard-panel-header">
-      <h5>Produtos mais vendidos hoje</h5>
-      {% if can_view_permission('can_view_reports') %}
-      <a class="btn btn-outline-light btn-sm" href="{{ url_for('main.reports') }}">Relatórios</a>
-      {% endif %}
-    </div>
-    <div class="dashboard-list">
-      {% for product in top_products %}
-      <div class="dashboard-list-item">
-        <div>
-          <strong>{{ product.name }}</strong>
-          {% if can_view_permission('can_view_reports') %}
-          <small>{{ product.quantity }} un. · lucro R$ {{ '%.2f'|format(product.profit or 0)|replace('.', ',') }}</small>
-          {% else %}
-          <small>{{ product.quantity }} un.</small>
-          {% endif %}
-        </div>
-        <span>R$ {{ '%.2f'|format(product.total or 0)|replace('.', ',') }}</span>
-      </div>
-      {% else %}
-      <p class="text-muted mb-0">Nenhuma venda registrada hoje.</p>
-      {% endfor %}
-    </div>
-  </section>
-
-  <section class="card card-dark dashboard-panel">
-    <div class="dashboard-panel-header">
-      <h5>Estoque baixo</h5>
-      <a class="btn btn-outline-light btn-sm" href="{{ url_for('catalog.products', stock='low') }}">Produtos</a>
-    </div>
-    <div class="dashboard-list">
-      {% for product in low_stock_products %}
-      <div class="dashboard-list-item">
-        <div>
-          <strong>{{ product.name }}</strong>
-          <small>Mínimo {{ product.min_stock_quantity or 0 }} un.</small>
-        </div>
-        <span>{{ product.effective_stock_quantity or 0 }} un.</span>
-      </div>
-      {% else %}
-      <p class="text-muted mb-0">Nenhum produto abaixo do mínimo.</p>
-      {% endfor %}
-    </div>
-  </section>
-
-  {% if can_view_permission('can_manage_payables') %}
-  <section class="card card-dark dashboard-panel">
-    <div class="dashboard-panel-header">
-      <h5>Contas vencendo</h5>
-      <a class="btn btn-outline-light btn-sm" href="{{ url_for('main.payables') }}">Contas</a>
-    </div>
-    <div class="dashboard-list">
-      {% for payable in upcoming_payables %}
-      <div class="dashboard-list-item">
-        <div>
-          <strong>{{ payable.description }}</strong>
-          <small>{{ payable_status_label(payable) }} · {{ payable.due_date.strftime('%d/%m/%Y') }}</small>
-        </div>
-        <span>R$ {{ '%.2f'|format(payable.amount or 0)|replace('.', ',') }}</span>
-      </div>
-      {% else %}
-      <p class="text-muted mb-0">Nenhuma conta crítica agora.</p>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-</div>
+<script type="application/json" id="dashboard-chart-data">{{ {'revenue': dashboard.revenue_series.points, 'categories': dashboard.category_sales}|tojson }}</script>
 {% endblock %}

@@ -29,6 +29,7 @@ from app.services.sale_service import (
     find_completed_sale_request,
 )
 from app.services.notification_service import sync_operational_notifications
+from app.services.dashboard_service import build_dashboard_snapshot
 from app.security.rate_limit import redis_health_status
 from app.services.stock_service import (
     MOVEMENT_TYPE_LABELS,
@@ -910,57 +911,33 @@ def build_product_report(start_datetime, end_datetime, category_id='', product_i
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    today = date.today()
     company = current_tenant_company()
     tenant_db = tenant_session()
-    current_cash_register = open_cash_register()
-
-    sales = tenant_db.query(Sale).filter_by(company_id=company.id).order_by(Sale.created_at.desc()).all()
-    today_sales = [
-        sale for sale in sales
-        if sale.created_at and sale.created_at.date() == today
-    ]
-    today_totals, today_payment_totals, today_top_products = build_sales_report(today_sales)
-
-    low_stock_products = tenant_db.query(Product).filter(
-        Product.company_id == company.id,
-        Product.active.is_(True),
-        Product.min_stock_quantity > 0,
-    ).order_by(Product.name.asc()).all()
-    low_stock_products = [
-        product for product in low_stock_products
-        if (product.effective_stock_quantity or 0) <= (product.min_stock_quantity or 0)
-    ]
-    low_stock_products.sort(key=lambda product: ((product.effective_stock_quantity or 0), product.name.lower()))
-
-    upcoming_payables = tenant_db.query(Payable).filter(
-        Payable.company_id == company.id,
-        Payable.paid.is_(False),
-        Payable.due_date <= today + timedelta(days=3),
-    ).order_by(Payable.due_date.asc(), Payable.description.asc()).limit(6).all()
-
-    dashboard_summary = {
-        'sales_total': today_totals['final'],
-        'sales_count': today_totals['sales_count'],
-        'profit': today_totals['profit'],
-        'average_ticket': today_totals['average_ticket'],
-        'cash_status': 'Aberto' if current_cash_register else 'Fechado',
-        'cash_total': cash_register_total_sold(current_cash_register),
-        'cash_profit': cash_register_profit(current_cash_register),
-        'low_stock_count': len(low_stock_products),
-        'payables_due_count': len(upcoming_payables),
-    }
+    period = (request.args.get('period') or 'today').strip()
+    try:
+        custom_start = date.fromisoformat(request.args['start_date']) if request.args.get('start_date') else None
+        custom_end = date.fromisoformat(request.args['end_date']) if request.args.get('end_date') else None
+        snapshot = build_dashboard_snapshot(
+            tenant_db,
+            company.id,
+            can_view_reports=current_user.has_permission('can_view_reports'),
+            can_manage_payables=current_user.has_permission('can_manage_payables'),
+            period=period,
+            start_date=custom_start,
+            end_date=custom_end,
+        )
+    except (ValueError, TypeError):
+        flash('Período inválido. Exibindo os dados de hoje.', 'warning')
+        snapshot = build_dashboard_snapshot(
+            tenant_db,
+            company.id,
+            can_view_reports=current_user.has_permission('can_view_reports'),
+            can_manage_payables=current_user.has_permission('can_manage_payables'),
+        )
 
     return render_template(
         'dashboard.html',
-        open_cash_register=current_cash_register,
-        dashboard_summary=dashboard_summary,
-        payment_methods=PAYMENT_METHODS,
-        today_payment_totals=today_payment_totals,
-        top_products=today_top_products[:5],
-        low_stock_products=low_stock_products[:6],
-        upcoming_payables=upcoming_payables,
-        payable_status_label=payable_status_label,
+        dashboard=snapshot,
     )
 
 

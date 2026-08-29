@@ -129,6 +129,14 @@ public interface IGirofyApiClient
         string accessToken,
         CancellationToken cancellationToken);
 
+    Task<DashboardSnapshot> GetDashboardSummaryAsync(
+        string accessToken,
+        string period,
+        string? startDate,
+        string? endDate,
+        CancellationToken cancellationToken) =>
+        GetDashboardSummaryAsync(accessToken, cancellationToken);
+
     Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
         string accessToken,
         int page,

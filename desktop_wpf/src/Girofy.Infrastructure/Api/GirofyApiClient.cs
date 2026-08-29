@@ -369,6 +369,21 @@ public sealed class GirofyApiClient(
         return await ReadEnvelopeAsync<DashboardSnapshot>(response, cancellationToken);
     }
 
+    public async Task<DashboardSnapshot> GetDashboardSummaryAsync(
+        string accessToken,
+        string period,
+        string? startDate,
+        string? endDate,
+        CancellationToken cancellationToken)
+    {
+        var query = $"api/v1/dashboard/summary?period={Uri.EscapeDataString(period)}";
+        if (!string.IsNullOrWhiteSpace(startDate)) query += $"&start_date={Uri.EscapeDataString(startDate)}";
+        if (!string.IsNullOrWhiteSpace(endDate)) query += $"&end_date={Uri.EscapeDataString(endDate)}";
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, query, accessToken);
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return await ReadEnvelopeAsync<DashboardSnapshot>(response, cancellationToken);
+    }
+
     public async Task<SalesHistorySnapshot> GetTodaySalesHistoryAsync(
         string accessToken,
         int page,

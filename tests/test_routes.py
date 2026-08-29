@@ -2289,11 +2289,51 @@ class RouteTestCase(unittest.TestCase):
         )
         self.assertEqual(data['top_products'][0]['name'], 'Coca Cola 2L')
         self.assertEqual(data['top_products'][0]['quantity'], 3)
+        self.assertEqual(data['top_products'][0]['category'], 'Sem categoria')
+        self.assertEqual(data['period']['key'], 'today')
+        self.assertEqual(data['category_sales'][0]['percent'], 100.0)
+        self.assertEqual(sum(point['total'] for point in data['revenue_series']['points']), 34.0)
+        self.assertFalse(data['summary']['customers_available'])
+        self.assertIsNone(data['summary']['customers'])
         self.assertEqual(data['low_stock_products'][0]['name'], 'Coca Cola 2L')
         self.assertEqual(data['recent_sales'][0]['id'], second_sale_id)
         self.assertEqual(data['upcoming_payables'][0]['description'], 'Energia')
         self.assertNotIn('Produto de outra adega', str(data))
         self.assertNotIn('Conta de outra adega', str(data))
+
+    def test_api_dashboard_supports_custom_period_and_validates_range(self):
+        user, company = self.create_api_user(username='api-dashboard-periodo')
+        today = business_today()
+        start_at, _ = business_date_range_utc(today - timedelta(days=4), today)
+        with self.app.app_context():
+            db.session.add(Sale(
+                company_id=company.id,
+                user_id=user.id,
+                created_at=start_at + timedelta(hours=6),
+                total_amount=75,
+                final_amount=75,
+                payment_status='paid',
+            ))
+            db.session.commit()
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        headers = self.bearer_header(token)
+        response = self.client.get(
+            f'/api/v1/dashboard/summary?period=custom&start_date={(today - timedelta(days=4)).isoformat()}&end_date={today.isoformat()}',
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['period']['key'], 'custom')
+        self.assertEqual(data['summary']['sales_total'], 75.0)
+        self.assertEqual(len(data['revenue_series']['points']), 5)
+
+        invalid = self.client.get(
+            f'/api/v1/dashboard/summary?period=custom&start_date={today.isoformat()}&end_date={(today - timedelta(days=1)).isoformat()}',
+            headers=headers,
+        )
+        self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(invalid.get_json()['errors'][0]['code'], 'invalid_dashboard_period')
 
     def test_api_dashboard_redacts_financial_details_without_permissions(self):
         user, company = self.create_api_user(

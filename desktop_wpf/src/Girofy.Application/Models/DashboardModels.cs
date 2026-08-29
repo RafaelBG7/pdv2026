@@ -26,6 +26,8 @@ public static class DashboardFormatting
 
 public sealed class DashboardSnapshot
 {
+    [JsonPropertyName("period")]
+    public DashboardPeriod Period { get; init; } = new();
     [JsonPropertyName("date")]
     public string Date { get; init; } = string.Empty;
 
@@ -44,6 +46,12 @@ public sealed class DashboardSnapshot
     [JsonPropertyName("top_products")]
     public IReadOnlyList<DashboardTopProduct> TopProducts { get; init; } = [];
 
+    [JsonPropertyName("revenue_series")]
+    public DashboardRevenueSeries RevenueSeries { get; init; } = new();
+
+    [JsonPropertyName("category_sales")]
+    public IReadOnlyList<DashboardCategorySale> CategorySales { get; init; } = [];
+
     [JsonPropertyName("low_stock_products")]
     public IReadOnlyList<DashboardLowStockProduct> LowStockProducts { get; init; } = [];
 
@@ -53,9 +61,15 @@ public sealed class DashboardSnapshot
     [JsonPropertyName("upcoming_payables")]
     public IReadOnlyList<DashboardPayable> UpcomingPayables { get; init; } = [];
 
-    public string ReferenceDateText => BrazilianDateFormatting.TryParseDate(Date, out var parsed)
-        ? BrazilianDateFormatting.FormatDate(parsed)
-        : "Operação de hoje";
+    public string ReferenceDateText => string.IsNullOrWhiteSpace(Period.Label) ? "Operação de hoje" : Period.Label;
+}
+
+public sealed class DashboardPeriod
+{
+    [JsonPropertyName("key")] public string Key { get; init; } = "today";
+    [JsonPropertyName("label")] public string Label { get; init; } = "Hoje";
+    [JsonPropertyName("start_date")] public string StartDate { get; init; } = string.Empty;
+    [JsonPropertyName("end_date")] public string EndDate { get; init; } = string.Empty;
 }
 
 public sealed class DashboardPermissions
@@ -87,6 +101,11 @@ public sealed class DashboardSummary
     [JsonPropertyName("payables_due_count")]
     public int? PayablesDueCount { get; init; }
 
+    [JsonPropertyName("sales_total_change")] public decimal? SalesTotalChange { get; init; }
+    [JsonPropertyName("sales_count_change")] public decimal? SalesCountChange { get; init; }
+    [JsonPropertyName("profit_change")] public decimal? ProfitChange { get; init; }
+    [JsonPropertyName("customers_available")] public bool CustomersAvailable { get; init; }
+
     public string SalesTotalText => DashboardFormatting.Money(SalesTotal);
 
     public string SalesCountText => SalesCount == 1 ? "1 venda" : $"{SalesCount} vendas";
@@ -98,6 +117,10 @@ public sealed class DashboardSummary
     public string ProfitSummaryText => $"Lucro hoje: {ProfitText}";
 
     public string LowStockText => LowStockCount == 1 ? "1 produto" : $"{LowStockCount} produtos";
+    public string SalesTotalChangeText => ChangeText(SalesTotalChange);
+    public string SalesCountChangeText => ChangeText(SalesCountChange);
+    public string ProfitChangeText => ChangeText(ProfitChange);
+    private static string ChangeText(decimal? value) => !value.HasValue ? "Sem base anterior" : $"{(value >= 0 ? "↑" : "↓")} {Math.Abs(value.Value):N1}% vs. anterior";
 }
 
 public sealed class DashboardCashRegister
@@ -151,6 +174,8 @@ public sealed class DashboardPaymentTotal
 
 public sealed class DashboardTopProduct
 {
+    [JsonPropertyName("category")]
+    public string Category { get; init; } = "Sem categoria";
     [JsonPropertyName("product_id")]
     public int ProductId { get; init; }
 
@@ -169,6 +194,28 @@ public sealed class DashboardTopProduct
     public string QuantityText => $"{Quantity} un.";
 
     public string TotalText => DashboardFormatting.Money(Total);
+}
+
+public sealed class DashboardRevenueSeries
+{
+    [JsonPropertyName("granularity")] public string Granularity { get; init; } = "day";
+    [JsonPropertyName("points")] public IReadOnlyList<DashboardRevenuePoint> Points { get; init; } = [];
+}
+
+public sealed class DashboardRevenuePoint
+{
+    [JsonPropertyName("label")] public string Label { get; init; } = string.Empty;
+    [JsonPropertyName("total")] public decimal Total { get; init; }
+    [JsonPropertyName("ratio")] public double Ratio { get; init; }
+    public string TotalText => DashboardFormatting.Money(Total);
+}
+
+public sealed class DashboardCategorySale
+{
+    [JsonPropertyName("category")] public string Category { get; init; } = string.Empty;
+    [JsonPropertyName("total")] public decimal Total { get; init; }
+    [JsonPropertyName("percent")] public decimal Percent { get; init; }
+    public string SummaryText => $"{Percent:N1}% · {DashboardFormatting.Money(Total)}";
 }
 
 public sealed class DashboardLowStockProduct

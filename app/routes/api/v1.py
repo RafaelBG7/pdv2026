@@ -2895,14 +2895,22 @@ def api_update_employee(user_id):
 @api_auth_required
 def api_dashboard_summary():
     try:
+        period = (request.args.get('period') or 'today').strip()
+        start_date = parse_report_date_argument('start_date')
+        end_date = parse_report_date_argument('end_date')
         with api_tenant_database(g.api_user) as tenant_db:
             snapshot = build_dashboard_snapshot(
                 tenant_db,
                 g.api_user.company_id,
                 can_view_reports=g.api_user.has_permission('can_view_reports'),
                 can_manage_payables=g.api_user.has_permission('can_manage_payables'),
+                period=period,
+                start_date=start_date,
+                end_date=end_date,
             )
         return api_success(snapshot)
+    except ValueError as error:
+        return api_failure(str(error), 'invalid_dashboard_period', 422)
     except ApiAuthError as error:
         return api_auth_error_response(error)
 

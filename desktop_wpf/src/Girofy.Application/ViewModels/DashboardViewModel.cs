@@ -12,6 +12,9 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
     private DashboardSnapshot? _snapshot;
     private string _errorMessage = string.Empty;
     private bool _isBusy;
+    private DashboardPeriodOption _selectedPeriod;
+    private DateTime? _customStartDate = DateTime.Today;
+    private DateTime? _customEndDate = DateTime.Today;
 
     public DashboardViewModel(
         IGirofyApiClient apiClient,
@@ -20,6 +23,15 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
         _apiClient = apiClient;
         _sessionContext = sessionContext;
         RefreshCommand = new AsyncRelayCommand(LoadAsync);
+        ApplyPeriodCommand = new AsyncRelayCommand(LoadAsync);
+        Periods =
+        [
+            new("today", "Hoje"), new("7d", "7 dias"), new("30d", "30 dias"),
+            new("month", "Este mês"), new("previous_month", "Mês anterior"),
+            new("3m", "3 meses"), new("6m", "6 meses"), new("year", "Este ano"),
+            new("custom", "Personalizado")
+        ];
+        _selectedPeriod = Periods[0];
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -69,6 +81,19 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
     }
 
     public AsyncRelayCommand RefreshCommand { get; }
+    public AsyncRelayCommand ApplyPeriodCommand { get; }
+    public IReadOnlyList<DashboardPeriodOption> Periods { get; }
+    public DashboardPeriodOption SelectedPeriod
+    {
+        get => _selectedPeriod;
+        set
+        {
+            if (SetProperty(ref _selectedPeriod, value)) OnPropertyChanged(nameof(IsCustomPeriod));
+        }
+    }
+    public bool IsCustomPeriod => SelectedPeriod.Key == "custom";
+    public DateTime? CustomStartDate { get => _customStartDate; set => SetProperty(ref _customStartDate, value); }
+    public DateTime? CustomEndDate { get => _customEndDate; set => SetProperty(ref _customEndDate, value); }
 
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         LoadAsync(cancellationToken);
@@ -106,6 +131,9 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
         {
             var snapshot = await _apiClient.GetDashboardSummaryAsync(
                 session.AccessToken,
+                SelectedPeriod.Key,
+                SelectedPeriod.Key == "custom" ? CustomStartDate?.ToString("yyyy-MM-dd") : null,
+                SelectedPeriod.Key == "custom" ? CustomEndDate?.ToString("yyyy-MM-dd") : null,
                 cancellationToken);
             if (string.Equals(
                 _sessionContext.Current?.AccessToken,
@@ -150,3 +178,5 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
 
     public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;
 }
+
+public sealed record DashboardPeriodOption(string Key, string Label);

@@ -1,10 +1,16 @@
-from datetime import timedelta
+from calendar import monthrange
+from datetime import date, timedelta
 
 from sqlalchemy import case, func
 from sqlalchemy.orm import selectinload
 
-from app.models import CashRegister, Payable, Payment, Product, Sale, SaleItem, User
-from app.time_utils import business_date_range_utc, business_today, utc_isoformat
+from app.models import Category, CashRegister, Payable, Payment, Product, Sale, SaleItem, User
+from app.time_utils import (
+    business_date_range_utc,
+    business_today,
+    to_business_datetime,
+    utc_isoformat,
+)
 
 
 PAYMENT_METHODS = {
@@ -13,6 +19,74 @@ PAYMENT_METHODS = {
     'debit': 'Débito',
     'credit': 'Crédito',
 }
+
+DASHBOARD_PERIODS = {
+    'today': 'Hoje',
+    '7d': 'Últimos 7 dias',
+    '30d': 'Últimos 30 dias',
+    'month': 'Este mês',
+    'previous_month': 'Mês anterior',
+    '3m': 'Últimos 3 meses',
+    '6m': 'Últimos 6 meses',
+    'year': 'Este ano',
+    'custom': 'Personalizado',
+}
+
+
+def _shift_month(value, months):
+    absolute = value.year * 12 + value.month - 1 + months
+    year, zero_based_month = divmod(absolute, 12)
+    month = zero_based_month + 1
+    return value.replace(year=year, month=month, day=min(value.day, monthrange(year, month)[1]))
+
+
+def resolve_dashboard_period(period='today', start_date=None, end_date=None, today=None):
+    today = today or business_today()
+    period = (period or 'today').strip().casefold()
+    if period not in DASHBOARD_PERIODS:
+        period = 'today'
+
+    if period == 'custom':
+        if not start_date or not end_date:
+            raise ValueError('Informe as datas inicial e final do período personalizado.')
+        if start_date > end_date:
+            raise ValueError('A data inicial não pode ser posterior à data final.')
+        start, end = start_date, end_date
+    elif period == 'today':
+        start = end = today
+    elif period == '7d':
+        start, end = today - timedelta(days=6), today
+    elif period == '30d':
+        start, end = today - timedelta(days=29), today
+    elif period == 'month':
+        start, end = today.replace(day=1), today
+    elif period == 'previous_month':
+        previous = _shift_month(today.replace(day=1), -1)
+        start = previous
+        end = previous.replace(day=monthrange(previous.year, previous.month)[1])
+    elif period in {'3m', '6m'}:
+        months = 3 if period == '3m' else 6
+        start, end = _shift_month(today, -(months - 1)).replace(day=1), today
+    else:
+        start, end = today.replace(month=1, day=1), today
+
+    duration = (end - start).days + 1
+    previous_end = start - timedelta(days=1)
+    previous_start = previous_end - timedelta(days=duration - 1)
+    return {
+        'key': period,
+        'label': DASHBOARD_PERIODS[period],
+        'start_date': start,
+        'end_date': end,
+        'previous_start_date': previous_start,
+        'previous_end_date': previous_end,
+    }
+
+
+def _change_percent(current, previous):
+    if previous in (None, 0, 0.0):
+        return None
+    return round(((float(current or 0) - float(previous)) / abs(float(previous))) * 100, 1)
 
 
 def _money(value):
@@ -95,15 +169,17 @@ def _top_products(db_session, company_id, start_at, end_at, include_profit):
         db_session.query(
             Product.id,
             Product.name,
+            Category.name,
             func.coalesce(func.sum(SaleItem.quantity), 0),
             func.coalesce(func.sum(SaleItem.total_price), 0.0),
             func.coalesce(func.sum(profit_expression), 0.0),
         )
         .join(SaleItem, SaleItem.product_id == Product.id)
         .join(Sale, Sale.id == SaleItem.sale_id)
+        .outerjoin(Category, Category.id == Product.category_id)
         .filter(Product.company_id == company_id)
         .filter(*_period_filters(company_id, start_at, end_at))
-        .group_by(Product.id, Product.name)
+        .group_by(Product.id, Product.name, Category.name)
         .order_by(func.sum(SaleItem.quantity).desc(), func.lower(Product.name), Product.id)
         .limit(5)
         .all()
@@ -115,9 +191,83 @@ def _top_products(db_session, company_id, start_at, end_at, include_profit):
             'quantity': int(quantity or 0),
             'total': _money(total),
             'profit': _money(profit) if include_profit else None,
+            'category': category_name or 'Sem categoria',
         }
-        for product_id, name, quantity, total, profit in rows
+        for product_id, name, category_name, quantity, total, profit in rows
     ]
+
+
+def _category_sales(db_session, company_id, start_at, end_at):
+    rows = (
+        db_session.query(
+            Category.name,
+            func.coalesce(func.sum(SaleItem.total_price), 0.0),
+        )
+        .select_from(Product)
+        .join(SaleItem, SaleItem.product_id == Product.id)
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .outerjoin(Category, Category.id == Product.category_id)
+        .filter(Product.company_id == company_id)
+        .filter(*_period_filters(company_id, start_at, end_at))
+        .group_by(Category.name)
+        .order_by(func.sum(SaleItem.total_price).desc())
+        .all()
+    )
+    total = sum(float(amount or 0) for _, amount in rows)
+    result = []
+    for category_name, amount in rows:
+        value = _money(amount)
+        result.append({
+            'category': category_name or 'Sem categoria',
+            'total': value,
+            'percent': round((value / total) * 100, 1) if total else 0.0,
+        })
+    return result
+
+
+def _revenue_series(db_session, company_id, start_at, end_at, start_date, end_date):
+    rows = (
+        db_session.query(Sale.created_at, Sale.final_amount)
+        .filter(*_period_filters(company_id, start_at, end_at))
+        .order_by(Sale.created_at.asc())
+        .all()
+    )
+    duration = (end_date - start_date).days + 1
+    if duration == 1:
+        buckets = {hour: 0.0 for hour in range(24)}
+        for created_at, amount in rows:
+            local = to_business_datetime(created_at)
+            buckets[local.hour] += float(amount or 0)
+        points = [{'label': f'{hour:02d}h', 'total': _money(value)} for hour, value in buckets.items()]
+        granularity = 'hour'
+    elif duration <= 93:
+        buckets = {start_date + timedelta(days=offset): 0.0 for offset in range(duration)}
+        for created_at, amount in rows:
+            local_date = to_business_datetime(created_at).date()
+            if local_date in buckets:
+                buckets[local_date] += float(amount or 0)
+        points = [{'label': day.strftime('%d/%m'), 'total': _money(value)} for day, value in buckets.items()]
+        granularity = 'day'
+    else:
+        cursor = start_date.replace(day=1)
+        buckets = {}
+        while cursor <= end_date:
+            buckets[(cursor.year, cursor.month)] = 0.0
+            cursor = _shift_month(cursor, 1)
+        for created_at, amount in rows:
+            local = to_business_datetime(created_at)
+            key = (local.year, local.month)
+            if key in buckets:
+                buckets[key] += float(amount or 0)
+        points = [
+            {'label': date(year, month, 1).strftime('%m/%Y'), 'total': _money(value)}
+            for (year, month), value in buckets.items()
+        ]
+        granularity = 'month'
+    maximum = max((point['total'] for point in points), default=0.0)
+    for point in points:
+        point['ratio'] = round(point['total'] / maximum, 4) if maximum else 0.0
+    return {'granularity': granularity, 'points': points}
 
 
 def _low_stock(db_session, company_id):
@@ -151,11 +301,12 @@ def _low_stock(db_session, company_id):
     ]
 
 
-def _recent_sales(db_session, company_id):
+def _recent_sales(db_session, company_id, start_at=None, end_at=None):
     sales = (
         db_session.query(Sale)
         .options(selectinload(Sale.payments))
         .filter(Sale.company_id == company_id, Sale.valid_filter())
+        .filter(Sale.created_at >= start_at, Sale.created_at < end_at)
         .order_by(Sale.created_at.desc(), Sale.id.desc())
         .limit(6)
         .all()
@@ -267,12 +418,23 @@ def build_dashboard_snapshot(
     can_view_reports,
     can_manage_payables,
     today=None,
+    period='today',
+    start_date=None,
+    end_date=None,
 ):
     today = today or business_today()
-    start_at, end_at = business_date_range_utc(today, today)
+    selected = resolve_dashboard_period(period, start_date, end_date, today)
+    start_at, end_at = business_date_range_utc(selected['start_date'], selected['end_date'])
+    previous_start_at, previous_end_at = business_date_range_utc(
+        selected['previous_start_date'], selected['previous_end_date'])
 
     totals = _sales_totals(db_session, company_id, start_at, end_at)
+    previous_totals = _sales_totals(db_session, company_id, previous_start_at, previous_end_at)
     profit = _sales_profit(db_session, company_id, start_at, end_at) if can_view_reports else None
+    previous_profit = (
+        _sales_profit(db_session, company_id, previous_start_at, previous_end_at)
+        if can_view_reports else None
+    )
     low_stock_count, low_stock_products = _low_stock(db_session, company_id)
     payable_count, upcoming_payables = _upcoming_payables(
         db_session,
@@ -283,6 +445,14 @@ def build_dashboard_snapshot(
 
     return {
         'date': today.isoformat(),
+        'period': {
+            'key': selected['key'],
+            'label': selected['label'],
+            'start_date': selected['start_date'].isoformat(),
+            'end_date': selected['end_date'].isoformat(),
+            'previous_start_date': selected['previous_start_date'].isoformat(),
+            'previous_end_date': selected['previous_end_date'].isoformat(),
+        },
         'permissions': {
             'can_view_reports': bool(can_view_reports),
             'can_manage_payables': bool(can_manage_payables),
@@ -293,6 +463,12 @@ def build_dashboard_snapshot(
             'average_ticket': totals['average_ticket'] if can_view_reports else None,
             'low_stock_count': low_stock_count,
             'payables_due_count': payable_count,
+            'sales_total_change': _change_percent(totals['sales_total'], previous_totals['sales_total']),
+            'sales_count_change': _change_percent(totals['sales_count'], previous_totals['sales_count']),
+            'profit_change': _change_percent(profit, previous_profit) if can_view_reports else None,
+            'customers': None,
+            'customers_change': None,
+            'customers_available': False,
         },
         'cash_register': _current_cash(db_session, company_id, can_view_reports),
         'payment_totals': (
@@ -306,7 +482,17 @@ def build_dashboard_snapshot(
             end_at,
             can_view_reports,
         ),
+        'revenue_series': (
+            _revenue_series(
+                db_session, company_id, start_at, end_at,
+                selected['start_date'], selected['end_date'])
+            if can_view_reports else {'granularity': 'day', 'points': []}
+        ),
+        'category_sales': (
+            _category_sales(db_session, company_id, start_at, end_at)
+            if can_view_reports else []
+        ),
         'low_stock_products': low_stock_products,
-        'recent_sales': _recent_sales(db_session, company_id),
+        'recent_sales': _recent_sales(db_session, company_id, start_at, end_at),
         'upcoming_payables': upcoming_payables,
     }

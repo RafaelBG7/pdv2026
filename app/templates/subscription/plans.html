@@ -90,12 +90,8 @@
         {% endfor %}
       </ul>
 
-      {% if current_plan == plan.name and active_subscription %}
-      <button class="btn btn-outline-light" type="button" disabled>Plano atual</button>
-      {% else %}
       <a class="btn {{ 'btn-primary' if plan.get('highlight') else 'btn-outline-light' }}"
          href="{{ plan.whatsapp_url }}" target="_blank" rel="noopener noreferrer">Assinar</a>
-      {% endif %}
     </section>
     {% endfor %}
   </div>

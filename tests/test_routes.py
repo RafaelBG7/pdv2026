@@ -5562,8 +5562,10 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('R$ 180,00'.encode(), response.data)
         self.assertNotIn('R$ 899,00'.encode(), response.data)
         self.assertIn('Assinar'.encode(), response.data)
-        self.assertIn(b'https://wa.me/5511944876166?', response.data)
-        self.assertIn(b'plano+Pro+do+SkyGest', response.data)
+        self.assertIn(b'https://wa.me/5511944876166?text=', response.data)
+        self.assertIn(b'Tenho%20interesse%20no%20plano%20Basic%20do%20SkyGest', response.data)
+        self.assertIn(b'Tenho%20interesse%20no%20plano%20Pro%20do%20SkyGest', response.data)
+        self.assertIn(b'Tenho%20interesse%20no%20plano%20Ultimate%20do%20SkyGest', response.data)
         self.assertNotIn('Ativar assinatura com key'.encode(), response.data)
 
     def test_settings_updates_profile_and_email(self):

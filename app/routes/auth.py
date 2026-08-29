@@ -6,7 +6,7 @@ import re
 import secrets
 import string
 import unicodedata
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from flask import Blueprint, current_app, redirect, render_template, request, send_file, session, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -1208,12 +1208,12 @@ def subscriptions():
     plans = []
     for plan in BASIC_PRO_PLANS:
         message = (
-            f'Olá! Quero assinar o plano {plan["name"]} do SkyGest '
-            f'por {plan["monthly_price"]} por mês para a adega {company.name}.'
+            f'Olá! Tenho interesse no plano {plan["name"]} do SkyGest e gostaria de receber '
+            'mais informações sobre os recursos, valores e condições de contratação.'
         )
         plans.append({
             **plan,
-            'whatsapp_url': f'https://wa.me/{whatsapp_number}?{urlencode({"text": message})}',
+            'whatsapp_url': f'https://wa.me/{whatsapp_number}?text={quote(message, safe="")}',
         })
 
     return render_template(

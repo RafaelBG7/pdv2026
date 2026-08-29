@@ -64,6 +64,23 @@ document.addEventListener('DOMContentLoaded', function () {
     ensureCsrfField(event.target);
   }, true);
 
+  document.querySelectorAll('[data-register-form]').forEach(function (form) {
+    const submitButton = form.querySelector('[data-register-submit]');
+    let submitting = false;
+    form.addEventListener('submit', function (event) {
+      if (submitting) {
+        event.preventDefault();
+        return;
+      }
+      submitting = true;
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.setAttribute('aria-disabled', 'true');
+        submitButton.textContent = 'Criando cadastro...';
+      }
+    });
+  });
+
   if (csrfToken && window.fetch) {
     const originalFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {

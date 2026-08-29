@@ -18,7 +18,7 @@ from app.extensions import db
 from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, Notification, NotificationPreference, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.services.api_auth_service import clear_api_login_attempts
 from app.services.audit_service import changed_values, record_audit_event
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app import tenant as tenant_module
 from app.services import alert_service
 from app.services.notification_service import create_notification
@@ -3437,6 +3437,30 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn(b'name="password"', register_panel)
         self.assertNotIn(b'name="company_name"', register_panel)
         self.assertNotIn(b'name="confirm_password"', register_panel)
+        self.assertIn(b'data-register-form', register_panel)
+        self.assertIn(b'data-register-submit', register_panel)
+
+    def test_registration_identifier_does_not_commit_orphan_company(self):
+        with self.app.app_context():
+            company = Company(name='cadastro-concorrente')
+            db.session.add(company)
+            db.session.flush()
+            tenant_module.tenant_database_identifier(company, persist=False)
+
+            duplicate_user = User(
+                username='master',
+                email='duplicado@example.com',
+                role='admin',
+                company_id=company.id,
+            )
+            duplicate_user.set_password(self.STRONG_PASSWORD)
+            db.session.add(duplicate_user)
+
+            with self.assertRaises(IntegrityError):
+                db.session.flush()
+            db.session.rollback()
+
+            self.assertEqual(Company.query.filter_by(name='cadastro-concorrente').count(), 0)
 
     def test_register_ignores_activation_key_and_shows_plans_after_email_confirmation(self):
         with self.app.app_context():

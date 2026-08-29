@@ -39,7 +39,7 @@ from app.services.audit_service import record_audit_event
 from app.services.email_service import EmailAuthenticationError, send_alert_email, send_email_change_confirmation, send_verification_code_email
 from app.services.password_recovery_service import request_password_recovery
 from app.services.app_registration_service import APP_CALLBACK_URI, create_registration_code, valid_callback_request
-from app.tenant import current_tenant_company, drop_mysql_database, tenant_database_identifier, tenant_engine
+from app.tenant import current_tenant_company, drop_mysql_database, tenant_engine
 
 
 auth_bp = Blueprint('auth', __name__)
@@ -732,7 +732,6 @@ def login():
             )
             db.session.add(company)
             db.session.flush()
-            tenant_database_identifier(company)
             company.subscription_started_at = None
             company.subscription_renews_at = None
             user = User(
@@ -749,7 +748,7 @@ def login():
             try:
                 db.session.flush()
                 # Provisiona e migra o banco do novo tenant antes de concluir o cadastro.
-                tenant_engine(company)
+                tenant_engine(company, persist_identifier=False)
                 record_audit_event(
                     'company_created',
                     'company',

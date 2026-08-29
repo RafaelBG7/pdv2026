@@ -33,10 +33,11 @@ def mysql_database_name(company):
     return f'{prefix}_{company.id}_{slug}'
 
 
-def tenant_database_identifier(company):
+def tenant_database_identifier(company, *, persist=True):
     if not company.database_path or company.database_path.endswith('.db'):
         company.database_path = mysql_database_name(company)
-        db.session.commit()
+        if persist:
+            db.session.commit()
     return company.database_path
 
 
@@ -308,8 +309,8 @@ def ensure_tenant_reference_data(company, engine, cache_key):
         _reference_sync_times[cache_key] = time.monotonic()
 
 
-def tenant_engine(company):
-    identifier = tenant_database_identifier(company)
+def tenant_engine(company, *, persist_identifier=True):
+    identifier = tenant_database_identifier(company, persist=persist_identifier)
     if current_app.config.get('TESTING'):
         return db.engine
 

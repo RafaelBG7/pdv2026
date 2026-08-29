@@ -45,7 +45,7 @@
           </div>
         </form>
 
-        <form class="tab-pane fade {{ 'show active' if auth_tab == 'register' else '' }}" id="register-panel" method="post" role="tabpanel" aria-labelledby="register-tab">
+        <form class="tab-pane fade {{ 'show active' if auth_tab == 'register' else '' }}" id="register-panel" method="post" role="tabpanel" aria-labelledby="register-tab" data-register-form>
           <input type="hidden" name="form_type" value="register">
           <div class="mb-3">
             <label for="register_username" class="form-label">Usuário</label>
@@ -68,7 +68,7 @@
             <div class="invalid-feedback">{{ field_errors.get('password') }}</div>
             {% endif %}
           </div>
-          <button type="submit" class="btn btn-primary w-100">Cadastrar</button>
+          <button type="submit" class="btn btn-primary w-100" data-register-submit>Cadastrar</button>
         </form>
       </div>
     </div>

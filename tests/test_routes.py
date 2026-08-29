@@ -5560,6 +5560,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('R$ 50,00'.encode(), response.data)
         self.assertIn('R$ 120,00'.encode(), response.data)
         self.assertIn('R$ 180,00'.encode(), response.data)
+        self.assertIn('O plano mais completo do SkyGest'.encode(), response.data)
+        self.assertIn('Todas as atualizações e novas funcionalidades'.encode(), response.data)
         self.assertNotIn('R$ 899,00'.encode(), response.data)
         self.assertIn('Assinar'.encode(), response.data)
         self.assertIn(b'https://wa.me/5511944876166?text=', response.data)

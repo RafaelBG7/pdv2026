@@ -69,7 +69,6 @@ BASIC_PRO_PLANS = (
         'name': 'Pro',
         'monthly_price': 'R$ 120,00',
         'tagline': 'Para adegas que precisam de gestão completa.',
-        'highlight': True,
         'features': (
             'Tudo do plano Basic',
             'Funcionários e permissões',
@@ -82,9 +81,11 @@ BASIC_PRO_PLANS = (
     {
         'name': 'Ultimate',
         'monthly_price': 'R$ 180,00',
-        'tagline': 'Para operações que precisam do máximo de controle e escala.',
+        'tagline': 'O plano mais completo do SkyGest, para operações que precisam do máximo de controle e escala.',
+        'highlight': True,
         'features': (
             'Tudo do plano Pro',
+            'Todas as atualizações e novas funcionalidades',
             'Recursos avançados de gestão',
             'Relatórios e auditoria completos',
             'Prioridade no suporte',

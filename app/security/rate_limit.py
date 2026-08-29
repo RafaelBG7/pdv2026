@@ -99,6 +99,25 @@ def _retry_after(error):
     return '60'
 
 
+def _retry_after_label(retry_after):
+    try:
+        seconds = max(1, int(math.ceil(float(retry_after))))
+    except (TypeError, ValueError):
+        return None
+    if seconds < 60:
+        return f'{seconds} segundo' if seconds == 1 else f'{seconds} segundos'
+    minutes, remaining_seconds = divmod(seconds, 60)
+    minute_label = f'{minutes} minuto' if minutes == 1 else f'{minutes} minutos'
+    if not remaining_seconds:
+        return minute_label
+    second_label = (
+        f'{remaining_seconds} segundo'
+        if remaining_seconds == 1
+        else f'{remaining_seconds} segundos'
+    )
+    return f'{minute_label} e {second_label}'
+
+
 def log_rate_limit_event(error=None, event='rate_limit_exceeded'):
     limit = str(getattr(error, 'limit', '') or getattr(error, 'description', '') or '')
     context = {
@@ -124,7 +143,11 @@ def log_rate_limit_event(error=None, event='rate_limit_exceeded'):
 def rate_limit_error_response(error):
     log_rate_limit_event(error)
     retry_after = _retry_after(error)
-    message = 'Muitas requisições foram realizadas. Aguarde alguns instantes e tente novamente.'
+    retry_after_label = _retry_after_label(retry_after)
+    if request.endpoint in {'auth.login', 'api_v1.api_login'}:
+        message = 'Muitas tentativas de acesso. Aguarde alguns minutos e tente novamente.'
+    else:
+        message = 'Muitas requisições foram realizadas. Aguarde alguns instantes e tente novamente.'
     if _is_api_request():
         payload = {
             'success': False,
@@ -137,7 +160,12 @@ def rate_limit_error_response(error):
         response = jsonify(payload)
     else:
         flash(message, 'warning')
-        response = current_app.make_response(render_template('errors/429.html', retry_after=retry_after))
+        response = current_app.make_response(render_template(
+            'errors/429.html',
+            message=message,
+            retry_after=retry_after,
+            retry_after_label=retry_after_label,
+        ))
     response.status_code = 429
     if retry_after:
         response.headers['Retry-After'] = retry_after

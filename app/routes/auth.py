@@ -677,7 +677,7 @@ def render_auth_form(auth_tab='login', form_values=None, field_errors=None):
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit(
-    configured_limit('RATELIMIT_LOGIN', '5 per minute;20 per hour'),
+    configured_limit('RATELIMIT_LOGIN', '10 per 5 minutes'),
     key_func=login_identity_key,
     methods=['POST'],
     exempt_when=lambda: request.form.get('form_type', 'login') == 'register',

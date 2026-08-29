@@ -3,8 +3,9 @@
 <div class="card card-dark mx-auto" style="max-width: 680px;">
   <div class="card-body p-4">
     <h2>Muitas tentativas</h2>
-    <p class="text-muted mb-2">Muitas requisições foram realizadas. Aguarde alguns instantes e tente novamente.</p>
-    {% if retry_after %}<p class="mb-0">Nova tentativa em aproximadamente {{ retry_after }} segundo(s).</p>{% endif %}
+    <p class="text-muted mb-2">{{ message }}</p>
+    {% if retry_after_label %}<p class="mb-3">Tente novamente em aproximadamente {{ retry_after_label }}.</p>{% endif %}
+    <a class="btn btn-outline-light" href="{{ url_for('auth.login') }}">Voltar ao acesso</a>
   </div>
 </div>
 {% endblock %}

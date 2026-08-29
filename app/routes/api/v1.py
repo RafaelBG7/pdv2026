@@ -1379,7 +1379,7 @@ def api_dependency_health_check():
 
 @api_v1_bp.post('/auth/login')
 @limiter.limit(
-    configured_limit('RATELIMIT_LOGIN', '5 per minute;20 per hour'),
+    configured_limit('RATELIMIT_LOGIN', '10 per 5 minutes'),
     key_func=login_identity_key,
     override_defaults=False,
 )

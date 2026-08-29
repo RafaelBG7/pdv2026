@@ -92,7 +92,7 @@ class Config:
         ENVIRONMENT != 'production',
     )
     RATELIMIT_KEY_PREFIX = os.environ.get('RATELIMIT_KEY_PREFIX', 'girofy')
-    RATELIMIT_LOGIN = os.environ.get('RATELIMIT_LOGIN', '5 per minute;20 per hour')
+    RATELIMIT_LOGIN = os.environ.get('RATELIMIT_LOGIN', '10 per 5 minutes')
     RATELIMIT_PASSWORD_RESET = os.environ.get('RATELIMIT_PASSWORD_RESET', '3 per 15 minutes')
     RATELIMIT_EMAIL_RESEND = os.environ.get('RATELIMIT_EMAIL_RESEND', '3 per 15 minutes')
     RATELIMIT_REGISTRATION = os.environ.get('RATELIMIT_REGISTRATION', '3 per hour')

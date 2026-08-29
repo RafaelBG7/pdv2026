@@ -250,6 +250,41 @@ class RouteTestCase(unittest.TestCase):
             close_test_log_handlers(rate_app)
             rate_temp_dir.cleanup()
 
+    def test_login_allows_three_errors_and_blocks_only_after_ten_attempts(self):
+        class FriendlyLoginRateLimitConfig(TestConfig):
+            RATELIMIT_ENABLED = True
+            RATELIMIT_STORAGE_URI = 'memory://'
+            RATELIMIT_LOGIN = '10 per 5 minutes'
+            RATELIMIT_API_GENERAL = '100 per minute'
+            RATELIMIT_KEY_PREFIX = 'test-friendly-login-limit'
+
+        rate_temp_dir = tempfile.TemporaryDirectory()
+        FriendlyLoginRateLimitConfig.LOG_DIR = Path(rate_temp_dir.name) / 'logs'
+        FriendlyLoginRateLimitConfig.BACKUP_DIR = Path(rate_temp_dir.name) / 'backups'
+        rate_app = create_app(FriendlyLoginRateLimitConfig)
+        rate_client = rate_app.test_client()
+        form = {'form_type': 'login', 'username': 'usuario-real', 'password': 'incorreta'}
+        try:
+            for _ in range(3):
+                response = rate_client.post('/login', data=form, environ_base={'REMOTE_ADDR': '10.0.0.9'})
+                self.assertEqual(response.status_code, 200)
+
+            for _ in range(7):
+                response = rate_client.post('/login', data=form, environ_base={'REMOTE_ADDR': '10.0.0.9'})
+                self.assertEqual(response.status_code, 200)
+
+            blocked = rate_client.post('/login', data=form, environ_base={'REMOTE_ADDR': '10.0.0.9'})
+            self.assertEqual(blocked.status_code, 429)
+            self.assertIn('minutos'.encode(), blocked.data)
+            self.assertLessEqual(int(blocked.headers['Retry-After']), 360)
+        finally:
+            with rate_app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+            close_test_log_handlers(rate_app)
+            rate_temp_dir.cleanup()
+
     def test_rate_limit_can_be_disabled_in_development(self):
         for _ in range(8):
             response = self.client.post(

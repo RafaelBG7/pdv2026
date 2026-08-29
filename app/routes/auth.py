@@ -55,8 +55,7 @@ KEY_PAYMENT_CYCLES = {
 BASIC_PRO_PLANS = (
     {
         'name': 'Basic',
-        'monthly_price': 'R$ 89,90',
-        'annual_price': 'R$ 899,00',
+        'monthly_price': 'R$ 50,00',
         'tagline': 'Para adegas começando a controlar vendas e estoque.',
         'features': (
             'Produtos, categorias e kits',
@@ -68,8 +67,7 @@ BASIC_PRO_PLANS = (
     },
     {
         'name': 'Pro',
-        'monthly_price': 'R$ 149,90',
-        'annual_price': 'R$ 1.499,00',
+        'monthly_price': 'R$ 120,00',
         'tagline': 'Para adegas que precisam de gestão completa.',
         'highlight': True,
         'features': (
@@ -83,8 +81,7 @@ BASIC_PRO_PLANS = (
     },
     {
         'name': 'Ultimate',
-        'monthly_price': 'Sob consulta',
-        'annual_price': 'Sob consulta',
+        'monthly_price': 'R$ 180,00',
         'tagline': 'Para operações que precisam do máximo de controle e escala.',
         'features': (
             'Tudo do plano Pro',
@@ -1203,11 +1200,27 @@ def subscriptions():
             next=request.full_path if request.query_string else request.path,
         ))
 
+    whatsapp_number = re.sub(
+        r'\D',
+        '',
+        str(current_app.config.get('SUBSCRIPTION_WHATSAPP_NUMBER', '5511944876166')),
+    )
+    plans = []
+    for plan in BASIC_PRO_PLANS:
+        message = (
+            f'Olá! Quero assinar o plano {plan["name"]} do SkyGest '
+            f'por {plan["monthly_price"]} por mês para a adega {company.name}.'
+        )
+        plans.append({
+            **plan,
+            'whatsapp_url': f'https://wa.me/{whatsapp_number}?{urlencode({"text": message})}',
+        })
+
     return render_template(
         'subscription/plans.html',
         company=company,
         subscription=subscription,
-        plans=BASIC_PRO_PLANS,
+        plans=plans,
         current_plan=current_basic_pro_plan(company),
         active_subscription=active_subscription,
         show_plans=show_plans,

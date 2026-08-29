@@ -79,12 +79,8 @@
 
       <div class="subscription-price-grid">
         <div>
-          <span>Mensal</span>
+          <span>Por mês</span>
           <strong>{{ plan.monthly_price }}</strong>
-        </div>
-        <div>
-          <span>Anual</span>
-          <strong>{{ plan.annual_price }}</strong>
         </div>
       </div>
 
@@ -94,9 +90,12 @@
         {% endfor %}
       </ul>
 
-      <button class="btn {{ 'btn-primary' if plan.get('highlight') else 'btn-outline-light' }}" type="button" disabled>
-        {{ 'Plano atual' if current_plan == plan.name and active_subscription else 'Solicitar contratação' }}
-      </button>
+      {% if current_plan == plan.name and active_subscription %}
+      <button class="btn btn-outline-light" type="button" disabled>Plano atual</button>
+      {% else %}
+      <a class="btn {{ 'btn-primary' if plan.get('highlight') else 'btn-outline-light' }}"
+         href="{{ plan.whatsapp_url }}" target="_blank" rel="noopener noreferrer">Assinar</a>
+      {% endif %}
     </section>
     {% endfor %}
   </div>

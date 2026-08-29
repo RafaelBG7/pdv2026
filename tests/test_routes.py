@@ -5557,9 +5557,13 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('Essencial'.encode(), response.data)
         self.assertNotIn('Profissional'.encode(), response.data)
         self.assertNotIn('Premium'.encode(), response.data)
-        self.assertIn('R$ 89,90'.encode(), response.data)
-        self.assertIn('R$ 149,90'.encode(), response.data)
-        self.assertIn('Solicitar contratação'.encode(), response.data)
+        self.assertIn('R$ 50,00'.encode(), response.data)
+        self.assertIn('R$ 120,00'.encode(), response.data)
+        self.assertIn('R$ 180,00'.encode(), response.data)
+        self.assertNotIn('R$ 899,00'.encode(), response.data)
+        self.assertIn('Assinar'.encode(), response.data)
+        self.assertIn(b'https://wa.me/5511944876166?', response.data)
+        self.assertIn(b'plano+Pro+do+SkyGest', response.data)
         self.assertNotIn('Ativar assinatura com key'.encode(), response.data)
 
     def test_settings_updates_profile_and_email(self):

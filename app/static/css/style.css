@@ -9496,7 +9496,9 @@ canvas {
 }
 
 .dashboard-category-content {
-  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr);
+  grid-template-columns: minmax(150px, 210px) minmax(220px, 340px);
+  justify-content: start;
+  column-gap: clamp(18px, 3vw, 42px);
 }
 
 .dashboard-donut-chart {
@@ -9508,6 +9510,10 @@ canvas {
 
 .dashboard-legend > div {
   grid-template-columns: 10px minmax(0, 1fr) auto;
+}
+
+.dashboard-legend {
+  width: min(100%, 340px);
 }
 
 .dashboard-legend span {
@@ -9530,7 +9536,7 @@ canvas {
   }
 
   .dashboard-legend {
-    width: 100%;
+    width: min(100%, 420px);
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
   }
 }

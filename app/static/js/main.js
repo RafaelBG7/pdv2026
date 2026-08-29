@@ -2882,7 +2882,7 @@ if (destructiveConfirmationModal) {
   const line = page.querySelector('[data-dashboard-line]');
   const drawLine = () => {
     if (!line || !data.revenue?.length) return;
-    const ratio = window.devicePixelRatio || 1, width = line.clientWidth, height = 260;
+    const ratio = window.devicePixelRatio || 1, width = line.clientWidth, height = line.clientHeight || 260;
     line.width = width * ratio; line.height = height * ratio;
     const ctx = line.getContext('2d'); ctx.scale(ratio, ratio); ctx.clearRect(0,0,width,height);
     const pad={l:12,r:12,t:18,b:32}, max=Math.max(...data.revenue.map(p=>p.total),1);

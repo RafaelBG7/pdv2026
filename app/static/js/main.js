@@ -60,6 +60,23 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.querySelectorAll('form').forEach(ensureCsrfField);
+
+  document.querySelectorAll('[data-replace-zero-on-input]').forEach(function (input) {
+    function selectZeroValue() {
+      if (String(input.value).trim() !== '0') {
+        return;
+      }
+      input.select();
+    }
+
+    input.addEventListener('focus', selectZeroValue);
+    input.addEventListener('pointerdown', function () {
+      if (String(input.value).trim() === '0') {
+        window.setTimeout(selectZeroValue, 0);
+      }
+    });
+  });
+
   document.addEventListener('submit', function (event) {
     ensureCsrfField(event.target);
   }, true);

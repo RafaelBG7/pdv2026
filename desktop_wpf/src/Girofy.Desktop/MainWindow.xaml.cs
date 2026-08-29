@@ -174,6 +174,14 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void StockQuantityInput_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox textBox && int.TryParse(textBox.Text, out var value) && value == 0)
+        {
+            textBox.SelectAll();
+        }
+    }
+
     private void ProductCategoryInput_DropDownOpened(object sender, EventArgs e)
     {
         if (_viewModel.Catalog.EditorCategory is null

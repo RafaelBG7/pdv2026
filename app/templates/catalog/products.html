@@ -262,7 +262,7 @@
                   </div>
                   <div>
                     <label class="form-label" for="stock_{{ product.id }}">Estoque</label>
-                    <input class="form-control" id="stock_{{ product.id }}" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}">
+                    <input class="form-control" id="stock_{{ product.id }}" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}" data-replace-zero-on-input>
                   </div>
                   <div>
                     <label class="form-label" for="stock_reason_{{ product.id }}">Motivo do ajuste</label>
@@ -270,7 +270,7 @@
                   </div>
                   <div>
                     <label class="form-label" for="min_stock_{{ product.id }}">Estoque mínimo</label>
-                    <input class="form-control" id="min_stock_{{ product.id }}" name="min_stock_quantity" type="number" min="0" value="{{ product.min_stock_quantity or 0 }}">
+                    <input class="form-control" id="min_stock_{{ product.id }}" name="min_stock_quantity" type="number" min="0" value="{{ product.min_stock_quantity or 0 }}" data-replace-zero-on-input>
                   </div>
                   <div class="product-inline-actions">
                     <button class="btn btn-primary" type="submit">Salvar</button>

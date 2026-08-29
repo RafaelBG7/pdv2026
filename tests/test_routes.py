@@ -5887,6 +5887,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('product-create-form'.encode(), response.data)
         self.assertIn('Informações básicas'.encode(), response.data)
         self.assertIn('data-product-profit-margin'.encode(), response.data)
+        self.assertEqual(response.data.count(b'data-replace-zero-on-input'), 2)
         self.assertIn('data-autocomplete-show-on-focus'.encode(), response.data)
         self.assertIn('data-autocomplete-url="/catalogo/produtos/sugestoes-kit"'.encode(), response.data)
         self.assertIn('Pesquisar por nome ou código de barras...'.encode(), response.data)

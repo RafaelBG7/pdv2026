@@ -72,11 +72,11 @@
       <div class="product-form-grid product-stock-grid">
         <div class="product-field">
           <label class="form-label" for="stock_quantity">Estoque inicial</label>
-          <input class="form-control" id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}">
+          <input class="form-control" id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ product.stock_quantity or 0 }}" data-replace-zero-on-input>
         </div>
         <div class="product-field">
           <label class="form-label" for="min_stock_quantity">Estoque mínimo</label>
-          <input class="form-control" id="min_stock_quantity" name="min_stock_quantity" type="number" min="0" value="{{ product.min_stock_quantity or 0 }}">
+          <input class="form-control" id="min_stock_quantity" name="min_stock_quantity" type="number" min="0" value="{{ product.min_stock_quantity or 0 }}" data-replace-zero-on-input>
         </div>
         <div class="product-field product-field-wide">
           <label class="form-label" for="stock_reason">Motivo do ajuste de estoque</label>

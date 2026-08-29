@@ -1,6 +1,6 @@
 # Paridade funcional Web, Windows e Backend
 
-Atualizado em 22/08/2026 a partir das rotas Flask, endpoints `/api/v1`, serviços, modelos, ViewModels WPF, XAML e testes do repositório. Esta matriz registra comportamento comprovado no código; tela parecida não é considerada paridade por si só. A documentação canônica está em `documentacao/DOCUMENTACAO_COMPLETA.txt`. O marco Windows atual corresponde ao commit `87f5dca`, validado pelo workflow #172.
+Esta matriz é um marco histórico atualizado em 22/08/2026. A fonte canônica atual, incluindo a matriz revisada de Web/App/Master, está em [`DOCUMENTACAO_COMPLETA.md`](../DOCUMENTACAO_COMPLETA.md). Em caso de divergência, use o documento canônico e o código atual.
 
 ## Legenda
 

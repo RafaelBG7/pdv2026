@@ -4,9 +4,9 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 
 ## Marco atual
 
+- [Documentação técnica completa e oficial](../DOCUMENTACAO_COMPLETA.md) — revisão do código atual em 29/08/2026, com arquitetura, funcionalidades, API, banco, segurança, operação e dívida técnica.
 - [Rebranding SkyGest](33-rebranding-skygest.md) — nome oficial, novos assets e compatibilidade legada.
-- [Documentação consolidada atual](../documentacao/DOCUMENTACAO_COMPLETA.txt) —
-  fonte completa atualizada em 20/08/2026, separando Web, App, API e infraestrutura.
+- [Documentação consolidada histórica](../documentacao/DOCUMENTACAO_COMPLETA.txt) — marco anterior preservado; não é mais a fonte principal.
 - [Estado completo em 17/08/2026](31-estado-atual-17-08-2026.md) — marco histórico detalhado.
 - [Marco de 13/08/2026](30-versao-atual-13-08-2026.md) — histórico preservado.
 
@@ -15,7 +15,7 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 - [Matriz resumida de plataformas](MATRIX.md)
 - [Paridade funcional detalhada](FEATURE_PARITY.md)
 - [Fluxos de build e publicação](WORKFLOWS.md)
-- [Instalador Windows 0.8.0](WINDOWS_INSTALLER.md)
+- [Instalador Windows — marco histórico 0.8.0](WINDOWS_INSTALLER.md)
 - [Estado Web e Windows](24-estado-versoes-web-windows.md)
 - [Arquitetura](03-arquitetura.md)
 - [Regras de negócio](05-regras-negocio.md)

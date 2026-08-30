@@ -51,7 +51,7 @@ export HML_DEPLOY_PATH
 bash "$HML_DEPLOY_PATH/scripts/provision_hml_env.sh"
 cd "$HML_DEPLOY_PATH"
 
-python scripts/validate_environment_isolation.py \
+python3 scripts/validate_environment_isolation.py \
   --environment homologation \
   --env-file .env.hml \
   --production-env-file "$PRODUCTION_DEPLOY_PATH/.env"

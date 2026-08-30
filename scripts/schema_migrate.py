@@ -52,7 +52,10 @@ def tenant_names(engine):
     metadata = MetaData()
     companies = Table('companies', metadata, autoload_with=engine)
     with engine.connect() as connection:
-        return [row.database_path for row in connection.execute(select(companies.c.database_path).where(companies.c.database_path != '')) if row.database_path]
+        statement = select(companies.c.database_path).where(companies.c.database_path != '')
+        if 'is_system' in companies.c:
+            statement = statement.where(companies.c.is_system.is_(False))
+        return [row.database_path for row in connection.execute(statement) if row.database_path]
 
 
 def status(engine, kind):

@@ -81,6 +81,8 @@ fi
 
 echo "Aplicando migrations somente no MySQL HML."
 "${COMPOSE[@]}" run --rm --no-deps app python scripts/schema_migrate.py upgrade-all
+echo "Removendo eventual tenant legado do Painel Master somente após backup e migrations."
+"${COMPOSE[@]}" run --rm --no-deps app python scripts/cleanup_system_tenant.py --apply
 "${COMPOSE[@]}" up -d --remove-orphans app backup caddy
 
 for attempt in {1..40}; do

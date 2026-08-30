@@ -3752,6 +3752,11 @@ class RouteTestCase(unittest.TestCase):
         with self.app.app_context():
             system_company = db.session.get(Company, self.master_company_id())
             system_company.is_system = True
+            system_company.database_path = 'adega_1_painel_master'
+            self.assertEqual(tenant_module.tenant_database_identifier(system_company), '')
+            self.assertEqual(system_company.database_path, '')
+            with self.assertRaisesRegex(RuntimeError, 'não possui banco de adega'):
+                tenant_module.tenant_engine(system_company)
             customer = Company(name='Adega Cliente Real', is_system=False)
             db.session.add(customer)
             db.session.commit()
@@ -5816,7 +5821,12 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(company.credit_fee_percent, 3.20)
 
     def test_settings_updates_backup_frequency_and_runs_manual_backup(self):
-        self.login()
+        user, company = self.create_api_user(
+            username='admin-backup-web',
+            password='SenhaBackup123',
+            company_name='Adega Backup Web',
+        )
+        self.login(user.username, 'SenhaBackup123')
 
         frequency_response = self.client.post(
             '/configuracoes',
@@ -5831,8 +5841,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Backup'.encode(), frequency_response.data)
         self.assertIn('Configuração de backup salva com sucesso.'.encode(), frequency_response.data)
         with self.app.app_context():
-            company = User.query.filter_by(username='master').one().company
-            self.assertEqual(company.backup_frequency, 'weekly')
+            updated_company = db.session.get(Company, company.id)
+            self.assertEqual(updated_company.backup_frequency, 'weekly')
 
         manual_response = self.client.post(
             '/configuracoes',
@@ -5843,10 +5853,10 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(manual_response.status_code, 200)
         self.assertIn('Backup gerado com sucesso'.encode(), manual_response.data)
         with self.app.app_context():
-            company = User.query.filter_by(username='master').one().company
-            self.assertEqual(company.backup_last_status, 'success')
-            self.assertTrue(Path(company.backup_last_path).exists())
-            self.assertIn('Backup SkyGest', Path(company.backup_last_path).read_text(encoding='utf-8'))
+            updated_company = db.session.get(Company, company.id)
+            self.assertEqual(updated_company.backup_last_status, 'success')
+            self.assertTrue(Path(updated_company.backup_last_path).exists())
+            self.assertIn('Backup SkyGest', Path(updated_company.backup_last_path).read_text(encoding='utf-8'))
 
     def test_settings_updates_password_with_current_password(self):
         self.login()

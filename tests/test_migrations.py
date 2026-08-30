@@ -22,7 +22,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             central = self.engine(directory, 'central.db')
             tenant = self.engine(directory, 'tenant.db')
-            self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0007')
+            self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0008')
             self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0008')
             self.assertEqual(assert_database_at_head(central, 'central'), migration_head('central'))
             self.assertEqual(assert_database_at_head(tenant, 'tenant'), migration_head('tenant'))
@@ -67,7 +67,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
             self.assertTrue(first.baseline_applied)
             self.assertFalse(second.baseline_applied)
             self.assertEqual(name, 'Cliente')
-            self.assertEqual(database_revision(engine), 'central_0007')
+            self.assertEqual(database_revision(engine), 'central_0008')
             engine.dispose()
 
     def test_incompatible_legacy_database_fails_without_stamp(self):
@@ -101,7 +101,29 @@ class VersionedMigrationTestCase(unittest.TestCase):
                 connection.commit()
             with self.assertRaises(MigrationError):
                 assert_database_at_head(engine, 'central')
-            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0007')
+            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0008')
+            engine.dispose()
+
+    def test_system_company_is_detached_from_tenant_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            engine = self.engine(directory, 'system-context.db')
+            with engine.connect() as connection:
+                command.upgrade(migration_config('central', connection), 'central_0007')
+                connection.execute(text(
+                    "INSERT INTO companies (id, name, database_path, is_system, activation_key) VALUES "
+                    "(1, 'Painel Master', 'adega_1_painel_master', 1, 'MASTER-SYSTEM-KEY'), "
+                    "(29, 'Adega Real', 'adega_29_adega_real', 0, '')"
+                ))
+                connection.commit()
+
+            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0008')
+            with engine.connect() as connection:
+                paths = dict(connection.execute(text(
+                    'SELECT id, database_path FROM companies ORDER BY id'
+                )).all())
+
+            self.assertEqual(paths[1], '')
+            self.assertEqual(paths[29], 'adega_29_adega_real')
             engine.dispose()
 
     def test_legacy_subscription_plan_names_are_standardized(self):

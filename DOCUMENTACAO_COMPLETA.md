@@ -61,7 +61,7 @@ O produto possui três interfaces técnicas sobre o mesmo domínio:
 
 - **Web**: Flask/Jinja entrega HTML server-side, CSS e JavaScript vanilla.
 - **App Windows**: cliente WPF/.NET 8 online, que consome `/api/v1`.
-- **Painel Master**: interface Web exclusiva para administrar o SaaS; não é uma adega operacional. A empresa técnica marcada com `Company.is_system=True` existe para identidade/infraestrutura do Master e deve ser excluída de métricas de clientes.
+- **Painel Master**: interface Web exclusiva para administrar o SaaS; não é uma adega operacional. O contexto técnico marcado com `Company.is_system=True` existe somente para identidade do Master, mantém `database_path=''`, não recebe schema tenant e é excluído das métricas de clientes.
 
 O backend é a fonte de verdade para autenticação, autorização, cálculo financeiro, estoque, assinatura e isolamento de tenant. O App não conecta ao MySQL e não mantém uma cópia operacional do banco.
 
@@ -160,7 +160,7 @@ Não foi encontrada fila dedicada. O “enqueue” de alertas utiliza execução
 │   ├── static/             # CSS, JS, marca e modelo XLSX
 │   └── templates/          # Jinja Web/Master/e-mails/erros
 ├── desktop_wpf/            # solução, instalador e testes Windows
-├── migrations/central/     # Alembic central, head central_0007
+├── migrations/central/     # Alembic central, head central_0008
 ├── migrations/tenant/      # Alembic tenant, head tenant_0008
 ├── scripts/                # deploy, backup, migrations e OCI
 ├── deploy/                 # Caddy e inicialização MySQL
@@ -279,7 +279,7 @@ Registra ação, entidade, ID, descrição, diffs, ator, papel, empresa, IP, use
 
 Existem árvores Alembic independentes:
 
-- Central: `migrations/central`, head `central_0007`.
+- Central: `migrations/central`, head `central_0008`.
 - Tenant: `migrations/tenant`, head `tenant_0008`.
 
 Desenvolvimento usa `upgrade`; produção usa `verify` no processo Web e o deploy executa `scripts/schema_migrate.py upgrade-all` antes de trocar os serviços. Bancos legados são reconciliados por migrations; downgrades destrutivos de reconciliação são bloqueados.
@@ -709,7 +709,7 @@ O domínio público observado no processo operacional é `https://skygest.com.br
 
 ### 22.1 Web
 
-O workflow de deploy instala Python 3.13, dependências, executa `python -m unittest discover`, valida heads (`central_0007`, `tenant_0008`) e sintaxe dos scripts. Só depois libera a OCI.
+O workflow de deploy instala Python 3.13, dependências, executa `python -m unittest discover`, valida heads (`central_0008`, `tenant_0008`) e sintaxe dos scripts. Só depois libera a OCI.
 
 ### 22.2 Windows preview
 
@@ -955,8 +955,8 @@ Nomes Girofy internos, protocolo `girofy://`, caminhos locais e aliases SMTP; pl
 - Planos antigos/dois planos corrigidos para Basic/Pro/Ultimate e preços 50/120/180.
 - Pro deixou de ser “Mais completo”; Ultimate recebe o destaque e novas funcionalidades.
 - Cobrança descrita como WhatsApp/manual, não gateway.
-- Heads antigos `central_0002`/`tenant_0002` corrigidos para `central_0007`/`tenant_0008`.
-- Painel Master explicitamente não é adega; `is_system` documentado.
+- Heads antigos `central_0002`/`tenant_0002` evoluídos para `central_0008`/`tenant_0008`.
+- Painel Master explicitamente não é adega: `is_system` fica no banco central apenas como contexto de identidade, sem `database_path` e sem banco tenant.
 - IP HTTP histórico não foi tratado como endpoint público atual; domínio HTTPS e risco do appsettings foram separados.
 - Backup formal existe, portanto a frase “estratégia não identificada” seria incorreta; restauração/off-site continuam pendentes.
 - Clientes/fornecedores foram removidos da lista de recursos implementados porque não existem modelos/rotas.

@@ -344,7 +344,7 @@ def api_permission_required(permission):
 @contextmanager
 def api_tenant_database(user):
     company = user.company
-    if company is None:
+    if company is None or company.is_system:
         raise ApiAuthError(
             'Selecione uma adega antes de acessar o catálogo.',
             'company_context_required',

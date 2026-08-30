@@ -436,10 +436,9 @@ def create_app(config_class=Config):
                 db.session.add(company)
                 db.session.flush()
             company.is_system = True
+            company.database_path = ''
             company.activation_key = 'MASTER-SYSTEM-KEY'
             company.activation_key_updated_at = datetime.now(timezone.utc)
-            tenant_database_identifier(company)
-            tenant_engine(company)
             master = User(username=app.config.get('MASTER_DEFAULT_USERNAME', 'master'), role='master', is_active=True)
             master.company_id = company.id
             master.set_password(app.config.get('MASTER_DEFAULT_PASSWORD', 'master123'))
@@ -462,11 +461,12 @@ def create_app(config_class=Config):
                 db.session.commit()
 
             system_company = Company.query.filter_by(activation_key='MASTER-SYSTEM-KEY').first()
-            if system_company and not system_company.is_system:
+            if system_company:
                 system_company.is_system = True
+                system_company.database_path = ''
                 db.session.commit()
 
-            for company in Company.query.all():
+            for company in Company.query.filter(Company.is_system.is_(False)).all():
                 tenant_database_identifier(company)
                 tenant_engine(company)
 
@@ -518,6 +518,16 @@ def create_app(config_class=Config):
             if company and (company.activation_key or '').strip():
                 return redirect(url_for('auth.subscription_activation'))
             return redirect(url_for('auth.subscriptions'))
+        return None
+
+    @app.before_request
+    def require_customer_context_for_master_operations():
+        if not current_user.is_authenticated or current_user.role != 'master':
+            return None
+        if app.config.get('TESTING') or session.get('master_company_id'):
+            return None
+        if request.blueprint in {'main', 'catalog'} and request.endpoint != 'main.master_audit_logs':
+            return redirect(url_for('auth.master_dashboard'))
         return None
 
     @app.before_request

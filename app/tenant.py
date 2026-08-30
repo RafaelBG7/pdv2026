@@ -34,6 +34,12 @@ def mysql_database_name(company):
 
 
 def tenant_database_identifier(company, *, persist=True):
+    if getattr(company, 'is_system', False):
+        if company.database_path:
+            company.database_path = ''
+            if persist:
+                db.session.commit()
+        return ''
     if not company.database_path or company.database_path.endswith('.db'):
         company.database_path = mysql_database_name(company)
         if persist:
@@ -310,6 +316,8 @@ def ensure_tenant_reference_data(company, engine, cache_key):
 
 
 def tenant_engine(company, *, persist_identifier=True):
+    if getattr(company, 'is_system', False):
+        raise RuntimeError('O contexto master do SkyGest não possui banco de adega.')
     identifier = tenant_database_identifier(company, persist=persist_identifier)
     if current_app.config.get('TESTING'):
         return db.engine
@@ -347,6 +355,11 @@ def tenant_session():
     company = current_tenant_company()
     if not company:
         return None
+
+    if getattr(company, 'is_system', False):
+        # Mantém os testes legados sobre SQLite; ambientes reais nunca abrem
+        # sessão de tenant para o painel administrativo SaaS.
+        return db.session if current_app.config.get('TESTING') else None
 
     if current_app.config.get('TESTING'):
         return db.session

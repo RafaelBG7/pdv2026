@@ -57,12 +57,13 @@ jobs:
           TESTING: '1'
         run: |
           python scripts/schema_migrate.py --help
-          python -c "from app.services.migration_service import migration_head; assert migration_head('central') == 'central_0007'; assert migration_head('tenant') == 'tenant_0008'"
+          python -c "from app.services.migration_service import migration_head; assert migration_head('central') == 'central_0008'; assert migration_head('tenant') == 'tenant_0008'"
 
       - name: Sintaxe dos scripts de deploy
         run: |
           bash -n scripts/deploy_self_hosted_app.sh
           bash -n scripts/deploy_oci_app.sh
+          python -m py_compile scripts/cleanup_system_tenant.py
           bash -n scripts/oci/load_oci_env.sh
           bash -n scripts/oci/oci_check.sh
           bash -n scripts/oci/oci_harden_network.sh
@@ -76,6 +77,7 @@ jobs:
           bash -n scripts/deploy_hml.sh
           bash -n scripts/provision_hml_env.sh
           bash -n scripts/configure_hml_gateway.sh
+          python -m py_compile scripts/cleanup_system_tenant.py
 
   deploy:
     name: Publicar na OCI

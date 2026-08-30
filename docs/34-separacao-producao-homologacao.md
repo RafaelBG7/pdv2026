@@ -45,12 +45,15 @@ O gateway Nginx é compartilhado somente na borda. Dados, segredos, containers, 
 - Contratação/WhatsApp: `SUBSCRIPTION_COMMERCIAL_ENABLED=0`.
 - Caddy HML: publicado somente em `127.0.0.1:18081`.
 - MySQL, Redis e Gunicorn HML não possuem publicação de portas no host.
+- O Painel Master é apenas o contexto administrativo do SaaS no banco central: não recebe `database_path`, não entra na lista de tenants e não possui schema próprio em nenhum ambiente.
 
 ## Segurança production-like
 
 `APP_ENV=homologation` aplica as mesmas proteções obrigatórias de produção: debug desligado, cookies Secure, schema em `verify`, Redis obrigatório, fallback em memória recusado, HTTPS obrigatório para autenticação da API, CSRF e headers de segurança preservados.
 
 Antes de migrations, `scripts/validate_environment_isolation.py` recusa domínio, banco, Redis, backup path ou segredos cruzados. `scripts/deploy_hml.sh` gera backup HML integral e aborta na primeira falha.
+
+Após o backup validado, `scripts/cleanup_system_tenant.py` remove de forma idempotente apenas o schema legado cujo nome corresponde exatamente ao ID e ao nome do contexto `is_system`. A operação é recusada se o banco estiver compartilhado, tiver nome inesperado ou contiver referência de uma adega real.
 
 ## CI/CD
 

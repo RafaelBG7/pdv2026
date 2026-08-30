@@ -51,10 +51,19 @@ docker compose -f docker-compose.oci.yml build app backup
 docker compose -f docker-compose.oci.yml up -d mysql redis
 
 echo "Gerando backup obrigatório antes das migrations."
+backup_marker="$(mktemp)"
 docker compose -f docker-compose.oci.yml run --rm -e AUTO_BACKUP_ONCE=1 backup
+latest_backup="$(find /opt/girofy/backups -maxdepth 1 -type f -name 'girofy_mysql_full_*.sql' -newer "$backup_marker" -print -quit)"
+rm -f "$backup_marker"
+if [[ -z "$latest_backup" || ! -s "$latest_backup" ]]; then
+  echo "Backup de produção não confirmado; migrations e limpeza canceladas." >&2
+  exit 1
+fi
 
 echo "Aplicando migrations versionadas no banco central e nos tenants."
 docker compose -f docker-compose.oci.yml run --rm --no-deps app python scripts/schema_migrate.py upgrade-all
+echo "Removendo eventual tenant legado do Painel Master após backup validado."
+docker compose -f docker-compose.oci.yml run --rm --no-deps app python scripts/cleanup_system_tenant.py --apply
 
 docker compose -f docker-compose.oci.yml up -d --remove-orphans app backup caddy
 docker image prune -f >/dev/null

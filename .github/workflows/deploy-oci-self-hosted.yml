@@ -71,7 +71,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'hml'
         run: |
           python scripts/validate_environment_isolation.py --environment homologation --env-file .env.hml.example --allow-example-secrets
-          docker compose --env-file .env.hml.example -p skygest-hml -f docker-compose.hml.yml config --quiet
+          cp .env.hml.example .env.hml
+          docker compose --env-file .env.hml -p skygest-hml -f docker-compose.hml.yml config --quiet
           bash -n scripts/deploy_hml.sh
           bash -n scripts/provision_hml_env.sh
           bash -n scripts/configure_hml_gateway.sh

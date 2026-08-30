@@ -51,7 +51,9 @@ jobs:
           python -c "from app.services.migration_service import migration_head; assert migration_head('central') == 'central_0007'; assert migration_head('tenant') == 'tenant_0008'"
 
       - name: Validar Docker Compose HML
-        run: docker compose --env-file .env.hml.example -p skygest-hml -f docker-compose.hml.yml config --quiet
+        run: |
+          cp .env.hml.example .env.hml
+          docker compose --env-file .env.hml -p skygest-hml -f docker-compose.hml.yml config --quiet
 
       - name: Validar scripts
         run: |

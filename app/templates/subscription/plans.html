@@ -90,8 +90,12 @@
         {% endfor %}
       </ul>
 
+      {% if subscription_commercial_enabled %}
       <a class="btn {{ 'btn-primary' if plan.get('highlight') else 'btn-outline-light' }}"
          href="{{ plan.whatsapp_url }}" target="_blank" rel="noopener noreferrer">Assinar</a>
+      {% else %}
+      <button class="btn btn-outline-light" type="button" disabled>Contratação desativada em homologação</button>
+      {% endif %}
     </section>
     {% endfor %}
   </div>

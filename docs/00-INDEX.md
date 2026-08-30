@@ -28,6 +28,8 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 - [Cancelamento de vendas](27-cancelamento-estorno-vendas.md)
 - [Notificações e e-mail](25-notificacoes-web-windows-email.md)
 - [Acessibilidade nativa Windows](32-acessibilidade-windows.md)
+- [Ambientes de produção e homologação](34-separacao-producao-homologacao.md)
+- [Runbook de deploy dos ambientes](DEPLOY_AMBIENTES.md)
 
 ## Documentação por plataforma
 

@@ -47,11 +47,18 @@ public partial class App : System.Windows.Application
                 configuration.SetBasePath(AppContext.BaseDirectory);
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Api:BaseUrl"] = "http://168.75.101.126:18080",
-                    ["Api:AllowInsecureHttp"] = "true",
+                    ["Api:BaseUrl"] = "https://skygest.com.br",
+                    ["Api:AllowInsecureHttp"] = "false",
                     ["Api:TimeoutSeconds"] = "10",
                 });
                 configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+                if (string.Equals(
+                    Environment.GetEnvironmentVariable("SKYGEST_ENVIRONMENT"),
+                    "Homologation",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    configuration.AddJsonFile("appsettings.Homologation.json", optional: false, reloadOnChange: false);
+                }
                 configuration.AddEnvironmentVariables();
             })
             .ConfigureLogging(logging =>

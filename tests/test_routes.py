@@ -205,6 +205,19 @@ class RouteTestCase(unittest.TestCase):
             'errors': [],
         })
 
+    def test_version_health_identifies_environment_without_secrets(self):
+        self.app.config['ENVIRONMENT'] = 'homologation'
+        self.app.config['APP_VERSION'] = 'commit-test-123'
+
+        response = self.client.get('/health/version')
+        data = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get('Cache-Control'), 'no-store')
+        self.assertEqual(data['environment'], 'homologation')
+        self.assertEqual(data['version'], 'commit-test-123')
+        self.assertNotIn('secret', str(data).lower())
+
     def test_distributed_rate_limit_returns_web_and_api_429_and_separates_ips(self):
         class RateLimitConfig(TestConfig):
             RATELIMIT_ENABLED = True
@@ -5609,6 +5622,28 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn(b'Tenho%20interesse%20no%20plano%20Pro%20do%20SkyGest', response.data)
         self.assertIn(b'Tenho%20interesse%20no%20plano%20Ultimate%20do%20SkyGest', response.data)
         self.assertNotIn('Ativar assinatura com key'.encode(), response.data)
+
+    def test_homologation_disables_commercial_subscription_links(self):
+        self.login()
+        self.app.config['SUBSCRIPTION_COMMERCIAL_ENABLED'] = False
+        with self.app.app_context():
+            company = Company(
+                name='Empresa HML',
+                activation_key='',
+                subscription_plan='Basic',
+                subscription_renews_at=date.today() + timedelta(days=30),
+                active=True,
+            )
+            db.session.add(company)
+            db.session.commit()
+            company_id = company.id
+        self.client.post(f'/master/adegas/{company_id}/acessar', follow_redirects=True)
+
+        response = self.client.get('/assinaturas?planos=1')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Contratação desativada em homologação'.encode(), response.data)
+        self.assertNotIn(b'https://wa.me/', response.data)
 
     def test_settings_updates_profile_and_email(self):
         self.login()

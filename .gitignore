@@ -8,6 +8,8 @@ __pycache__/
 .env.*
 !.env.example
 !.env.oci.example
+!.env.production.example
+!.env.hml.example
 .oci/
 logs/*.log
 build/

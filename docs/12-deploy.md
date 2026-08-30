@@ -1,5 +1,7 @@
 # 12 - Deploy
 
+> O fluxo atual possui ambientes independentes. Consulte [Ambientes](34-separacao-producao-homologacao.md) e o [runbook operacional](DEPLOY_AMBIENTES.md). As referências históricas abaixo à porta 18080 descrevem o acesso legado de produção, não a homologação.
+
 ## Deploy com migrations
 
 O deploy OCI executa `backup → migration central → migrations tenants → containers → health checks` e para na primeira falha. Procedimentos operacionais e restauração: [29-migracoes-versionadas.md](29-migracoes-versionadas.md).

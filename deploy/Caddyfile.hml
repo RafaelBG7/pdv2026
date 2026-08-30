@@ -1,0 +1,4 @@
+{$HML_SITE_ADDRESS::18081} {
+	reverse_proxy app:5003
+	encode gzip
+}

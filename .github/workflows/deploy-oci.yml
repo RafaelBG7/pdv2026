@@ -55,6 +55,7 @@ jobs:
       OCI_DEPLOY_USER: ${{ secrets.OCI_DEPLOY_USER }}
       OCI_DEPLOY_PATH: ${{ secrets.OCI_DEPLOY_PATH }}
       OCI_DEPLOY_PORT: ${{ vars.OCI_DEPLOY_PORT || '18080' }}
+      DEPLOY_SHA: ${{ github.sha }}
 
     steps:
       - name: Checkout

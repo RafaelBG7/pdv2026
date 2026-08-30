@@ -78,6 +78,7 @@ Melhorias recomendadas:
 
 Melhorias recomendadas:
 
+- Separar produção e homologação conforme o [plano de infraestrutura aprovado](34-separacao-producao-homologacao.md).
 - HTTPS.
 - Rate limit persistente/distribuído concluído no login e demais rotas sensíveis.
 - Política de senha mais forte.

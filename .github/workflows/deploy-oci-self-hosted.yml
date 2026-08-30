@@ -79,6 +79,7 @@ jobs:
     env:
       OCI_DEPLOY_PATH: ${{ vars.OCI_DEPLOY_PATH || '/opt/girofy/app' }}
       OCI_DEPLOY_PORT: ${{ vars.OCI_DEPLOY_PORT || '18080' }}
+      DEPLOY_SHA: ${{ github.sha }}
 
     steps:
       - name: Checkout
@@ -92,6 +93,7 @@ jobs:
           curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/login" >/dev/null
           curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/health/dependencies" >/dev/null
           curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/api/v1/health/dependencies" >/dev/null
+          curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/health/version" >/dev/null
 
   audit:
     name: Auditoria OCI somente leitura

@@ -1377,6 +1377,17 @@ def api_dependency_health_check():
     return response, status_code
 
 
+@api_v1_bp.get('/health/version')
+def api_version_health_check():
+    return api_success({
+        'status': 'ok',
+        'service': 'skygest',
+        'api_version': 'v1',
+        'environment': current_app.config.get('ENVIRONMENT', 'development'),
+        'version': current_app.config.get('APP_VERSION', 'unknown'),
+    })
+
+
 @api_v1_bp.post('/auth/login')
 @limiter.limit(
     configured_limit('RATELIMIT_LOGIN', '10 per 5 minutes'),

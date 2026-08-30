@@ -1,5 +1,7 @@
 # 23 - Pipeline de Deploy
 
+> Produção continua neste workflow a partir de `main`. Homologação usa `deploy-hml-oci.yml` exclusivamente a partir de `develop`. Operação e promoção estão documentadas no [runbook de ambientes](DEPLOY_AMBIENTES.md).
+
 ## Objetivo
 
 Automatizar o deploy do Girofy para a VM OCI sem enviar arquivos sensíveis do ambiente local.

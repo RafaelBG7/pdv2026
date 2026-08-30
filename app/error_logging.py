@@ -31,6 +31,16 @@ class SecurityEventFilter(logging.Filter):
         return bool(getattr(record, 'security_event', False))
 
 
+class EnvironmentFilter(logging.Filter):
+    def __init__(self, environment):
+        super().__init__()
+        self.environment = environment or 'development'
+
+    def filter(self, record):
+        record.environment = self.environment
+        return True
+
+
 def _safe_value(value):
     if value is None:
         return None
@@ -139,8 +149,9 @@ def setup_error_logging(app):
     security_log_path = log_dir / 'security.log'
 
     formatter = logging.Formatter(
-        '%(asctime)s %(levelname)s [%(name)s] %(message)s'
+        '%(asctime)s %(levelname)s [%(name)s] [environment=%(environment)s] %(message)s'
     )
+    environment_filter = EnvironmentFilter(app.config.get('ENVIRONMENT'))
 
     for existing_handler in list(app.logger.handlers):
         if getattr(existing_handler, '_adega_error_log', False) or getattr(existing_handler, '_girofy_security_log', False):
@@ -155,6 +166,7 @@ def setup_error_logging(app):
     )
     handler.setLevel(logging.WARNING)
     handler.setFormatter(formatter)
+    handler.addFilter(environment_filter)
     handler._adega_error_log = True
     app.logger.addHandler(handler)
 
@@ -166,6 +178,7 @@ def setup_error_logging(app):
     )
     security_handler.setLevel(logging.INFO)
     security_handler.setFormatter(formatter)
+    security_handler.addFilter(environment_filter)
     security_handler.addFilter(SecurityEventFilter())
     security_handler._girofy_security_log = True
     app.logger.addHandler(security_handler)

@@ -1,0 +1,177 @@
+name: skygest-hml
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    mem_limit: 224m
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-skygest_hml_central}
+      MYSQL_USER: ${MYSQL_USER:-skygest_hml_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_TENANT_DATABASE_PREFIX: ${MYSQL_TENANT_DATABASE_PREFIX:-skygest_hml_tenant}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=96M
+      - --max-connections=40
+      - --performance-schema=OFF
+    volumes:
+      - skygest_hml_mysql_data:/var/lib/mysql
+      - ./deploy/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - skygest_hml_internal
+
+  redis:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    mem_limit: 48m
+    user: redis
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 32mb
+      - --maxmemory-policy
+      - allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+    read_only: true
+    tmpfs:
+      - /data:size=8m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - skygest_hml_internal
+
+  app:
+    build: .
+    restart: unless-stopped
+    mem_limit: 192m
+    env_file:
+      - .env.hml
+    environment:
+      APP_ENV: homologation
+      APP_VERSION: ${APP_VERSION:-unknown}
+      FLASK_DEBUG: "0"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_SERVER_DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/mysql?charset=utf8mb4
+      RATELIMIT_ENABLED: "1"
+      RATELIMIT_STORAGE_URI: redis://redis:6379/0
+      RATELIMIT_IN_MEMORY_FALLBACK_ENABLED: "0"
+      TRUST_PROXY_HEADERS: "1"
+      TRUSTED_PROXY_COUNT: "2"
+      CSRF_ENABLED: "1"
+      API_ALLOW_INSECURE_AUTH: "0"
+      SESSION_COOKIE_SECURE: "1"
+      SCHEMA_MANAGEMENT_MODE: verify
+      MAIL_SUPPRESS_SEND: "1"
+      SUBSCRIPTION_COMMERCIAL_ENABLED: "0"
+      PORT: "5003"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ${HML_BACKUP_HOST_DIR:-/opt/girofy/hml/backups}:/app/backups
+      - skygest_hml_logs:/app/logs
+      - skygest_hml_reports:/app/reports
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5003/health/dependencies"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - skygest_hml_internal
+
+  backup:
+    build: .
+    restart: unless-stopped
+    mem_limit: 128m
+    user: "${HML_BACKUP_UID:-1001}:${HML_BACKUP_GID:-1001}"
+    env_file:
+      - .env.hml
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_BACKUP_USER: root
+      MYSQL_PWD: ${MYSQL_ROOT_PASSWORD}
+      AUTO_BACKUP_DIR: /backups
+      AUTO_BACKUP_ENABLED: ${AUTO_BACKUP_ENABLED:-1}
+      AUTO_BACKUP_INTERVAL_SECONDS: ${AUTO_BACKUP_INTERVAL_SECONDS:-86400}
+      AUTO_BACKUP_RETENTION_DAYS: ${AUTO_BACKUP_RETENTION_DAYS:-14}
+      AUTO_BACKUP_RETENTION_COUNT: ${AUTO_BACKUP_RETENTION_COUNT:-14}
+      AUTO_AUDIT_CLEANUP_ENABLED: ${AUTO_AUDIT_CLEANUP_ENABLED:-1}
+      AUTO_AUDIT_CLEANUP_INTERVAL_SECONDS: ${AUTO_AUDIT_CLEANUP_INTERVAL_SECONDS:-259200}
+      AUTO_AUDIT_RETENTION_DAYS: ${AUTO_AUDIT_RETENTION_DAYS:-30}
+    command: ["sh", "/app/scripts/backup_mysql.sh"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ${HML_BACKUP_HOST_DIR:-/opt/girofy/hml/backups}:/backups
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - skygest_hml_internal
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    mem_limit: 48m
+    environment:
+      HML_SITE_ADDRESS: ${HML_SITE_ADDRESS:-:18081}
+    ports:
+      - "127.0.0.1:${HML_LOOPBACK_PORT:-18081}:18081"
+    volumes:
+      - ./deploy/Caddyfile.hml:/etc/caddy/Caddyfile:ro
+      - skygest_hml_caddy_data:/data
+      - skygest_hml_caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - skygest_hml_internal
+
+networks:
+  skygest_hml_internal:
+    name: skygest_hml_internal
+    driver: bridge
+
+volumes:
+  skygest_hml_mysql_data:
+    name: skygest_hml_mysql_data
+  skygest_hml_logs:
+    name: skygest_hml_logs
+  skygest_hml_reports:
+    name: skygest_hml_reports
+  skygest_hml_caddy_data:
+    name: skygest_hml_caddy_data
+  skygest_hml_caddy_config:
+    name: skygest_hml_caddy_config

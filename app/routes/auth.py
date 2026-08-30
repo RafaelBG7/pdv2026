@@ -1207,6 +1207,7 @@ def subscriptions():
         str(current_app.config.get('SUBSCRIPTION_WHATSAPP_NUMBER', '5511944876166')),
     )
     plans = []
+    commercial_enabled = bool(current_app.config.get('SUBSCRIPTION_COMMERCIAL_ENABLED', True))
     for plan in BASIC_PRO_PLANS:
         message = (
             f'Olá! Tenho interesse no plano {plan["name"]} do SkyGest e gostaria de receber '
@@ -1214,7 +1215,10 @@ def subscriptions():
         )
         plans.append({
             **plan,
-            'whatsapp_url': f'https://wa.me/{whatsapp_number}?text={quote(message, safe="")}',
+            'whatsapp_url': (
+                f'https://wa.me/{whatsapp_number}?text={quote(message, safe="")}'
+                if commercial_enabled else None
+            ),
         })
 
     return render_template(
@@ -1226,6 +1230,7 @@ def subscriptions():
         active_subscription=active_subscription,
         show_plans=show_plans,
         license_mode=license_mode,
+        subscription_commercial_enabled=commercial_enabled,
     )
 
 

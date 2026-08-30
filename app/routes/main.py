@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from types import SimpleNamespace
 
-from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import func, or_, text
 from sqlalchemy.exc import IntegrityError
@@ -78,6 +78,18 @@ def dependency_health_check():
         'dependencies': {'database': database_status, 'redis': redis_status},
     })
     response.status_code = 200 if healthy else 503
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@main_bp.get('/health/version')
+def version_health_check():
+    response = jsonify({
+        'status': 'ok',
+        'service': 'skygest',
+        'environment': current_app.config.get('ENVIRONMENT', 'development'),
+        'version': current_app.config.get('APP_VERSION', 'unknown'),
+    })
     response.headers['Cache-Control'] = 'no-store'
     return response
 

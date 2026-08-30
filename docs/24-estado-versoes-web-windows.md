@@ -35,7 +35,7 @@ do que ainda falta antes da entrega para o primeiro cliente.
 
 | Frente | Estado | Observação |
 |---|---|---|
-| Web Flask/Jinja | Em uso controlado | É a versão principal do sistema e roda na OCI em `http://168.75.101.126:18080`. |
+| Web Flask/Jinja | Em uso controlado | Produção roda em `https://skygest.com.br`; homologação usa `https://hml.skygest.com.br`. |
 | Windows nativo WPF | Prévia funcional | Usa a API da versão web, os mesmos usuários e os mesmos dados. Ainda precisa de validação manual forte no Windows. |
 | Banco de dados | Centralizado no servidor | MySQL central + bancos por adega. O cliente Windows não instala nem acessa MySQL. |
 | Deploy web | Automatizado | GitHub Actions self-hosted na OCI. |
@@ -54,7 +54,7 @@ assinatura.
 Acesso atual:
 
 ```text
-http://168.75.101.126:18080
+https://skygest.com.br
 ```
 
 ### Arquitetura

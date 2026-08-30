@@ -68,6 +68,8 @@ class Config:
     BACKUP_DIR.mkdir(exist_ok=True)
 
     ENVIRONMENT = os.environ.get('APP_ENV', os.environ.get('FLASK_ENV', 'development')).lower()
+    PRODUCTION_LIKE = ENVIRONMENT in {'production', 'homologation'}
+    APP_VERSION = os.environ.get('APP_VERSION', os.environ.get('BUILD_SHA', 'unknown'))
     BUSINESS_TIMEZONE = os.environ.get('BUSINESS_TIMEZONE', 'America/Sao_Paulo')
     TESTING = env_bool('TESTING', False)
     DEBUG = env_bool('FLASK_DEBUG', ENVIRONMENT == 'development')
@@ -89,7 +91,7 @@ class Config:
     RATELIMIT_SWALLOW_ERRORS = False
     RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = env_bool(
         'RATELIMIT_IN_MEMORY_FALLBACK_ENABLED',
-        ENVIRONMENT != 'production',
+        not PRODUCTION_LIKE,
     )
     RATELIMIT_KEY_PREFIX = os.environ.get('RATELIMIT_KEY_PREFIX', 'girofy')
     RATELIMIT_LOGIN = os.environ.get('RATELIMIT_LOGIN', '10 per 5 minutes')
@@ -108,6 +110,10 @@ class Config:
     PASSWORD_MIN_LENGTH = int(os.environ.get('PASSWORD_MIN_LENGTH', '8'))
     PASSWORD_MAX_LENGTH = int(os.environ.get('PASSWORD_MAX_LENGTH', '128'))
     SUBSCRIPTION_WHATSAPP_NUMBER = os.environ.get('SUBSCRIPTION_WHATSAPP_NUMBER', '5511944876166')
+    SUBSCRIPTION_COMMERCIAL_ENABLED = env_bool(
+        'SUBSCRIPTION_COMMERCIAL_ENABLED',
+        ENVIRONMENT != 'homologation',
+    )
     CSRF_ENABLED = env_bool('CSRF_ENABLED', not TESTING)
     WTF_CSRF_ENABLED = CSRF_ENABLED
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', str(8 * 1024 * 1024)))
@@ -118,11 +124,11 @@ class Config:
     MAIL_SMTP_PASSWORD = os.environ.get('MAIL_SMTP_PASSWORD', os.environ.get('GMAIL_APP_PASSWORD', os.environ.get('BREVO_SMTP_PASSWORD', '')))
     MAIL_FROM_EMAIL = os.environ.get('MAIL_FROM_EMAIL', os.environ.get('BREVO_FROM_EMAIL', MAIL_SMTP_LOGIN))
     MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', os.environ.get('BREVO_FROM_NAME', 'SkyGest'))
-    MAIL_SUPPRESS_SEND = env_bool('MAIL_SUPPRESS_SEND', TESTING)
+    MAIL_SUPPRESS_SEND = env_bool('MAIL_SUPPRESS_SEND', TESTING or ENVIRONMENT == 'homologation')
     PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get('SESSION_LIFETIME_HOURS', '8')))
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
-    SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', ENVIRONMENT == 'production')
+    SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', PRODUCTION_LIKE)
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = SESSION_COOKIE_SAMESITE
     REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
@@ -137,14 +143,14 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SCHEMA_MANAGEMENT_MODE = os.environ.get(
         'SCHEMA_MANAGEMENT_MODE',
-        'test_create_all' if TESTING else ('verify' if ENVIRONMENT == 'production' else 'upgrade'),
+        'test_create_all' if TESTING else ('verify' if PRODUCTION_LIKE else 'upgrade'),
     ).lower()
 
-    if ENVIRONMENT == 'production' and SECRET_KEY == 'adega-jf-secret-key':
-        raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em produção.')
-    if ENVIRONMENT == 'production' and MASTER_DEFAULT_PASSWORD == 'master123':
-        raise RuntimeError('Defina MASTER_DEFAULT_PASSWORD seguro antes de rodar em produção.')
-    if ENVIRONMENT == 'production' and RATELIMIT_ENABLED and RATELIMIT_STORAGE_URI.startswith('memory://'):
-        raise RuntimeError('Configure RATELIMIT_STORAGE_URI com Redis antes de rodar em produção.')
-    if ENVIRONMENT == 'production' and RATELIMIT_IN_MEMORY_FALLBACK_ENABLED:
-        raise RuntimeError('Desative RATELIMIT_IN_MEMORY_FALLBACK_ENABLED em produção.')
+    if PRODUCTION_LIKE and SECRET_KEY == 'adega-jf-secret-key':
+        raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em ambiente protegido.')
+    if PRODUCTION_LIKE and MASTER_DEFAULT_PASSWORD == 'master123':
+        raise RuntimeError('Defina MASTER_DEFAULT_PASSWORD seguro antes de rodar em ambiente protegido.')
+    if PRODUCTION_LIKE and RATELIMIT_ENABLED and RATELIMIT_STORAGE_URI.startswith('memory://'):
+        raise RuntimeError('Configure RATELIMIT_STORAGE_URI com Redis antes de rodar em ambiente protegido.')
+    if PRODUCTION_LIKE and RATELIMIT_IN_MEMORY_FALLBACK_ENABLED:
+        raise RuntimeError('Desative RATELIMIT_IN_MEMORY_FALLBACK_ENABLED em ambiente protegido.')

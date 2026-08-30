@@ -380,18 +380,23 @@ def create_app(config_class=Config):
             x_port=trusted_proxy_count,
         )
     environment = (app.config.get('ENVIRONMENT') or app.config.get('APP_ENV') or '').lower()
-    if environment == 'production':
+    if environment in {'production', 'homologation'}:
         if app.config.get('SECRET_KEY') == 'adega-jf-secret-key':
-            raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em produção.')
+            raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em ambiente protegido.')
         if app.config.get('MASTER_DEFAULT_PASSWORD') == 'master123':
-            raise RuntimeError('Defina MASTER_DEFAULT_PASSWORD seguro antes de rodar em produção.')
+            raise RuntimeError('Defina MASTER_DEFAULT_PASSWORD seguro antes de rodar em ambiente protegido.')
         if app.config.get('RATELIMIT_ENABLED', True) and str(
             app.config.get('RATELIMIT_STORAGE_URI', 'memory://')
         ).startswith('memory://'):
-            raise RuntimeError('Configure RATELIMIT_STORAGE_URI com Redis antes de rodar em produção.')
+            raise RuntimeError('Configure RATELIMIT_STORAGE_URI com Redis antes de rodar em ambiente protegido.')
         if app.config.get('RATELIMIT_IN_MEMORY_FALLBACK_ENABLED', False):
-            raise RuntimeError('Desative RATELIMIT_IN_MEMORY_FALLBACK_ENABLED em produção.')
+            raise RuntimeError('Desative RATELIMIT_IN_MEMORY_FALLBACK_ENABLED em ambiente protegido.')
     setup_error_logging(app)
+    app.logger.info(
+        'SkyGest iniciado | environment=%s version=%s',
+        environment or 'development',
+        app.config.get('APP_VERSION', 'unknown'),
+    )
     ensure_mysql_database_exists(app.config['SQLALCHEMY_DATABASE_URI'])
 
     db.init_app(app)

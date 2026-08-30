@@ -9529,6 +9529,40 @@ canvas {
   height: clamp(190px, 22vw, 260px);
 }
 
+.dashboard-line-chart,
+.dashboard-donut-chart {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.dashboard-chart-tooltip {
+  position: fixed;
+  z-index: 9999;
+  display: grid;
+  min-width: 150px;
+  max-width: min(260px, calc(100vw - 20px));
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid rgba(103, 232, 249, .35);
+  border-radius: 11px;
+  background: rgba(6, 15, 29, .96);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .38);
+  color: #e8eef8;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+
+.dashboard-chart-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dashboard-chart-tooltip strong { font-size: .8rem; }
+.dashboard-chart-tooltip span { color: #67e8f9; font-size: .92rem; font-weight: 800; }
+.dashboard-chart-tooltip small { color: #94a3b8; font-size: .7rem; }
+
 @container category-card (max-width: 620px) {
   .dashboard-category-content {
     grid-template-columns: 1fr;

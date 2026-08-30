@@ -2879,7 +2879,31 @@ if (destructiveConfirmationModal) {
   const data = JSON.parse(source.textContent || '{}');
   const colors = ['#22d3ee','#8b5cf6','#34d399','#fbbf24','#fb7185','#60a5fa','#c084fc'];
   const money = value => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value || 0);
+  const tooltip = document.createElement('div');
+  tooltip.className = 'dashboard-chart-tooltip';
+  tooltip.setAttribute('role', 'status');
+  tooltip.setAttribute('aria-live', 'polite');
+  const tooltipTitle = document.createElement('strong');
+  const tooltipValue = document.createElement('span');
+  const tooltipDetail = document.createElement('small');
+  tooltip.append(tooltipTitle, tooltipValue, tooltipDetail);
+  document.body.appendChild(tooltip);
+  const showTooltip = (event, title, value, detail = '') => {
+    tooltipTitle.textContent = title;
+    tooltipValue.textContent = value;
+    tooltipDetail.textContent = detail;
+    tooltipDetail.hidden = !detail;
+    tooltip.classList.add('is-visible');
+    const offset = 14;
+    const tooltipWidth = tooltip.offsetWidth;
+    const tooltipHeight = tooltip.offsetHeight;
+    tooltip.style.left = `${Math.min(event.clientX + offset, window.innerWidth - tooltipWidth - 10)}px`;
+    tooltip.style.top = `${Math.max(10, Math.min(event.clientY + offset, window.innerHeight - tooltipHeight - 10))}px`;
+  };
+  const hideTooltip = () => tooltip.classList.remove('is-visible');
   const line = page.querySelector('[data-dashboard-line]');
+  let activeLineIndex = -1;
+  let linePoints = [];
   const drawLine = () => {
     if (!line || !data.revenue?.length) return;
     const ratio = window.devicePixelRatio || 1, width = line.clientWidth, height = line.clientHeight || 260;
@@ -2889,13 +2913,35 @@ if (destructiveConfirmationModal) {
     ctx.strokeStyle='rgba(148,163,184,.14)'; ctx.lineWidth=1;
     for(let i=0;i<4;i++){const y=pad.t+(height-pad.t-pad.b)*i/3;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(width-pad.r,y);ctx.stroke()}
     const points=data.revenue.map((p,i)=>({x:pad.l+(width-pad.l-pad.r)*(data.revenue.length===1?0:i/(data.revenue.length-1)),y:height-pad.b-(height-pad.t-pad.b)*(p.total/max),...p}));
+    linePoints = points;
     const gradient=ctx.createLinearGradient(0,pad.t,0,height-pad.b);gradient.addColorStop(0,'rgba(34,211,238,.35)');gradient.addColorStop(1,'rgba(34,211,238,0)');
     ctx.beginPath();ctx.moveTo(points[0].x,height-pad.b);points.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(points.at(-1).x,height-pad.b);ctx.closePath();ctx.fillStyle=gradient;ctx.fill();
     ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#22d3ee';ctx.lineWidth=3;ctx.stroke();
+    if(activeLineIndex >= 0 && points[activeLineIndex]){const p=points[activeLineIndex];ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fillStyle='#0b1729';ctx.fill();ctx.strokeStyle='#67e8f9';ctx.lineWidth=3;ctx.stroke()}
     const step=Math.max(1,Math.ceil(points.length/7));ctx.fillStyle='#8292a9';ctx.font='11px system-ui';ctx.textAlign='center';points.forEach((p,i)=>{if(i%step===0||i===points.length-1)ctx.fillText(p.label,p.x,height-8)});
-    line.onmousemove=e=>{const rect=line.getBoundingClientRect(),x=e.clientX-rect.left,p=points.reduce((a,b)=>Math.abs(b.x-x)<Math.abs(a.x-x)?b:a);line.title=`${p.label}: ${money(p.total)}`};
   };
+  line?.addEventListener('pointermove', event => {
+    if (!linePoints.length) return;
+    const rect=line.getBoundingClientRect(), x=event.clientX-rect.left;
+    activeLineIndex=linePoints.reduce((best,p,index)=>Math.abs(p.x-x)<Math.abs(linePoints[best].x-x)?index:best,0);
+    const point=linePoints[activeLineIndex];
+    drawLine();
+    showTooltip(event, point.label, money(point.total), 'Faturamento no período');
+  });
+  line?.addEventListener('pointerleave', () => { activeLineIndex=-1; hideTooltip(); drawLine(); });
   const donut = page.querySelector('[data-dashboard-donut]');
-  const drawDonut = () => {if(!donut||!data.categories?.length)return;const ctx=donut.getContext('2d'),cx=105,cy=105,r=78,total=data.categories.reduce((s,p)=>s+p.total,0)||1;ctx.clearRect(0,0,210,210);let start=-Math.PI/2;data.categories.forEach((p,i)=>{const end=start+Math.PI*2*p.total/total;ctx.beginPath();ctx.arc(cx,cy,r,start,end);ctx.strokeStyle=colors[i%colors.length];ctx.lineWidth=25;ctx.stroke();start=end});ctx.fillStyle='#e8eef8';ctx.font='700 19px system-ui';ctx.textAlign='center';ctx.fillText(money(total),cx,cy+6);ctx.fillStyle='#8292a9';ctx.font='11px system-ui';ctx.fillText('faturamento',cx,cy+25)};
+  let donutSegments = [];
+  let activeDonutIndex = -1;
+  const drawDonut = () => {if(!donut||!data.categories?.length)return;const ctx=donut.getContext('2d'),cx=105,cy=105,r=78,total=data.categories.reduce((s,p)=>s+p.total,0)||1;ctx.clearRect(0,0,210,210);let start=-Math.PI/2;donutSegments=[];data.categories.forEach((p,i)=>{const end=start+Math.PI*2*p.total/total;donutSegments.push({start,end,...p});ctx.beginPath();ctx.arc(cx,cy,r,start,end);ctx.strokeStyle=colors[i%colors.length];ctx.lineWidth=i===activeDonutIndex?31:25;ctx.stroke();start=end});ctx.fillStyle='#e8eef8';ctx.font='700 19px system-ui';ctx.textAlign='center';ctx.fillText(money(total),cx,cy+6);ctx.fillStyle='#8292a9';ctx.font='11px system-ui';ctx.fillText('faturamento',cx,cy+25)};
+  donut?.addEventListener('pointermove', event => {
+    const rect=donut.getBoundingClientRect(), x=(event.clientX-rect.left)*(210/rect.width)-105, y=(event.clientY-rect.top)*(210/rect.height)-105;
+    const distance=Math.hypot(x,y);
+    let angle=Math.atan2(y,x); if(angle < -Math.PI/2) angle += Math.PI*2;
+    const index=distance>=60&&distance<=96?donutSegments.findIndex(segment=>angle>=segment.start&&angle<=segment.end):-1;
+    if(index<0){activeDonutIndex=-1;hideTooltip();drawDonut();return}
+    activeDonutIndex=index;const segment=donutSegments[index];drawDonut();
+    showTooltip(event, segment.category, money(segment.total), `${String(segment.percent).replace('.', ',')}% do faturamento`);
+  });
+  donut?.addEventListener('pointerleave', () => { activeDonutIndex=-1; hideTooltip(); drawDonut(); });
   drawLine(); drawDonut(); window.addEventListener('resize', drawLine);
 })();

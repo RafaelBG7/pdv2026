@@ -2,6 +2,15 @@ name: Deploy OCI Self Hosted
 
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        description: Operação segura a executar
+        required: true
+        type: choice
+        default: deploy
+        options:
+          - deploy
+          - audit
   push:
     branches:
       - main
@@ -64,6 +73,7 @@ jobs:
       - linux
       - girofy-oci
     needs: test
+    if: github.event_name == 'push' || inputs.operation == 'deploy'
     environment: production
 
     env:
@@ -82,3 +92,20 @@ jobs:
           curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/login" >/dev/null
           curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/health/dependencies" >/dev/null
           curl -fsS "http://127.0.0.1:${OCI_DEPLOY_PORT}/api/v1/health/dependencies" >/dev/null
+
+  audit:
+    name: Auditoria OCI somente leitura
+    runs-on:
+      - self-hosted
+      - linux
+      - girofy-oci
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'audit'
+    environment: production
+    env:
+      OCI_DEPLOY_PATH: ${{ vars.OCI_DEPLOY_PATH || '/opt/girofy/app' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auditar sem alterar infraestrutura
+        run: bash scripts/audit_oci_readonly.sh

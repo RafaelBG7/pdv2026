@@ -51,6 +51,14 @@ printf '%s\n' '-- networks declaradas --'
 docker compose -f "$COMPOSE_FILE" config --networks
 docker compose -f "$COMPOSE_FILE" ps
 
+section "Inventário de bancos e contexto master (sem segredos)"
+docker compose -f "$COMPOSE_FILE" exec -T mysql sh -eu -c '
+  MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N -e \
+    "SELECT schema_name FROM information_schema.schemata WHERE schema_name = COALESCE(NULLIF(\"$MYSQL_DATABASE\", \"\"), \"adega_central\") OR schema_name LIKE \"adega\\_%\" ESCAPE \"\\\\\" OR schema_name LIKE \"skygest\\_hml\\_tenant\\_%\" ESCAPE \"\\\\\" ORDER BY schema_name"
+  MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N "${MYSQL_DATABASE:-adega_central}" -e \
+    "SELECT CONCAT(\"system_company_id=\", id, \" name=\", name, \" database_path=\", COALESCE(database_path, \"\"), \" is_system=\", is_system) FROM companies WHERE is_system = 1 OR activation_key = \"MASTER-SYSTEM-KEY\" ORDER BY id"
+'
+
 section "Containers sem variáveis sensíveis"
 for container_id in $(docker compose -f "$COMPOSE_FILE" ps -q); do
   docker inspect --format \

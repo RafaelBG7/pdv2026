@@ -11,6 +11,7 @@ on:
         options:
           - deploy
           - audit
+          - hml
   push:
     branches:
       - main
@@ -66,6 +67,15 @@ jobs:
           bash -n scripts/oci/oci_check.sh
           bash -n scripts/oci/oci_harden_network.sh
 
+      - name: Validar stack HML no bootstrap
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'hml'
+        run: |
+          python scripts/validate_environment_isolation.py --environment homologation --env-file .env.hml.example --allow-example-secrets
+          docker compose --env-file .env.hml.example -p skygest-hml -f docker-compose.hml.yml config --quiet
+          bash -n scripts/deploy_hml.sh
+          bash -n scripts/provision_hml_env.sh
+          bash -n scripts/configure_hml_gateway.sh
+
   deploy:
     name: Publicar na OCI
     runs-on:
@@ -111,3 +121,51 @@ jobs:
 
       - name: Auditar sem alterar infraestrutura
         run: bash scripts/audit_oci_readonly.sh
+
+  hml-windows-test:
+    name: Validar cliente Windows HML/PROD
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'hml'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restaurar, testar e compilar
+        run: |
+          dotnet restore desktop_wpf/Girofy.Desktop.sln
+          dotnet test desktop_wpf/tests/Girofy.UnitTests/Girofy.UnitTests.csproj --configuration Release --no-restore
+          dotnet build desktop_wpf/src/Girofy.Desktop/Girofy.Desktop.csproj --configuration Release --no-restore
+
+  hml-deploy:
+    name: Bootstrap da homologação na OCI
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'hml'
+    runs-on:
+      - self-hosted
+      - linux
+      - girofy-oci
+    needs:
+      - test
+      - hml-windows-test
+    environment: homologation
+    env:
+      HML_DEPLOY_PATH: /opt/girofy/hml
+      PRODUCTION_DEPLOY_PATH: /opt/girofy/app
+      HML_LOOPBACK_PORT: '18081'
+      HML_DOMAIN: hml.skygest.com.br
+      EXPECTED_PUBLIC_IP: ${{ vars.EXPECTED_PUBLIC_IP || '168.75.101.126' }}
+      HML_MASTER_DEFAULT_PASSWORD: ${{ secrets.HML_MASTER_DEFAULT_PASSWORD }}
+      DEPLOY_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publicar stack HML isolada
+        run: bash scripts/deploy_hml.sh
+
+      - name: Configurar e validar gateway HTTPS HML
+        run: bash scripts/configure_hml_gateway.sh

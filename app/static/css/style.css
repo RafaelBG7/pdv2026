@@ -9644,3 +9644,45 @@ canvas {
     justify-self: start;
   }
 }
+
+.dashboard-sales-list > .dashboard-empty-panel {
+  display: flex;
+  width: 100%;
+  min-width: 100%;
+  min-height: 170px;
+  grid-template-columns: none;
+  gap: 7px;
+  padding: 24px;
+  border: 1px dashed rgba(120, 145, 185, .22);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(18, 34, 56, .38), rgba(10, 20, 37, .12));
+}
+
+.dashboard-empty-panel .dashboard-empty-icon {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 5px;
+  padding: 8px;
+  border: 1px solid rgba(139, 92, 246, .3);
+  border-radius: 12px;
+  background: rgba(139, 92, 246, .1);
+  color: #a78bfa;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.dashboard-sales-list > .dashboard-empty-panel > strong,
+.dashboard-sales-list > .dashboard-empty-panel > span {
+  display: block;
+  max-width: 100%;
+  text-align: center;
+  white-space: normal;
+}
+
+.dashboard-sales-list > .dashboard-empty-panel > span {
+  color: #8292a9;
+  font-size: .8rem;
+}

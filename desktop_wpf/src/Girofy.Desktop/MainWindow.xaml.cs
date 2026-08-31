@@ -22,17 +22,17 @@ public partial class MainWindow : Window
     private readonly ILogger<MainWindow> _logger;
     private bool _initialized;
     private bool _syncingPassword;
-    private readonly SmoothScrollController _smoothScrollController;
+    private readonly SmoothScrollController? _smoothScrollController;
 
     public MainWindow(
         ConnectionViewModel viewModel,
         IThemeService themeService,
         ILogger<MainWindow> logger)
     {
-        InitializeComponent();
         _viewModel = viewModel;
         _themeService = themeService;
         _logger = logger;
+        InitializeComponent();
         DataContext = viewModel;
         _smoothScrollController = new SmoothScrollController(this);
         Loaded += HandleLoaded;
@@ -596,7 +596,7 @@ public partial class MainWindow : Window
         StateChanged -= HandleWindowStateChanged;
         _viewModel.Login.PropertyChanged -= HandleLoginPropertyChanged;
         _viewModel.Login.ForgotPassword.PropertyChanged -= HandleForgotPasswordPropertyChanged;
-        _smoothScrollController.Dispose();
+        _smoothScrollController?.Dispose();
         base.OnClosed(e);
     }
 }

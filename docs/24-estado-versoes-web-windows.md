@@ -97,7 +97,7 @@ Assinatura e ativação:
 - Key de ativação por adega.
 - Geração de key no painel master.
 - Key com período definido.
-- Planos Basic e Pro em tela estética.
+- Planos Basic, Pro e Ultimate, com Ultimate apresentado como mais completo.
 - Bloqueio de uso quando a assinatura/key vence.
 - Cadastro sem key permitido, mas com operação bloqueada.
 

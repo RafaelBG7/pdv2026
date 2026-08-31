@@ -18,6 +18,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from app.backup import BACKUP_FREQUENCIES, backup_frequency_label, create_company_backup
 from app.extensions import db
 from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, Notification, NotificationPreference, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.money import percent_decimal
 from app.permissions import (
     PERMISSION_LABELS,
     authorize_permission_override,
@@ -199,9 +200,9 @@ def parse_date_field(value):
 def parse_percent(value):
     try:
         normalized = str(value or '0').replace(',', '.')
-        return max(float(normalized), 0.0)
+        return max(percent_decimal(normalized), percent_decimal('0'))
     except ValueError:
-        return 0.0
+        return percent_decimal('0')
 
 
 def password_min_length():

@@ -1,5 +1,6 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
+from app.money import money_decimal
 from app.models import Product, StockMovement
 from app.services.audit_service import record_audit_event
 
@@ -33,7 +34,7 @@ class StockMovementError(ValueError):
 
 def decimal_money(value):
     try:
-        return Decimal(str(value or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return money_decimal(value)
     except Exception as error:
         raise StockMovementError('Valor monetário inválido.') from error
 
@@ -101,7 +102,7 @@ def register_stock_movement(
     previous_stock = int(product.stock_quantity or 0)
     new_stock = int(new_stock)
     unit_cost_value = decimal_money(unit_cost if unit_cost is not None else product.cost_price)
-    total_cost_value = (unit_cost_value * Decimal(quantity)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    total_cost_value = money_decimal(unit_cost_value * Decimal(quantity))
 
     product.stock_quantity = new_stock
     movement = StockMovement(

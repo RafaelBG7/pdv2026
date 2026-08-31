@@ -2,7 +2,31 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 
 MONEY_QUANTUM = Decimal('0.01')
+PERCENT_QUANTUM = Decimal('0.0001')
 MAX_MONEY = Decimal('9999999999.99')
+
+
+def decimal_value(raw_value, *, quantum=MONEY_QUANTUM, default=Decimal('0')):
+    """Convert stored/calculated values through text and quantize deterministically."""
+    if raw_value is None or raw_value == '':
+        raw_value = default
+    if isinstance(raw_value, bool):
+        raise ValueError('invalid_decimal')
+    try:
+        value = Decimal(str(raw_value))
+    except (InvalidOperation, ValueError) as error:
+        raise ValueError('invalid_decimal') from error
+    if not value.is_finite():
+        raise ValueError('invalid_decimal')
+    return value.quantize(quantum, rounding=ROUND_HALF_UP)
+
+
+def money_decimal(raw_value):
+    return decimal_value(raw_value, quantum=MONEY_QUANTUM)
+
+
+def percent_decimal(raw_value):
+    return decimal_value(raw_value, quantum=PERCENT_QUANTUM)
 
 
 def _normalized_money_decimal(raw_value, *, positive=False, enforce_maximum=True):

@@ -1659,7 +1659,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     }
 
     private static string FormatFee(bool enabled, decimal percent) =>
-        enabled ? $"{percent:0.##}%" : "inativo";
+        enabled ? $"{percent:0.####}%" : "inativo";
 
     private static bool IsOptionalTime(string value) => string.IsNullOrWhiteSpace(value) || IsRequiredTime(value);
 
@@ -1667,7 +1667,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
         TimeOnly.TryParseExact(value?.Trim(), "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
 
     private static string FormatPercentInput(decimal value) =>
-        value.ToString("0.##", CultureInfo.GetCultureInfo("pt-BR"));
+        value.ToString("0.####", CultureInfo.GetCultureInfo("pt-BR"));
 
     private static decimal ParsePercentOrZero(string value)
     {
@@ -1708,7 +1708,7 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
             throw new FormatException($"A {label} deve ficar entre 0% e 100%.");
         }
 
-        return decimal.Round(parsed, 2);
+        return decimal.Round(parsed, 4, MidpointRounding.AwayFromZero);
     }
 
     public void Dispose() => _sessionContext.Changed -= HandleSessionChanged;

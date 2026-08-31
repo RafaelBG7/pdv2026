@@ -171,12 +171,14 @@ Auditoria:
 
 ## Última Validação Conhecida
 
-Validação feita em 19/07/2026:
+Validação feita em 30/08/2026 no commit `87e4917`:
 
 ```text
-Ran 171 tests in 24.107s
+Ran 251 tests
 OK
 ```
+
+O cliente WPF possui adicionalmente 153 casos `[Fact]`/`[Theory]` xUnit inventariados.
 
 Também foram validados:
 

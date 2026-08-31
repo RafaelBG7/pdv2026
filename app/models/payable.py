@@ -12,7 +12,7 @@ class Payable(db.Model):
     company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)
     description = db.Column(db.String(180), nullable=False)
     category = db.Column(db.String(80), default='Geral')
-    amount = db.Column(db.Numeric(12, 2), nullable=False, default=Decimal('0.00'))
+    amount = db.Column(db.Numeric(18, 2), nullable=False, default=Decimal('0.00'), server_default='0')
     due_date = db.Column(db.Date, nullable=False, default=business_today)
     paid = db.Column(db.Boolean, nullable=False, default=False)
     paid_at = db.Column(db.DateTime, nullable=True)

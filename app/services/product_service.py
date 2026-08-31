@@ -67,8 +67,8 @@ def create_product(db_session, company, user, product_input):
         barcode=product_input.barcode or None,
         category_id=category.id if category else None,
         company_id=company.id,
-        cost_price=float(product_input.cost_price),
-        sale_price=float(product_input.sale_price),
+        cost_price=product_input.cost_price,
+        sale_price=product_input.sale_price,
         stock_quantity=0,
         min_stock_quantity=product_input.min_stock_quantity,
         active=product_input.active,
@@ -149,8 +149,8 @@ def update_product(db_session, company, user, product_id, product_input):
     product.barcode = product_input.barcode or None
     product.category_id = category.id if category else None
     product.category = category
-    product.cost_price = float(product_input.cost_price)
-    product.sale_price = float(product_input.sale_price)
+    product.cost_price = product_input.cost_price
+    product.sale_price = product_input.sale_price
     product.min_stock_quantity = product_input.min_stock_quantity
     product.active = product_input.active
     product.is_kit = product_input.is_kit

@@ -14,6 +14,7 @@ from app.extensions import db
 from app.extensions import limiter
 from app.security.rate_limit import authenticated_identity_key, configured_limit
 from app.models import Category, Product
+from app.money import money_json, parse_money_decimal
 from app.permissions import authorize_permission_override, permission_required
 from app.services.audit_service import changed_values, record_audit_event
 from app.services.product_service import ProductOperationError, delete_product as delete_product_service
@@ -85,15 +86,10 @@ def import_redirect_target():
 
 
 def parse_money(value):
-    if isinstance(value, (int, float)):
-        return max(float(value), 0.0)
-    value = (value or '0').strip()
-    if ',' in value:
-        value = value.replace('.', '').replace(',', '.')
     try:
-        return max(float(value), 0.0)
+        return parse_money_decimal(value if value not in (None, '') else '0')
     except ValueError:
-        return 0.0
+        return parse_money_decimal('0')
 
 
 def parse_optional_money(value):
@@ -528,11 +524,11 @@ def kit_product_suggestions():
                 'title': product.name,
                 'barcode': product.barcode or '',
                 'stock': int(product.effective_stock_quantity or 0),
-                'sale_price': float(product.sale_price or 0),
+                'sale_price': money_json(product.sale_price),
                 'meta': (
                     f"Código: {product.barcode or 'sem código'} · "
                     f"Estoque: {int(product.effective_stock_quantity or 0)} un. · "
-                    f"R$ {format(float(product.sale_price or 0), '.2f').replace('.', ',')}"
+                    f"R$ {format(product.sale_price or 0, '.2f').replace('.', ',')}"
                 ),
             }
             for product in products

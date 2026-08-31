@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import selectinload
 
+from app.money import MONEY_QUANTUM, money_decimal, percent_decimal
 from app.models import (
     ApiSaleRequest,
     CashRegister,
@@ -24,7 +25,6 @@ PAYMENT_METHODS = {
     'debit': 'Débito',
     'credit': 'Crédito',
 }
-MONEY_QUANTUM = Decimal('0.01')
 
 
 class SaleOperationError(Exception):
@@ -63,12 +63,8 @@ class SaleCancellationResult:
     cash_register_was_closed: bool
 
 
-def money_decimal(value):
-    return Decimal(str(value or 0)).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
-
-
 def money_value(value):
-    return float(money_decimal(value))
+    return money_decimal(value)
 
 
 def timestamp_value(value):
@@ -92,11 +88,11 @@ def card_fee_total(company, payments, final_amount, paid_amount):
     for payment in payments:
         effective_amount = payment.amount * payment_scale
         if payment.method == 'pix' and company.pix_fee_enabled:
-            fee_total += effective_amount * money_decimal(company.pix_fee_percent) / Decimal('100')
+            fee_total += effective_amount * percent_decimal(company.pix_fee_percent) / Decimal('100')
         elif payment.method == 'debit' and company.debit_fee_enabled:
-            fee_total += effective_amount * money_decimal(company.debit_fee_percent) / Decimal('100')
+            fee_total += effective_amount * percent_decimal(company.debit_fee_percent) / Decimal('100')
         elif payment.method == 'credit' and company.credit_fee_enabled:
-            fee_total += effective_amount * money_decimal(company.credit_fee_percent) / Decimal('100')
+            fee_total += effective_amount * percent_decimal(company.credit_fee_percent) / Decimal('100')
     return fee_total.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
 
 

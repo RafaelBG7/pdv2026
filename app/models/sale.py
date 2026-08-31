@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from app.extensions import db
 
@@ -8,9 +9,9 @@ class Sale(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    total_amount = db.Column(db.Float, default=0.0)
-    discount_amount = db.Column(db.Float, default=0.0)
-    final_amount = db.Column(db.Float, default=0.0)
+    total_amount = db.Column(db.Numeric(18, 2), nullable=False, default=Decimal('0.00'), server_default='0')
+    discount_amount = db.Column(db.Numeric(18, 2), nullable=False, default=Decimal('0.00'), server_default='0')
+    final_amount = db.Column(db.Numeric(18, 2), nullable=False, default=Decimal('0.00'), server_default='0')
     payment_status = db.Column(db.String(20), default='pending')
     status = db.Column(db.String(20), nullable=False, default='completed', index=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)

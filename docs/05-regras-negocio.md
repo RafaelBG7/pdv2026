@@ -3,13 +3,12 @@
 ## Autenticação e Cadastro
 
 - Usuário anônimo é redirecionado para login ao acessar rota protegida.
-- Login usa `username` e `password`.
+- Login aceita usuário ou e-mail e senha.
 - Senhas são armazenadas e conferidas com hash Werkzeug.
 - Usuário inativo não deve operar o sistema.
 - Usuário `master` do sistema acessa o painel master.
-- Cadastro cria uma empresa/adega e o primeiro usuário como `admin`.
-- Cadastro pode receber uma key válida ou marcar "Não tenho key".
-- Cadastro sem key é permitido, mas a adega fica bloqueada para operação.
+- Cadastro solicita somente usuário, e-mail e senha, cria uma empresa/adega e o primeiro usuário como `admin`.
+- A confirmação de e-mail e a ativação da assinatura ocorrem após o cadastro; cadastro não recebe key no formulário inicial.
 - Cada nova adega deve ter seu banco MySQL operacional próprio.
 - O usuário inicial global usa `MASTER_DEFAULT_USERNAME` e `MASTER_DEFAULT_PASSWORD`; em produção a senha padrão `master123` é recusada.
 
@@ -20,7 +19,7 @@
 - Key possui plano e data de validade.
 - Key usada fica vinculada à empresa.
 - Adega sem key, vencida ou inativa é redirecionada para `/assinatura`.
-- Planos Basic e Pro existem como estrutura comercial inicial, sem cobrança real integrada.
+- Planos Basic, Pro e Ultimate existem como estrutura comercial inicial, sem cobrança real integrada ou cotas técnicas por plano. Ultimate é o plano comercial mais completo.
 
 ## Usuário e Configurações
 

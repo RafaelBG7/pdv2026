@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from app.extensions import db
 
@@ -18,8 +19,8 @@ class Product(db.Model):
     barcode = db.Column(db.String(100), nullable=True)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)
-    cost_price = db.Column(db.Float, default=0.0)
-    sale_price = db.Column(db.Float, default=0.0)
+    cost_price = db.Column(db.Numeric(18, 2), nullable=False, default=Decimal('0.00'), server_default='0')
+    sale_price = db.Column(db.Numeric(18, 2), nullable=False, default=Decimal('0.00'), server_default='0')
     stock_quantity = db.Column(db.Integer, default=0)
     min_stock_quantity = db.Column(db.Integer, default=0)
     active = db.Column(db.Boolean, default=True)
@@ -44,11 +45,11 @@ class Product(db.Model):
 
     @property
     def profit_amount(self):
-        return (self.sale_price or 0.0) - (self.cost_price or 0.0)
+        return (self.sale_price or Decimal('0.00')) - (self.cost_price or Decimal('0.00'))
 
     @property
     def profit_margin_percent(self):
-        sale_price = self.sale_price or 0.0
+        sale_price = self.sale_price or Decimal('0.00')
         if sale_price <= 0:
-            return 0.0
+            return Decimal('0.00')
         return (self.profit_amount / sale_price) * 100

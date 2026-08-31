@@ -1,8 +1,9 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 from sqlalchemy import func
 
 from app.models import CashRegister, Company, Payment, Sale, User
+from app.money import money_decimal
 from app.services.audit_service import record_audit_event
 from app.time_utils import utc_isoformat
 
@@ -13,7 +14,6 @@ PAYMENT_METHODS = {
     'debit': 'Débito',
     'credit': 'Crédito',
 }
-MONEY_QUANTUM = Decimal('0.01')
 
 
 class CashRegisterOperationError(Exception):
@@ -25,12 +25,8 @@ class CashRegisterOperationError(Exception):
         self.field = field
 
 
-def money_decimal(value):
-    return Decimal(str(value or 0)).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
-
-
 def money_value(value):
-    return float(money_decimal(value))
+    return money_decimal(value)
 
 
 def money_text(value):
@@ -58,7 +54,7 @@ def find_open_cash_register(db_session, company_id, for_update=False):
 
 def cash_register_expected_amount(db_session, company_id, cash_register):
     sales_total = db_session.query(
-        func.coalesce(func.sum(Sale.final_amount), 0.0),
+        func.coalesce(func.sum(Sale.final_amount), Decimal('0.00')),
     ).filter(
         Sale.company_id == company_id,
         Sale.cash_register_id == cash_register.id,
@@ -203,7 +199,7 @@ def build_cash_register_snapshot(
                 db_session.query(
                     Sale.cash_register_id,
                     func.count(Sale.id),
-                    func.coalesce(func.sum(Sale.final_amount), 0.0),
+                    func.coalesce(func.sum(Sale.final_amount), Decimal('0.00')),
                 )
                 .filter(
                     Sale.company_id == company_id,
@@ -217,7 +213,7 @@ def build_cash_register_snapshot(
             db_session.query(
                 Sale.cash_register_id,
                 Payment.method,
-                func.coalesce(func.sum(Payment.amount), 0.0),
+                func.coalesce(func.sum(Payment.amount), Decimal('0.00')),
             )
             .join(Payment, Payment.sale_id == Sale.id)
             .filter(
@@ -238,7 +234,7 @@ def build_cash_register_snapshot(
                 db_session.query(
                     Sale.cash_register_id,
                     func.count(Sale.id),
-                    func.coalesce(func.sum(Sale.final_amount), 0.0),
+                    func.coalesce(func.sum(Sale.final_amount), Decimal('0.00')),
                 )
                 .filter(
                     Sale.company_id == company_id,
@@ -253,7 +249,7 @@ def build_cash_register_snapshot(
             db_session.query(
                 Sale.cash_register_id,
                 Payment.method,
-                func.coalesce(func.sum(Payment.amount), 0.0),
+                func.coalesce(func.sum(Payment.amount), Decimal('0.00')),
             )
             .join(Payment, Payment.sale_id == Sale.id)
             .filter(
@@ -332,7 +328,7 @@ def build_cash_register_snapshot(
                 {
                     'method': method,
                     'label': label,
-                    'amount': visible_payment_totals.get(cash_register.id, {}).get(method, 0.0),
+                    'amount': visible_payment_totals.get(cash_register.id, {}).get(method, Decimal('0.00')),
                 }
                 for method, label in PAYMENT_METHODS.items()
             ] if can_view_financials else [],

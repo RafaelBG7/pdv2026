@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
 import io
 import re
+import simplejson
 import zipfile
 from xml.etree import ElementTree
 
@@ -14,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload, sessionmaker
 
 from app.extensions import db, limiter
-from app.money import money_json, parse_money_decimal
+from app.money import money_decimal, money_json, parse_money_decimal, percent_decimal
 from app.backup import BACKUP_FREQUENCIES, create_company_backup
 from app.models import (
     ActivationKey,
@@ -218,19 +219,19 @@ EMAIL_PATTERN = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
 def api_success(data, status_code=200):
-    response = jsonify({
+    response = Response(simplejson.dumps({
         'success': True,
         'data': data,
         'message': None,
         'errors': [],
-    })
+    }, use_decimal=True, ensure_ascii=False), mimetype='application/json')
     response.status_code = status_code
     response.headers['Cache-Control'] = 'no-store'
     return response
 
 
 def api_failure(message, code, status_code, field=None):
-    response = jsonify({
+    response = Response(simplejson.dumps({
         'success': False,
         'data': None,
         'message': message,
@@ -239,7 +240,7 @@ def api_failure(message, code, status_code, field=None):
             'code': code,
             'message': message,
         }],
-    })
+    }, use_decimal=True, ensure_ascii=False), mimetype='application/json')
     response.status_code = status_code
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -418,37 +419,35 @@ def json_money(payload, name):
             name,
         )
 
-    text = str(raw_value).strip()
-    if not text:
+    if not str(raw_value).strip():
         raise ApiAuthError(
             f'Informe o campo {name}.',
             'money_required',
             422,
             name,
         )
-    if ',' in text:
-        text = text.replace('.', '').replace(',', '.')
     try:
-        value = Decimal(text)
-    except InvalidOperation as error:
+        value = parse_money_decimal(raw_value)
+    except ValueError as error:
         raise ApiAuthError(
             f'O campo {name} precisa ser um valor monetário válido.',
             'invalid_money',
             422,
             name,
         ) from error
-    if not value.is_finite() or value < 0 or value > Decimal('999999999.99'):
+    if value > Decimal('999999999.99'):
         raise ApiAuthError(
             f'O campo {name} está fora do intervalo permitido.',
             'invalid_money',
             422,
             name,
         )
-    return value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return value
 
 
 def json_optional_money(payload, name, default='0.00'):
-    if name not in payload or payload.get(name) in {None, ''}:
+    raw_value = payload.get(name)
+    if name not in payload or raw_value is None or raw_value == '':
         return Decimal(default).quantize(Decimal('0.01'))
     return json_money(payload, name)
 
@@ -457,26 +456,23 @@ def optional_money_argument(name):
     raw_value = request.args.get(name)
     if raw_value is None or not raw_value.strip():
         return None
-    text = raw_value.strip()
-    if ',' in text:
-        text = text.replace('.', '').replace(',', '.')
     try:
-        value = Decimal(text)
-    except InvalidOperation as error:
+        value = parse_money_decimal(raw_value)
+    except ValueError as error:
         raise ApiAuthError(
             f'O parâmetro {name} precisa ser um valor monetário válido.',
             'invalid_query_parameter',
             422,
             name,
         ) from error
-    if not value.is_finite() or value < 0 or value > Decimal('999999999.99'):
+    if value > Decimal('999999999.99'):
         raise ApiAuthError(
             f'O parâmetro {name} está fora do intervalo permitido.',
             'invalid_query_parameter',
             422,
             name,
         )
-    return value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return value
 
 
 def json_text(payload, name, required=False, max_length=255):
@@ -637,8 +633,11 @@ def api_report_period_range(period, start_date=None, end_date=None):
 
 def api_sale_item_profit(item):
     if item.profit_amount is not None:
-        return item.profit_amount or 0.0
-    return ((item.unit_price or 0.0) - (item.unit_cost_price or 0.0)) * (item.quantity or 0)
+        return money_decimal(item.profit_amount)
+    return (
+        (money_decimal(item.unit_price) - money_decimal(item.unit_cost_price))
+        * Decimal(item.quantity or 0)
+    ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
 def api_serialize_sale_receipt(sale):
@@ -695,22 +694,22 @@ def api_serialize_sale_receipt(sale):
 
 def api_build_sales_report(sales):
     sales = [sale for sale in sales if not sale.is_cancelled]
-    payment_totals = {method: 0.0 for method in PAYMENT_METHODS}
+    payment_totals = {method: Decimal('0.00') for method in PAYMENT_METHODS}
     product_totals = {}
     totals = {
         'sales_count': len(sales),
         'items_count': 0,
-        'subtotal': 0.0,
-        'discount': 0.0,
-        'final': 0.0,
-        'profit': 0.0,
-        'average_ticket': 0.0,
+        'subtotal': Decimal('0.00'),
+        'discount': Decimal('0.00'),
+        'final': Decimal('0.00'),
+        'profit': Decimal('0.00'),
+        'average_ticket': Decimal('0.00'),
     }
 
     for sale in sales:
-        totals['subtotal'] += sale.total_amount or 0.0
-        totals['discount'] += sale.discount_amount or 0.0
-        totals['final'] += sale.final_amount or 0.0
+        totals['subtotal'] += money_decimal(sale.total_amount)
+        totals['discount'] += money_decimal(sale.discount_amount)
+        totals['final'] += money_decimal(sale.final_amount)
         for item in sale.items:
             quantity = item.quantity or 0
             profit = api_sale_item_profit(item)
@@ -722,14 +721,14 @@ def api_build_sales_report(sales):
                 'product_id': product_id,
                 'name': product_name,
                 'quantity': 0,
-                'total': 0.0,
-                'profit': 0.0,
+                'total': Decimal('0.00'),
+                'profit': Decimal('0.00'),
             })
             product_data['quantity'] += quantity
-            product_data['total'] += item.total_price or 0.0
+            product_data['total'] += money_decimal(item.total_price)
             product_data['profit'] += profit
         for payment in sale.payments:
-            payment_totals[payment.method] = payment_totals.get(payment.method, 0.0) + (payment.amount or 0.0)
+            payment_totals[payment.method] = payment_totals.get(payment.method, Decimal('0.00')) + money_decimal(payment.amount)
 
     if totals['sales_count']:
         totals['average_ticket'] = totals['final'] / totals['sales_count']
@@ -742,22 +741,22 @@ def api_build_sales_report(sales):
 
     return {
         'summary': {
-            key: round(value, 2) if isinstance(value, float) else value
+            key: money_decimal(value) if key != 'sales_count' and key != 'items_count' else value
             for key, value in totals.items()
         },
         'payment_totals': [
             {
                 'method': method,
                 'label': PAYMENT_METHODS.get(method, method),
-                'amount': round(payment_totals.get(method, 0.0), 2),
+                'amount': money_decimal(payment_totals.get(method, Decimal('0.00'))),
             }
             for method in PAYMENT_METHODS
         ],
         'top_products': [
             {
                 **product,
-                'total': round(product['total'], 2),
-                'profit': round(product['profit'], 2),
+                'total': money_decimal(product['total']),
+                'profit': money_decimal(product['profit']),
             }
             for product in top_products
         ],
@@ -832,9 +831,9 @@ def api_build_product_report(
     rows = []
     for product, quantity, revenue, cost, profit in query.all():
         quantity = int(quantity or 0)
-        revenue = round(float(revenue or 0), 2)
-        cost = round(float(cost or 0), 2)
-        profit = round(float(profit or 0), 2)
+        revenue = money_decimal(revenue)
+        cost = money_decimal(cost)
+        profit = money_decimal(profit)
         rows.append({
             'product_id': product.id,
             'product_name': product.name,
@@ -845,7 +844,7 @@ def api_build_product_report(
             'revenue': revenue,
             'cost': cost,
             'profit': profit,
-            'average_ticket': round(revenue / quantity, 2) if quantity else 0.0,
+            'average_ticket': money_decimal(revenue / quantity) if quantity else Decimal('0.00'),
             'stock': product.effective_stock_quantity or 0,
             'active': bool(product.active),
         })
@@ -866,14 +865,14 @@ def api_build_product_report(
     totals = {
         'products': len(rows),
         'quantity': sum(item['quantity'] for item in rows),
-        'revenue': round(sum(item['revenue'] for item in rows), 2),
-        'cost': round(sum(item['cost'] for item in rows), 2),
-        'profit': round(sum(item['profit'] for item in rows), 2),
+        'revenue': money_decimal(sum((item['revenue'] for item in rows), Decimal('0.00'))),
+        'cost': money_decimal(sum((item['cost'] for item in rows), Decimal('0.00'))),
+        'profit': money_decimal(sum((item['profit'] for item in rows), Decimal('0.00'))),
     }
     if totals['quantity']:
-        totals['average_ticket'] = round(totals['revenue'] / totals['quantity'], 2)
+        totals['average_ticket'] = money_decimal(totals['revenue'] / totals['quantity'])
     else:
-        totals['average_ticket'] = 0.0
+        totals['average_ticket'] = Decimal('0.00')
 
     total_items = len(rows)
     total_pages = max(1, (total_items + per_page - 1) // per_page)
@@ -905,7 +904,7 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 'label': f'{hour:02d}h',
                 'title': f'{hour:02d}:00 às {hour:02d}:59',
                 'sales_count': 0,
-                'total': 0.0,
+                'total': Decimal('0.00'),
             })
         bucket_index = {int(bucket['key']): bucket for bucket in buckets}
         for sale in sales:
@@ -914,7 +913,7 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 bucket = bucket_index.get(local_created_at.hour)
                 if bucket is not None:
                     bucket['sales_count'] += 1
-                    bucket['total'] += sale.final_amount or 0.0
+                    bucket['total'] += money_decimal(sale.final_amount)
     elif period == 'annual':
         current = start.replace(day=1)
         end_month = end.replace(day=1)
@@ -924,7 +923,7 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 'label': current.strftime('%m/%Y'),
                 'title': current.strftime('%m/%Y'),
                 'sales_count': 0,
-                'total': 0.0,
+                'total': Decimal('0.00'),
             })
             if current.month == 12:
                 current = current.replace(year=current.year + 1, month=1)
@@ -937,7 +936,7 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 key = f'{local_created_at.year}-{local_created_at.month:02d}'
                 if key in bucket_index:
                     bucket_index[key]['sales_count'] += 1
-                    bucket_index[key]['total'] += sale.final_amount or 0.0
+                    bucket_index[key]['total'] += money_decimal(sale.final_amount)
     else:
         current = start
         while current <= end:
@@ -946,7 +945,7 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 'label': current.strftime('%d/%m'),
                 'title': current.strftime('%d/%m/%Y'),
                 'sales_count': 0,
-                'total': 0.0,
+                'total': Decimal('0.00'),
             })
             current += timedelta(days=1)
         bucket_index = {bucket['key']: bucket for bucket in buckets}
@@ -955,7 +954,7 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 key = to_business_datetime(sale.created_at).date().isoformat()
                 if key in bucket_index:
                     bucket_index[key]['sales_count'] += 1
-                    bucket_index[key]['total'] += sale.final_amount or 0.0
+                    bucket_index[key]['total'] += money_decimal(sale.final_amount)
 
     active_buckets = [bucket for bucket in buckets if bucket['sales_count'] > 0]
     peak_by_quantity = max(
@@ -976,8 +975,12 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
 
     for bucket in buckets:
         value = bucket['sales_count'] if metric == 'quantity' else bucket['total']
-        bucket['total'] = round(bucket['total'], 2)
-        bucket['percent'] = round((value / max_value) * 100, 2) if max_value else 0
+        bucket['total'] = money_decimal(bucket['total'])
+        bucket['percent'] = float(
+            ((Decimal(value) / Decimal(max_value)) * Decimal('100')).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            )
+        ) if max_value else 0
         bucket['is_peak'] = bool(selected_peak and bucket['key'] == selected_peak['key'])
 
     return {
@@ -1155,7 +1158,7 @@ def catalog_product_data(product, include_cost):
             'id': category.id,
             'name': category.name,
         },
-        'sale_price': round(float(product.sale_price or 0), 2),
+        'sale_price': money_decimal(product.sale_price),
         'stock_quantity': int(product.effective_stock_quantity),
         'min_stock_quantity': int(product.min_stock_quantity or 0),
         'active': bool(product.active),
@@ -1168,9 +1171,9 @@ def catalog_product_data(product, include_cost):
     }
     if include_cost:
         payload.update({
-            'cost_price': round(float(product.cost_price or 0), 2),
-            'profit_amount': round(float(product.profit_amount), 2),
-            'profit_margin_percent': round(float(product.profit_margin_percent), 2),
+            'cost_price': money_decimal(product.cost_price),
+            'profit_amount': money_decimal(product.profit_amount),
+            'profit_margin_percent': Decimal(product.profit_margin_percent).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP),
         })
     return payload
 
@@ -1225,8 +1228,8 @@ def stock_movement_data(movement, include_cost=False):
     }
     if include_cost:
         payload.update({
-            'unit_cost': round(float(movement.unit_cost or 0), 2),
-            'total_cost': round(float(movement.total_cost or 0), 2),
+            'unit_cost': money_decimal(movement.unit_cost),
+            'total_cost': money_decimal(movement.total_cost),
         })
     return payload
 
@@ -1694,9 +1697,9 @@ def api_settings_payload(user):
             'pix_fee_enabled': bool(company.pix_fee_enabled),
             'debit_fee_enabled': bool(company.debit_fee_enabled),
             'credit_fee_enabled': bool(company.credit_fee_enabled),
-            'pix_fee_percent': float(company.pix_fee_percent or 0),
-            'debit_fee_percent': float(company.debit_fee_percent or 0),
-            'credit_fee_percent': float(company.credit_fee_percent or 0),
+            'pix_fee_percent': company.pix_fee_percent or Decimal('0.0000'),
+            'debit_fee_percent': company.debit_fee_percent or Decimal('0.0000'),
+            'credit_fee_percent': company.credit_fee_percent or Decimal('0.0000'),
         },
     }
 
@@ -1789,7 +1792,7 @@ def format_export_date(value):
 
 
 def format_export_money(value):
-    return f'{float(value or 0):.2f}'.replace('.', ',')
+    return f'{money_decimal(value):.2f}'.replace('.', ',')
 
 
 def api_sale_profit_amount(sale):
@@ -1797,7 +1800,7 @@ def api_sale_profit_amount(sale):
 
 
 def api_cash_register_total_sold(cash_register):
-    return sum(float(sale.final_amount or 0) for sale in cash_register.sales)
+    return sum((money_decimal(sale.final_amount) for sale in cash_register.sales), Decimal('0.00'))
 
 
 def api_cash_register_profit_amount(cash_register):
@@ -1995,21 +1998,16 @@ def api_csv_export_response(export_type, headers, rows):
 
 
 def api_import_parse_money(value):
-    if isinstance(value, (int, float, Decimal)):
-        return max(float(value), 0.0)
-    value = str(value or '0').strip()
-    if ',' in value:
-        value = value.replace('.', '').replace(',', '.')
     try:
-        return max(float(value), 0.0)
+        return parse_money_decimal(value if value not in (None, '') else '0')
     except ValueError:
-        return 0.0
+        return Decimal('0.00')
 
 
 def api_import_parse_int(value):
     try:
-        return max(int(float(str(value or 0).replace(',', '.'))), 0)
-    except ValueError:
+        return max(int(Decimal(str(value or 0).replace(',', '.'))), 0)
+    except (InvalidOperation, ValueError):
         return 0
 
 
@@ -2382,15 +2380,25 @@ def api_settings_account():
 
 
 def api_json_fee_percent(payload, name):
-    value = json_optional_money(payload, name)
-    if value > Decimal('100.00'):
+    raw_value = payload.get(name, '0')
+    normalized = str(raw_value if raw_value is not None and raw_value != '' else '0').strip().replace(',', '.')
+    try:
+        value = percent_decimal(normalized)
+    except ValueError as error:
+        raise ApiAuthError(
+            f'O campo {name} precisa ser um percentual válido.',
+            'invalid_percent',
+            422,
+            name,
+        ) from error
+    if value < 0 or value > Decimal('100.0000'):
         raise ApiAuthError(
             f'O campo {name} deve ser menor ou igual a 100%.',
             'invalid_percent',
             422,
             name,
         )
-    return float(value)
+    return value
 
 
 @api_v1_bp.put('/settings/company')
@@ -2404,11 +2412,11 @@ def api_update_company_settings():
         old_values = {
             'allow_negative_stock': bool(company.allow_negative_stock),
             'pix_fee_enabled': bool(company.pix_fee_enabled),
-            'pix_fee_percent': float(company.pix_fee_percent or 0),
+            'pix_fee_percent': company.pix_fee_percent or Decimal('0.0000'),
             'debit_fee_enabled': bool(company.debit_fee_enabled),
-            'debit_fee_percent': float(company.debit_fee_percent or 0),
+            'debit_fee_percent': company.debit_fee_percent or Decimal('0.0000'),
             'credit_fee_enabled': bool(company.credit_fee_enabled),
-            'credit_fee_percent': float(company.credit_fee_percent or 0),
+            'credit_fee_percent': company.credit_fee_percent or Decimal('0.0000'),
         }
 
         company.allow_negative_stock = json_bool(payload, 'allow_negative_stock', default=company.allow_negative_stock)
@@ -2427,11 +2435,11 @@ def api_update_company_settings():
         new_values = {
             'allow_negative_stock': bool(company.allow_negative_stock),
             'pix_fee_enabled': bool(company.pix_fee_enabled),
-            'pix_fee_percent': float(company.pix_fee_percent or 0),
+            'pix_fee_percent': company.pix_fee_percent or Decimal('0.0000'),
             'debit_fee_enabled': bool(company.debit_fee_enabled),
-            'debit_fee_percent': float(company.debit_fee_percent or 0),
+            'debit_fee_percent': company.debit_fee_percent or Decimal('0.0000'),
             'credit_fee_enabled': bool(company.credit_fee_enabled),
-            'credit_fee_percent': float(company.credit_fee_percent or 0),
+            'credit_fee_percent': company.credit_fee_percent or Decimal('0.0000'),
             'client': 'windows_native',
         }
         record_audit_event(
@@ -3504,7 +3512,7 @@ def api_cash_register_detail_data(tenant_db, cash_register, can_view_financials)
         return {
             'method': payment.method,
             'label': PAYMENT_METHODS.get(payment.method, payment.method or 'Pagamento'),
-            'amount': float(payment.amount or 0) if can_view_financials else None,
+            'amount': money_decimal(payment.amount) if can_view_financials else None,
         }
 
     def sale_item_data(item):
@@ -3513,8 +3521,8 @@ def api_cash_register_detail_data(tenant_db, cash_register, can_view_financials)
             'product_id': item.product_id,
             'product_name': product_name,
             'quantity': int(item.quantity or 0),
-            'unit_price': float(item.unit_price or 0) if can_view_financials else None,
-            'total_price': float(item.total_price or 0) if can_view_financials else None,
+            'unit_price': money_decimal(item.unit_price) if can_view_financials else None,
+            'total_price': money_decimal(item.total_price) if can_view_financials else None,
         }
 
     timeline = []
@@ -3540,9 +3548,9 @@ def api_cash_register_detail_data(tenant_db, cash_register, can_view_financials)
             'cancelled_by_user_id': sale.cancelled_by_user_id,
             'cancellation_reason': sale.cancellation_reason or '',
             'payments_text': ', '.join(payment_labels) if payment_labels else 'Sem pagamento',
-            'total_amount': float(sale.total_amount or 0) if can_view_financials else None,
-            'discount_amount': float(sale.discount_amount or 0) if can_view_financials else None,
-            'final_amount': float(sale.final_amount or 0) if can_view_financials else None,
+            'total_amount': money_decimal(sale.total_amount) if can_view_financials else None,
+            'discount_amount': money_decimal(sale.discount_amount) if can_view_financials else None,
+            'final_amount': money_decimal(sale.final_amount) if can_view_financials else None,
             'balance_before_sale': (
                 money_value(balance_before_sale) if can_view_financials else None
             ),
@@ -4509,7 +4517,7 @@ def api_create_stock_entry():
                 )
             try:
                 if update_cost:
-                    product.cost_price = float(unit_cost)
+                    product.cost_price = unit_cost
                 movement = increase_stock(
                     tenant_db,
                     product,

@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 
 from app.extensions import db
 
@@ -22,9 +23,9 @@ class Company(db.Model):
     pix_fee_enabled = db.Column(db.Boolean, default=False)
     debit_fee_enabled = db.Column(db.Boolean, default=False)
     credit_fee_enabled = db.Column(db.Boolean, default=False)
-    pix_fee_percent = db.Column(db.Float, default=0.0)
-    debit_fee_percent = db.Column(db.Float, default=0.0)
-    credit_fee_percent = db.Column(db.Float, default=0.0)
+    pix_fee_percent = db.Column(db.Numeric(8, 4), nullable=False, default=Decimal('0.0000'), server_default='0')
+    debit_fee_percent = db.Column(db.Numeric(8, 4), nullable=False, default=Decimal('0.0000'), server_default='0')
+    credit_fee_percent = db.Column(db.Numeric(8, 4), nullable=False, default=Decimal('0.0000'), server_default='0')
     backup_frequency = db.Column(db.String(20), default='manual')
     backup_last_at = db.Column(db.DateTime, nullable=True)
     backup_last_path = db.Column(db.String(255), default='')

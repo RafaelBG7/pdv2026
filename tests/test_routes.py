@@ -695,7 +695,7 @@ class RouteTestCase(unittest.TestCase):
             json={
                 'allow_negative_stock': True,
                 'pix_fee_enabled': True,
-                'pix_fee_percent': '1,25',
+                'pix_fee_percent': '1,2345',
                 'debit_fee_enabled': True,
                 'debit_fee_percent': '2.50',
                 'credit_fee_enabled': False,
@@ -708,7 +708,8 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(data['company_settings']['allow_negative_stock'])
         self.assertTrue(data['company_settings']['pix_fee_enabled'])
-        self.assertEqual(data['company_settings']['pix_fee_percent'], 1.25)
+        self.assertEqual(data['company_settings']['pix_fee_percent'], 1.2345)
+        self.assertIn('"pix_fee_percent": 1.2345', response.get_data(as_text=True))
         self.assertTrue(data['company_settings']['debit_fee_enabled'])
         self.assertEqual(data['company_settings']['debit_fee_percent'], 2.5)
         self.assertFalse(data['company_settings']['credit_fee_enabled'])
@@ -722,7 +723,7 @@ class RouteTestCase(unittest.TestCase):
             ).one()
         self.assertTrue(updated_company.allow_negative_stock)
         self.assertTrue(updated_company.card_fee_enabled)
-        self.assertEqual(updated_company.pix_fee_percent, 1.25)
+        self.assertEqual(updated_company.pix_fee_percent, Decimal('1.2345'))
         self.assertEqual(updated_company.debit_fee_percent, 2.5)
         self.assertIn('aplicativo Windows', audit_log.description)
         self.assertIn('"client": "windows_native"', audit_log.new_values)
@@ -3048,6 +3049,8 @@ class RouteTestCase(unittest.TestCase):
         repeated_response = self.client.post('/api/v1/sales', headers=headers, json=payload)
 
         self.assertEqual(created_response.status_code, 201)
+        self.assertIn('"subtotal": 15.00', created_response.get_data(as_text=True))
+        self.assertIn('"discount_amount": 1.00', created_response.get_data(as_text=True))
         created = created_response.get_json()['data']
         self.assertFalse(created['already_processed'])
         self.assertEqual(created['cash_register_id'], cash_register_id)
@@ -3070,6 +3073,10 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(Sale.query.filter_by(company_id=company.id).count(), 1)
             self.assertEqual(SaleItem.query.filter_by(sale_id=created['id']).count(), 1)
             self.assertEqual(Payment.query.filter_by(sale_id=created['id']).count(), 2)
+            persisted_sale = db.session.get(Sale, created['id'])
+            self.assertEqual(persisted_sale.total_amount, Decimal('15.00'))
+            self.assertEqual(persisted_sale.discount_amount, Decimal('1.00'))
+            self.assertEqual(persisted_sale.final_amount, Decimal('14.00'))
             self.assertEqual(ApiSaleRequest.query.filter_by(company_id=company.id).count(), 1)
             self.assertEqual(db.session.get(Product, product_id).stock_quantity, 7)
             self.assertEqual(
@@ -3128,6 +3135,52 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(Sale.query.filter_by(company_id=company.id).count(), 1)
             self.assertEqual(ApiSaleRequest.query.filter_by(company_id=company.id).count(), 1)
             self.assertEqual(db.session.get(Product, product_id).stock_quantity, 2)
+
+    def test_api_sale_preserves_cent_precision_for_subtotal_discount_and_change(self):
+        user, company = self.create_api_user(username='api-centavos')
+        with self.app.app_context():
+            product = Product(
+                name='Produto de centavos',
+                company_id=company.id,
+                cost_price=Decimal('0.01'),
+                sale_price=Decimal('0.10'),
+                stock_quantity=100,
+                active=True,
+            )
+            cash_register = CashRegister(
+                company_id=company.id,
+                user_id=user.id,
+                status='open',
+                opening_amount=Decimal('0.00'),
+            )
+            db.session.add_all([product, cash_register])
+            db.session.commit()
+            product_id = product.id
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        key = 'sale-api-centavos-0001'
+        response = self.client.post(
+            '/api/v1/sales',
+            headers={**self.bearer_header(token), 'Idempotency-Key': key},
+            json={
+                'idempotency_key': key,
+                'items': [{'product_id': product_id, 'quantity': 3}],
+                'discount_amount': '0,01',
+                'payments': [{'method': 'money', 'amount': '0,30'}],
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        raw_json = response.get_data(as_text=True)
+        self.assertIn('"subtotal": 0.30', raw_json)
+        self.assertIn('"discount_amount": 0.01', raw_json)
+        self.assertIn('"final_amount": 0.29', raw_json)
+        self.assertIn('"change_amount": 0.01', raw_json)
+        with self.app.app_context():
+            sale = Sale.query.filter_by(company_id=company.id).one()
+            self.assertEqual(sale.total_amount, Decimal('0.30'))
+            self.assertEqual(sale.discount_amount, Decimal('0.01'))
+            self.assertEqual(sale.final_amount, Decimal('0.29'))
 
     def test_api_sale_cancellation_restores_exact_stock_and_is_idempotent(self):
         user, company = self.create_api_user(username='api-cancelamento')
@@ -5816,9 +5869,9 @@ class RouteTestCase(unittest.TestCase):
             self.assertTrue(company.pix_fee_enabled)
             self.assertTrue(company.debit_fee_enabled)
             self.assertTrue(company.credit_fee_enabled)
-            self.assertEqual(company.pix_fee_percent, 0.99)
-            self.assertEqual(company.debit_fee_percent, 1.75)
-            self.assertEqual(company.credit_fee_percent, 3.20)
+            self.assertEqual(company.pix_fee_percent, Decimal('0.9900'))
+            self.assertEqual(company.debit_fee_percent, Decimal('1.7500'))
+            self.assertEqual(company.credit_fee_percent, Decimal('3.2000'))
 
     def test_settings_updates_backup_frequency_and_runs_manual_backup(self):
         user, company = self.create_api_user(
@@ -6013,13 +6066,13 @@ class RouteTestCase(unittest.TestCase):
             beer = Product.query.filter_by(name='Heineken 269ml').one()
             whisky = Product.query.filter_by(name='Whisky JF').one()
             self.assertEqual(beer.category.name, 'Cervejas')
-            self.assertEqual(beer.cost_price, 3.50)
-            self.assertEqual(beer.sale_price, 6.00)
+            self.assertEqual(beer.cost_price, Decimal('3.50'))
+            self.assertEqual(beer.sale_price, Decimal('6.00'))
             self.assertEqual(beer.min_stock_quantity, 4)
             self.assertEqual(beer.stock_quantity, 24)
             self.assertEqual(whisky.category.name, 'Destilados')
-            self.assertEqual(whisky.cost_price, 50.00)
-            self.assertEqual(whisky.sale_price, 89.90)
+            self.assertEqual(whisky.cost_price, Decimal('50.00'))
+            self.assertEqual(whisky.sale_price, Decimal('89.90'))
             self.assertEqual(whisky.min_stock_quantity, 2)
             self.assertEqual(whisky.stock_quantity, 7)
 
@@ -6054,7 +6107,7 @@ class RouteTestCase(unittest.TestCase):
             product = Product.query.filter_by(name='Vinho Tinto').first()
             self.assertIsNotNone(product)
             self.assertEqual(product.stock_quantity, 12)
-            self.assertEqual(product.sale_price, 39.90)
+            self.assertEqual(product.sale_price, Decimal('39.90'))
             product_id = product.id
 
         edit_response = self.client.post(

@@ -17,9 +17,9 @@ classDiagram
         +Boolean pix_fee_enabled
         +Boolean debit_fee_enabled
         +Boolean credit_fee_enabled
-        +Float pix_fee_percent
-        +Float debit_fee_percent
-        +Float credit_fee_percent
+        +Numeric(8,4) pix_fee_percent
+        +Numeric(8,4) debit_fee_percent
+        +Numeric(8,4) credit_fee_percent
         +String backup_frequency
         +DateTime backup_last_at
         +String backup_last_path
@@ -131,8 +131,8 @@ classDiagram
         +String barcode
         +Integer category_id
         +Integer company_id
-        +Float cost_price
-        +Float sale_price
+        +Numeric(18,2) cost_price
+        +Numeric(18,2) sale_price
         +Integer stock_quantity
         +Integer min_stock_quantity
         +Boolean active
@@ -148,8 +148,8 @@ classDiagram
         +Integer id
         +DateTime opened_at
         +DateTime closed_at
-        +Float opening_amount
-        +Float closing_amount
+        +Numeric(18,2) opening_amount
+        +Numeric(18,2) closing_amount
         +String status
         +Integer user_id
         +Integer company_id
@@ -158,9 +158,9 @@ classDiagram
     class Sale {
         +Integer id
         +DateTime created_at
-        +Float total_amount
-        +Float discount_amount
-        +Float final_amount
+        +Numeric(18,2) total_amount
+        +Numeric(18,2) discount_amount
+        +Numeric(18,2) final_amount
         +String payment_status
         +Integer user_id
         +Integer company_id
@@ -172,17 +172,17 @@ classDiagram
         +Integer sale_id
         +Integer product_id
         +Integer quantity
-        +Float unit_price
-        +Float unit_cost_price
-        +Float total_price
-        +Float profit_amount
+        +Numeric(18,2) unit_price
+        +Numeric(18,2) unit_cost_price
+        +Numeric(18,2) total_price
+        +Numeric(18,2) profit_amount
     }
 
     class Payment {
         +Integer id
         +Integer sale_id
         +String method
-        +Float amount
+        +Numeric(18,2) amount
     }
 
     class Payable {
@@ -190,7 +190,7 @@ classDiagram
         +Integer company_id
         +String description
         +String category
-        +Float amount
+        +Numeric(18,2) amount
         +Date due_date
         +Boolean paid
         +DateTime paid_at
@@ -208,8 +208,8 @@ classDiagram
         +Integer quantity
         +Integer previous_stock
         +Integer new_stock
-        +Float unit_cost
-        +Float total_cost
+        +Numeric(18,2) unit_cost
+        +Numeric(18,2) total_cost
         +String reason
         +Text notes
         +DateTime created_at

@@ -199,15 +199,15 @@ Esse fluxo é manual e usa `scripts/deploy_oci_app.sh` com SSH/rsync. Ele perman
 O canal oficial é a aplicação web hospedada na OCI:
 
 ```text
-http://168.75.101.126:18080
+https://skygest.com.br
 ```
 
 O computador do cliente precisa somente de um navegador e acesso à internet. MySQL,
 Flask, arquivos `.env`, backups e segredos permanecem exclusivamente no servidor.
 
-Os antigos executáveis que apenas encapsulavam a aplicação web foram removidos do
-repositório. O projeto `desktop_wpf/` é uma iniciativa nativa independente em
-desenvolvimento e não participa do deploy web.
+O projeto `desktop_wpf/` é o cliente nativo Windows 0.9.2-preview. Ele consome a API
+HTTPS implantada, mas possui workflow de build/release próprio e não faz parte do
+container Web.
 
 ## Checklist de Produção
 

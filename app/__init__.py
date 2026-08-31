@@ -80,7 +80,7 @@ def ensure_sale_discount_columns():
 
     columns = {column['name'] for column in inspector.get_columns('sales')}
     migrations = {
-        'discount_amount': 'ALTER TABLE sales ADD COLUMN discount_amount FLOAT DEFAULT 0.0',
+        'discount_amount': 'ALTER TABLE sales ADD COLUMN discount_amount DECIMAL(18,2) DEFAULT 0',
     }
 
     for column, statement in migrations.items():
@@ -119,8 +119,8 @@ def ensure_sale_item_profit_columns():
 
     columns = {column['name'] for column in inspector.get_columns('sale_items')}
     migrations = {
-        'unit_cost_price': 'ALTER TABLE sale_items ADD COLUMN unit_cost_price FLOAT DEFAULT 0.0',
-        'profit_amount': 'ALTER TABLE sale_items ADD COLUMN profit_amount FLOAT DEFAULT 0.0',
+        'unit_cost_price': 'ALTER TABLE sale_items ADD COLUMN unit_cost_price DECIMAL(18,2) DEFAULT 0',
+        'profit_amount': 'ALTER TABLE sale_items ADD COLUMN profit_amount DECIMAL(18,2) DEFAULT 0',
     }
 
     for column, statement in migrations.items():
@@ -305,9 +305,9 @@ def ensure_company_card_fee_columns():
         'pix_fee_enabled': 'ALTER TABLE companies ADD COLUMN pix_fee_enabled BOOLEAN DEFAULT 0',
         'debit_fee_enabled': 'ALTER TABLE companies ADD COLUMN debit_fee_enabled BOOLEAN DEFAULT 0',
         'credit_fee_enabled': 'ALTER TABLE companies ADD COLUMN credit_fee_enabled BOOLEAN DEFAULT 0',
-        'pix_fee_percent': 'ALTER TABLE companies ADD COLUMN pix_fee_percent FLOAT DEFAULT 0.0',
-        'debit_fee_percent': 'ALTER TABLE companies ADD COLUMN debit_fee_percent FLOAT DEFAULT 0.0',
-        'credit_fee_percent': 'ALTER TABLE companies ADD COLUMN credit_fee_percent FLOAT DEFAULT 0.0',
+        'pix_fee_percent': 'ALTER TABLE companies ADD COLUMN pix_fee_percent DECIMAL(8,4) DEFAULT 0',
+        'debit_fee_percent': 'ALTER TABLE companies ADD COLUMN debit_fee_percent DECIMAL(8,4) DEFAULT 0',
+        'credit_fee_percent': 'ALTER TABLE companies ADD COLUMN credit_fee_percent DECIMAL(8,4) DEFAULT 0',
     }
 
     for column, statement in migrations.items():

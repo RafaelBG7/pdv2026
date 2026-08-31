@@ -4,7 +4,7 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 
 ## Marco atual
 
-- [Documentação técnica completa e oficial](../DOCUMENTACAO_COMPLETA.md) — revisão do código atual em 29/08/2026, com arquitetura, funcionalidades, API, banco, segurança, operação e dívida técnica.
+- [Documentação técnica completa e oficial](../DOCUMENTACAO_COMPLETA.md) — revisão do código atual em 30/08/2026, com arquitetura, funcionalidades, API, banco, segurança, operação e dívida técnica.
 - [Rebranding SkyGest](33-rebranding-skygest.md) — nome oficial, novos assets e compatibilidade legada.
 - [Documentação consolidada histórica](../documentacao/DOCUMENTACAO_COMPLETA.txt) — marco anterior preservado; não é mais a fonte principal.
 - [Estado completo em 17/08/2026](31-estado-atual-17-08-2026.md) — marco histórico detalhado.
@@ -30,6 +30,7 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 - [Acessibilidade nativa Windows](32-acessibilidade-windows.md)
 - [Ambientes de produção e homologação](34-separacao-producao-homologacao.md)
 - [Runbook de deploy dos ambientes](DEPLOY_AMBIENTES.md)
+- [Auditoria financeira Float → Decimal/Numeric — gate 1.0](35-auditoria-financeira-decimal-1.0.md)
 
 ## Documentação por plataforma
 

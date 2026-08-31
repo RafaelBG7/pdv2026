@@ -2,6 +2,7 @@ import csv
 import io
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from types import SimpleNamespace
 
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
@@ -11,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
-from app.money import format_brl as format_brl_decimal, parse_money_decimal
+from app.money import format_brl as format_brl_decimal, money_decimal, parse_money_decimal
 from app.models import AuditLog, CashRegister, Category, Company, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.permissions import authorize_role_override, has_permission_view_override, permission_required
 from app.services.audit_service import audit_action_label, entity_label, record_audit_event
@@ -95,17 +96,14 @@ def version_health_check():
 
 
 def parse_money(value):
-    value = (value or '0').strip()
-    if ',' in value:
-        value = value.replace('.', '').replace(',', '.')
     try:
-        return max(float(value), 0.0)
+        return parse_money_decimal(value if value not in (None, '') else '0')
     except ValueError:
-        return 0.0
+        return parse_money_decimal('0')
 
 
 def format_brl(value):
-    return f'R$ {value:.2f}'.replace('.', ',')
+    return format_brl_decimal(value)
 
 
 def safe_local_redirect(default_endpoint='main.dashboard'):
@@ -522,54 +520,57 @@ def tenant_actor():
 
 def sale_item_profit(item):
     if item.profit_amount not in (None, 0):
-        return item.profit_amount or 0.0
+        return money_decimal(item.profit_amount)
 
     cost_price = item.unit_cost_price
     if (cost_price is None or cost_price == 0) and item.product:
         cost_price = item.product.cost_price
 
-    return ((item.unit_price or 0.0) - (cost_price or 0.0)) * (item.quantity or 0)
+    return money_decimal(
+        (money_decimal(item.unit_price) - money_decimal(cost_price))
+        * Decimal(item.quantity or 0)
+    )
 
 
 def sale_profit(sale):
-    gross_profit = sum(sale_item_profit(item) for item in sale.items)
-    return round(gross_profit - (sale.discount_amount or 0.0), 2)
+    gross_profit = sum((sale_item_profit(item) for item in sale.items), Decimal('0.00'))
+    return money_decimal(gross_profit - money_decimal(sale.discount_amount))
 
 
 def cash_register_profit(cash_register):
     if not cash_register:
-        return 0.0
+        return Decimal('0.00')
     sales = cash_register.sales if cash_register.status == 'closed' else [
         sale for sale in cash_register.sales if not sale.is_cancelled
     ]
-    return round(sum(sale_profit(sale) for sale in sales), 2)
+    return money_decimal(sum((sale_profit(sale) for sale in sales), Decimal('0.00')))
 
 
 def cash_register_total_sold(cash_register):
     if not cash_register:
-        return 0.0
+        return Decimal('0.00')
     sales = cash_register.sales if cash_register.status == 'closed' else [
         sale for sale in cash_register.sales if not sale.is_cancelled
     ]
-    return round(sum(sale.final_amount or 0.0 for sale in sales), 2)
+    return money_decimal(sum((money_decimal(sale.final_amount) for sale in sales), Decimal('0.00')))
 
 
 def cash_register_expected_amount(cash_register):
     if not cash_register:
-        return 0.0
-    return round((cash_register.opening_amount or 0.0) + cash_register_total_sold(cash_register), 2)
+        return Decimal('0.00')
+    return money_decimal(money_decimal(cash_register.opening_amount) + cash_register_total_sold(cash_register))
 
 
 def payment_summary_text(sale):
     summary = [
-        f'{PAYMENT_METHODS.get(payment.method, payment.method)} {format_brl(payment.amount or 0.0)}'
+        f'{PAYMENT_METHODS.get(payment.method, payment.method)} {format_brl(payment.amount)}'
         for payment in sale.payments
         if payment.amount and payment.amount > 0
     ]
     return ' · '.join(summary) if summary else '-'
 
 
-def build_sale_timeline(sales, opening_amount=0.0):
+def build_sale_timeline(sales, opening_amount=Decimal('0.00')):
     ordered_sales = sorted(
         sales,
         key=lambda sale: (sale.created_at or datetime.min, sale.id or 0),
@@ -581,10 +582,10 @@ def build_sale_timeline(sales, opening_amount=0.0):
     } if user_ids else {}
 
     timeline = []
-    running_balance = round(opening_amount or 0.0, 2)
+    running_balance = money_decimal(opening_amount)
     for sale in ordered_sales:
         balance_before_sale = running_balance
-        running_balance = round(running_balance + (sale.final_amount or 0.0), 2)
+        running_balance = money_decimal(running_balance + money_decimal(sale.final_amount))
         timeline.append({
             'sale': sale,
             'time': sale.created_at.strftime('%H:%M') if sale.created_at else '-',
@@ -641,26 +642,26 @@ def report_period_range(period, start_date=None, end_date=None):
 
 def build_sales_report(sales, include_cancelled=False):
     sales = list(sales) if include_cancelled else [sale for sale in sales if not sale.is_cancelled]
-    payment_totals = {method: 0.0 for method in PAYMENT_METHODS}
+    payment_totals = {method: Decimal('0.00') for method in PAYMENT_METHODS}
     product_totals = {}
     totals = {
         'sales_count': len(sales),
         'items_count': 0,
-        'subtotal': 0.0,
-        'discount': 0.0,
-        'final': 0.0,
-        'profit': 0.0,
-        'average_ticket': 0.0,
+        'subtotal': Decimal('0.00'),
+        'discount': Decimal('0.00'),
+        'final': Decimal('0.00'),
+        'profit': Decimal('0.00'),
+        'average_ticket': Decimal('0.00'),
     }
 
     for sale in sales:
-        totals['subtotal'] += sale.total_amount or 0.0
-        totals['discount'] += sale.discount_amount or 0.0
-        totals['final'] += sale.final_amount or 0.0
+        totals['subtotal'] += money_decimal(sale.total_amount)
+        totals['discount'] += money_decimal(sale.discount_amount)
+        totals['final'] += money_decimal(sale.final_amount)
         totals['profit'] += sale_profit(sale)
 
         for payment in sale.payments:
-            payment_totals[payment.method] = payment_totals.get(payment.method, 0.0) + (payment.amount or 0.0)
+            payment_totals[payment.method] = payment_totals.get(payment.method, Decimal('0.00')) + money_decimal(payment.amount)
 
         for item in sale.items:
             totals['items_count'] += item.quantity or 0
@@ -668,28 +669,28 @@ def build_sales_report(sales, include_cancelled=False):
             product_data = product_totals.setdefault(product_name, {
                 'name': product_name,
                 'quantity': 0,
-                'total': 0.0,
-                'profit': 0.0,
+                'total': Decimal('0.00'),
+                'profit': Decimal('0.00'),
             })
             product_data['quantity'] += item.quantity or 0
-            product_data['total'] += item.total_price or 0.0
+            product_data['total'] += money_decimal(item.total_price)
             product_data['profit'] += sale_item_profit(item)
 
     if totals['sales_count']:
         totals['average_ticket'] = totals['final'] / totals['sales_count']
 
     for key in ('subtotal', 'discount', 'final', 'profit', 'average_ticket'):
-        totals[key] = round(totals[key], 2)
+        totals[key] = money_decimal(totals[key])
 
     payment_totals = {
-        method: round(amount, 2)
+        method: money_decimal(amount)
         for method, amount in payment_totals.items()
         if amount > 0
     }
     top_products = sorted(product_totals.values(), key=lambda item: item['total'], reverse=True)
     for product in top_products:
-        product['total'] = round(product['total'], 2)
-        product['profit'] = round(product['profit'], 2)
+        product['total'] = money_decimal(product['total'])
+        product['profit'] = money_decimal(product['profit'])
 
     return totals, payment_totals, top_products
 
@@ -704,7 +705,7 @@ def build_sales_chart(period, start, end, sales):
             buckets.append({
                 'key': (current.year, current.month),
                 'label': current.strftime('%m/%Y'),
-                'total': 0.0,
+                'total': Decimal('0.00'),
             })
             if current.month == 12:
                 current = current.replace(year=current.year + 1, month=1)
@@ -717,7 +718,7 @@ def build_sales_chart(period, start, end, sales):
                 sale_date = sale.created_at.date()
                 key = (sale_date.year, sale_date.month)
                 if key in bucket_index:
-                    bucket_index[key]['total'] += sale.final_amount or 0.0
+                    bucket_index[key]['total'] += money_decimal(sale.final_amount)
     else:
         current = start
         while current <= end:
@@ -725,7 +726,7 @@ def build_sales_chart(period, start, end, sales):
                 'key': current,
                 'label': current.strftime('%d/%m'),
                 'title': current.strftime('%d/%m/%Y'),
-                'total': 0.0,
+                'total': Decimal('0.00'),
             })
             current += timedelta(days=1)
 
@@ -734,12 +735,12 @@ def build_sales_chart(period, start, end, sales):
             if sale.created_at:
                 sale_date = sale.created_at.date()
                 if sale_date in bucket_index:
-                    bucket_index[sale_date]['total'] += sale.final_amount or 0.0
+                    bucket_index[sale_date]['total'] += money_decimal(sale.final_amount)
 
-    max_total = max((bucket['total'] for bucket in buckets), default=0.0)
+    max_total = max((bucket['total'] for bucket in buckets), default=Decimal('0.00'))
     for bucket in buckets:
-        bucket['total'] = round(bucket['total'], 2)
-        bucket['percent'] = round((bucket['total'] / max_total) * 100, 2) if max_total else 0
+        bucket['total'] = money_decimal(bucket['total'])
+        bucket['percent'] = float(((bucket['total'] / max_total) * Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)) if max_total else 0
         bucket['title'] = bucket.get('title', bucket['label'])
 
     return buckets
@@ -762,14 +763,14 @@ def build_daily_sales_activity(start_datetime, end_datetime, metric='revenue'):
     aggregated = {
         int(row.sale_hour): {
             'sales_count': int(row.sales_count or 0),
-            'total': round(float(row.revenue or 0), 2),
+            'total': money_decimal(row.revenue),
         }
         for row in rows
         if row.sale_hour is not None
     }
     buckets = []
     for hour in range(24):
-        values = aggregated.get(hour, {'sales_count': 0, 'total': 0.0})
+        values = aggregated.get(hour, {'sales_count': 0, 'total': Decimal('0.00')})
         buckets.append({
             'hour': hour,
             'label': f'{hour:02d}h',
@@ -797,7 +798,7 @@ def build_daily_sales_activity(start_datetime, end_datetime, metric='revenue'):
 
     for bucket in buckets:
         value = bucket['sales_count'] if metric == 'quantity' else bucket['total']
-        bucket['percent'] = round((value / max_value) * 100, 2) if max_value else 0
+        bucket['percent'] = float(((Decimal(value) / Decimal(max_value)) * Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)) if max_value else 0
         bucket['is_peak'] = bool(selected_peak and bucket['hour'] == selected_peak['hour'])
 
     return {
@@ -824,10 +825,10 @@ def cash_register_peak_hours(cash_register):
             'hour': hour,
             'label': f'{hour:02d}:00 - {hour:02d}:59',
             'sales_count': 0,
-            'total': 0.0,
+            'total': Decimal('0.00'),
         })
         data['sales_count'] += 1
-        data['total'] += sale.final_amount or 0.0
+        data['total'] += money_decimal(sale.final_amount)
 
     peak_hours = sorted(
         hours.values(),
@@ -835,7 +836,7 @@ def cash_register_peak_hours(cash_register):
         reverse=True,
     )
     for item in peak_hours:
-        item['total'] = round(item['total'], 2)
+        item['total'] = money_decimal(item['total'])
 
     return peak_hours
 
@@ -882,9 +883,9 @@ def build_product_report(start_datetime, end_datetime, category_id='', product_i
     rows = []
     for product, quantity, revenue, cost, profit in query.all():
         quantity = int(quantity or 0)
-        revenue = round(float(revenue or 0), 2)
-        cost = round(float(cost or 0), 2)
-        profit = round(float(profit or 0), 2)
+        revenue = money_decimal(revenue)
+        cost = money_decimal(cost)
+        profit = money_decimal(profit)
         rows.append({
             'product': product,
             'category': product.category.name if product.category else '-',
@@ -892,7 +893,7 @@ def build_product_report(start_datetime, end_datetime, category_id='', product_i
             'revenue': revenue,
             'cost': cost,
             'profit': profit,
-            'average_ticket': round(revenue / quantity, 2) if quantity else 0.0,
+            'average_ticket': money_decimal(revenue / quantity) if quantity else Decimal('0.00'),
             'stock': product.effective_stock_quantity or 0,
         })
 
@@ -911,9 +912,9 @@ def build_product_report(start_datetime, end_datetime, category_id='', product_i
 
     totals = {
         'quantity': sum(item['quantity'] for item in rows),
-        'revenue': round(sum(item['revenue'] for item in rows), 2),
-        'cost': round(sum(item['cost'] for item in rows), 2),
-        'profit': round(sum(item['profit'] for item in rows), 2),
+        'revenue': money_decimal(sum((item['revenue'] for item in rows), Decimal('0.00'))),
+        'cost': money_decimal(sum((item['cost'] for item in rows), Decimal('0.00'))),
+        'profit': money_decimal(sum((item['profit'] for item in rows), Decimal('0.00'))),
         'products': len(rows),
     }
     return rows, totals, sort
@@ -1649,7 +1650,7 @@ def product_search_api():
                 'id': str(product.id),
                 'name': f'{product.name} (kit)' if product.is_kit else product.name,
                 'barcode': product.barcode or '',
-                'price': float(product.sale_price or 0),
+                'price': money_decimal(product.sale_price),
                 'stock': int(product.effective_stock_quantity or 0),
             }
             for product in products
@@ -1732,7 +1733,7 @@ def new_sale():
             raise
 
         paid_amount = sum(payment.amount or 0 for payment in result.sale.payments)
-        change_amount = max(paid_amount - result.sale.final_amount, 0.0)
+        change_amount = max(paid_amount - result.sale.final_amount, Decimal('0.00'))
         if result.stock_warnings:
             flash(f'Estoque insuficiente permitido. Saldo após a venda: {", ".join(result.stock_warnings)}', 'warning')
         message = 'Venda já processada.' if result.already_processed else 'Venda finalizada com sucesso.'
@@ -1748,7 +1749,7 @@ def new_sale():
 def sale_detail(sale_id):
     sale = tenant_get_or_404(Sale, sale_id)
     paid_amount = sum(payment.amount for payment in sale.payments)
-    change_amount = max(paid_amount - sale.final_amount, 0.0)
+    change_amount = max(paid_amount - sale.final_amount, Decimal('0.00'))
     return render_template(
         'sales/detail.html',
         sale=sale,
@@ -1827,9 +1828,12 @@ def cash_register():
             'total_sold': totals['final'],
             'payment_totals': payment_totals,
             'expected_amount': expected_amount,
-            'difference': round((item.closing_amount or 0.0) - expected_amount, 2),
+            'difference': money_decimal((item.closing_amount or Decimal('0.00')) - expected_amount),
             'cancelled_sales_count': len(cancelled_sales),
-            'cancelled_sales_total': round(sum((sale.final_amount or 0.0) for sale in cancelled_sales), 2),
+            'cancelled_sales_total': money_decimal(sum(
+                (sale.final_amount or Decimal('0.00') for sale in cancelled_sales),
+                Decimal('0.00'),
+            )),
             'valid_sales_total': valid_totals['final'],
         }
     current_cash_snapshot = build_cash_register_snapshot(current_cash_register) if current_cash_register else None
@@ -1879,7 +1883,10 @@ def cash_register_detail(cash_register_id):
         cash_register_total_sold=cash_register_total_sold(selected_cash_register),
         cancellation_adjustment={
             'count': len(cancelled_sales),
-            'total': round(sum((sale.final_amount or 0.0) for sale in cancelled_sales), 2),
+            'total': money_decimal(sum(
+                (sale.final_amount or Decimal('0.00') for sale in cancelled_sales),
+                Decimal('0.00'),
+            )),
             'valid_total': valid_totals['final'],
         },
         show_cash_financials=can_view_cash_financials(),

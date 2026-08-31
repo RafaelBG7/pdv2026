@@ -1,6 +1,6 @@
 # SkyGest — documentação técnica completa
 
-> Fonte oficial de referência técnica do SaaS. Revisão baseada no código do commit `56397e7`, branch `codex/style-stock-view`, em 29/08/2026. Em caso de divergência, prevalecem o código e as migrations versionadas.
+> Fonte oficial de referência técnica do SaaS. Revisão baseada no código do commit `87e4917`, publicado nas branches `main` e `develop`, em 30/08/2026. Em caso de divergência, prevalecem o código e as migrations versionadas.
 
 ## Índice
 
@@ -45,7 +45,7 @@
 
 SkyGest é um sistema SaaS de ponto de venda e gestão operacional direcionado principalmente a adegas e pequenos comércios. Centraliza catálogo, estoque, vendas, pagamentos, caixa, contas a pagar, relatórios, equipe, permissões, auditoria, notificações e licenciamento.
 
-Esta revisão analisou os 344 arquivos relevantes do repositório, excluindo caches, ambientes virtuais, builds, artefatos e relatórios gerados. Foram examinados backend, templates, JavaScript, CSS, modelos, serviços, API, migrations, testes, aplicativo WPF, instalador, Docker, scripts OCI e workflows. Os documentos antigos foram usados apenas como contexto; nenhuma afirmação foi considerada verdadeira sem confirmação no código atual.
+Esta revisão analisou 355 arquivos relevantes do repositório, excluindo caches, ambientes virtuais, builds, artefatos e relatórios gerados. Foram examinados backend, templates, JavaScript, CSS, modelos, serviços, API, migrations, testes, aplicativo WPF, instalador, Docker, scripts OCI, workflows e a separação operacional entre produção e homologação. Os documentos antigos foram usados apenas como contexto; nenhuma afirmação foi considerada verdadeira sem confirmação no código atual.
 
 Convenções:
 
@@ -69,9 +69,9 @@ Público-alvo atual: adegas e pequenos comércios que precisam operar vendas e e
 
 ```mermaid
 flowchart LR
-    U[Usuário Web] -->|HTTPS, cookie de sessão e CSRF| C[Caddy]
-    W[SkyGest Windows 0.9.1] -->|HTTPS/REST, Bearer token| C
-    C --> F[Flask + Gunicorn]
+    U[Usuário Web] -->|HTTPS, cookie de sessão e CSRF| E[Proxy público do ambiente]
+    W[SkyGest Windows 0.9.2] -->|HTTPS/REST, Bearer token| E
+    E --> F[Flask + Gunicorn]
     F --> R[(Redis: rate limit)]
     F --> B[(MySQL central)]
     F --> T[(MySQL: um banco por adega)]
@@ -89,7 +89,7 @@ O HTML é renderizado no servidor. Formulários mutáveis recebem `_csrf_token`;
 
 ### 3.2 API
 
-A API é um blueprint versionado com prefixo `/api/v1` (`app/routes/api/v1.py`). Respostas de sucesso usam `{"data": ...}`. Erros usam mensagem, código estável, status HTTP e, quando aplicável, campo. Autenticação usa access token assinado e refresh token opaco persistido somente como hash.
+A API é um blueprint versionado com prefixo `/api/v1` (`app/routes/api/v1.py`). O envelope é `{"success": true, "data": ..., "message": null, "errors": []}` no sucesso; falhas usam `success=false`, `data=null`, mensagem e uma lista com código estável e campo opcional. Autenticação usa access token assinado e refresh token opaco persistido somente como hash.
 
 ### 3.3 Serviços de domínio
 
@@ -140,12 +140,17 @@ Não foi encontrada fila dedicada. O “enqueue” de alertas utiliza execução
 | Redis | 7.4.2 Alpine | Rate limit distribuído, sem persistência |
 | Caddy | 2 | Proxy reverso, compressão e terminação conforme endereço configurado |
 | HTML/CSS/JavaScript | nativo | Interface Web e responsividade |
+| Bootstrap | 5.3.3 via jsDelivr | componentes Web (modal, collapse e alert) e base CSS |
 | .NET/WPF | .NET 8 | App Windows |
-| Microsoft.Extensions.* | 8.0.x | Host, HTTP e logging do App |
+| Microsoft.Extensions.Hosting/Http | 8.0.1 | Host e clientes HTTP do App |
+| Configuration/Logging Abstractions | 8.0.0/8.0.2 | configuração e logging do App |
 | DPAPI/ProtectedData | 8.0.0 | Proteção da sessão local do App |
-| xUnit | projeto de testes WPF | Testes do cliente |
+| xUnit / Test SDK / runner | 2.9.2 / 17.11.1 / 2.8.2 | Testes do cliente |
 | Inno Setup | 6 | Instalador por usuário |
 | Docker Compose | Compose v2 esperado | Produção OCI |
+| Oracle Cloud Infrastructure | VM provisionada por scripts OCI | hospedagem de PROD/HML no mesmo host com isolamento lógico |
+| Ubuntu | 22.04 nos defaults de provisionamento | host Linux da OCI |
+| Nginx | configuração do host em scripts/runbooks | borda HTTPS e roteamento dos dois domínios |
 | GitHub Actions | workflows YAML | CI, deploy e release preview |
 
 ## 5. Estrutura do projeto
@@ -160,8 +165,8 @@ Não foi encontrada fila dedicada. O “enqueue” de alertas utiliza execução
 │   ├── static/             # CSS, JS, marca e modelo XLSX
 │   └── templates/          # Jinja Web/Master/e-mails/erros
 ├── desktop_wpf/            # solução, instalador e testes Windows
-├── migrations/central/     # Alembic central, head central_0008
-├── migrations/tenant/      # Alembic tenant, head tenant_0008
+├── migrations/central/     # Alembic central, head central_0009
+├── migrations/tenant/      # Alembic tenant, head tenant_0009
 ├── scripts/                # deploy, backup, migrations e OCI
 ├── deploy/                 # Caddy e inicialização MySQL
 ├── tests/                  # integração/contrato do backend
@@ -191,7 +196,7 @@ Tabelas principais: `users`, `companies`, `email_verification_codes`, `password_
 
 ### 6.2 Dashboard
 
-Apresenta vendas, faturamento, ticket, lucro condicionado à permissão, estoque baixo, contas próximas, caixa atual, produtos mais vendidos e movimentação recente. A implementação usa agregações de `dashboard_service.py`; o App consome `/api/v1/dashboard/summary`.
+Apresenta vendas, faturamento, ticket, lucro condicionado à permissão, estoque baixo, contas próximas, caixa atual, produtos mais vendidos e movimentação recente. Aceita hoje, 7/30 dias, mês atual, mês anterior, 3/6 meses, ano e período personalizado, comparando os indicadores com o período imediatamente anterior de mesma duração. Os gráficos agrupam faturamento por hora/dia/mês e distribuição por categoria; Web oferece tooltip por mouse/toque com rótulo, valor e percentual, e estados vazios consistentes. O cartão de clientes é apenas um marcador de funcionalidade futura: não existe módulo de clientes no domínio atual. A implementação usa agregações de `dashboard_service.py`; o App consome `/api/v1/dashboard/summary` e apresenta os mesmos dados em componentes WPF adaptativos.
 
 ### 6.3 Produtos e categorias
 
@@ -237,7 +242,7 @@ Não há cliente associado à venda, orçamento, comanda, pré-venda, cancelamen
 
 ### 6.7 Contas a pagar
 
-Criação, listagem/pesquisa, categorias, filtros de abertas/pagas/todas, marcar como paga e reabrir. Valores usam `Numeric(12,2)` no modelo. Vencimento alimenta alertas in-app/e-mail.
+Criação, listagem/pesquisa, categorias, filtros de abertas/pagas/todas, marcar como paga e reabrir. Valores usam `Numeric(18,2)` no modelo. Vencimento alimenta alertas in-app/e-mail.
 
 ### 6.8 Relatórios e exportações
 
@@ -279,8 +284,8 @@ Registra ação, entidade, ID, descrição, diffs, ator, papel, empresa, IP, use
 
 Existem árvores Alembic independentes:
 
-- Central: `migrations/central`, head `central_0008`.
-- Tenant: `migrations/tenant`, head `tenant_0008`.
+- Central: `migrations/central`, head `central_0009`.
+- Tenant: `migrations/tenant`, head `tenant_0009`.
 
 Desenvolvimento usa `upgrade`; produção usa `verify` no processo Web e o deploy executa `scripts/schema_migrate.py upgrade-all` antes de trocar os serviços. Bancos legados são reconciliados por migrations; downgrades destrutivos de reconciliação são bloqueados.
 
@@ -304,7 +309,7 @@ Desenvolvimento usa `upgrade`; produção usa `verify` no processo Web e o deplo
 | `payments` | venda, método, valor | Pagamentos da venda |
 | `api_sale_requests` | unique empresa+idempotency key | Antiduplicação de venda API |
 | `stock_movements` | empresa/produto/usuário, tipo/origem, antes/depois/custo | Livro de estoque |
-| `payables` | `Numeric(12,2)`, vencimento, pago/data | Contas a pagar |
+| `payables` | `Numeric(18,2)`, vencimento, pago/data | Contas a pagar |
 | `audit_logs` | ator, ação, entidade, diffs, contexto HTTP | Auditoria |
 | `notifications` | unique empresa+dedup key; ciclo de vida/canais | Alertas persistentes |
 | `notification_preferences` | unique empresa+usuário+tipo | Preferências de alertas |
@@ -354,6 +359,7 @@ Não existe exclusão lógica uniforme. Vendas usam status/cancelamento lógico;
 |---|---|---|
 | `GET /health` | disponibilidade básica | pública |
 | `GET /health/dependencies` | estado seguro de DB/Redis | pública |
+| `GET /health/version` | versão/commit do artefato implantado | pública, sem segredos |
 | `POST /auth/login` | `identifier`, `password`; retorna identidade/tokens | pública, limitada, HTTPS exigido em produção |
 | `POST /auth/registration-callback/exchange` | code/state/verifier PKCE | pública, limitada |
 | `POST /auth/password-recovery/request` | identificador | pública, resposta não enumerável |
@@ -367,11 +373,11 @@ Não existe exclusão lógica uniforme. Vendas usam status/cancelamento lógico;
 | `PUT /settings/password` | senha atual/nova | Bearer |
 | `PUT /settings/backup` | frequência | admin/configurações |
 | `POST /settings/backup/run` | backup manual | admin, rate limit |
-| `GET /settings/export/{type}` | CSV de products/sales/cash/payables | `can_export_data` |
+| `GET /settings/export/<export_type>` | CSV de products/sales/cash/payables | `can_export_data` |
 | `POST /settings/import/products` | CSV/XLSX multipart | `can_manage_products`, rate limit |
 | `GET /settings/team` | integrantes | administração da equipe |
 | `POST /settings/team` | cria funcionário e permissões | admin/configurações |
-| `PUT /settings/team/{id}` | atualiza funcionário | admin/configurações, mesmo tenant |
+| `PUT /settings/team/<int:user_id>` | atualiza funcionário | admin/configurações, mesmo tenant |
 | `GET /dashboard/summary` | métricas operacionais | Bearer/permissões refletidas |
 | `GET /reports/summary` | período e agregados | `can_view_reports` |
 | `GET /reports/products` | relatório paginado por produto | `can_view_reports` |
@@ -379,24 +385,24 @@ Não existe exclusão lógica uniforme. Vendas usam status/cancelamento lógico;
 | `GET /payables` | q/status/category/datas/página | `can_manage_payables` |
 | `GET /payables/categories` | categorias conhecidas | `can_manage_payables` |
 | `POST /payables` | descrição, categoria, valor, vencimento, notas | `can_manage_payables` |
-| `POST /payables/{id}/pay` | marca paga | `can_manage_payables` |
-| `POST /payables/{id}/reopen` | reabre | `can_manage_payables` |
+| `POST /payables/<int:payable_id>/pay` | marca paga | `can_manage_payables` |
+| `POST /payables/<int:payable_id>/reopen` | reabre | `can_manage_payables` |
 | `GET /cash-registers/summary` | caixa atual/recentes | `can_manage_cash_register` |
-| `GET /cash-registers/{id}` | detalhe e timeline | `can_manage_cash_register` |
+| `GET /cash-registers/<int:cash_register_id>` | detalhe e timeline | `can_manage_cash_register` |
 | `POST /cash-registers/open` | opening_amount | `can_manage_cash_register` |
 | `POST /cash-registers/close` | id e closing_amount | `can_manage_cash_register` |
 | `POST /sales` | items, payments, discount, idempotency key | `can_manage_sales` |
-| `GET /sales/{id}` | recibo do tenant | `can_manage_sales` |
-| `POST /sales/{id}/cancel` | motivo | `can_cancel_sales` |
+| `GET /sales/<int:sale_id>` | recibo do tenant | `can_manage_sales` |
+| `POST /sales/<int:sale_id>/cancel` | motivo | `can_cancel_sales` |
 | `GET /sales/today` | histórico/filtros/paginação | `can_manage_sales` |
 | `GET /catalog/categories` | categorias/pesquisa | catálogo |
 | `POST /catalog/categories` | nome | `can_manage_categories` |
-| `PUT /catalog/categories/{id}` | nome | `can_manage_categories` |
-| `DELETE /catalog/categories/{id}` | exclusão protegida | `can_manage_categories` |
+| `PUT /catalog/categories/<int:category_id>` | nome | `can_manage_categories` |
+| `DELETE /catalog/categories/<int:category_id>` | exclusão protegida | `can_manage_categories` |
 | `GET /catalog/products` | q/barcode/categoria/status/preço/ordem/página | `can_view_products` |
 | `POST /catalog/products` | produto completo | `can_manage_products` |
-| `PUT /catalog/products/{id}` | produto completo | `can_manage_products` |
-| `DELETE /catalog/products/{id}` | exclusão protegida | `can_manage_products` |
+| `PUT /catalog/products/<int:product_id>` | produto completo | `can_manage_products` |
+| `DELETE /catalog/products/<int:product_id>` | exclusão protegida | `can_manage_products` |
 | `GET /stock/movements` | filtros/paginação | `can_view_stock_movements` |
 | `POST /stock/entries` | produto, quantidade, custo/motivo | `can_manage_stock` |
 | `POST /stock/adjustments` | produto, saldo/ajuste, motivo | `can_manage_stock` |
@@ -405,15 +411,29 @@ Não existe exclusão lógica uniforme. Vendas usam status/cancelamento lógico;
 | `POST /notifications/email-alert-settings/test` | envio de teste | configurações |
 | `GET /notifications` | filtros/paginação | Bearer |
 | `GET /notifications/unread-count` | contador | Bearer |
-| `PUT /notifications/{id}/read` | marca lida | dono/tenant |
+| `PUT /notifications/<int:notification_id>/read` | marca lida | dono/tenant |
 | `PUT /notifications/read-all` | marca todas | Bearer |
-| `PUT /notifications/{id}/dismiss` | descarta | dono/tenant |
+| `PUT /notifications/<int:notification_id>/dismiss` | descarta | dono/tenant |
 | `GET /notifications/preferences` | preferências | Bearer |
 | `PUT /notifications/preferences` | canais/severidade/horários | Bearer |
 
-O contrato exato de campos e serializadores está em `app/routes/api/v1.py` e nos modelos C# em `desktop_wpf/src/Girofy.Application/Models`. Novos clientes devem tolerar campos adicionais e usar os códigos de erro, não textos localizados.
+São 59 endpoints REST registrados no blueprint atual. O contrato exato de campos e serializadores está em `app/routes/api/v1.py` e nos modelos C# em `desktop_wpf/src/Girofy.Application/Models`. Novos clientes devem tolerar campos adicionais e usar os códigos de erro, não textos localizados.
 
-### 9.3 Rotas Web relevantes
+### 9.3 Contratos, respostas e falhas por grupo
+
+| Grupo | Entrada/validação autoritativa | Sucesso | Falhas típicas |
+|---|---|---|---|
+| Health | sem payload | status, dependências ou `version`/commit, sem credenciais | `503` quando DB/Redis obrigatório não responde |
+| Autenticação | identificador/senha, refresh ou code PKCE; limites e validade no servidor | identidade, permissões e par access/refresh quando aplicável | `400`, `401`, `403`, `409`, `429` |
+| Configurações/equipe | JSON por operação; IDs sempre revalidados no tenant | snapshot ou recurso atualizado em `data` | `400`, `403`, `404`, `409`, `422` |
+| Catálogo/estoque | produto/categoria/quantidade/motivo; preço e saldo recalculados | entidade ou movimento persistido | `400`, `403`, `404`, `409`, `422` |
+| Venda/caixa | itens, pagamentos, desconto, caixa e idempotency key; totais não são confiados ao cliente | venda/recibo ou caixa com totais do servidor | `403`, `404`, `409`, `422`, `429` |
+| Contas/relatórios/auditoria | filtros, datas e paginação limitados | coleções paginadas e agregados | `400`, `403`, `404` |
+| Notificações | filtros ou preferências; notificação precisa pertencer ao usuário/tenant | estado/contagem/preferências | `400`, `403`, `404`, `422` |
+
+Sucesso usa `success=true`, `data`, `message=null` e `errors=[]`. Erros retornam `success=false`, `data=null`, `message` e item em `errors` com `code` estável e `field` opcional; a aplicação cliente não deve tomar decisões com base na mensagem traduzida. Todas as respostas recebem `Cache-Control: no-store`; `Retry-After` deve ser respeitado em `429`. IDs recebidos nunca substituem a resolução server-side da empresa autenticada.
+
+### 9.4 Rotas Web relevantes
 
 Web usa `/login`, `/verify-email`, `/forgot-password`, `/reset-password/<token>`, `/assinaturas`, `/dashboard`, `/catalogo/produtos`, `/catalogo/categorias`, `/vendas`, `/vendas/nova`, `/caixa`, `/estoque/*`, `/contas-a-pagar`, `/relatorios`, `/auditoria`, `/configuracoes` e `/exportacoes/<type>`. O Master usa `/master`, `/master/adegas`, `/master/usuarios`, `/master/assinaturas`, `/master/logs` e `/master/auditoria`, com POSTs específicos para keys, renovação, acesso, status e exclusão.
 
@@ -472,6 +492,8 @@ Proteções existentes: banco físico por adega, filtros `company_id`, FKs, vali
 
 - scrypt para senhas; tokens/keys sensíveis mascarados em auditoria/logs.
 - CSRF por token em Web e verificação de origem em métodos mutáveis.
+- Não foi encontrada configuração CORS permissiva; Web e App usam os domínios HTTPS oficiais, e a Web permanece same-origin.
+- Jinja mantém autoescape para HTML; CSP e validações complementam a mitigação de XSS, embora `'unsafe-inline'` reduza a força da política.
 - ORM/queries parametrizadas; identificadores de banco passam por allowlist alfanumérica/underscore.
 - Cookies HTTPOnly/SameSite/Secure em produção e HSTS quando Secure.
 - CSP, `nosniff`, `SAMEORIGIN`, Referrer/Permissions/COOP/CORP headers.
@@ -489,11 +511,11 @@ Não foram identificados segredos reais versionados nos arquivos examinados; exe
 | Severidade | Quantidade | Achado |
 |---|---:|---|
 | Crítico | 0 | Nenhum problema crítico confirmado apenas pelo código. |
-| Alto | 1 | `desktop_wpf/.../appsettings.json` aponta para IP HTTP e `AllowInsecureHttp=true`; uma build distribuída com essa configuração permite credenciais/tokens sem TLS. Produção deve usar `https://skygest.com.br` e falso. |
-| Médio | 4 | CSP permite `'unsafe-inline'`; não há restauração/off-site criptografado comprovados; vários campos financeiros legados ainda são `Float`; isolamento depende de disciplina nas rotas novas apesar do banco por tenant. |
+| Alto | 0 | Nenhum achado alto confirmado na revisão atual. O App de distribuição usa HTTPS e `AllowInsecureHttp=false`. |
+| Médio | 5 | CSP permite `'unsafe-inline'`; Bootstrap é carregado de CDN sem SRI; não há restauração testada/off-site comprovada; isolamento depende de disciplina nas rotas novas apesar do banco por tenant; instalador não possui assinatura de código nem atualização automática verificada. |
 | Baixo | 3 | Namespaces/protocolo/diretórios “Girofy” permanecem; actions exibem aviso de runtime Node antigo; ausência de cobertura E2E/browser visual automatizada. |
 
-Recomendações: bloquear build comercial se BaseUrl não for HTTPS; migrar floats financeiros por migration planejada; adotar nonce/hash CSP; testar restauração/off-site; criar testes automatizados de isolamento para toda rota nova; atualizar actions quando versões compatíveis forem disponíveis.
+Recomendações: manter o bloqueio de transporte inseguro nas builds comerciais; adotar nonce/hash CSP e SRI ou servir o Bootstrap localmente; testar restauração e cópia off-site; criar testes automatizados de isolamento para toda rota nova; assinar instalador/atualizações; atualizar actions quando versões compatíveis forem disponíveis.
 
 ## 14. Painel Master
 
@@ -552,7 +574,7 @@ Diferenças: Web usa cookie/CSRF e renderização server-side; App usa Bearer/re
 
 ## 17. Responsividade e acessibilidade
 
-Web usa grid/flex, tabelas com wrappers, painéis expansíveis e menu colapsável. `style.css` contém breakpoints reais em 1500, 1480, 1280, 1200/1180, 1080, 980/960, 900, 820/780/768, 640, 575/560/520 px e ajustes por altura (por exemplo 760 px). Em telas pequenas, grids viram coluna, botões podem ocupar largura total, sidebar torna-se móvel e tabelas usam scroll/representação compacta.
+Web usa grid/flex, tabelas com wrappers, painéis expansíveis e menu colapsável. `style.css` contém breakpoints reais em 1500, 1480, 1320, 1280, 1200, 1180, 1100, 1080, 1024, 980, 960, 900, 860, 820, 800, 780, 768, 760, 640, 575.98, 560, 520 e 480 px, além de ajustes por altura em 820 e 760 px e preferência por movimento reduzido. Em telas pequenas, grids viram coluna, botões podem ocupar largura total, sidebar torna-se móvel e tabelas usam scroll/representação compacta.
 
 Produtos e painel Master possuem regras específicas de proporção. Modais e formulários de venda/cadastro foram ajustados para desktop e celular. Tema Light/Dark, tamanho de texto, contraste, negrito e `prefers-reduced-motion` são persistidos no `localStorage`.
 
@@ -564,12 +586,16 @@ Nunca documente valores reais. Exemplos seguros:
 
 | Variável | Obrigatória em produção | Finalidade/exemplo seguro |
 |---|:---:|---|
+| `APP_BASE_DIR` | não | diretório-base de runtime; útil em executável/instalação |
 | `APP_ENV` | ✅ | `production`/`development` |
+| `FLASK_ENV` | legado | fallback de ambiente quando `APP_ENV` não existe |
+| `APP_VERSION`/`BUILD_SHA` | recomendada | versão/commit exposto com segurança por `/api/v1/health/version` |
 | `SECRET_KEY` | ✅ | assinatura de sessão; `<segredo-longo>` |
 | `API_TOKEN_SECRET` | recomendada | segredo distinto para access token |
 | `BUSINESS_TIMEZONE` | não | `America/Sao_Paulo` |
 | `SCHEMA_MANAGEMENT_MODE` | ✅ | produção `verify`; dev `upgrade` |
 | `FLASK_DEBUG` | ✅ | produção `0` |
+| `TESTING` | testes | habilita comportamento de teste; nunca em produção |
 | `MASTER_DEFAULT_USERNAME` | ✅ | login bootstrap Master |
 | `MASTER_DEFAULT_PASSWORD` | ✅ | `<senha-forte>`; default recusado em produção |
 | `PASSWORD_MIN_LENGTH`/`MAX_LENGTH` | não | `8`/`128` |
@@ -598,6 +624,7 @@ Nunca documente valores reais. Exemplos seguros:
 | `RATELIMIT_API_GENERAL` | não | `600 per minute` |
 | `RATELIMIT_IMPORT/BACKUP/EXPORT/ADMIN` | não | limites por operação |
 | `SUBSCRIPTION_WHATSAPP_NUMBER` | não | número E.164 sem símbolos |
+| `SUBSCRIPTION_COMMERCIAL_ENABLED` | não | habilita o fluxo comercial; homologação usa `0` |
 | `MYSQL_USER/PASSWORD/HOST/PORT/DATABASE` | ✅ | conexão central, senha mascarada |
 | `DATABASE_URL` | opcional | substitui campos MySQL; nunca versionar credenciais |
 | `MYSQL_TENANT_DATABASE_PREFIX` | não | `adega` |
@@ -608,18 +635,25 @@ Nunca documente valores reais. Exemplos seguros:
 | `MAIL_SMTP_SERVER/PORT/LOGIN/PASSWORD` | se e-mail ativo | SMTP; password secreto |
 | `MAIL_FROM_EMAIL/NAME` | se e-mail ativo | remetente SkyGest |
 | `MAIL_SUPPRESS_SEND` | testes | `1` em testes |
+| `GMAIL_*`/`BREVO_*` | legado | aliases de compatibilidade SMTP; prefira `MAIL_*` |
 | `PORT` | não | Flask local `5001`; container sobrescreve `5003` |
 | `GIROFY_SITE_ADDRESS` | Compose | domínio/endereço do Caddy |
 | `GIROFY_PUBLIC_HTTP_PORT` | não | `18080` |
 | `AUTO_BACKUP_ENABLED/INTERVAL_SECONDS` | não | `1`/`86400` |
 | `AUTO_BACKUP_RETENTION_DAYS/COUNT` | não | `30`/`30` |
 | `GIROFY_BACKUP_HOST_DIR/UID/GID` | Compose | volume/permissões de backup |
+| `HML_SITE_ADDRESS/HML_LOOPBACK_PORT` | HML | endereço Caddy e porta loopback, padrão `:18081`/`18081` |
+| `HML_BACKUP_HOST_DIR` | HML | diretório de backup exclusivo de homologação |
 | `AUTO_AUDIT_CLEANUP_ENABLED` | não | `1` |
 | `AUTO_AUDIT_CLEANUP_INTERVAL_SECONDS` | não | `259200` |
 | `AUTO_AUDIT_RETENTION_DAYS` | não | `90` |
 | `OCI_*` | somente provisionamento | região, shape, rede e caminhos; OCIDs/chaves são secretos |
 
-`config.py` também aceita aliases antigos Gmail/Brevo para SMTP. Eles são compatibilidade, não integrações separadas comprovadas.
+Homologação usa `.env.hml` separado, `APP_ENV=homologation`, `PUBLIC_BASE_URL=https://hml.skygest.com.br`, banco central `skygest_hml_central`, prefixo tenant `skygest_hml_tenant`, prefixo Redis próprio, porta local `18081`, credenciais/secrets exclusivos e retenção de backup de 14 dias. Produção usa `.env`, `adega_central`, prefixo `adega`, porta interna pública legada `18080` e retenção padrão de 30 dias/30 cópias. Arquivos reais não são versionados.
+
+No App, `SKYGEST_ENVIRONMENT` seleciona o ambiente; `GIROFY_API_BASE_URL`, `GIROFY_ALLOW_INSECURE_HTTP` e `GIROFY_API_TIMEOUT_SECONDS` podem sobrescrever a configuração. `appsettings.json` aponta para `https://skygest.com.br`; `appsettings.Homologation.json`, para `https://hml.skygest.com.br`; ambos mantêm transporte inseguro desabilitado.
+
+Para evitar ambiguidade nos grupos da tabela: a conexão central lê individualmente `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_HOST`, `MYSQL_PORT` e `MYSQL_DATABASE`; a política de senha lê `PASSWORD_MIN_LENGTH` e `PASSWORD_MAX_LENGTH`; os limites especiais são `RATELIMIT_IMPORT`, `RATELIMIT_BACKUP`, `RATELIMIT_EXPORT` e `RATELIMIT_ADMIN`; SMTP usa `MAIL_SMTP_SERVER`, `MAIL_SMTP_PORT`, `MAIL_SMTP_LOGIN`, `MAIL_SMTP_PASSWORD`, `MAIL_FROM_EMAIL` e `MAIL_FROM_NAME`. `config.py` também aceita os aliases legados `GMAIL_SMTP_SERVER`, `GMAIL_SMTP_PORT`, `GMAIL_SMTP_LOGIN`, `GMAIL_APP_PASSWORD`, `BREVO_SMTP_SERVER`, `BREVO_SMTP_PORT`, `BREVO_SMTP_LOGIN`, `BREVO_SMTP_PASSWORD`, `BREVO_FROM_EMAIL` e `BREVO_FROM_NAME`. Eles são compatibilidade, não integrações separadas comprovadas.
 
 ## 19. Instalação local
 
@@ -669,15 +703,15 @@ docker compose -f docker-compose.oci.yml logs --tail=200 app caddy mysql redis b
 docker compose -f docker-compose.oci.yml down
 ```
 
-| Serviço | Porta/volume | Observação |
-|---|---|---|
-| MySQL 8.4 | somente rede; `girofy_mysql_data` | utf8mb4, health check |
-| Redis 7.4.2 | somente rede; tmpfs | 96 MiB, allkeys-lru, read-only, sem persistência |
-| App | `127.0.0.1:5003` | Gunicorn 1 worker/4 threads, backups/logs/reports montados |
-| Backup | `/backups` host | mysqldump completo e limpeza de auditoria |
-| Caddy 2 | host `18080` padrão | reverse proxy para `app:5003`, gzip |
+| Serviço | Produção | Homologação | Observação |
+|---|---|---|---|
+| MySQL 8.4 | volume `girofy_mysql_data` | volume/rede exclusivos HML | somente rede, utf8mb4 e health check |
+| Redis 7.4.2 | rede PROD | rede/prefixo HML | somente rede, tmpfs, allkeys-lru, read-only e sem persistência |
+| App | `127.0.0.1:5003` | serviço/volume HML isolado | Gunicorn 1 worker/4 threads; HML possui limites de memória próprios |
+| Backup | `/opt/girofy/backups` | diretório/volume HML exclusivo | mysqldump completo e limpeza de auditoria |
+| Caddy 2 | loopback `18080` legado | loopback `18081` | reverse proxy interno para o app do ambiente, gzip |
 
-O Compose aplica `restart: unless-stopped`. Backup/Redis removem capabilities e usam `no-new-privileges`; Redis e backup são read-only (com tmpfs para Redis).
+Produção e homologação usam projetos Compose, redes, volumes, bancos, Redis, secrets e backups independentes. O proxy Nginx do host é a borda HTTPS pública: `skygest.com.br` encaminha para a aplicação de produção e `hml.skygest.com.br` para o Caddy HML em `127.0.0.1:18081`. O Compose aplica `restart: unless-stopped`. Backup/Redis removem capabilities e usam `no-new-privileges`; Redis e backup são read-only (com tmpfs para Redis).
 
 ## 21. Produção e deploy
 
@@ -686,7 +720,7 @@ Fluxo real:
 ```mermaid
 flowchart LR
     D[Commit] --> G[Push main]
-    G --> T[GitHub Actions: 242 testes + migrations/scripts]
+    G --> T[GitHub Actions: 251 testes backend + testes WPF]
     T --> R[Runner self-hosted OCI]
     R --> B[rsync preservando .env/dados]
     B --> I[Build app/backup]
@@ -697,19 +731,21 @@ flowchart LR
     UP --> H[Health: login, DB e Redis]
 ```
 
-Workflow padrão: `.github/workflows/deploy-oci-self-hosted.yml`, disparado por push em `main`, exceto alterações somente `docs/**`/`*.md`, ou manualmente. Runner: `self-hosted`, `linux`, `girofy-oci`; caminho padrão `/opt/girofy/app`.
+Workflow de produção: `.github/workflows/deploy-oci-self-hosted.yml`, disparado por push em `main`, exceto alterações somente `docs/**`/`*.md`, ou manualmente. Runner: `self-hosted`, `linux`, `girofy-oci`; caminho padrão `/opt/girofy/app`. O deploy faz backup, executa `upgrade-all`, remove com segurança eventual banco tenant legado do Painel Master e valida login/dependências/versão. O contexto central do Master permanece com `is_system=1` e `database_path=''`, sem banco de adega.
+
+Workflow de homologação: `.github/workflows/deploy-hml-oci.yml`, disparado por push em `develop` ou manualmente. Ele executa a mesma validação de backend/WPF, implanta o Compose HML isolado e verifica HTTPS e health em `https://hml.skygest.com.br`. Alterações devem ser promovidas de `develop` para `main` somente após homologação; os dois ambientes não compartilham dados nem credenciais.
 
 `scripts/deploy_self_hosted_app.sh` usa `rsync --delete`, exclui `.env`, Git, venvs, caches, logs, backups, reports, database, build e dist; builda; faz dump completo obrigatório; migra; sobe serviços; valida `/login`, `/health/dependencies` e `/api/v1/health/dependencies`.
 
 Fallback manual/SSH: `.github/workflows/deploy-oci.yml` e `scripts/deploy_oci_app.sh`. Rollback seguro requer parar escritas, restaurar o dump pré-deploy e publicar commit anterior; não existe botão de rollback nem downgrade destrutivo automático.
 
-O domínio público observado no processo operacional é `https://skygest.com.br`; Caddy recebe o endereço real via ambiente. Não há configuração DNS/certificado versionada suficiente para documentar o provedor ou gestão externa do DNS.
+Os domínios operacionais são `https://skygest.com.br` (produção) e `https://hml.skygest.com.br` (homologação). A configuração versionada documenta o encaminhamento interno, mas não contém credenciais nem permite afirmar o provedor/gestão externa do DNS ou certificado.
 
 ## 22. CI/CD, releases e instalador
 
 ### 22.1 Web
 
-O workflow de deploy instala Python 3.13, dependências, executa `python -m unittest discover`, valida heads (`central_0008`, `tenant_0008`) e sintaxe dos scripts. Só depois libera a OCI.
+O workflow de deploy instala Python 3.13, dependências, executa `python -m unittest discover`, valida heads (`central_0009`, `tenant_0009`) e sintaxe dos scripts. Só depois libera a OCI.
 
 ### 22.2 Windows preview
 
@@ -725,7 +761,7 @@ O workflow de deploy instala Python 3.13, dependências, executa `python -m unit
 8. publicar artefatos por 7 dias;
 9. substituir assets da release prerelease `windows-preview`.
 
-Versão atual: `0.9.1`, assembly/file `0.9.1.0`, informational `0.9.1-preview`. Artefatos: `SkyGest.exe` e `SkyGest-Setup-0.9.1.exe`. Instalação por usuário em `%LocalAppData%\Programs\SkyGest`, sem elevação. Code Signing e atualização automática não foram encontrados.
+Versão atual: `0.9.2`, assembly/file `0.9.2.0`, informational `0.9.2-preview`. Artefatos: `SkyGest.exe` e `SkyGest-Setup-0.9.2.exe`. Instalação por usuário em `%LocalAppData%\Programs\SkyGest`, sem elevação. Code Signing e atualização automática não foram encontrados.
 
 O protocolo `girofy://` é legado intencional para callback. Upgrade remove executável/atalhos Girofy antigos e preserva dados locais.
 
@@ -771,9 +807,9 @@ Procedimento de emergência deve ser ensaiado: parar escrita, copiar dump para a
 
 ## 26. Testes
 
-Backend: `tests/test_routes.py` cobre Web/API, autenticação, tenant, permissões, vendas, caixa, estoque, catálogo, relatórios, Master, assinatura, segurança e rate limit; `tests/test_migrations.py` cobre árvores/reconciliação. A suíte atual contém 242 testes aprovados no último deploy do commit anterior e é executada integralmente a cada deploy.
+Backend: 251 testes em `tests/`: 227 casos de rotas/serviços/contratos, 9 de migrations, 5 de isolamento de ambiente, 4 monetários, 4 de tempo e 2 de registro da aplicação. Cobrem Web/API, autenticação, tenant, permissões, vendas, caixa, estoque, catálogo, relatórios, Master, assinatura, segurança e rate limit. A suíte foi aprovada localmente e nos deploys HML/PROD do commit auditado e é executada integralmente a cada deploy.
 
-App: testes xUnit de ViewModels, sessão/refresh, catálogo, vendas, caixa, estoque, contas, relatórios, auditoria, notificações, acessibilidade, formatação monetária/data, scanner e behaviors. CI também compila, inicia o executável e testa instalar/desinstalar.
+App: 153 casos `[Fact]`/`[Theory]` xUnit cobrem ViewModels, sessão/refresh, catálogo, vendas, caixa, estoque, contas, relatórios, auditoria, notificações, acessibilidade, formatação monetária/data, scanner e behaviors. CI também compila, inicia o executável e testa instalar/desinstalar.
 
 Lacunas: ausência de percentual de cobertura publicado; E2E browser completo; testes visuais/snapshots; carga/soak; concorrência distribuída com múltiplas instâncias; restore real; homologação manual de DPI/periféricos.
 
@@ -781,7 +817,7 @@ Lacunas: ausência de percentual de cobertura publicado; E2E browser completo; t
 
 Controles existentes: paginação de produtos/API/estoque/auditoria, eager loading seletivo, agregações SQL, virtualização WPF, debounce/cancelamento de busca, cache de detalhes, idempotência de venda, `FOR UPDATE` e lock por empresa/caixa. Engines tenant e sincronização de referência têm cache/lock; sync é limitado a 300 s.
 
-Pontos de atenção: um worker Gunicorn com quatro threads limita escala; criação de engine por tenant cresce com número de empresas e não possui política explícita de expiração; contexto Web pode calcular notificações/alertas em requisições; relatórios/agregações crescerão com volume; índices devem acompanhar filtros; floats financeiros legados podem causar arredondamento apesar de `Decimal` nos serviços.
+Pontos de atenção: um worker Gunicorn com quatro threads limita escala; criação de engine por tenant cresce com número de empresas e não possui política explícita de expiração; contexto Web pode calcular notificações/alertas em requisições; relatórios/agregações crescerão com volume; índices devem acompanhar filtros.
 
 Recomenda-se medir antes de otimizar: slow query log, EXPLAIN, latência p95/p99, cardinalidade por tenant e tamanho de auditoria/notificações.
 
@@ -876,18 +912,19 @@ Abra o job, identifique teste/backup/migration/health. A versão anterior perman
 
 ### Prioridade alta
 
-1. Remover HTTP/insecure do `appsettings.json` de distribuição e impor HTTPS em build/release.
-2. Criar teste e procedimento formal de restauração/off-site, com RPO/RTO.
-3. Ampliar testes de isolamento tenant e concorrência com MySQL real.
+1. Criar teste e procedimento formal de restauração/off-site, com RPO/RTO.
+2. Ampliar testes de isolamento tenant e concorrência com MySQL real.
+3. Definir assinatura de código e cadeia confiável de atualização do instalador Windows.
 
 ### Prioridade média
 
-1. Migrar dinheiro legado de `Float` para `Numeric/Decimal` com plano de compatibilidade.
+1. Validar `central_0009`/`tenant_0009` em uma cópia recente de produção antes da promoção da versão 1.0.
 2. Reduzir `'unsafe-inline'` da CSP.
 3. Consolidar validações Web/API nos serviços compartilhados.
 4. Definir ciclo de vida/limite do cache de engines tenant.
 5. Introduzir lock de dependências, SBOM e scanning.
-6. Instrumentar métricas/latência e slow queries.
+6. Aplicar SRI ou hospedar localmente os assets Bootstrap atualmente carregados do CDN.
+7. Instrumentar métricas/latência e slow queries.
 
 ### Prioridade baixa
 
@@ -901,7 +938,8 @@ Abra o job, identifique teste/backup/migration/health. A versão anterior perman
 ### Curto prazo
 
 - **IMPLEMENTADO:** planos/preços e contato WhatsApp, idempotência, Redis, migrations e backups.
-- **RECOMENDADO:** HTTPS obrigatório no App; teste de restore; homologação 0.9.1 em Windows/DPI; corrigir alertas do workflow.
+- **IMPLEMENTADO:** transporte HTTPS obrigatório no App; produção e homologação independentes na OCI.
+- **RECOMENDADO:** teste de restore; homologação 0.9.2 em Windows/DPI; corrigir alertas do workflow.
 
 ### Médio prazo
 
@@ -933,7 +971,7 @@ Padrões relevantes: `Decimal` para dinheiro, data civil sem fuso, timestamp ISO
 
 ### Implementado em produção/código
 
-Web/API, App WPF preview, multi-tenancy físico, autenticação Web/token, produtos/kits/categorias, estoque, vendas, caixa, contas, relatórios, auditoria, notificações, equipe, Master, keys, import/export, backup, Redis, migrations, CI/CD e instalador preview.
+Web/API, App WPF preview, multi-tenancy físico, autenticação Web/token, produtos/kits/categorias, estoque, vendas, caixa, contas, relatórios, auditoria, notificações, equipe, Master, keys, import/export, backup, Redis, migrations, CI/CD, instalador preview e ambientes OCI independentes de produção/homologação.
 
 ### Parcialmente implementado
 
@@ -950,18 +988,30 @@ Nomes Girofy internos, protocolo `girofy://`, caminhos locais e aliases SMTP; pl
 ## 35. Divergências corrigidas
 
 - “Girofy” substituído por SkyGest como nome do produto; nomes internos foram classificados como legado.
-- Versões 0.8.x atualizadas para `0.9.1-preview`.
+- Versões 0.8.x/0.9.1 atualizadas para `0.9.2-preview`.
 - Cadastro antigo com dados de adega/pessoa corrigido para usuário, e-mail e senha.
 - Planos antigos/dois planos corrigidos para Basic/Pro/Ultimate e preços 50/120/180.
 - Pro deixou de ser “Mais completo”; Ultimate recebe o destaque e novas funcionalidades.
 - Cobrança descrita como WhatsApp/manual, não gateway.
-- Heads antigos `central_0002`/`tenant_0002` evoluídos para `central_0008`/`tenant_0008`.
+- Heads antigos `central_0002`/`tenant_0002` evoluídos para `central_0009`/`tenant_0009`.
 - Painel Master explicitamente não é adega: `is_system` fica no banco central apenas como contexto de identidade, sem `database_path` e sem banco tenant.
-- IP HTTP histórico não foi tratado como endpoint público atual; domínio HTTPS e risco do appsettings foram separados.
+- IP HTTP histórico não foi tratado como endpoint público atual; App e domínios atuais usam HTTPS com transporte inseguro desabilitado.
 - Backup formal existe, portanto a frase “estratégia não identificada” seria incorreta; restauração/off-site continuam pendentes.
 - Clientes/fornecedores foram removidos da lista de recursos implementados porque não existem modelos/rotas.
 
 ## 36. Changelog da documentação
+
+### 30/08/2026 — auditoria integral e ambientes separados
+
+- Commit analisado e implantado: `87e4917`, presente em `main` e `develop`.
+- 355 arquivos relevantes inventariados; 22 tabelas/modelos funcionais e 59 endpoints REST conferidos com o código.
+- Versão Windows conferida como `0.9.2-preview`; configuração de produção e homologação validada com HTTPS.
+- Suítes conferidas: 251 testes backend e 153 casos xUnit WPF; deploys do commit passaram em HML e PROD.
+- Infraestrutura documentada com bancos, volumes, Redis, backups, secrets, redes e workflows separados por ambiente.
+- Painel Master confirmado apenas no banco central, com `is_system=1`, `database_path=''` e sem banco tenant; o banco legado `adega_1_painel_master` foi removido de produção após backup.
+- Revisão de segurança atualizada para 0 críticos, 0 altos, 6 médios e 3 baixos; o antigo achado de HTTP no App foi encerrado.
+- README e documentos temáticos ativos reconciliados; materiais de marco permanecem históricos.
+- Segunda passagem cruzou rotas, modelos, migrations, variáveis, Compose, scripts, workflows, WPF, testes e referências documentais.
 
 ### 29/08/2026 — revisão completa
 

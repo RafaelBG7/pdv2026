@@ -260,7 +260,7 @@ public sealed class SettingsViewModelTests
         await viewModel.InitializeAsync();
         viewModel.AllowNegativeStock = true;
         viewModel.PixFeeEnabled = true;
-        viewModel.PixFeePercent = "1,25";
+        viewModel.PixFeePercent = "1,2345";
         viewModel.DebitFeeEnabled = true;
         viewModel.DebitFeePercent = "2.5";
         viewModel.CreditFeeEnabled = false;
@@ -273,7 +273,7 @@ public sealed class SettingsViewModelTests
         var request = apiClient.CompanySettingsRequest!;
         Assert.True(request.AllowNegativeStock);
         Assert.True(request.PixFeeEnabled);
-        Assert.Equal(1.25m, request.PixFeePercent);
+        Assert.Equal(1.2345m, request.PixFeePercent);
         Assert.True(request.DebitFeeEnabled);
         Assert.Equal(2.5m, request.DebitFeePercent);
         Assert.False(request.CreditFeeEnabled);

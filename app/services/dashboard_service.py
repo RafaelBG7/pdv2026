@@ -1,10 +1,12 @@
 from calendar import monthrange
 from datetime import date, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import case, func
 from sqlalchemy.orm import selectinload
 
 from app.models import Category, CashRegister, Payable, Payment, Product, Sale, SaleItem, User
+from app.money import money_decimal
 from app.time_utils import (
     business_date_range_utc,
     business_today,
@@ -84,23 +86,28 @@ def resolve_dashboard_period(period='today', start_date=None, end_date=None, tod
 
 
 def _change_percent(current, previous):
-    if previous in (None, 0, 0.0):
+    previous_value = money_decimal(previous)
+    if previous_value == 0:
         return None
-    return round(((float(current or 0) - float(previous)) / abs(float(previous))) * 100, 1)
+    current_value = money_decimal(current)
+    return float(
+        (((current_value - previous_value) / abs(previous_value)) * Decimal('100'))
+        .quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+    )
 
 
 def _money(value):
-    return round(float(value or 0), 2)
+    return money_decimal(value)
 
 
 def _item_profit_expression():
-    stored_profit = func.coalesce(SaleItem.profit_amount, 0.0)
+    stored_profit = func.coalesce(SaleItem.profit_amount, Decimal('0.00'))
     calculated_profit = (
-        func.coalesce(SaleItem.unit_price, 0.0)
-        - func.coalesce(SaleItem.unit_cost_price, 0.0)
+        func.coalesce(SaleItem.unit_price, Decimal('0.00'))
+        - func.coalesce(SaleItem.unit_cost_price, Decimal('0.00'))
     ) * func.coalesce(SaleItem.quantity, 0)
     return case(
-        (stored_profit != 0.0, stored_profit),
+        (stored_profit != Decimal('0.00'), stored_profit),
         else_=calculated_profit,
     )
 
@@ -118,20 +125,20 @@ def _sales_totals(db_session, company_id, start_at, end_at):
     filters = _period_filters(company_id, start_at, end_at)
     row = db_session.query(
         func.count(Sale.id),
-        func.coalesce(func.sum(Sale.final_amount), 0.0),
+        func.coalesce(func.sum(Sale.final_amount), Decimal('0.00')),
     ).filter(*filters).one()
     count = int(row[0] or 0)
     total = _money(row[1])
     return {
         'sales_count': count,
         'sales_total': total,
-        'average_ticket': _money(total / count) if count else 0.0,
+        'average_ticket': _money(total / count) if count else Decimal('0.00'),
     }
 
 
 def _sales_profit(db_session, company_id, start_at=None, end_at=None, cash_register_id=None):
     query = (
-        db_session.query(func.coalesce(func.sum(_item_profit_expression()), 0.0))
+        db_session.query(func.coalesce(func.sum(_item_profit_expression()), Decimal('0.00')))
         .join(Sale, Sale.id == SaleItem.sale_id)
         .filter(Sale.company_id == company_id, Sale.valid_filter())
     )
@@ -146,7 +153,7 @@ def _sales_profit(db_session, company_id, start_at=None, end_at=None, cash_regis
 
 def _payment_totals(db_session, company_id, start_at, end_at):
     rows = (
-        db_session.query(Payment.method, func.coalesce(func.sum(Payment.amount), 0.0))
+        db_session.query(Payment.method, func.coalesce(func.sum(Payment.amount), Decimal('0.00')))
         .join(Sale, Sale.id == Payment.sale_id)
         .filter(*_period_filters(company_id, start_at, end_at))
         .group_by(Payment.method)
@@ -157,7 +164,7 @@ def _payment_totals(db_session, company_id, start_at, end_at):
         {
             'method': method,
             'label': label,
-            'amount': amounts.get(method, 0.0),
+            'amount': amounts.get(method, Decimal('0.00')),
         }
         for method, label in PAYMENT_METHODS.items()
     ]
@@ -171,8 +178,8 @@ def _top_products(db_session, company_id, start_at, end_at, include_profit):
             Product.name,
             Category.name,
             func.coalesce(func.sum(SaleItem.quantity), 0),
-            func.coalesce(func.sum(SaleItem.total_price), 0.0),
-            func.coalesce(func.sum(profit_expression), 0.0),
+            func.coalesce(func.sum(SaleItem.total_price), Decimal('0.00')),
+            func.coalesce(func.sum(profit_expression), Decimal('0.00')),
         )
         .join(SaleItem, SaleItem.product_id == Product.id)
         .join(Sale, Sale.id == SaleItem.sale_id)
@@ -201,7 +208,7 @@ def _category_sales(db_session, company_id, start_at, end_at):
     rows = (
         db_session.query(
             Category.name,
-            func.coalesce(func.sum(SaleItem.total_price), 0.0),
+            func.coalesce(func.sum(SaleItem.total_price), Decimal('0.00')),
         )
         .select_from(Product)
         .join(SaleItem, SaleItem.product_id == Product.id)
@@ -213,14 +220,14 @@ def _category_sales(db_session, company_id, start_at, end_at):
         .order_by(func.sum(SaleItem.total_price).desc())
         .all()
     )
-    total = sum(float(amount or 0) for _, amount in rows)
+    total = sum((money_decimal(amount) for _, amount in rows), Decimal('0.00'))
     result = []
     for category_name, amount in rows:
         value = _money(amount)
         result.append({
             'category': category_name or 'Sem categoria',
             'total': value,
-            'percent': round((value / total) * 100, 1) if total else 0.0,
+            'percent': float(((value / total) * Decimal('100')).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)) if total else 0.0,
         })
     return result
 
@@ -234,39 +241,39 @@ def _revenue_series(db_session, company_id, start_at, end_at, start_date, end_da
     )
     duration = (end_date - start_date).days + 1
     if duration == 1:
-        buckets = {hour: 0.0 for hour in range(24)}
+        buckets = {hour: Decimal('0.00') for hour in range(24)}
         for created_at, amount in rows:
             local = to_business_datetime(created_at)
-            buckets[local.hour] += float(amount or 0)
+            buckets[local.hour] += money_decimal(amount)
         points = [{'label': f'{hour:02d}h', 'total': _money(value)} for hour, value in buckets.items()]
         granularity = 'hour'
     elif duration <= 93:
-        buckets = {start_date + timedelta(days=offset): 0.0 for offset in range(duration)}
+        buckets = {start_date + timedelta(days=offset): Decimal('0.00') for offset in range(duration)}
         for created_at, amount in rows:
             local_date = to_business_datetime(created_at).date()
             if local_date in buckets:
-                buckets[local_date] += float(amount or 0)
+                buckets[local_date] += money_decimal(amount)
         points = [{'label': day.strftime('%d/%m'), 'total': _money(value)} for day, value in buckets.items()]
         granularity = 'day'
     else:
         cursor = start_date.replace(day=1)
         buckets = {}
         while cursor <= end_date:
-            buckets[(cursor.year, cursor.month)] = 0.0
+            buckets[(cursor.year, cursor.month)] = Decimal('0.00')
             cursor = _shift_month(cursor, 1)
         for created_at, amount in rows:
             local = to_business_datetime(created_at)
             key = (local.year, local.month)
             if key in buckets:
-                buckets[key] += float(amount or 0)
+                buckets[key] += money_decimal(amount)
         points = [
             {'label': date(year, month, 1).strftime('%m/%Y'), 'total': _money(value)}
             for (year, month), value in buckets.items()
         ]
         granularity = 'month'
-    maximum = max((point['total'] for point in points), default=0.0)
+    maximum = max((point['total'] for point in points), default=Decimal('0.00'))
     for point in points:
-        point['ratio'] = round(point['total'] / maximum, 4) if maximum else 0.0
+        point['ratio'] = float((point['total'] / maximum).quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)) if maximum else 0.0
     return {'granularity': granularity, 'points': points}
 
 
@@ -360,7 +367,7 @@ def _current_cash(db_session, company_id, include_reports):
     cash_profit = None
     if include_reports:
         cash_total = _money(
-            db_session.query(func.coalesce(func.sum(Sale.final_amount), 0.0))
+            db_session.query(func.coalesce(func.sum(Sale.final_amount), Decimal('0.00')))
             .filter(
                 Sale.company_id == company_id,
                 Sale.cash_register_id == cash_register.id,

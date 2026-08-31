@@ -47,15 +47,23 @@ Cabeçalhos:
 
 Observação: o endpoint legado `GET /health` continua existindo para compatibilidade com deploy, health checks e clientes desktop já empacotados.
 
+### `GET /api/v1/health/dependencies`
+
+Descrição: informa, sem expor credenciais, a disponibilidade do banco e do Redis exigidos pelo ambiente. Retorna `503` quando uma dependência obrigatória não está saudável.
+
+### `GET /api/v1/health/version`
+
+Descrição: informa a versão/commit do artefato implantado a partir de `APP_VERSION`/`BUILD_SHA`. É usado para confirmar que HML ou PROD executam o commit esperado.
+
 ### Transporte seguro
 
 Os endpoints em `/api/v1/auth/*` exigem HTTPS. Em produção, `API_ALLOW_INSECURE_AUTH`
 deve permanecer `0`. Quando o Flask estiver atrás de um proxy reverso HTTPS confiável,
 configure `TRUST_PROXY_HEADERS=1` para aceitar `X-Forwarded-Proto: https`.
 
-O IP OCI atual em `http://168.75.101.126:18080` pode responder ao health check, mas a
-autenticação retorna HTTP `426` por padrão. `API_ALLOW_INSECURE_AUTH=1` existe somente
-para testes controlados e transmite credenciais sem criptografia.
+Os canais oficiais são `https://skygest.com.br` em produção e
+`https://hml.skygest.com.br` em homologação. `API_ALLOW_INSECURE_AUTH=1` existe somente
+para testes locais controlados e nunca deve ser habilitado em ambiente público.
 
 ## Autenticação da API
 

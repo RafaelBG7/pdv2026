@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from app.extensions import db
 
@@ -16,8 +17,8 @@ class StockMovement(db.Model):
     quantity = db.Column(db.Integer, nullable=False, default=0)
     previous_stock = db.Column(db.Integer, nullable=False, default=0)
     new_stock = db.Column(db.Integer, nullable=False, default=0)
-    unit_cost = db.Column(db.Numeric(12, 2), nullable=False, default=0)
-    total_cost = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    unit_cost = db.Column(db.Numeric(18, 2), nullable=False, default=Decimal('0.00'), server_default='0')
+    total_cost = db.Column(db.Numeric(18, 2), nullable=False, default=Decimal('0.00'), server_default='0')
     reason = db.Column(db.String(180), default='')
     notes = db.Column(db.Text, default='')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)

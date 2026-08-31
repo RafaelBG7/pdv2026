@@ -2,6 +2,8 @@
 
 Data da etapa: 13/07/2026
 
+> Documento histórico da etapa de hardening. Estados e contagens abaixo descrevem aquele marco; para a avaliação de segurança vigente em 30/08/2026, use `DOCUMENTACAO_COMPLETA.md`. Migrations Alembic central/tenant e rate limit Redis já estão implementados no código atual.
+
 ## Escopo desta etapa
 
 Esta etapa aplicou um hardening incremental, sem reescrever a arquitetura e sem remover funcionalidades existentes. O foco foi reduzir riscos imediatos em formulários, sessões, senhas, headers e endpoints que alteravam estado via `GET`.
@@ -238,18 +240,20 @@ Em produção HTTPS, verifique também se cookies saem com `Secure`.
 rtk .venv/bin/python -m unittest tests.test_routes
 ```
 
-Último resultado desta etapa:
+Resultado histórico desta etapa:
 
 ```text
 Ran 138 tests in 18.385s
 OK
 ```
 
+> Este número é um marco histórico. A revisão atual de 30/08/2026 executa 251 testes backend; consulte `DOCUMENTACAO_COMPLETA.md`.
+
 ## Itens não concluídos nesta etapa
 
 - Monitorar disponibilidade, memória e política de eviction do Redis de rate limit.
 - Reautenticação obrigatória para excluir adega, alterar key e restaurar backup.
-- Migrações versionadas com Alembic/Flask-Migrate.
+- Expandir a cobertura de migrations Alembic/Flask-Migrate já implementadas.
 - Revisão completa de upload/importação com limite de linhas, MIME e CSV Injection.
 - Revisão Docker para usuário não-root e filesystem mais restrito.
 - Auditoria extra para tentativas de IDOR e escalada de privilégio.

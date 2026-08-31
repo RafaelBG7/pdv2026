@@ -4,6 +4,9 @@ namespace Girofy.Infrastructure.Api;
 
 public sealed class ApiOptions
 {
+    private const string LegacyProductionHost = "skygest.com.br";
+    private const string CanonicalProductionHost = "www.skygest.com.br";
+
     public string BaseUrl { get; init; } = string.Empty;
 
     public bool AllowInsecureHttp { get; init; }
@@ -40,6 +43,15 @@ public sealed class ApiOptions
         if (baseUri.Scheme == Uri.UriSchemeHttp && !AllowInsecureHttp)
         {
             throw new InvalidOperationException("Conexões HTTP precisam ser habilitadas explicitamente.");
+        }
+
+        if (string.Equals(baseUri.Host, LegacyProductionHost, StringComparison.OrdinalIgnoreCase))
+        {
+            var canonicalUri = new UriBuilder(baseUri)
+            {
+                Host = CanonicalProductionHost,
+            };
+            baseUri = canonicalUri.Uri;
         }
 
         return new Uri($"{baseUri.ToString().TrimEnd('/')}/", UriKind.Absolute);

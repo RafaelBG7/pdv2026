@@ -47,7 +47,7 @@ public partial class App : System.Windows.Application
                 configuration.SetBasePath(AppContext.BaseDirectory);
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Api:BaseUrl"] = "https://skygest.com.br",
+                    ["Api:BaseUrl"] = "https://www.skygest.com.br",
                     ["Api:AllowInsecureHttp"] = "false",
                     ["Api:TimeoutSeconds"] = "10",
                 });

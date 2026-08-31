@@ -6543,6 +6543,15 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn("target.matches('input, textarea, select')".encode(), script_response.data)
         script_response.close()
 
+    def test_sale_product_picker_enter_requires_a_current_search(self):
+        script_response = self.client.get('/static/js/main.js')
+
+        self.assertEqual(script_response.status_code, 200)
+        self.assertIn('function resetProductPickerSelection()'.encode(), script_response.data)
+        self.assertIn("if (!term) {\n            resetProductPickerSelection();\n            return;".encode(), script_response.data)
+        self.assertIn("productPickerInput.value = '';\n      resetProductPickerSelection();".encode(), script_response.data)
+        script_response.close()
+
     def test_sale_rejects_discount_greater_than_subtotal(self):
         self.login()
         self.open_cash_register()

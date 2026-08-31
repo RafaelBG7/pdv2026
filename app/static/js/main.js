@@ -1925,6 +1925,12 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
+    function resetProductPickerSelection() {
+      currentProductResults = [];
+      activeProductIndex = 0;
+      closeSuggestionLists();
+    }
+
     function syncActiveProductSuggestion(scrollBehavior) {
       if (!productPickerList) {
         return;
@@ -2058,7 +2064,7 @@ document.addEventListener('DOMContentLoaded', function () {
       quantityProduct.textContent = product.name;
       quantityMeta.textContent = `${formatCurrency(product.price)} · estoque ${Number.isFinite(product.stock) ? product.stock : 0} un.`;
       quantityInput.value = '1';
-      closeSuggestionLists();
+      resetProductPickerSelection();
       quantityModal.classList.add('is-open');
       quantityModal.setAttribute('aria-hidden', 'false');
       document.body.classList.add('sale-quantity-open');
@@ -2102,6 +2108,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       productPickerInput.value = '';
+      resetProductPickerSelection();
       updateSaleTotals();
       closeQuantityModal();
     }
@@ -2448,12 +2455,23 @@ document.addEventListener('DOMContentLoaded', function () {
           event.preventDefault();
           activeProductIndex = products.length - 1;
           syncActiveProductSuggestion('smooth');
-        } else if (event.key === 'Enter' && products.length) {
+        } else if (event.key === 'Enter') {
           event.preventDefault();
-          openQuantityModal(products[activeProductIndex] || products[0]);
-        } else if (event.key === 'Enter' && productPickerInput.value.trim()) {
-          event.preventDefault();
-          fetchProductSuggestions(productPickerInput.value.trim()).then(function (items) {
+          const term = productPickerInput.value.trim();
+          if (!term) {
+            resetProductPickerSelection();
+            return;
+          }
+
+          if (products.length) {
+            openQuantityModal(products[activeProductIndex] || products[0]);
+            return;
+          }
+
+          fetchProductSuggestions(term).then(function (items) {
+            if (productPickerInput.value.trim() !== term) {
+              return;
+            }
             if (items.length) {
               openQuantityModal(items[0]);
             } else {

@@ -34,6 +34,26 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Repeated_add_without_a_new_selection_does_not_duplicate_the_product()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext())
+        {
+            SearchText = "coca",
+        };
+
+        await viewModel.SearchCommand.ExecuteAsync();
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.AddProductCommand.Execute(null);
+
+        Assert.Single(viewModel.CartItems);
+        Assert.Equal(1, viewModel.CartItems[0].Quantity);
+        Assert.Null(viewModel.SelectedSearchProduct);
+        Assert.Empty(viewModel.SearchText);
+        Assert.Empty(viewModel.SearchResults);
+    }
+
+    [Fact]
     public async Task Quantity_popup_opens_for_selected_product_and_closes_without_adding()
     {
         var sessionContext = SessionContext();

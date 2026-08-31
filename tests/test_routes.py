@@ -6545,11 +6545,12 @@ class RouteTestCase(unittest.TestCase):
 
     def test_sale_product_picker_enter_requires_a_current_search(self):
         script_response = self.client.get('/static/js/main.js')
+        script_text = script_response.data.decode('utf-8').replace('\r\n', '\n')
 
         self.assertEqual(script_response.status_code, 200)
-        self.assertIn('function resetProductPickerSelection()'.encode(), script_response.data)
-        self.assertIn("if (!term) {\n            resetProductPickerSelection();\n            return;".encode(), script_response.data)
-        self.assertIn("productPickerInput.value = '';\n      resetProductPickerSelection();".encode(), script_response.data)
+        self.assertIn('function resetProductPickerSelection()', script_text)
+        self.assertIn("if (!term) {\n            resetProductPickerSelection();\n            return;", script_text)
+        self.assertIn("productPickerInput.value = '';\n      resetProductPickerSelection();", script_text)
         script_response.close()
 
     def test_sale_rejects_discount_greater_than_subtotal(self):

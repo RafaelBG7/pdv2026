@@ -62,6 +62,20 @@ public sealed class DashboardSnapshot
     public IReadOnlyList<DashboardPayable> UpcomingPayables { get; init; } = [];
 
     public string ReferenceDateText => string.IsNullOrWhiteSpace(Period.Label) ? "Operação de hoje" : Period.Label;
+    public string PeriodRangeText => string.IsNullOrWhiteSpace(Period.StartDate) || string.IsNullOrWhiteSpace(Period.EndDate)
+        ? ReferenceDateText
+        : $"{ReferenceDateText} · {FormatPeriodDate(Period.StartDate)} a {FormatPeriodDate(Period.EndDate)}";
+    public bool HasRevenueData => Summary.SalesCount > 0 && RevenueSeries.Points.Any(point => point.Total > 0);
+    public bool HasCategorySales => CategorySales.Any(item => item.Total > 0);
+    public bool HasTopProducts => TopProducts.Count > 0;
+    public bool HasRecentSales => RecentSales.Count > 0;
+    public bool HasLowStockProducts => LowStockProducts.Count > 0;
+    public bool HasUpcomingPayables => UpcomingPayables.Count > 0;
+
+    private static string FormatPeriodDate(string value) =>
+        DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            ? date.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+            : value.Replace('-', '/');
 }
 
 public sealed class DashboardPeriod
@@ -109,6 +123,8 @@ public sealed class DashboardSummary
     public string SalesTotalText => DashboardFormatting.Money(SalesTotal);
 
     public string SalesCountText => SalesCount == 1 ? "1 venda" : $"{SalesCount} vendas";
+
+    public string SalesCountDetailText => $"{SalesCountChangeText} · ticket {AverageTicketText}";
 
     public string AverageTicketText => DashboardFormatting.OptionalMoney(AverageTicket);
 

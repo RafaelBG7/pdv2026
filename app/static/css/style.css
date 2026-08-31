@@ -9645,6 +9645,15 @@ canvas {
   }
 }
 
+/* Keep the HTML legend synchronized with the dashboard canvas palette. */
+.dashboard-legend > div:nth-child(7n+1) i { background: #22d3ee; }
+.dashboard-legend > div:nth-child(7n+2) i { background: #8b5cf6; }
+.dashboard-legend > div:nth-child(7n+3) i { background: #34d399; }
+.dashboard-legend > div:nth-child(7n+4) i { background: #fbbf24; }
+.dashboard-legend > div:nth-child(7n+5) i { background: #fb7185; }
+.dashboard-legend > div:nth-child(7n+6) i { background: #60a5fa; }
+.dashboard-legend > div:nth-child(7n+7) i { background: #c084fc; }
+
 .dashboard-sales-list > .dashboard-empty-panel {
   display: flex;
   width: 100%;

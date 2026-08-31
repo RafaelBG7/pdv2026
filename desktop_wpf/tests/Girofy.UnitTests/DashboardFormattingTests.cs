@@ -27,4 +27,48 @@ public sealed class DashboardFormattingTests
         Assert.Equal("18/08/2026", record.CreatedDateText);
         Assert.Equal("12:30", record.CreatedTimeText);
     }
+
+    [Fact]
+    public void Dashboard_snapshot_only_exposes_charts_when_the_period_has_values()
+    {
+        var emptySnapshot = new DashboardSnapshot();
+        var populatedSnapshot = new DashboardSnapshot
+        {
+            Summary = new DashboardSummary { SalesCount = 1 },
+            RevenueSeries = new DashboardRevenueSeries
+            {
+                Points = [new DashboardRevenuePoint { Label = "18h", Total = 24 }],
+            },
+            CategorySales =
+            [
+                new DashboardCategorySale
+                {
+                    Category = "Refrigerante",
+                    Total = 24,
+                    Percent = 100,
+                },
+            ],
+        };
+
+        Assert.False(emptySnapshot.HasRevenueData);
+        Assert.False(emptySnapshot.HasCategorySales);
+        Assert.True(populatedSnapshot.HasRevenueData);
+        Assert.True(populatedSnapshot.HasCategorySales);
+    }
+
+    [Fact]
+    public void Dashboard_snapshot_formats_the_web_period_caption()
+    {
+        var snapshot = new DashboardSnapshot
+        {
+            Period = new DashboardPeriod
+            {
+                Label = "Este mês",
+                StartDate = "2026-08-01",
+                EndDate = "2026-08-31",
+            },
+        };
+
+        Assert.Equal("Este mês · 01/08/2026 a 31/08/2026", snapshot.PeriodRangeText);
+    }
 }

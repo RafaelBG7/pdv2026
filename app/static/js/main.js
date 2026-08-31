@@ -2894,9 +2894,36 @@ if (destructiveConfirmationModal) {
   period?.addEventListener('change', () => customDates?.classList.toggle('d-none', period.value !== 'custom'));
   const source = document.getElementById('dashboard-chart-data');
   if (!source) return;
-  const data = JSON.parse(source.textContent || '{}');
+  let parsedData = {};
+  try {
+    parsedData = JSON.parse(source.textContent || '{}');
+  } catch (_error) {
+    parsedData = {};
+  }
+  const finiteNumber = value => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  };
+  const data = {
+    revenue: Array.isArray(parsedData.revenue)
+      ? parsedData.revenue.map(point => ({
+          ...point,
+          label: String(point?.label || ''),
+          total: finiteNumber(point?.total),
+          ratio: finiteNumber(point?.ratio),
+        }))
+      : [],
+    categories: Array.isArray(parsedData.categories)
+      ? parsedData.categories.map(item => ({
+          ...item,
+          category: String(item?.category || 'Sem categoria'),
+          total: finiteNumber(item?.total),
+          percent: finiteNumber(item?.percent),
+        })).filter(item => item.total > 0)
+      : [],
+  };
   const colors = ['#22d3ee','#8b5cf6','#34d399','#fbbf24','#fb7185','#60a5fa','#c084fc'];
-  const money = value => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value || 0);
+  const money = value => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(finiteNumber(value));
   const tooltip = document.createElement('div');
   tooltip.className = 'dashboard-chart-tooltip';
   tooltip.setAttribute('role', 'status');
@@ -2950,7 +2977,40 @@ if (destructiveConfirmationModal) {
   const donut = page.querySelector('[data-dashboard-donut]');
   let donutSegments = [];
   let activeDonutIndex = -1;
-  const drawDonut = () => {if(!donut||!data.categories?.length)return;const ctx=donut.getContext('2d'),cx=105,cy=105,r=78,total=data.categories.reduce((s,p)=>s+p.total,0)||1;ctx.clearRect(0,0,210,210);let start=-Math.PI/2;donutSegments=[];data.categories.forEach((p,i)=>{const end=start+Math.PI*2*p.total/total;donutSegments.push({start,end,...p});ctx.beginPath();ctx.arc(cx,cy,r,start,end);ctx.strokeStyle=colors[i%colors.length];ctx.lineWidth=i===activeDonutIndex?31:25;ctx.stroke();start=end});ctx.fillStyle='#e8eef8';ctx.font='700 19px system-ui';ctx.textAlign='center';ctx.fillText(money(total),cx,cy+6);ctx.fillStyle='#8292a9';ctx.font='11px system-ui';ctx.fillText('faturamento',cx,cy+25)};
+  const drawDonut = () => {
+    if (!donut || !data.categories.length) return;
+    const ctx = donut.getContext('2d');
+    const cx = 105, cy = 105, radius = 78;
+    // Decimal values rendered by Flask's tojson can arrive as strings.
+    // Coerce every operand so multiple categories are added instead of concatenated.
+    const total = data.categories.reduce(
+      (sum, category) => sum + finiteNumber(category.total),
+      0,
+    );
+    if (total <= 0) return;
+
+    ctx.clearRect(0, 0, 210, 210);
+    let start = -Math.PI / 2;
+    donutSegments = [];
+    data.categories.forEach((category, index) => {
+      const categoryTotal = finiteNumber(category.total);
+      const end = start + Math.PI * 2 * categoryTotal / total;
+      donutSegments.push({ start, end, ...category, total: categoryTotal });
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, start, end);
+      ctx.strokeStyle = colors[index % colors.length];
+      ctx.lineWidth = index === activeDonutIndex ? 31 : 25;
+      ctx.stroke();
+      start = end;
+    });
+    ctx.fillStyle = '#e8eef8';
+    ctx.font = '700 19px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(money(total), cx, cy + 6);
+    ctx.fillStyle = '#8292a9';
+    ctx.font = '11px system-ui';
+    ctx.fillText('faturamento', cx, cy + 25);
+  };
   donut?.addEventListener('pointermove', event => {
     const rect=donut.getBoundingClientRect(), x=(event.clientX-rect.left)*(210/rect.width)-105, y=(event.clientY-rect.top)*(210/rect.height)-105;
     const distance=Math.hypot(x,y);

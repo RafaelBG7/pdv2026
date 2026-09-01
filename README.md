@@ -8,7 +8,7 @@ SkyGest é um SaaS de ponto de venda e gestão operacional para adegas e pequeno
 
 - Web/API em produção: [https://www.skygest.com.br](https://www.skygest.com.br)
 - Homologação isolada: [https://hml.skygest.com.br](https://hml.skygest.com.br)
-- App Windows: `0.9.12-preview`, .NET 8/WPF, online e sem banco local operacional
+- App Windows: `0.9.13-preview`, .NET 8/WPF, online e sem banco local operacional
 - Banco: MySQL central mais um banco físico por adega
 - Painel Master: contexto administrativo central; não é adega e não possui banco tenant
 - Planos comerciais: Basic, Pro e Ultimate; contratação temporariamente direcionada ao WhatsApp

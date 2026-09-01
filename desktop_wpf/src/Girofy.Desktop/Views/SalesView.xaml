@@ -1240,9 +1240,14 @@
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="10" />
                                                 <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
+                                        </Grid.RowDefinitions>
                                         <StackPanel x:Name="MoneyMethodPanel">
-                                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="DINHEIRO" />
+                                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                                <Border Width="26" Height="26" Margin="0,0,8,0" Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                                    <Path Width="16" Height="16" Data="M2.2,4 L15.8,4 C17,4 18,5 18,6.2 L18,13.8 C18,15 17,16 15.8,16 L2.2,16 C1,16 0,15 0,13.8 L0,6.2 C0,5 1,4 2.2,4 Z M2,8 L2,6 L5,6 M16,12 L16,14 L13,14 M9,7.2 A2.8,2.8 0 1 0 9,12.8 A2.8,2.8 0 1 0 9,7.2" Stroke="{DynamicResource PrimaryBrush}" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" />
+                                                </Border>
+                                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="DINHEIRO" />
+                                            </StackPanel>
                                             <TextBox x:Name="MoneyInput"
                                                      Tag="money"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
@@ -1254,7 +1259,12 @@
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         <StackPanel x:Name="DebitMethodPanel" Grid.Row="2">
-                                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="DÉBITO" />
+                                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                                <Border Width="26" Height="26" Margin="0,0,8,0" Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                                    <Path Width="16" Height="16" Data="M2.2,2 L14.8,2 C16,2 17,3 17,4.2 L17,12.8 C17,14 16,15 14.8,15 L2.2,15 C1,15 0,14 0,12.8 L0,4.2 C0,3 1,2 2.2,2 Z M0,5.2 L17,5.2 M3,7.8 L6.8,7.8 L6.8,11 L3,11 Z M4.25,7.8 L4.25,11 M5.55,7.8 L5.55,11 M3,12.8 L9,12.8 M3,14 L7,14 M14.2,9.2 A3.8,3.8 0 1 0 14.2,16.8 A3.8,3.8 0 1 0 14.2,9.2 M12.2,13 L16.2,13" Stroke="{DynamicResource PrimaryBrush}" StrokeThickness="1.55" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" />
+                                                </Border>
+                                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="DÉBITO" />
+                                            </StackPanel>
                                             <TextBox x:Name="DebitInput"
                                                      Tag="debit"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
@@ -1266,7 +1276,12 @@
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         <StackPanel x:Name="CreditMethodPanel" Grid.Row="4">
-                                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="CRÉDITO" />
+                                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                                <Border Width="26" Height="26" Margin="0,0,8,0" Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                                    <Path Width="16" Height="16" Data="M2.2,2 L14.8,2 C16,2 17,3 17,4.2 L17,12.8 C17,14 16,15 14.8,15 L2.2,15 C1,15 0,14 0,12.8 L0,4.2 C0,3 1,2 2.2,2 Z M0,5.2 L17,5.2 M0,7.3 L17,7.3 M3,9.2 L6.7,9.2 L6.7,12 L3,12 Z M8,10 L12.2,10 M8,11.8 L10.5,11.8 M14.2,9.2 A3.8,3.8 0 1 0 14.2,16.8 A3.8,3.8 0 1 0 14.2,9.2 M12.1,13 L16.3,13 M14.2,10.9 L14.2,15.1" Stroke="{DynamicResource PrimaryBrush}" StrokeThickness="1.55" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" />
+                                                </Border>
+                                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="CRÉDITO" />
+                                            </StackPanel>
                                             <TextBox x:Name="CreditInput"
                                                      Tag="credit"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
@@ -1278,7 +1293,12 @@
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         <StackPanel x:Name="PixMethodPanel" Grid.Row="6">
-                                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="PIX" />
+                                            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                                <Border Width="26" Height="26" Margin="0,0,8,0" Background="{DynamicResource InfoSurfaceBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                                    <Path Width="16" Height="16" Data="M9,9 L5.15,5.15 C4.35,4.35 4.35,3.15 5.15,2.35 L6.65,0.85 C7.95,-0.45 10.05,-0.45 11.35,0.85 L12.85,2.35 C13.65,3.15 13.65,4.35 12.85,5.15 Z M9,9 L12.85,5.15 C13.65,4.35 14.85,4.35 15.65,5.15 L17.15,6.65 C18.45,7.95 18.45,10.05 17.15,11.35 L15.65,12.85 C14.85,13.65 13.65,13.65 12.85,12.85 Z M9,9 L12.85,12.85 C13.65,13.65 13.65,14.85 12.85,15.65 L11.35,17.15 C10.05,18.45 7.95,18.45 6.65,17.15 L5.15,15.65 C4.35,14.85 4.35,13.65 5.15,12.85 Z M9,9 L5.15,12.85 C4.35,13.65 3.15,13.65 2.35,12.85 L0.85,11.35 C-0.45,10.05 -0.45,7.95 0.85,6.65 L2.35,5.15 C3.15,4.35 4.35,4.35 5.15,5.15 Z" Stroke="{DynamicResource PrimaryBrush}" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" />
+                                                </Border>
+                                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="PIX" />
+                                            </StackPanel>
                                             <TextBox x:Name="PixInput"
                                                      Tag="pix"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"

@@ -67,6 +67,19 @@ public sealed class PaymentMethodsLayoutTests
         Assert.Null(grid.Attribute("SizeChanged"));
     }
 
+    [Fact]
+    public void Checkout_arrow_navigation_follows_the_visual_payment_order()
+    {
+        var codeBehindPath = FindRepositoryFile(
+            "desktop_wpf", "src", "Girofy.Desktop", "Views", "SalesView.xaml.cs");
+        var source = File.ReadAllText(codeBehindPath);
+
+        Assert.Contains(
+            "new[] { MoneyInput, DebitInput, CreditInput, PixInput }",
+            source,
+            StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         foreach (var startPath in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })

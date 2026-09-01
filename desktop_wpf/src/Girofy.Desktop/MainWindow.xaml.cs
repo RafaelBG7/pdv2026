@@ -64,6 +64,15 @@ public partial class MainWindow : Window
 
     private async void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape &&
+            (ProfileMenuPanel.Visibility == Visibility.Visible || NotificationsPanel.Visibility == Visibility.Visible))
+        {
+            CloseProfileMenu();
+            CloseNotificationsPanel();
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Escape && _viewModel.Catalog.IsCategoryEditorOpen)
         {
             if (_viewModel.Catalog.CloseCategoryEditorCommand.CanExecute(null))
@@ -266,6 +275,7 @@ public partial class MainWindow : Window
 
     private async void HandleNotificationsBellClick(object sender, RoutedEventArgs e)
     {
+        CloseProfileMenu();
         NotificationsPanel.Visibility = NotificationsPanel.Visibility == Visibility.Visible
             ? Visibility.Collapsed
             : Visibility.Visible;
@@ -284,27 +294,48 @@ public partial class MainWindow : Window
         }
     }
 
+    private void HandleProfileMenuClick(object sender, RoutedEventArgs e)
+    {
+        CloseNotificationsPanel();
+        ProfileMenuPanel.Visibility = ProfileMenuPanel.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
     private void HandleAuthenticatedShellPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (NotificationsPanel.Visibility != Visibility.Visible ||
-            e.OriginalSource is not DependencyObject source ||
-            IsDescendantOf(source, NotificationsPanel) ||
-            IsDescendantOf(source, NotificationsBellButton))
+        if (e.OriginalSource is not DependencyObject source)
         {
             return;
         }
 
-        CloseNotificationsPanel();
+        if (NotificationsPanel.Visibility == Visibility.Visible &&
+            !IsDescendantOf(source, NotificationsPanel) &&
+            !IsDescendantOf(source, NotificationsBellButton))
+        {
+            CloseNotificationsPanel();
+        }
+
+        if (ProfileMenuPanel.Visibility == Visibility.Visible &&
+            !IsDescendantOf(source, ProfileMenuPanel) &&
+            !IsDescendantOf(source, ProfileMenuButton))
+        {
+            CloseProfileMenu();
+        }
     }
 
-    private void HandleWindowDeactivated(object? sender, EventArgs e) =>
+    private void HandleWindowDeactivated(object? sender, EventArgs e)
+    {
         CloseNotificationsPanel();
+        CloseProfileMenu();
+    }
 
     private void HandleWindowStateChanged(object? sender, EventArgs e)
     {
         if (WindowState == WindowState.Minimized)
         {
             CloseNotificationsPanel();
+            CloseProfileMenu();
         }
     }
 
@@ -313,6 +344,14 @@ public partial class MainWindow : Window
         if (NotificationsPanel.Visibility == Visibility.Visible)
         {
             NotificationsPanel.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void CloseProfileMenu()
+    {
+        if (ProfileMenuPanel.Visibility == Visibility.Visible)
+        {
+            ProfileMenuPanel.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -473,6 +512,7 @@ public partial class MainWindow : Window
             if (!_viewModel.Login.IsAuthenticated)
             {
                 CloseNotificationsPanel();
+                CloseProfileMenu();
             }
 
             ApplyAuthenticationWindowMode();

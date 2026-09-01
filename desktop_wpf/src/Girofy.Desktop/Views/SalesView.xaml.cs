@@ -805,7 +805,7 @@ public partial class SalesView : UserControl
 
     private void FocusPaymentField(TextBox current, bool forward)
     {
-        var fields = new[] { MoneyInput, PixInput, DebitInput, CreditInput };
+        var fields = new[] { MoneyInput, DebitInput, CreditInput, PixInput };
         var currentIndex = Array.IndexOf(fields, current);
         if (currentIndex < 0)
         {

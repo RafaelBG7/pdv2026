@@ -70,7 +70,7 @@ Público-alvo atual: adegas e pequenos comércios que precisam operar vendas e e
 ```mermaid
 flowchart LR
     U[Usuário Web] -->|HTTPS, cookie de sessão e CSRF| E[Proxy público do ambiente]
-    W[SkyGest Windows 0.9.12] -->|HTTPS/REST, Bearer token| E
+    W[SkyGest Windows 0.9.13] -->|HTTPS/REST, Bearer token| E
     E --> F[Flask + Gunicorn]
     F --> R[(Redis: rate limit)]
     F --> B[(MySQL central)]
@@ -227,7 +227,7 @@ Notificações são criadas para estoque negativo, zero, baixo e ajustes manuais
 - Pesquisa/autocomplete por nome ou código de barras, mouse/teclado e scanner HID.
 - Múltiplos itens com quantidades inteiras positivas.
 - Desconto não negativo e não superior ao subtotal.
-- Dinheiro, débito, crédito e Pix, inclusive pagamentos mistos. Na Web os campos se adaptam ao espaço disponível; no App `0.9.12` os quatro permanecem em uma coluna vertical, nesta ordem, para evitar ocultação ao redimensionar a janela.
+- Dinheiro, débito, crédito e Pix, inclusive pagamentos mistos. Na Web os campos se adaptam ao espaço disponível; no App `0.9.13` os quatro permanecem em uma coluna vertical, com ícones próprios e navegação por setas na mesma ordem, para evitar ocultação ou saltos ao redimensionar e operar por teclado.
 - Foco automático na pesquisa ao abrir venda; na finalização, foco inicial no dinheiro.
 - Atalhos F2/F3 conforme tela e fluxo; navegação por setas mantém o item selecionado visível.
 - Cálculo autoritativo com `Decimal`; snapshots de preço/custo/lucro em `sale_items`. Entradas aceitam formato pt-BR, rejeitam booleanos, não finitos, negativos e valores novos acima de `9.999.999.999,99`; arredondamento é `ROUND_HALF_UP` em centavos.
@@ -766,7 +766,7 @@ O workflow de deploy instala Python 3.13, dependências, executa `python -m unit
 8. publicar artefatos por 7 dias;
 9. substituir assets da release prerelease `windows-preview`.
 
-Versão atual: `0.9.12`, assembly/file `0.9.12.0`, informational `0.9.12-preview`. Artefatos: `SkyGest.exe` e `SkyGest-Setup-0.9.12.exe`. Instalação por usuário em `%LocalAppData%\Programs\SkyGest`, sem elevação. O CI executa smoke test do ciclo de instalar/iniciar/desinstalar. Code Signing e atualização automática não foram encontrados.
+Versão atual: `0.9.13`, assembly/file `0.9.13.0`, informational `0.9.13-preview`. Artefatos: `SkyGest.exe` e `SkyGest-Setup-0.9.13.exe`. Instalação por usuário em `%LocalAppData%\Programs\SkyGest`, sem elevação. O CI executa smoke test do ciclo de instalar/iniciar/desinstalar. Code Signing e atualização automática não foram encontrados.
 
 O protocolo `girofy://` é legado intencional para callback. Upgrade remove executável/atalhos Girofy antigos e preserva dados locais.
 
@@ -945,7 +945,7 @@ Abra o job, identifique teste/backup/migration/health. A versão anterior perman
 - **IMPLEMENTADO:** planos/preços e contato WhatsApp, idempotência, Redis, migrations e backups.
 - **IMPLEMENTADO:** transporte HTTPS obrigatório no App; produção e homologação independentes na OCI.
 - **IMPLEMENTADO:** campos financeiros migrados para `Numeric`, cálculos normalizados em `Decimal` e serialização JSON compatível por `simplejson`.
-- **RECOMENDADO:** teste de restore; homologação 0.9.12 em Windows/DPI; corrigir alertas do workflow.
+- **RECOMENDADO:** teste de restore; homologação 0.9.13 em Windows/DPI; corrigir alertas do workflow.
 
 ### Médio prazo
 
@@ -994,7 +994,7 @@ Nomes Girofy internos, protocolo `girofy://`, caminhos locais e aliases SMTP; pl
 ## 35. Divergências corrigidas
 
 - “Girofy” substituído por SkyGest como nome do produto; nomes internos foram classificados como legado.
-- Versões anteriores atualizadas para `0.9.12-preview`; marcos históricos permanecem no changelog.
+- Versões anteriores atualizadas para `0.9.13-preview`; marcos históricos permanecem no changelog.
 - Cadastro antigo com dados de adega/pessoa corrigido para usuário, e-mail e senha.
 - Planos antigos/dois planos corrigidos para Basic/Pro/Ultimate e preços 50/120/180.
 - Pro deixou de ser “Mais completo”; Ultimate recebe o destaque e novas funcionalidades.
@@ -1006,6 +1006,13 @@ Nomes Girofy internos, protocolo `girofy://`, caminhos locais e aliases SMTP; pl
 - Clientes/fornecedores foram removidos da lista de recursos implementados porque não existem modelos/rotas.
 
 ## 36. Changelog da documentação
+
+### 01/09/2026 — App Windows 0.9.13
+
+- Perfil do cabeçalho convertido em menu expansível com tema claro/escuro e encerramento de sessão.
+- Ícones vetoriais próprios de Dinheiro, Débito, Crédito e Pix aplicados no Caixa e na finalização da venda.
+- Navegação por setas corrigida para avançar um campo por vez na ordem Dinheiro, Débito, Crédito e Pix.
+- Versão do executável e instalador avançada para `0.9.13-preview`.
 
 ### 01/09/2026 — App Windows 0.9.12
 

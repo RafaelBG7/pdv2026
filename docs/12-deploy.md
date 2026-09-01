@@ -205,7 +205,7 @@ https://www.skygest.com.br
 O computador do cliente precisa somente de um navegador e acesso à internet. MySQL,
 Flask, arquivos `.env`, backups e segredos permanecem exclusivamente no servidor.
 
-O projeto `desktop_wpf/` é o cliente nativo Windows 0.9.12-preview. Ele consome a API
+O projeto `desktop_wpf/` é o cliente nativo Windows 0.9.13-preview. Ele consome a API
 HTTPS implantada, mas possui workflow de build/release próprio e não faz parte do
 container Web.
 

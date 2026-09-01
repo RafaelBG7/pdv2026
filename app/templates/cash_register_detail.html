@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'partials/payment_method_icon.html' import payment_method_icon %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
@@ -73,7 +74,7 @@
       {% for method, label in payment_methods.items() %}
       {% if payment_totals.get(method) %}
       <div>
-        <span>{{ label }}</span>
+        <span class="payment-method-label">{{ payment_method_icon(method) }}<span>{{ label }}</span></span>
         <strong>R$ {{ '%.2f'|format(payment_totals.get(method, 0))|replace('.', ',') }}</strong>
       </div>
       {% endif %}

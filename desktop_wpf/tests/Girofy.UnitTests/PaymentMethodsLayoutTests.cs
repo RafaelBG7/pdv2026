@@ -25,15 +25,21 @@ public sealed class PaymentMethodsLayoutTests
             })
             .ToArray();
 
-        Assert.Equal(["money", "debit", "credit", "pix"], fields.Select(field => field.Method));
-        Assert.Equal(["MoneyInput", "DebitInput", "CreditInput", "PixInput"], fields.Select(field => field.Name));
+        Assert.Equal(
+            new[] { "money", "debit", "credit", "pix" },
+            fields.Select(field => field.Method!).ToArray());
+        Assert.Equal(
+            new[] { "MoneyInput", "DebitInput", "CreditInput", "PixInput" },
+            fields.Select(field => field.Name!).ToArray());
 
         var labels = panel
             .Descendants(presentation + "TextBlock")
             .Select(element => (string?)element.Attribute("Text"))
             .Where(text => text is "DINHEIRO" or "DÉBITO" or "CRÉDITO" or "PIX")
             .ToArray();
-        Assert.Equal(["DINHEIRO", "DÉBITO", "CRÉDITO", "PIX"], labels);
+        Assert.Equal(
+            new[] { "DINHEIRO", "DÉBITO", "CRÉDITO", "PIX" },
+            labels.Select(text => text!).ToArray());
     }
 
     [Fact]

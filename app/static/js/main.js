@@ -2639,6 +2639,15 @@ document.addEventListener('DOMContentLoaded', function () {
         closeSuggestionLists();
       }
     });
+
+    window.addEventListener('pageshow', function (event) {
+      const navigation = window.performance && typeof window.performance.getEntriesByType === 'function'
+        ? window.performance.getEntriesByType('navigation')[0]
+        : null;
+      if (event.persisted || (navigation && navigation.type === 'back_forward')) {
+        window.location.reload();
+      }
+    });
   }
 
   const reportForm = document.querySelector('[data-report-filter-form]');

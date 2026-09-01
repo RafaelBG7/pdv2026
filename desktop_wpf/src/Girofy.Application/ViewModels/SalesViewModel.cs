@@ -731,12 +731,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     {
         Receipt = null;
         IsHistoricalReceipt = false;
+        ResetSaleDraft();
         IsSaleEditorOpen = false;
         IsPaymentStepOpen = false;
-        IsOpenCashPromptOpen = false;
-        IsDiscardConfirmationOpen = false;
-        IsQuantityPopupOpen = false;
-        IsDiscountPopupOpen = false;
         IsCancellationPopupOpen = false;
         PendingCancellationSale = null;
         ClearMessages();
@@ -1363,7 +1360,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 ? $"{receipt.SaleNumberText} já estava registrada e foi recuperada sem duplicação."
                 : $"{receipt.SaleNumberText} finalizada com sucesso.";
             await LoadTodaySalesAsync(reset: true, cancellationToken);
-            ResetDraftAfterSuccess();
+            ResetSaleDraft();
             IsPaymentStepOpen = false;
             IsSaleEditorOpen = false;
         }
@@ -1411,7 +1408,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         SuccessMessage = string.Empty;
         ErrorMessage = string.Empty;
         IsOpenCashPromptOpen = false;
-        ResetDraftAfterSuccess();
+        ResetSaleDraft();
         IsSaleEditorOpen = true;
         IsPaymentStepOpen = false;
     }
@@ -1581,7 +1578,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         CancelPendingSearch();
         _barcodeLookupCts?.Cancel();
         ClearMessages();
-        ResetDraftAfterSuccess();
+        ResetSaleDraft();
         Receipt = null;
         IsHistoricalReceipt = false;
         IsDiscardConfirmationOpen = false;
@@ -1719,7 +1716,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasSearchResults));
     }
 
-    private void ResetDraftAfterSuccess()
+    private void ResetSaleDraft()
     {
         foreach (var item in CartItems)
         {
@@ -1755,7 +1752,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         _detailCts?.Cancel();
         Receipt = null;
         IsHistoricalReceipt = false;
-        ResetDraftAfterSuccess();
+        ResetSaleDraft();
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
         IsBusy = false;

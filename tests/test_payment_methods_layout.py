@@ -31,3 +31,11 @@ class PaymentMethodsLayoutTestCase(unittest.TestCase):
         )
 
         self.assertGreater(one_column_rule, responsive_payment_rule)
+
+    def test_web_checkout_reloads_when_restored_from_navigation_history(self):
+        script = (ROOT / "app/static/js/main.js").read_text(encoding="utf-8")
+
+        self.assertIn("window.addEventListener('pageshow'", script)
+        self.assertIn("event.persisted", script)
+        self.assertIn("navigation.type === 'back_forward'", script)
+        self.assertIn("window.location.reload()", script)

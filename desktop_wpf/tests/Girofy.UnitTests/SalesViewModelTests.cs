@@ -327,6 +327,11 @@ public sealed class SalesViewModelTests
         using var viewModel = new SalesViewModel(apiClient, SessionContext());
         await viewModel.InitializeAsync();
 
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.DiscountText = "1,00";
+        viewModel.PixText = "9,00";
+
         viewModel.ViewHistoricalReceiptCommand.Execute(viewModel.TodaySales.Single());
         await WaitUntilAsync(() => viewModel.IsHistoricalReceipt);
 
@@ -338,6 +343,9 @@ public sealed class SalesViewModelTests
         viewModel.ReturnToInitialState();
         Assert.Null(viewModel.Receipt);
         Assert.False(viewModel.IsHistoricalReceipt);
+        Assert.Empty(viewModel.CartItems);
+        Assert.Equal("0,00", viewModel.DiscountText);
+        Assert.Equal("0,00", viewModel.PixText);
     }
 
     [Fact]

@@ -312,6 +312,12 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
             return;
         }
 
+        if (string.Equals(_activeView, "sales", StringComparison.Ordinal) &&
+            !string.Equals(activeView, "sales", StringComparison.Ordinal))
+        {
+            Sales.ReturnToInitialState();
+        }
+
         _activeView = activeView;
         OnPropertyChanged(nameof(IsDashboardView));
         OnPropertyChanged(nameof(IsCatalogView));

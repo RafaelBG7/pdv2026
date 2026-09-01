@@ -61,6 +61,28 @@ public sealed class ConnectionViewModelTests
     }
 
     [Fact]
+    public async Task Leaving_sales_discards_the_current_sale_draft()
+    {
+        var sessionContext = new AppSessionContext();
+        var apiClient = new StubApiClient(new HealthStatus());
+        using var viewModel = CreateConnectionViewModel(apiClient, sessionContext);
+        sessionContext.Set(CreateSession(canManageSales: true));
+
+        await viewModel.ShowSalesCommand.ExecuteAsync();
+        await viewModel.Sales.OpenSaleEditorCommand.ExecuteAsync();
+        viewModel.Sales.CartItems.Add(new SaleCartItemViewModel(
+            new CatalogProduct { Id = 9, Name = "Produto", SalePrice = 12m, Active = true },
+            1));
+        viewModel.Sales.MoneyText = "12,00";
+
+        await viewModel.ShowDashboardCommand.ExecuteAsync();
+
+        Assert.Empty(viewModel.Sales.CartItems);
+        Assert.Equal("0,00", viewModel.Sales.MoneyText);
+        Assert.False(viewModel.Sales.IsSaleEditorOpen);
+    }
+
+    [Fact]
     public async Task Sales_f3_is_available_immediately_and_does_not_open_duplicate_editor()
     {
         var sessionContext = new AppSessionContext();

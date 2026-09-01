@@ -43,7 +43,7 @@ public sealed class PaymentMethodsLayoutTests
     }
 
     [Fact]
-    public void Checkout_payment_methods_have_a_responsive_layout_handler()
+    public void Checkout_payment_methods_are_always_vertical_and_visible()
     {
         var salesViewPath = FindRepositoryFile(
             "desktop_wpf", "src", "Girofy.Desktop", "Views", "SalesView.xaml");
@@ -55,8 +55,16 @@ public sealed class PaymentMethodsLayoutTests
             .Descendants(presentation + "Grid")
             .Single(element => (string?)element.Attribute(xaml + "Name") == "PaymentMethodsGrid");
 
-        Assert.Equal("PaymentMethodsGrid_SizeChanged", (string?)grid.Attribute("SizeChanged"));
-        Assert.Equal(4, grid.Descendants(presentation + "TextBox").Count());
+        var methodPanels = grid
+            .Elements(presentation + "StackPanel")
+            .ToArray();
+
+        Assert.Equal(4, methodPanels.Length);
+        Assert.Equal(
+            new[] { 0, 2, 4, 6 },
+            methodPanels.Select(panel => (int?)panel.Attribute("Grid.Row") ?? 0).ToArray());
+        Assert.All(methodPanels, panel => Assert.Null(panel.Attribute("Grid.Column")));
+        Assert.Null(grid.Attribute("SizeChanged"));
     }
 
     private static string FindRepositoryFile(params string[] relativeParts)

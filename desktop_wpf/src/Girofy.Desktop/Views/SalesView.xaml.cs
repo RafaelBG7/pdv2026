@@ -19,7 +19,6 @@ public partial class SalesView : UserControl
 {
     private const double CompactSaleEditorWidth = 1100d;
     private const double CompactPaymentWidth = 640d;
-    private const double CompactPaymentMethodsWidth = 460d;
     private static readonly CultureInfo BrazilianCulture = new("pt-BR");
     private static readonly Regex DigitsOnlyRegex = new(@"^\d+$", RegexOptions.Compiled);
     private readonly BarcodeScannerInputService _barcodeScanner = new();
@@ -90,28 +89,6 @@ public partial class SalesView : UserControl
         Grid.SetColumn(PaymentMethodsPanel, 0);
         Grid.SetRow(PaymentSummaryPanel, compact ? 2 : 0);
         Grid.SetColumn(PaymentSummaryPanel, compact ? 0 : 2);
-    }
-
-    private void PaymentMethodsGrid_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        var compact = e.NewSize.Width < CompactPaymentMethodsWidth;
-
-        PaymentMethodGapColumn.Width = compact ? new GridLength(0) : new GridLength(12);
-        PaymentMethodSecondaryColumn.Width = compact ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
-        PaymentMethodGapRow1.Height = new GridLength(10);
-        PaymentMethodGapRow2.Height = compact ? new GridLength(10) : new GridLength(0);
-        PaymentMethodGapRow3.Height = compact ? new GridLength(10) : new GridLength(0);
-
-        PositionPaymentMethod(MoneyMethodPanel, 0, 0);
-        PositionPaymentMethod(DebitMethodPanel, compact ? 2 : 0, compact ? 0 : 2);
-        PositionPaymentMethod(CreditMethodPanel, compact ? 4 : 2, 0);
-        PositionPaymentMethod(PixMethodPanel, compact ? 6 : 2, compact ? 0 : 2);
-    }
-
-    private static void PositionPaymentMethod(FrameworkElement panel, int row, int column)
-    {
-        Grid.SetRow(panel, row);
-        Grid.SetColumn(panel, column);
     }
 
     private void SalesView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

@@ -69,6 +69,38 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="HeaderIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource AccessibilityBorderThickness}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="HeaderButtonSurface"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HeaderButtonSurface" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+                                <Setter TargetName="HeaderButtonSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="HeaderButtonSurface" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid>
         <Grid x:Name="AuthSurface">
@@ -493,55 +525,97 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Padding="18,10" Background="{DynamicResource HeroGradientBrush}"
-                    BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="12">
+            <Border Grid.Row="0" Padding="14,8" Background="{DynamicResource HeroGradientBrush}"
+                    BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="14"
+                    Effect="{DynamicResource CardShadowEffect}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="46" Height="46" CornerRadius="9">
+                        <Border Width="48" Height="48" Padding="3"
+                                Background="{DynamicResource SurfaceElevatedBrush}"
+                                BorderBrush="{DynamicResource BorderStrongBrush}"
+                                BorderThickness="1" CornerRadius="13">
+                            <Border CornerRadius="10">
                             <Border.Background>
                                 <ImageBrush ImageSource="Resources/skygest-app-icon.png"
                                             Stretch="UniformToFill"
                                             Viewbox="90,90,332,332"
                                             ViewboxUnits="Absolute" />
                             </Border.Background>
+                            </Border>
                         </Border>
-                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <StackPanel Margin="13,0,0,0" VerticalAlignment="Center">
                             <TextBlock FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold"
                                        Foreground="{DynamicResource TextPrimaryBrush}" Text="SkyGest" />
+                            <TextBlock Margin="1,-1,0,0" FontSize="{DynamicResource FontSizeTiny}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Text="GESTÃO INTELIGENTE" />
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <ToggleButton Margin="0,0,12,0"
-                                      Command="{Binding Settings.ToggleThemeCommand}"
-                                      IsChecked="{Binding Settings.IsDarkMode, Mode=OneWay}"
-                                      AutomationProperties.Name="Alternar tema"
-                                      Style="{StaticResource ThemeToggleButtonStyle}" />
-                        <Button x:Name="NotificationsBellButton" MinWidth="54" Margin="0,0,14,0"
+                        <Border Margin="0,0,8,0" Padding="5,4"
+                                Background="{DynamicResource SurfaceElevatedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="13">
+                            <ToggleButton Command="{Binding Settings.ToggleThemeCommand}"
+                                          IsChecked="{Binding Settings.IsDarkMode, Mode=OneWay}"
+                                          AutomationProperties.Name="Alternar tema claro ou escuro"
+                                          Style="{StaticResource ThemeToggleButtonStyle}" />
+                        </Border>
+                        <Button x:Name="NotificationsBellButton" Margin="0,0,8,0"
                                 Click="HandleNotificationsBellClick"
                                 ToolTip="Notificações pendentes"
-                                Style="{StaticResource SecondaryButtonStyle}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock FontSize="{DynamicResource FontSizeSection}" Text="🔔" />
-                                <Border Margin="6,0,0,0" Padding="6,2" Background="{DynamicResource ErrorBrush}" CornerRadius="9">
+                                AutomationProperties.Name="Abrir notificações"
+                                Style="{StaticResource HeaderIconButtonStyle}">
+                            <Grid Width="30" Height="30">
+                                <Path Width="20" Height="21" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      Data="M10,2 C6.7,2 4.5,4.7 4.5,8 L4.5,12.2 L2.5,15.5 L17.5,15.5 L15.5,12.2 L15.5,8 C15.5,4.7 13.3,2 10,2 M8,17.5 C8.4,18.8 9.1,19.5 10,19.5 C10.9,19.5 11.6,18.8 12,17.5"
+                                      Stroke="{DynamicResource TextPrimaryBrush}" StrokeThickness="1.7"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" />
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Top" MinWidth="17" Height="17" Padding="4,0"
+                                        Background="{DynamicResource ErrorBrush}" BorderBrush="{DynamicResource SurfaceElevatedBrush}"
+                                        BorderThickness="2" CornerRadius="9">
                                     <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Notifications.HasUnread}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
-                                    <TextBlock FontSize="{DynamicResource FontSizeTiny}" FontWeight="Bold" Foreground="{DynamicResource OnAccentTextBrush}" Text="{Binding Notifications.UnreadText}" />
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="9" FontWeight="Bold"
+                                               Foreground="{DynamicResource OnAccentTextBrush}" Text="{Binding Notifications.UnreadText}" />
                                 </Border>
+                            </Grid>
+                        </Button>
+                        <Border Margin="0,0,8,0" Padding="9,5,12,5"
+                                Background="{DynamicResource SurfaceElevatedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="{DynamicResource AccessibilityBorderThickness}" CornerRadius="13">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="34" Height="34" Margin="0,0,9,0"
+                                        Background="{DynamicResource SelectionSoftBrush}" CornerRadius="17">
+                                    <Path Width="17" Height="17" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Data="M12,12 A4,4 0 1 0 12,4 A4,4 0 1 0 12,12 M4,21 C4.5,16.8 7.2,14.5 12,14.5 C16.8,14.5 19.5,16.8 20,21"
+                                          Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" />
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock MaxWidth="150" FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Login.AuthenticatedUserName}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock MaxWidth="150" Margin="0,-1,0,0" FontSize="{DynamicResource FontSizeCaption}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding Login.AuthenticatedCompanyName}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <Button Width="68" Height="44" Padding="0" Command="{Binding Login.LogoutCommand}"
+                                ToolTip="Encerrar sessão" AutomationProperties.Name="Sair do SkyGest"
+                                Style="{StaticResource SecondaryButtonStyle}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Path Width="15" Height="15" Margin="0,0,7,0" VerticalAlignment="Center"
+                                      Data="M9,3 L4,3 C2.9,3 2,3.9 2,5 L2,15 C2,16.1 2.9,17 4,17 L9,17 M12,6 L16,10 L12,14 M16,10 L7,10"
+                                      Stroke="{DynamicResource TextPrimaryBrush}" StrokeThickness="1.7"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" />
+                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="Sair" />
                             </StackPanel>
                         </Button>
-                        <StackPanel Margin="0,0,18,0" VerticalAlignment="Center">
-                            <TextBlock HorizontalAlignment="Right" FontSize="{DynamicResource FontSizeLabel}" FontWeight="{DynamicResource FontWeightStrong}"
-                                       Foreground="{DynamicResource TextPrimaryBrush}"
-                                       Text="{Binding Login.AuthenticatedUserName}" />
-                            <TextBlock HorizontalAlignment="Right" FontSize="{DynamicResource FontSizeCaption}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       Text="{Binding Login.AuthenticatedCompanyName}" />
-                        </StackPanel>
-                        <Button MinWidth="92" Command="{Binding Login.LogoutCommand}"
-                                Content="Sair" Style="{StaticResource SecondaryButtonStyle}" />
                     </StackPanel>
                 </Grid>
             </Border>

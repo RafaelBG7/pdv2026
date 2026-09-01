@@ -4,7 +4,7 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 
 ## Marco atual
 
-- [Documentação técnica completa e oficial](../DOCUMENTACAO_COMPLETA.md) — revisão do código atual em 30/08/2026, com arquitetura, funcionalidades, API, banco, segurança, operação e dívida técnica.
+- [Documentação técnica completa e oficial](../DOCUMENTACAO_COMPLETA.md) — revisão do código atual em 01/09/2026, commit `e5552cb`, com arquitetura, funcionalidades, API, banco, segurança, operação e dívida técnica.
 - [Rebranding SkyGest](33-rebranding-skygest.md) — nome oficial, novos assets e compatibilidade legada.
 - [Documentação consolidada histórica](../documentacao/DOCUMENTACAO_COMPLETA.txt) — marco anterior preservado; não é mais a fonte principal.
 - [Estado completo em 17/08/2026](31-estado-atual-17-08-2026.md) — marco histórico detalhado.

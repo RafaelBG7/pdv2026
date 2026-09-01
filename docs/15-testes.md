@@ -171,14 +171,14 @@ Auditoria:
 
 ## Última Validação Conhecida
 
-Validação feita em 30/08/2026 no commit `87e4917`:
+Validação backend feita em 01/09/2026 no commit `e5552cb`:
 
 ```text
-Ran 251 tests
+Ran 260 tests
 OK
 ```
 
-O cliente WPF possui adicionalmente 153 casos `[Fact]`/`[Theory]` xUnit inventariados.
+O cliente WPF possui adicionalmente 239 testes xUnit efetivamente executados no CI. O código contém 162 métodos/casos declarados com `[Fact]`/`[Theory]`; teorias parametrizadas expandem a quantidade executada.
 
 Também foram validados:
 

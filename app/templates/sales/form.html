@@ -144,10 +144,10 @@
     </div>
 
     <div class="sale-payment-layout">
-      <div class="payment-grid mt-3">
+      <div class="payment-grid sale-payment-methods mt-3">
         {% for method, label in payment_methods.items() %}
-        <div>
-          <label class="form-label" for="payment_{{ method }}">{{ label }}</label>
+        <div class="sale-payment-method" data-payment-method="{{ method }}">
+          <label class="form-label" for="payment_{{ method }}">{{ label|upper }}</label>
           <input class="form-control" id="payment_{{ method }}" name="payment_{{ method }}" inputmode="numeric" placeholder="0,00" value="{{ form_state['payments'].get(method, '') }}" data-payment-input data-currency-input>
         </div>
         {% endfor %}

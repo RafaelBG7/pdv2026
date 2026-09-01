@@ -7670,7 +7670,7 @@ html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .s
 }
 
 .sale-payment-step .payment-grid {
-  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   align-items: end;
   margin-top: 0 !important;
 }
@@ -7753,7 +7753,7 @@ html[data-text-scale='extra'] .sale-payment-step .sale-payment-layout {
 }
 
 html[data-text-scale='extra'] .sale-payment-step .payment-grid {
-  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
 }
 
 html[data-text-scale='extra'] .sale-payment-step .form-control {

@@ -1231,19 +1231,23 @@
                                         <TextBlock FontSize="{DynamicResource FontSizeSection}" FontWeight="Bold"
                                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                                    Text="Formas de pagamento" />
-                                        <Grid Grid.Row="2">
+                                        <Grid x:Name="PaymentMethodsGrid" Grid.Row="2" SizeChanged="PaymentMethodsGrid_SizeChanged">
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="10" />
+                                                <RowDefinition x:Name="PaymentMethodGapRow1" Height="10" />
                                                 <RowDefinition Height="Auto" />
+                                                <RowDefinition x:Name="PaymentMethodGapRow2" Height="0" />
+                                                <RowDefinition Height="0" />
+                                                <RowDefinition x:Name="PaymentMethodGapRow3" Height="0" />
+                                                <RowDefinition Height="0" />
                                             </Grid.RowDefinitions>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="12" />
-                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition x:Name="PaymentMethodGapColumn" Width="12" />
+                                                <ColumnDefinition x:Name="PaymentMethodSecondaryColumn" Width="*" />
                                             </Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Dinheiro" />
+                                        <StackPanel x:Name="MoneyMethodPanel">
+                                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="DINHEIRO" />
                                             <TextBox x:Name="MoneyInput"
                                                      Tag="money"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
@@ -1254,20 +1258,8 @@
                                                      Text="{Binding MoneyText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Pix" />
-                                            <TextBox x:Name="PixInput"
-                                                     Tag="pix"
-                                                     GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
-                                                     PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
-                                                     PreviewTextInput="PaymentTextBox_PreviewTextInput"
-                                                     DataObject.Pasting="PaymentTextBox_Pasting"
-                                                     LostKeyboardFocus="PaymentTextBox_LostKeyboardFocus"
-                                                     Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{StaticResource TextInputStyle}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Row="2">
-                                            <TextBlock Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Débito" />
+                                        <StackPanel x:Name="DebitMethodPanel" Grid.Column="2">
+                                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="DÉBITO" />
                                             <TextBox x:Name="DebitInput"
                                                      Tag="debit"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
@@ -1278,8 +1270,8 @@
                                                      Text="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
-                                        <StackPanel Grid.Row="2" Grid.Column="2">
-                                            <TextBlock Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Crédito" />
+                                        <StackPanel x:Name="CreditMethodPanel" Grid.Row="2">
+                                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="CRÉDITO" />
                                             <TextBox x:Name="CreditInput"
                                                      Tag="credit"
                                                      GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
@@ -1288,6 +1280,18 @@
                                                      DataObject.Pasting="PaymentTextBox_Pasting"
                                                      LostKeyboardFocus="PaymentTextBox_LostKeyboardFocus"
                                                      Text="{Binding CreditText, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource TextInputStyle}" />
+                                        </StackPanel>
+                                        <StackPanel x:Name="PixMethodPanel" Grid.Row="2" Grid.Column="2">
+                                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="PIX" />
+                                            <TextBox x:Name="PixInput"
+                                                     Tag="pix"
+                                                     GotKeyboardFocus="PaymentTextBox_GotKeyboardFocus"
+                                                     PreviewKeyDown="PaymentTextBox_PreviewKeyDown"
+                                                     PreviewTextInput="PaymentTextBox_PreviewTextInput"
+                                                     DataObject.Pasting="PaymentTextBox_Pasting"
+                                                     LostKeyboardFocus="PaymentTextBox_LostKeyboardFocus"
+                                                     Text="{Binding PixText, UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource TextInputStyle}" />
                                         </StackPanel>
                                         </Grid>

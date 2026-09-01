@@ -47,9 +47,9 @@ from app.time_utils import business_today
 main_bp = Blueprint('main', __name__)
 PAYMENT_METHODS = {
     'money': 'Dinheiro',
-    'pix': 'Pix',
     'debit': 'Débito',
     'credit': 'Crédito',
+    'pix': 'Pix',
 }
 PAYABLE_CATEGORIES = ('Aluguel', 'Luz', 'Água', 'Internet', 'Fornecedor', 'Impostos', 'Outros')
 EXPORT_TYPES = ('produtos', 'vendas', 'caixas', 'contas')

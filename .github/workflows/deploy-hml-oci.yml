@@ -48,7 +48,7 @@ jobs:
         run: |
           python scripts/schema_migrate.py --help
           python scripts/validate_environment_isolation.py --environment homologation --env-file .env.hml.example --allow-example-secrets
-          python -c "from app.services.migration_service import migration_head; assert migration_head('central') == 'central_0008'; assert migration_head('tenant') == 'tenant_0008'"
+          python -c "from app.services.migration_service import migration_head; assert migration_head('central') == 'central_0009'; assert migration_head('tenant') == 'tenant_0009'"
 
       - name: Validar Docker Compose HML
         run: |

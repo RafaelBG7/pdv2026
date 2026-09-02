@@ -186,6 +186,18 @@ public partial class SalesView : UserControl
             return;
         }
 
+        if (e.Key == Key.Enter
+            && viewModel.IsPaymentStepVisible
+            && !viewModel.IsQuantityPopupOpen
+            && !viewModel.IsDiscountPopupVisible
+            && !viewModel.IsOpenCashPromptOpen
+            && !viewModel.IsDiscardConfirmationOpen)
+        {
+            ExecuteIfAllowed(viewModel.FinalizeCommand);
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Escape && viewModel.IsSaleEditorOpen)
         {
             ExecuteIfAllowed(viewModel.HandleSaleEscapeCommand);

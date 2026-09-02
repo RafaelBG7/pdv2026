@@ -80,6 +80,25 @@ public sealed class PaymentMethodsLayoutTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Checkout_enter_finalizes_only_without_conflicting_popups()
+    {
+        var codeBehindPath = FindRepositoryFile(
+            "desktop_wpf", "src", "Girofy.Desktop", "Views", "SalesView.xaml.cs");
+        var source = File.ReadAllText(codeBehindPath);
+
+        Assert.Contains("e.Key == Key.Enter", source, StringComparison.Ordinal);
+        Assert.Contains("viewModel.IsPaymentStepVisible", source, StringComparison.Ordinal);
+        Assert.Contains("!viewModel.IsQuantityPopupOpen", source, StringComparison.Ordinal);
+        Assert.Contains("!viewModel.IsDiscountPopupVisible", source, StringComparison.Ordinal);
+        Assert.Contains("ExecuteIfAllowed(viewModel.FinalizeCommand);", source, StringComparison.Ordinal);
+
+        var salesViewPath = FindRepositoryFile(
+            "desktop_wpf", "src", "Girofy.Desktop", "Views", "SalesView.xaml");
+        var xamlSource = File.ReadAllText(salesViewPath);
+        Assert.Contains("F2 ou Enter finaliza o pedido.", xamlSource, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         foreach (var startPath in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })

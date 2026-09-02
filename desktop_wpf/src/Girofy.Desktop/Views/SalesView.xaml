@@ -1193,7 +1193,7 @@
                                                Text="Finalizar venda" />
                                     <TextBlock Margin="0,4,0,0" FontSize="{DynamicResource FontSizeBody}"
                                                Foreground="{DynamicResource TextSecondaryBrush}"
-                                               Text="Informe uma ou mais formas de pagamento. F2 finaliza o pedido." />
+                                               Text="Informe uma ou mais formas de pagamento. F2 ou Enter finaliza o pedido." />
                                 </StackPanel>
                                 <Button Grid.Column="1" MinWidth="150" Height="42"
                                         Command="{Binding BackToProductsCommand}"

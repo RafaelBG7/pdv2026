@@ -1150,13 +1150,20 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Foreground="{DynamicResource TextMutedBrush}" Text="TOTAL DO PEDIDO" />
                                     <TextBlock Margin="0,3,0,0" FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold"
                                                Foreground="{DynamicResource SuccessBrush}" Text="{Binding TotalText}" />
                                 </StackPanel>
-                                <Button Grid.Column="1" MinWidth="190" Height="52"
+                                <Button Grid.Column="1" MinWidth="150" Height="52"
+                                        Command="{Binding OpenDiscountPopupCommand}"
+                                        Click="OpenDiscountPopupButton_Click"
+                                        AutomationProperties.Name="Aplicar desconto ao pedido"
+                                        Content="F3 - DESCONTO" Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Grid.Column="3" MinWidth="190" Height="52"
                                         Command="{Binding OpenPaymentStepCommand}"
                                         AutomationProperties.Name="Finalizar pedido e escolher pagamento"
                                         Content="Finalizar pedido - F2" Style="{StaticResource PrimaryButtonStyle}" />

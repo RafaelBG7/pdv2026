@@ -108,6 +108,26 @@ public sealed class ConnectionViewModelTests
     }
 
     [Fact]
+    public async Task Sales_f3_opens_discount_while_composing_an_order()
+    {
+        var sessionContext = new AppSessionContext();
+        var apiClient = new StubApiClient(new HealthStatus());
+        using var viewModel = CreateConnectionViewModel(apiClient, sessionContext);
+        sessionContext.Set(CreateSession(canManageSales: true));
+
+        await viewModel.ShowSalesCommand.ExecuteAsync();
+        await viewModel.SalesScreenF3Command.ExecuteAsync();
+        Assert.True(await viewModel.Sales.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.Sales.AddProductCommand.Execute(null);
+
+        Assert.True(viewModel.Sales.IsProductStepOpen);
+        await viewModel.SalesScreenF3Command.ExecuteAsync();
+
+        Assert.True(viewModel.Sales.IsDiscountPopupVisible);
+        Assert.False(viewModel.Sales.IsPaymentStepVisible);
+    }
+
+    [Fact]
     public async Task Sales_f3_remains_blocked_without_sales_permission()
     {
         var sessionContext = new AppSessionContext();

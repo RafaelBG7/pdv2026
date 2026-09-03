@@ -14,12 +14,12 @@
 
 #ifdef Homologation
   #define AppName "SkyGest Homologação"
-  #define AppIdValue "{D6DA35A6-4C56-4D5D-94A8-0EF938019421}"
+  #define AppIdValue "{{D6DA35A6-4C56-4D5D-94A8-0EF938019421}"
   #define InstallDirectory "SkyGest-Homologacao"
   #define OutputFileName "SkyGest-Homologacao-Setup-" + AppVersion
 #else
   #define AppName "SkyGest"
-  #define AppIdValue "{4A79774E-9F9D-4CB5-84A6-69BF567BE89B}"
+  #define AppIdValue "{{4A79774E-9F9D-4CB5-84A6-69BF567BE89B}"
   #define InstallDirectory "SkyGest"
   #define OutputFileName "SkyGest-Setup-" + AppVersion
 #endif

@@ -227,7 +227,7 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
 
     private async Task ExecuteSalesScreenF3Async(CancellationToken cancellationToken)
     {
-        if (Sales.IsPaymentStepVisible)
+        if (Sales.IsPaymentStepVisible || Sales.IsProductStepOpen)
         {
             if (Sales.OpenDiscountPopupCommand.CanExecute(null))
             {

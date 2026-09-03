@@ -99,6 +99,22 @@ public sealed class PaymentMethodsLayoutTests
         Assert.Contains("F2 ou Enter finaliza o pedido.", xamlSource, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Product_step_exposes_discount_action_with_f3_label()
+    {
+        var salesViewPath = FindRepositoryFile(
+            "desktop_wpf", "src", "Girofy.Desktop", "Views", "SalesView.xaml");
+        var document = XDocument.Load(salesViewPath);
+        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+
+        var discountButton = document
+            .Descendants(presentation + "Button")
+            .Single(element => (string?)element.Attribute("Content") == "F3 - DESCONTO");
+
+        Assert.Equal("{Binding OpenDiscountPopupCommand}", (string?)discountButton.Attribute("Command"));
+        Assert.Equal("OpenDiscountPopupButton_Click", (string?)discountButton.Attribute("Click"));
+    }
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         foreach (var startPath in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })

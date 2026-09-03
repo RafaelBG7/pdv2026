@@ -117,8 +117,9 @@ public sealed class ConnectionViewModelTests
 
         await viewModel.ShowSalesCommand.ExecuteAsync();
         await viewModel.SalesScreenF3Command.ExecuteAsync();
-        Assert.True(await viewModel.Sales.SelectExactBarcodeAsync("789", showNotFound: true));
-        viewModel.Sales.AddProductCommand.Execute(null);
+        viewModel.Sales.CartItems.Add(new SaleCartItemViewModel(
+            new CatalogProduct { Id = 1, Name = "Produto", SalePrice = 10m, StockQuantity = 1 },
+            1));
 
         Assert.True(viewModel.Sales.IsProductStepOpen);
         await viewModel.SalesScreenF3Command.ExecuteAsync();

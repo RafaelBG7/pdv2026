@@ -6,7 +6,7 @@ public static class SkyGestRuntimeEnvironment
 
     public static bool IsHomologation =>
         string.Equals(
-            System.Environment.GetEnvironmentVariable("SKYGEST_ENVIRONMENT"),
+            global::System.Environment.GetEnvironmentVariable("SKYGEST_ENVIRONMENT"),
             "Homologation",
             StringComparison.OrdinalIgnoreCase)
         || File.Exists(Path.Combine(AppContext.BaseDirectory, HomologationMarkerFileName));

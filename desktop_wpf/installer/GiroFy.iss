@@ -10,27 +10,38 @@
   #define OutputDir "..\artifacts\installer"
 #endif
 
-#define AppName "SkyGest"
 #define AppExeName "SkyGest.exe"
 
+#ifdef Homologation
+  #define AppName "SkyGest Homologação"
+  #define AppIdValue "{D6DA35A6-4C56-4D5D-94A8-0EF938019421}"
+  #define InstallDirectory "SkyGest-Homologacao"
+  #define OutputFileName "SkyGest-Homologacao-Setup-" + AppVersion
+#else
+  #define AppName "SkyGest"
+  #define AppIdValue "{4A79774E-9F9D-4CB5-84A6-69BF567BE89B}"
+  #define InstallDirectory "SkyGest"
+  #define OutputFileName "SkyGest-Setup-" + AppVersion
+#endif
+
 [Setup]
-AppId={{4A79774E-9F9D-4CB5-84A6-69BF567BE89B}
+AppId={#AppIdValue}
 AppName={#AppName}
 AppVersion={#AppVersion}
 VersionInfoVersion={#AppVersion}
 VersionInfoProductVersion={#AppVersion}
 VersionInfoDescription=Instalador de desenvolvimento do SkyGest Windows
-DefaultDirName={localappdata}\Programs\SkyGest
-DefaultGroupName=SkyGest
+DefaultDirName={localappdata}\Programs\{#InstallDirectory}
+DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
-OutputBaseFilename=SkyGest-Setup-{#AppVersion}
+OutputBaseFilename={#OutputFileName}
 SetupIconFile=..\src\Girofy.Desktop\Resources\SkyGest.ico
 UninstallDisplayIcon={app}\{#AppExeName}
-UninstallDisplayName=SkyGest
+UninstallDisplayName={#AppName}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -50,6 +61,9 @@ Name: "desktopicon"; Description: "Criar atalho na Área de Trabalho"; GroupDesc
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+#ifdef Homologation
+Source: "SkyGest.Homologation"; DestDir: "{app}"; Flags: ignoreversion
+#endif
 
 [InstallDelete]
 ; Remove somente binário e atalhos visuais antigos durante o upgrade. Dados locais são preservados.
@@ -58,14 +72,16 @@ Type: files; Name: "{userprograms}\GiroFy.lnk"
 Type: files; Name: "{userdesktop}\GiroFy.lnk"
 
 [Icons]
-Name: "{userprograms}\SkyGest"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"
-Name: "{userdesktop}\SkyGest"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{userprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"
+Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
+#ifndef Homologation
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\girofy"; ValueType: string; ValueData: "URL:SkyGest Protocol"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\girofy"; ValueName: "URL Protocol"; ValueType: string; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\girofy\DefaultIcon"; ValueType: string; ValueData: "{app}\{#AppExeName},0"
 Root: HKCU; Subkey: "Software\Classes\girofy\shell\open\command"; ValueType: string; ValueData: """{app}\{#AppExeName}"" ""%1"""
+#endif
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "Abrir o SkyGest"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExeName}"; Description: "Abrir o {#AppName}"; Flags: nowait postinstall skipifsilent

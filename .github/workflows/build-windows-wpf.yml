@@ -185,11 +185,25 @@ jobs:
           ./desktop_wpf/installer/build-installer.ps1
           -Version '${{ steps.version.outputs.version }}'
 
+      - name: Build homologation installer
+        shell: pwsh
+        run: >-
+          ./desktop_wpf/installer/build-installer.ps1
+          -Version '${{ steps.version.outputs.version }}'
+          -Homologation
+
       - name: Smoke test installer lifecycle
         shell: pwsh
         run: >-
           ./desktop_wpf/installer/test-installer.ps1
           -Version '${{ steps.version.outputs.version }}'
+
+      - name: Smoke test homologation installer lifecycle
+        shell: pwsh
+        run: >-
+          ./desktop_wpf/installer/test-installer.ps1
+          -Version '${{ steps.version.outputs.version }}'
+          -Homologation
 
       - name: Upload portable Windows preview artifact
         uses: actions/upload-artifact@v4
@@ -207,6 +221,14 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload homologation installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyGest-Homologacao-Installer-${{ steps.version.outputs.version }}
+          path: desktop_wpf/artifacts/installer/SkyGest-Homologacao-Setup-${{ steps.version.outputs.version }}.exe
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish executable and installer in Windows Preview release
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -215,11 +237,15 @@ jobs:
         run: |
           $executable = 'desktop_wpf/artifacts/SkyGest-Windows-WPF/SkyGest.exe'
           $installer = 'desktop_wpf/artifacts/installer/SkyGest-Setup-${{ steps.version.outputs.version }}.exe'
+          $homologationInstaller = 'desktop_wpf/artifacts/installer/SkyGest-Homologacao-Setup-${{ steps.version.outputs.version }}.exe'
           if (-not (Test-Path $executable)) {
             throw "Executável não encontrado em $executable"
           }
           if (-not (Test-Path $installer)) {
             throw "Instalador não encontrado em $installer"
+          }
+          if (-not (Test-Path $homologationInstaller)) {
+            throw "Instalador de homologação não encontrado em $homologationInstaller"
           }
 
           gh release view windows-preview --repo $env:GITHUB_REPOSITORY *> $null
@@ -237,6 +263,6 @@ jobs:
             --notes 'Canal de desenvolvimento do SkyGest Windows. Não é uma versão comercial estável.' `
             --prerelease
 
-          gh release upload windows-preview $executable $installer `
+          gh release upload windows-preview $executable $installer $homologationInstaller `
             --repo $env:GITHUB_REPOSITORY `
             --clobber

@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$Version,
-    [string]$InstallerPath = (Join-Path $PSScriptRoot "..\artifacts\installer\SkyGest-Setup-$Version.exe")
+    [string]$InstallerPath,
+    [switch]$Homologation
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,11 +12,18 @@ if ([string]::IsNullOrWhiteSpace($Version) -or $Version -notmatch '^\d+\.\d+\.\d
     throw "Version inválida: $Version"
 }
 
+$appName = if ($Homologation) { 'SkyGest Homologação' } else { 'SkyGest' }
+$installDirectoryName = if ($Homologation) { 'SkyGest-Homologacao' } else { 'SkyGest' }
+$installerName = if ($Homologation) { "SkyGest-Homologacao-Setup-$Version.exe" } else { "SkyGest-Setup-$Version.exe" }
+if ([string]::IsNullOrWhiteSpace($InstallerPath)) {
+    $InstallerPath = Join-Path $PSScriptRoot "..\artifacts\installer\$installerName"
+}
 $installer = (Resolve-Path $InstallerPath).Path
-$installDir = Join-Path $env:LOCALAPPDATA 'Programs\SkyGest'
+$installDir = Join-Path $env:LOCALAPPDATA "Programs\$installDirectoryName"
 $installedExe = Join-Path $installDir 'SkyGest.exe'
-$startMenuShortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\SkyGest.lnk'
-$dataDir = Join-Path $env:LOCALAPPDATA 'Girofy'
+$startMenuShortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$appName.lnk"
+$dataDirName = if ($Homologation) { 'Girofy-Homologation' } else { 'Girofy' }
+$dataDir = Join-Path $env:LOCALAPPDATA $dataDirName
 $preservationMarker = Join-Path $dataDir 'installer-smoke.marker'
 $uninstallRegistryRoots = @(
     'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
@@ -38,7 +46,7 @@ function Get-SkyGestUninstallEntry {
         }
         $entry = Get-ChildItem $root |
             Get-ItemProperty |
-            Where-Object { $_.DisplayName -eq 'SkyGest' } |
+            Where-Object { $_.DisplayName -eq $appName } |
             Select-Object -First 1
         if ($null -ne $entry) {
             return $entry
@@ -56,10 +64,17 @@ function Assert-Installed {
     }
     $entry = Get-SkyGestUninstallEntry
     if ($null -eq $entry) {
-        throw 'SkyGest não foi registrado em Aplicativos instalados.'
+        throw "$appName não foi registrado em Aplicativos instalados."
     }
     if ($entry.DisplayVersion -ne $Version) {
         throw "Versão registrada ($($entry.DisplayVersion)) difere de $Version."
+    }
+    $environmentMarker = Join-Path $installDir 'SkyGest.Homologation'
+    if ($Homologation -and -not (Test-Path -LiteralPath $environmentMarker -PathType Leaf)) {
+        throw 'Marcador obrigatório do ambiente de homologação não foi instalado.'
+    }
+    if (-not $Homologation -and (Test-Path -LiteralPath $environmentMarker)) {
+        throw 'O instalador de produção recebeu indevidamente o marcador de homologação.'
     }
 }
 

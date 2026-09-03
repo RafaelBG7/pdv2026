@@ -1,10 +1,12 @@
+using Girofy.Infrastructure.Runtime;
+
 namespace Girofy.Infrastructure.Storage;
 
 internal static class AppDataPaths
 {
     public static string DirectoryPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Girofy");
+        SkyGestRuntimeEnvironment.DataDirectoryName);
 
     public static string SessionFilePath => Path.Combine(DirectoryPath, "auth.dat");
 

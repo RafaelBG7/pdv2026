@@ -2,13 +2,15 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Girofy.Application.Abstractions;
 using Girofy.Application.Models;
+using Girofy.Infrastructure.Runtime;
 
 namespace Girofy.Infrastructure.Storage;
 
 public sealed class DpapiRegistrationHandoffStore : IRegistrationHandoffStore
 {
     private static readonly string DirectoryPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Girofy");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        SkyGestRuntimeEnvironment.DataDirectoryName);
     private static readonly string FilePath = Path.Combine(DirectoryPath, "registration-handoff.dat");
 
     public async Task SaveAsync(PendingRegistrationHandoff handoff, CancellationToken cancellationToken)

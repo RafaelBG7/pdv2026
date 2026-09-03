@@ -10,6 +10,7 @@ using Girofy.Application.ViewModels;
 using Girofy.Desktop.Platform;
 using Girofy.Infrastructure.Api;
 using Girofy.Infrastructure.Logging;
+using Girofy.Infrastructure.Runtime;
 using Girofy.Infrastructure.Storage;
 using Girofy.Infrastructure.System;
 using Microsoft.Extensions.Configuration;
@@ -22,8 +23,12 @@ namespace Girofy.Desktop;
 public partial class App : System.Windows.Application
 {
     // Identificadores legados preservados para impedir duas instâncias durante upgrades.
-    private const string SingleInstanceMutexName = @"Local\Girofy.Desktop.SingleInstance";
-    private const string ActivationPipeName = "Girofy.Desktop.Activation";
+    private static readonly string SingleInstanceMutexName = SkyGestRuntimeEnvironment.IsHomologation
+        ? @"Local\Girofy.Desktop.Homologation.SingleInstance"
+        : @"Local\Girofy.Desktop.SingleInstance";
+    private static readonly string ActivationPipeName = SkyGestRuntimeEnvironment.IsHomologation
+        ? "Girofy.Desktop.Homologation.Activation"
+        : "Girofy.Desktop.Activation";
     private readonly Mutex _singleInstanceMutex = new(false, SingleInstanceMutexName);
     private readonly bool _ownsSingleInstance;
     private readonly IHost? _host;
@@ -52,10 +57,7 @@ public partial class App : System.Windows.Application
                     ["Api:TimeoutSeconds"] = "10",
                 });
                 configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
-                if (string.Equals(
-                    Environment.GetEnvironmentVariable("SKYGEST_ENVIRONMENT"),
-                    "Homologation",
-                    StringComparison.OrdinalIgnoreCase))
+                if (SkyGestRuntimeEnvironment.IsHomologation)
                 {
                     configuration.AddJsonFile("appsettings.Homologation.json", optional: false, reloadOnChange: false);
                 }
@@ -182,7 +184,12 @@ public partial class App : System.Windows.Application
                 _logger.LogWarning(themeException, "Saved desktop theme could not be applied; using the default theme.");
             }
             _logger.LogInformation("SkyGest Windows started.");
-            _host.Services.GetRequiredService<MainWindow>().Show();
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            if (SkyGestRuntimeEnvironment.IsHomologation)
+            {
+                mainWindow.Title = "SkyGest Homologação";
+            }
+            mainWindow.Show();
             _ = ListenForActivationsAsync();
             var callback = e.Args.FirstOrDefault(argument => Uri.TryCreate(argument, UriKind.Absolute, out var uri)
                 && string.Equals(uri.Scheme, "girofy", StringComparison.OrdinalIgnoreCase));

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Girofy.Infrastructure.Runtime;
 
 namespace Girofy.Infrastructure.Logging;
 
@@ -9,7 +10,7 @@ public sealed class LocalFileLoggerProvider : ILoggerProvider
 
     public static string LogDirectoryPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Girofy",
+        SkyGestRuntimeEnvironment.DataDirectoryName,
         "logs");
 
     public static string LogFilePath => Path.Combine(LogDirectoryPath, "desktop.log");

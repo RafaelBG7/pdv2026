@@ -3,7 +3,8 @@ param(
     [string]$Version,
     [string]$PublishDir = (Join-Path $PSScriptRoot '..\artifacts\SkyGest-Windows-WPF'),
     [string]$OutputDir = (Join-Path $PSScriptRoot '..\artifacts\installer'),
-    [string]$IsccPath
+    [string]$IsccPath,
+    [switch]$Homologation
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,17 +71,28 @@ if ([string]::IsNullOrWhiteSpace($IsccPath) -or -not (Test-Path -LiteralPath $Is
 New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 $resolvedOutputDir = (Resolve-Path $OutputDir).Path
 
-& $IsccPath `
-    "/DAppVersion=$Version" `
-    "/DPublishDir=$resolvedPublishDir" `
-    "/DOutputDir=$resolvedOutputDir" `
-    $installerScript
+$compilerArguments = @(
+    "/DAppVersion=$Version",
+    "/DPublishDir=$resolvedPublishDir",
+    "/DOutputDir=$resolvedOutputDir"
+)
+if ($Homologation) {
+    $compilerArguments += "/DHomologation=1"
+}
+$compilerArguments += $installerScript
+
+& $IsccPath $compilerArguments
 
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup encerrou com código $LASTEXITCODE."
 }
 
-$installer = Join-Path $resolvedOutputDir "SkyGest-Setup-$Version.exe"
+$installerName = if ($Homologation) {
+    "SkyGest-Homologacao-Setup-$Version.exe"
+} else {
+    "SkyGest-Setup-$Version.exe"
+}
+$installer = Join-Path $resolvedOutputDir $installerName
 if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
     throw "Instalador esperado não foi gerado: $installer"
 }

@@ -110,6 +110,7 @@
           <button class="btn btn-primary mt-3" type="submit">Alterar senha</button>
         </form>
       </section>
+
     </div>
   </section>
 
@@ -296,6 +297,7 @@
           <button class="btn btn-primary mt-3" type="submit">Contratar</button>
         </form>
       </section>
+
     </div>
   </section>
 
@@ -520,6 +522,14 @@
           <button class="btn btn-primary mt-3" type="submit">Importar produtos</button>
         </form>
       </section>
+
+      {% if can_import_historical_reports %}
+      <section class="card card-dark sale-panel">
+        <h5 class="mb-3">Relatórios históricos</h5>
+        <p class="text-muted">Importe resumos diários de outro sistema com validação e pré-visualização antes da gravação.</p>
+        <a class="btn btn-outline-light" href="{{ url_for('historical_reports.index') }}">Importar relatórios históricos</a>
+      </section>
+      {% endif %}
     </div>
   </section>
   {% endif %}

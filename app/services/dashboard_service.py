@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import case, func
 from sqlalchemy.orm import selectinload
 
-from app.models import Category, CashRegister, Payable, Payment, Product, Sale, SaleItem, User
+from app.models import Category, CashRegister, HistoricalDailyReport, Payable, Payment, Product, Sale, SaleItem, User
 from app.money import money_decimal
 from app.time_utils import (
     business_date_range_utc,
@@ -127,8 +127,16 @@ def _sales_totals(db_session, company_id, start_at, end_at):
         func.count(Sale.id),
         func.coalesce(func.sum(Sale.final_amount), Decimal('0.00')),
     ).filter(*filters).one()
-    count = int(row[0] or 0)
-    total = _money(row[1])
+    historical = db_session.query(
+        func.coalesce(func.sum(HistoricalDailyReport.sales_count), 0),
+        func.coalesce(func.sum(HistoricalDailyReport.revenue), Decimal('0.00')),
+    ).filter(
+        HistoricalDailyReport.company_id == company_id,
+        HistoricalDailyReport.report_date >= start_at.date(),
+        HistoricalDailyReport.report_date < end_at.date(),
+    ).one()
+    count = int(row[0] or 0) + int(historical[0] or 0)
+    total = _money(row[1]) + _money(historical[1])
     return {
         'sales_count': count,
         'sales_total': total,
@@ -148,7 +156,21 @@ def _sales_profit(db_session, company_id, start_at=None, end_at=None, cash_regis
         query = query.filter(Sale.created_at < end_at)
     if cash_register_id is not None:
         query = query.filter(Sale.cash_register_id == cash_register_id)
-    return _money(query.scalar())
+    real_profit = _money(query.scalar())
+    if cash_register_id is not None or start_at is None or end_at is None:
+        return real_profit
+    historical = db_session.query(
+        func.count(HistoricalDailyReport.id),
+        func.count(HistoricalDailyReport.gross_profit),
+        func.coalesce(func.sum(HistoricalDailyReport.gross_profit), Decimal('0.00')),
+    ).filter(
+        HistoricalDailyReport.company_id == company_id,
+        HistoricalDailyReport.report_date >= start_at.date(),
+        HistoricalDailyReport.report_date < end_at.date(),
+    ).one()
+    if historical[0] != historical[1]:
+        return None
+    return _money(real_profit + _money(historical[2]))
 
 
 def _payment_totals(db_session, company_id, start_at, end_at):
@@ -239,6 +261,14 @@ def _revenue_series(db_session, company_id, start_at, end_at, start_date, end_da
         .order_by(Sale.created_at.asc())
         .all()
     )
+    historical_rows = db_session.query(
+        HistoricalDailyReport.report_date,
+        HistoricalDailyReport.revenue,
+    ).filter(
+        HistoricalDailyReport.company_id == company_id,
+        HistoricalDailyReport.report_date >= start_date,
+        HistoricalDailyReport.report_date <= end_date,
+    ).order_by(HistoricalDailyReport.report_date.asc()).all()
     duration = (end_date - start_date).days + 1
     if duration == 1:
         buckets = {hour: Decimal('0.00') for hour in range(24)}
@@ -246,6 +276,9 @@ def _revenue_series(db_session, company_id, start_at, end_at, start_date, end_da
             local = to_business_datetime(created_at)
             buckets[local.hour] += money_decimal(amount)
         points = [{'label': f'{hour:02d}h', 'total': _money(value)} for hour, value in buckets.items()]
+        historical_total = sum((money_decimal(amount) for _, amount in historical_rows), Decimal('0.00'))
+        if historical_total:
+            points.append({'label': 'Histórico', 'total': _money(historical_total)})
         granularity = 'hour'
     elif duration <= 93:
         buckets = {start_date + timedelta(days=offset): Decimal('0.00') for offset in range(duration)}
@@ -253,6 +286,9 @@ def _revenue_series(db_session, company_id, start_at, end_at, start_date, end_da
             local_date = to_business_datetime(created_at).date()
             if local_date in buckets:
                 buckets[local_date] += money_decimal(amount)
+        for report_date, amount in historical_rows:
+            if report_date in buckets:
+                buckets[report_date] += money_decimal(amount)
         points = [{'label': day.strftime('%d/%m'), 'total': _money(value)} for day, value in buckets.items()]
         granularity = 'day'
     else:
@@ -264,6 +300,10 @@ def _revenue_series(db_session, company_id, start_at, end_at, start_date, end_da
         for created_at, amount in rows:
             local = to_business_datetime(created_at)
             key = (local.year, local.month)
+            if key in buckets:
+                buckets[key] += money_decimal(amount)
+        for report_date, amount in historical_rows:
+            key = (report_date.year, report_date.month)
             if key in buckets:
                 buckets[key] += money_decimal(amount)
         points = [
@@ -467,12 +507,16 @@ def build_dashboard_snapshot(
         'summary': {
             **totals,
             'profit': profit,
+            'profit_complete': profit is not None,
             'average_ticket': totals['average_ticket'] if can_view_reports else None,
             'low_stock_count': low_stock_count,
             'payables_due_count': payable_count,
             'sales_total_change': _change_percent(totals['sales_total'], previous_totals['sales_total']),
             'sales_count_change': _change_percent(totals['sales_count'], previous_totals['sales_count']),
-            'profit_change': _change_percent(profit, previous_profit) if can_view_reports else None,
+            'profit_change': (
+                _change_percent(profit, previous_profit)
+                if can_view_reports and profit is not None and previous_profit is not None else None
+            ),
             'customers': None,
             'customers_change': None,
             'customers_available': False,

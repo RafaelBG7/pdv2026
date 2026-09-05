@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.extensions import db
 from app.money import format_brl as format_brl_decimal, money_decimal, parse_money_decimal
-from app.models import AuditLog, CashRegister, Category, Company, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.models import AuditLog, CashRegister, Category, Company, HistoricalDailyReport, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.permissions import authorize_role_override, has_permission_view_override, permission_required
 from app.services.audit_service import audit_action_label, entity_label, record_audit_event
 from app.services.cash_register_service import (
@@ -695,7 +695,31 @@ def build_sales_report(sales, include_cancelled=False):
     return totals, payment_totals, top_products
 
 
-def build_sales_chart(period, start, end, sales):
+def merge_historical_report_totals(totals, historical_rows):
+    historical_rows = list(historical_rows)
+    historical_sales = sum((row.sales_count or 0 for row in historical_rows), 0)
+    historical_revenue = sum((money_decimal(row.revenue) for row in historical_rows), Decimal('0.00'))
+    totals['sales_count'] += historical_sales
+    totals['subtotal'] = money_decimal(totals['subtotal'] + historical_revenue)
+    totals['final'] = money_decimal(totals['final'] + historical_revenue)
+    if any(row.gross_profit is None for row in historical_rows):
+        totals['profit'] = None
+        totals['profit_complete'] = False
+    else:
+        historical_profit = sum((money_decimal(row.gross_profit) for row in historical_rows), Decimal('0.00'))
+        totals['profit'] = money_decimal(totals['profit'] + historical_profit)
+        totals['profit_complete'] = True
+    totals['average_ticket'] = (
+        money_decimal(totals['final'] / totals['sales_count'])
+        if totals['sales_count'] else Decimal('0.00')
+    )
+    totals['historical_days'] = len(historical_rows)
+    totals['historical_sales_count'] = historical_sales
+    totals['historical_revenue'] = money_decimal(historical_revenue)
+    return totals
+
+
+def build_sales_chart(period, start, end, sales, historical_rows=()):
     buckets = []
 
     if period == 'annual':
@@ -719,6 +743,10 @@ def build_sales_chart(period, start, end, sales):
                 key = (sale_date.year, sale_date.month)
                 if key in bucket_index:
                     bucket_index[key]['total'] += money_decimal(sale.final_amount)
+        for report in historical_rows:
+            key = (report.report_date.year, report.report_date.month)
+            if key in bucket_index:
+                bucket_index[key]['total'] += money_decimal(report.revenue)
     else:
         current = start
         while current <= end:
@@ -736,6 +764,9 @@ def build_sales_chart(period, start, end, sales):
                 sale_date = sale.created_at.date()
                 if sale_date in bucket_index:
                     bucket_index[sale_date]['total'] += money_decimal(sale.final_amount)
+        for report in historical_rows:
+            if report.report_date in bucket_index:
+                bucket_index[report.report_date]['total'] += money_decimal(report.revenue)
 
     max_total = max((bucket['total'] for bucket in buckets), default=Decimal('0.00'))
     for bucket in buckets:
@@ -1557,8 +1588,16 @@ def reports():
     ).order_by(Sale.created_at.desc()).all()
 
     totals, payment_totals, top_products = build_sales_report(sales)
-    daily_activity = build_daily_sales_activity(start_datetime, end_datetime, chart_metric) if period == 'daily' else None
-    chart_data = daily_activity['buckets'] if daily_activity else build_sales_chart(period, start, end, sales)
+    historical_rows = tenant_query(HistoricalDailyReport).filter(
+        HistoricalDailyReport.report_date >= start,
+        HistoricalDailyReport.report_date <= end,
+    ).order_by(HistoricalDailyReport.report_date.asc()).all()
+    totals = merge_historical_report_totals(totals, historical_rows)
+    daily_activity = (
+        build_daily_sales_activity(start_datetime, end_datetime, chart_metric)
+        if period == 'daily' and not historical_rows else None
+    )
+    chart_data = daily_activity['buckets'] if daily_activity else build_sales_chart(period, start, end, sales, historical_rows)
 
     sales_table = sales[:sales_table_limit]
     sales_display_count = len(sales_table)
@@ -1606,6 +1645,7 @@ def reports():
         daily_activity=daily_activity,
         payment_totals=payment_totals,
         top_products=top_products,
+        historical_rows=historical_rows,
         product_report=product_report,
         product_report_totals=product_report_totals,
         product_start_date=product_start,

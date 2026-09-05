@@ -22,8 +22,8 @@ class VersionedMigrationTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             central = self.engine(directory, 'central.db')
             tenant = self.engine(directory, 'tenant.db')
-            self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0009')
-            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0009')
+            self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0010')
+            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0010')
             self.assertEqual(assert_database_at_head(central, 'central'), migration_head('central'))
             self.assertEqual(assert_database_at_head(tenant, 'tenant'), migration_head('tenant'))
             self.assertIn('sales', inspect(tenant).get_table_names())
@@ -43,7 +43,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
                 ))
                 connection.commit()
 
-            self.assertEqual(upgrade_database(engine, 'tenant').current_revision, 'tenant_0009')
+            self.assertEqual(upgrade_database(engine, 'tenant').current_revision, 'tenant_0010')
             columns = {column['name']: column for column in inspect(engine).get_columns('payables')}
             with engine.connect() as connection:
                 amount = connection.execute(text('SELECT amount FROM payables WHERE id = 3')).scalar_one()
@@ -67,7 +67,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
             self.assertTrue(first.baseline_applied)
             self.assertFalse(second.baseline_applied)
             self.assertEqual(name, 'Cliente')
-            self.assertEqual(database_revision(engine), 'central_0009')
+            self.assertEqual(database_revision(engine), 'central_0010')
             engine.dispose()
 
     def test_incompatible_legacy_database_fails_without_stamp(self):
@@ -101,7 +101,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
                 connection.commit()
             with self.assertRaises(MigrationError):
                 assert_database_at_head(engine, 'central')
-            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0009')
+            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0010')
             engine.dispose()
 
     def test_system_company_is_detached_from_tenant_database(self):
@@ -116,7 +116,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
                 ))
                 connection.commit()
 
-            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0009')
+            self.assertEqual(upgrade_database(engine, 'central').current_revision, 'central_0010')
             with engine.connect() as connection:
                 paths = dict(connection.execute(text(
                     'SELECT id, database_path FROM companies ORDER BY id'
@@ -202,7 +202,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
                     connection.commit()
 
                 result = upgrade_database(engine, database_kind)
-                self.assertEqual(result.current_revision, f'{database_kind}_0009')
+                self.assertEqual(result.current_revision, f'{database_kind}_0010')
                 with engine.connect() as connection:
                     company = connection.execute(text(
                         'SELECT pix_fee_percent, debit_fee_percent, credit_fee_percent '

@@ -2442,6 +2442,10 @@ def settings():
         backup_frequencies=BACKUP_FREQUENCIES,
         backup_frequency_label=backup_frequency_label,
         can_import_products=can_import_products_settings(),
+        can_import_historical_reports=(
+            current_user.role in ('admin', 'master')
+            and (current_app.config.get('ENVIRONMENT') or current_app.config.get('APP_ENV') or 'development').lower() != 'production'
+        ),
         can_export_data=can_export_data_settings(),
         key_records=key_records,
         key_plans=MASTER_KEY_PLANS,

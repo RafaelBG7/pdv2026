@@ -19,3 +19,4 @@ from .api_refresh_token import ApiRefreshToken
 from .app_registration_code import AppRegistrationCode
 from .api_sale_request import ApiSaleRequest
 from .notification import Notification, NotificationPreference
+from .historical_report import HistoricalDailyReport, HistoricalReportImportBatch

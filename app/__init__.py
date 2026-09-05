@@ -408,12 +408,13 @@ def create_app(config_class=Config):
 
     with app.app_context():
         from app.models import Company, User
-        from app.routes import auth_bp, catalog_bp, main_bp
+        from app.routes import auth_bp, catalog_bp, historical_reports_bp, main_bp
         from app.routes.api import api_v1_bp
         from app.tenant import tenant_database_identifier, tenant_engine
 
         app.register_blueprint(auth_bp)
         app.register_blueprint(catalog_bp)
+        app.register_blueprint(historical_reports_bp)
         app.register_blueprint(api_v1_bp)
         app.register_blueprint(main_bp)
 
@@ -526,7 +527,7 @@ def create_app(config_class=Config):
             return None
         if app.config.get('TESTING') or session.get('master_company_id'):
             return None
-        if request.blueprint in {'main', 'catalog'} and request.endpoint != 'main.master_audit_logs':
+        if request.blueprint in {'main', 'catalog', 'historical_reports'} and request.endpoint != 'main.master_audit_logs':
             return redirect(url_for('auth.master_dashboard'))
         return None
 

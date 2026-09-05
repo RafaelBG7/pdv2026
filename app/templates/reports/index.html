@@ -58,7 +58,7 @@
   </div>
   <div class="card card-dark report-card">
     <span>Lucro</span>
-    <strong>R$ {{ '%.2f'|format(totals.profit or 0)|replace('.', ',') }}</strong>
+    {% if totals.profit_complete is defined and not totals.profit_complete %}<strong>Indisponível</strong><small>Histórico incompleto</small>{% else %}<strong>R$ {{ '%.2f'|format(totals.profit or 0)|replace('.', ',') }}</strong>{% endif %}
   </div>
   <div class="card card-dark report-card">
     <span>Ticket médio</span>
@@ -73,6 +73,13 @@
     <strong>R$ {{ '%.2f'|format(totals.discount or 0)|replace('.', ',') }}</strong>
   </div>
 </div>
+
+{% if totals.historical_days %}
+<div class="alert alert-info mb-4">
+  Este período combina vendas SkyGest com {{ totals.historical_days }} resumo{{ 's' if totals.historical_days != 1 }} diário{{ 's' if totals.historical_days != 1 }} importado{{ 's' if totals.historical_days != 1 }}.
+  O ticket médio usa o faturamento total dividido pelas {{ totals.sales_count }} vendas do período.
+</div>
+{% endif %}
 
 {% if daily_activity %}
 <section class="daily-peak-grid mb-4" aria-label="Estatísticas de horários do dia">
@@ -167,8 +174,8 @@
       <div>
         <h5 class="mb-1">Vendas do período</h5>
         <small class="text-muted">
-          Mostrando {{ sales_display_count }} de {{ totals.sales_count }} venda{{ 's' if totals.sales_count != 1 else '' }}.
-          Totais, gráficos, pagamentos e produtos consideram o período completo.
+          Mostrando {{ sales_display_count }} venda{{ 's' if sales_display_count != 1 else '' }} SkyGest.
+          Totais e gráficos também consideram {{ totals.historical_sales_count or 0 }} venda{{ 's' if (totals.historical_sales_count or 0) != 1 else '' }} do histórico importado.
         </small>
       </div>
     </div>

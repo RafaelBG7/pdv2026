@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2>Importação de relatórios históricos</h2>
+    <p class="text-muted mb-0">Importe resumos diários sem criar vendas, movimentar estoque ou alterar o caixa.</p>
+  </div>
+  <a class="btn btn-outline-light" href="{{ url_for('historical_reports.download_template') }}">Baixar modelo de importação</a>
+</div>
+
+<section class="card card-dark sale-panel mb-4">
+  <h5 class="mb-3">Selecionar arquivo</h5>
+  <p class="text-muted">Use a aba <strong>Importacao_Relatorios</strong> do modelo oficial. O limite é de 8 MB e 10.000 linhas.</p>
+  <form class="import-form" method="post" action="{{ url_for('historical_reports.preview') }}" enctype="multipart/form-data">
+    <input class="form-control" name="spreadsheet" type="file" accept=".xlsx,.csv" required>
+    <button class="btn btn-primary" type="submit">Validar e pré-visualizar</button>
+  </form>
+</section>
+
+{% if preview %}
+<section class="card card-dark sale-panel mb-4">
+  <div class="report-section-header">
+    <div><h5 class="mb-1">Pré-visualização</h5><small>{{ preview.filename }}</small></div>
+    {% if preview.invalid_rows %}<a class="btn btn-outline-light btn-sm" href="{{ url_for('historical_reports.error_report', token=preview_token) }}">Baixar relatório de erros</a>{% endif %}
+  </div>
+  <div class="settings-summary historical-import-summary mb-4">
+    <div><span>Período</span><strong>{{ preview.first_date or '-' }} a {{ preview.last_date or '-' }}</strong></div>
+    <div><span>Linhas</span><strong>{{ preview.total_rows }}</strong></div>
+    <div><span>Válidas</span><strong>{{ preview.valid_rows }}</strong></div>
+    <div><span>Inválidas</span><strong>{{ preview.invalid_rows }}</strong></div>
+    <div><span>Datas duplicadas</span><strong>{{ preview.duplicate_rows }}</strong></div>
+    <div><span>Já importadas</span><strong>{{ preview.existing_rows }}</strong></div>
+    <div><span>Vendas</span><strong>{{ preview.sales_count }}</strong></div>
+    <div><span>Faturamento</span><strong>R$ {{ preview.revenue|replace('.', ',') }}</strong></div>
+    <div><span>Lucro bruto</span><strong>{% if preview.gross_profit is not none %}R$ {{ preview.gross_profit|replace('.', ',') }}{% else %}Não informado{% endif %}</strong></div>
+    <div><span>Ticket médio geral</span><strong>R$ {{ preview.average_ticket|replace('.', ',') }}</strong></div>
+  </div>
+  {% if not preview.profit_complete %}<div class="alert alert-warning">O lucro bruto está ausente em parte do período e será indicado como incompleto nos relatórios.</div>{% endif %}
+  <div class="table-responsive historical-import-preview">
+    <table class="table table-dark table-hover align-middle mb-0 app-table">
+      <thead><tr><th>Linha</th><th>Status</th><th>Data</th><th class="text-end">Vendas</th><th class="text-end">Faturamento</th><th class="text-end">Lucro</th><th class="text-end">Ticket calculado</th><th>Origem</th><th>Mensagens</th></tr></thead>
+      <tbody>
+        {% for row in preview.rows %}
+        <tr class="historical-row--{{ row.status }}">
+          <td>{{ row.linha }}</td>
+          <td><span class="badge historical-status historical-status--{{ row.status }}">{{ {'valid':'Válido','invalid':'Inválido','duplicate':'Duplicado','existing':'Existente'}.get(row.status, row.status) }}</span></td>
+          <td>{{ row.data }}</td>
+          <td class="text-end">{{ row.quantidade_vendas }}</td>
+          <td class="text-end">{{ row.faturamento }}</td>
+          <td class="text-end">{{ row.lucro_bruto if row.lucro_bruto is not none else '-' }}</td>
+          <td class="text-end">{{ row.ticket_medio }}</td>
+          <td>{{ row.origem }}</td>
+          <td>
+            {% for error in row.errors %}<div class="text-danger">{{ error.field }}: {{ error.message }}</div>{% endfor %}
+            {% for warning in row.warnings %}<div class="text-warning">{{ warning.field }}: {{ warning.message }}</div>{% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if preview.valid_rows %}
+  <form class="historical-import-confirm mt-4" method="post" action="{{ url_for('historical_reports.confirm') }}">
+    <input type="hidden" name="preview_token" value="{{ preview_token }}">
+    <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+    <fieldset>
+      <legend class="form-label">Datas já importadas</legend>
+      <label class="form-check"><input class="form-check-input" type="radio" name="strategy" value="ignore" checked> <span>Ignorar registros existentes</span></label>
+      <label class="form-check"><input class="form-check-input" type="radio" name="strategy" value="update"> <span>Atualizar registros existentes</span></label>
+    </fieldset>
+    <button class="btn btn-primary" type="submit" data-confirm="Confirma a importação dos registros válidos?">Confirmar importação</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card card-dark table-card p-0">
+  <div class="report-section-header"><div><h5 class="mb-1">Histórico de importações</h5><small>Últimos 50 lotes desta empresa</small></div></div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle mb-0 app-table">
+      <thead><tr><th>Data</th><th>Arquivo</th><th>Usuário</th><th>Período</th><th>Origem</th><th>Registros</th><th>Inseridos</th><th>Atualizados</th><th>Ignorados</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for batch in batches %}
+        <tr><td>{{ batch.created_at.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ batch.filename }}</td><td>#{{ batch.user_id }}</td><td>{{ batch.period_start.strftime('%d/%m/%Y') if batch.period_start else '-' }} a {{ batch.period_end.strftime('%d/%m/%Y') if batch.period_end else '-' }}</td><td>{{ batch.source }}</td><td>{{ batch.valid_rows }}</td><td>{{ batch.inserted_rows }}</td><td>{{ batch.updated_rows }}</td><td>{{ batch.ignored_rows }}</td><td>{{ batch.status }}</td></tr>
+        {% else %}
+        <tr><td colspan="10" class="text-center text-muted py-4">Nenhuma importação realizada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

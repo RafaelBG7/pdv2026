@@ -31,6 +31,7 @@ Este índice é o ponto inicial oficial. A documentação separa interface Web, 
 - [Ambientes de produção e homologação](34-separacao-producao-homologacao.md)
 - [Runbook de deploy dos ambientes](DEPLOY_AMBIENTES.md)
 - [Auditoria financeira Float → Decimal/Numeric — gate 1.0](35-auditoria-financeira-decimal-1.0.md)
+- [Importação de relatórios históricos](36-importacao-relatorios-historicos.md)
 
 ## Documentação por plataforma
 

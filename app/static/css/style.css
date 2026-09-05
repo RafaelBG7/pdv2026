@@ -1336,6 +1336,42 @@ body.has-destructive-confirmation {
   min-width: 0;
 }
 
+.historical-import-summary {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.historical-import-preview {
+  max-height: 34rem;
+}
+
+.historical-import-preview thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.historical-row--invalid,
+.historical-row--duplicate {
+  background: rgba(220, 53, 69, 0.08);
+}
+
+.historical-row--existing {
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.historical-status--valid { background: #198754; }
+.historical-status--invalid,
+.historical-status--duplicate { background: #dc3545; }
+.historical-status--existing { background: #a66b00; }
+
+.historical-import-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

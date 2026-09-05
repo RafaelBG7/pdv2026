@@ -21,7 +21,7 @@
     <article class="dashboard-metric dashboard-metric-featured"><span>Faturamento</span><strong>{{ money(dashboard.summary.sales_total) }}</strong><small>{{ change(dashboard.summary.sales_total_change) }} vs. período anterior</small></article>
     <article class="dashboard-metric"><span>Vendas</span><strong>{{ dashboard.summary.sales_count }}</strong><small>{{ change(dashboard.summary.sales_count_change) }} · ticket {{ money(dashboard.summary.average_ticket) }}</small></article>
     <article class="dashboard-metric"><span>Clientes</span><strong>—</strong><small class="dashboard-unavailable">Disponível quando o módulo Clientes for ativado</small></article>
-    {% if dashboard.permissions.can_view_reports %}<article class="dashboard-metric"><span>Lucro estimado</span><strong>{{ money(dashboard.summary.profit) }}</strong><small>{{ change(dashboard.summary.profit_change) }} vs. período anterior</small></article>{% endif %}
+    {% if dashboard.permissions.can_view_reports %}<article class="dashboard-metric"><span>Lucro estimado</span>{% if dashboard.summary.profit_complete %}<strong>{{ money(dashboard.summary.profit) }}</strong><small>{{ change(dashboard.summary.profit_change) }} vs. período anterior</small>{% else %}<strong>Indisponível</strong><small>Histórico sem lucro em parte do período</small>{% endif %}</article>{% endif %}
   </section>
   {% if dashboard.permissions.can_view_reports %}
   <div class="dashboard-analytics-grid">

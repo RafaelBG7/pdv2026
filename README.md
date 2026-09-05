@@ -46,8 +46,8 @@ O backend é a fonte de verdade para autenticação, autorização, cálculos, e
 ```text
 app/                    Flask, Web, API, modelos e serviços
 desktop_wpf/            solução .NET 8, WPF, xUnit e instalador
-migrations/central/     schema central, head central_0009
-migrations/tenant/      schema das adegas, head tenant_0009
+migrations/central/     schema central, head central_0010
+migrations/tenant/      schema das adegas, head tenant_0010
 scripts/                migrations, backup, deploy e OCI
 deploy/                 Caddy e inicialização do MySQL
 tests/                  contratos e integração do backend

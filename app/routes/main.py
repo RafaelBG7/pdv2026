@@ -55,6 +55,13 @@ PAYABLE_CATEGORIES = ('Aluguel', 'Luz', 'Água', 'Internet', 'Fornecedor', 'Impo
 EXPORT_TYPES = ('produtos', 'vendas', 'caixas', 'contas')
 REPORT_SALES_TABLE_LIMIT = 50
 REPORT_SALES_TABLE_MAX_LIMIT = 200
+REPORT_CHART_GRANULARITIES = ('day', 'week', 'month', 'year')
+REPORT_CHART_GRANULARITY_LABELS = {
+    'day': 'Dia',
+    'week': 'Semana',
+    'month': 'Mês',
+    'year': 'Ano',
+}
 
 
 @main_bp.get('/health')
@@ -719,54 +726,91 @@ def merge_historical_report_totals(totals, historical_rows):
     return totals
 
 
-def build_sales_chart(period, start, end, sales, historical_rows=()):
+def _chart_bucket_start(value, granularity):
+    if granularity == 'week':
+        return value - timedelta(days=value.weekday())
+    if granularity == 'month':
+        return value.replace(day=1)
+    if granularity == 'year':
+        return value.replace(month=1, day=1)
+    return value
+
+
+def _next_chart_bucket(value, granularity):
+    if granularity == 'week':
+        return value + timedelta(days=7)
+    if granularity == 'month':
+        if value.month == 12:
+            return value.replace(year=value.year + 1, month=1)
+        return value.replace(month=value.month + 1)
+    if granularity == 'year':
+        return value.replace(year=value.year + 1)
+    return value + timedelta(days=1)
+
+
+def _chart_bucket_end(value, granularity):
+    if granularity == 'week':
+        return value + timedelta(days=6)
+    if granularity == 'month':
+        return _next_chart_bucket(value, granularity) - timedelta(days=1)
+    if granularity == 'year':
+        return value.replace(month=12, day=31)
+    return value
+
+
+def _chart_bucket_label(value, granularity):
+    if granularity == 'week':
+        return f'Sem. {value.strftime("%d/%m")}'
+    if granularity == 'month':
+        return value.strftime('%m/%Y')
+    if granularity == 'year':
+        return value.strftime('%Y')
+    return value.strftime('%d/%m')
+
+
+def _chart_bucket_title(value, granularity):
+    bucket_end = _chart_bucket_end(value, granularity)
+    if granularity == 'week':
+        return f'Semana de {value.strftime("%d/%m/%Y")} a {bucket_end.strftime("%d/%m/%Y")}'
+    if granularity == 'month':
+        return f'Mês {value.strftime("%m/%Y")}'
+    if granularity == 'year':
+        return f'Ano {value.year}'
+    return value.strftime('%d/%m/%Y')
+
+
+def build_sales_chart(period, start, end, sales, historical_rows=(), granularity=None):
+    """Aggregate sales and imported history by a selectable calendar granularity."""
     buckets = []
+    # Keep the existing report behavior when no chart granularity is supplied:
+    # annual reports use monthly buckets and all other reports use daily buckets.
+    granularity = granularity or ('month' if period == 'annual' else 'day')
+    if granularity not in REPORT_CHART_GRANULARITIES:
+        granularity = 'month' if period == 'annual' else 'day'
 
-    if period == 'annual':
-        current = start.replace(day=1)
-        end_month = end.replace(day=1)
-        while current <= end_month:
-            buckets.append({
-                'key': (current.year, current.month),
-                'label': current.strftime('%m/%Y'),
-                'total': Decimal('0.00'),
-            })
-            if current.month == 12:
-                current = current.replace(year=current.year + 1, month=1)
-            else:
-                current = current.replace(month=current.month + 1)
+    current = _chart_bucket_start(start, granularity)
+    last_bucket = _chart_bucket_start(end, granularity)
+    while current <= last_bucket:
+        buckets.append({
+            'key': current,
+            'label': _chart_bucket_label(current, granularity),
+            'title': _chart_bucket_title(current, granularity),
+            'total': Decimal('0.00'),
+        })
+        current = _next_chart_bucket(current, granularity)
 
-        bucket_index = {bucket['key']: bucket for bucket in buckets}
-        for sale in sales:
-            if sale.created_at:
-                sale_date = sale.created_at.date()
-                key = (sale_date.year, sale_date.month)
-                if key in bucket_index:
-                    bucket_index[key]['total'] += money_decimal(sale.final_amount)
-        for report in historical_rows:
-            key = (report.report_date.year, report.report_date.month)
+    bucket_index = {bucket['key']: bucket for bucket in buckets}
+    for sale in sales:
+        if sale.created_at:
+            sale_date = sale.created_at.date()
+            key = _chart_bucket_start(sale_date, granularity)
+            if key in bucket_index:
+                bucket_index[key]['total'] += money_decimal(sale.final_amount)
+    for report in historical_rows:
+        if report.report_date:
+            key = _chart_bucket_start(report.report_date, granularity)
             if key in bucket_index:
                 bucket_index[key]['total'] += money_decimal(report.revenue)
-    else:
-        current = start
-        while current <= end:
-            buckets.append({
-                'key': current,
-                'label': current.strftime('%d/%m'),
-                'title': current.strftime('%d/%m/%Y'),
-                'total': Decimal('0.00'),
-            })
-            current += timedelta(days=1)
-
-        bucket_index = {bucket['key']: bucket for bucket in buckets}
-        for sale in sales:
-            if sale.created_at:
-                sale_date = sale.created_at.date()
-                if sale_date in bucket_index:
-                    bucket_index[sale_date]['total'] += money_decimal(sale.final_amount)
-        for report in historical_rows:
-            if report.report_date in bucket_index:
-                bucket_index[report.report_date]['total'] += money_decimal(report.revenue)
 
     max_total = max((bucket['total'] for bucket in buckets), default=Decimal('0.00'))
     for bucket in buckets:
@@ -1568,6 +1612,12 @@ def reports():
     chart_metric = request.args.get('chart_metric', 'revenue')
     if chart_metric not in ('revenue', 'quantity'):
         chart_metric = 'revenue'
+    requested_chart_granularity = (request.args.get('chart_granularity') or '').strip().casefold()
+    chart_granularity = (
+        requested_chart_granularity
+        if requested_chart_granularity in REPORT_CHART_GRANULARITIES
+        else None
+    )
     start_date = parse_date(request.args.get('start_date'))
     end_date = parse_date(request.args.get('end_date'))
     period, start, end, start_datetime, end_datetime, label = report_period_range(
@@ -1595,9 +1645,21 @@ def reports():
     totals = merge_historical_report_totals(totals, historical_rows)
     daily_activity = (
         build_daily_sales_activity(start_datetime, end_datetime, chart_metric)
-        if period == 'daily' and not historical_rows else None
+        if period == 'daily' and not historical_rows and not requested_chart_granularity else None
     )
-    chart_data = daily_activity['buckets'] if daily_activity else build_sales_chart(period, start, end, sales, historical_rows)
+    if daily_activity:
+        chart_granularity = 'hour'
+        chart_data = daily_activity['buckets']
+    else:
+        chart_granularity = chart_granularity or ('month' if period == 'annual' else 'day')
+        chart_data = build_sales_chart(
+            period,
+            start,
+            end,
+            sales,
+            historical_rows,
+            granularity=chart_granularity,
+        )
 
     sales_table = sales[:sales_table_limit]
     sales_display_count = len(sales_table)
@@ -1642,6 +1704,9 @@ def reports():
         totals=totals,
         chart_data=chart_data,
         chart_metric=chart_metric,
+        chart_granularity=chart_granularity,
+        chart_granularity_options=REPORT_CHART_GRANULARITIES,
+        chart_granularity_labels=REPORT_CHART_GRANULARITY_LABELS,
         daily_activity=daily_activity,
         payment_totals=payment_totals,
         top_products=top_products,

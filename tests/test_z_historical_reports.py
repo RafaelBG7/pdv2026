@@ -7,6 +7,7 @@ import zipfile
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from app import create_app
@@ -244,6 +245,47 @@ class HistoricalReportTestCase(unittest.TestCase):
             self.assertFalse(merged['profit_complete'])
             chart = build_sales_chart('annual', date(2025, 1, 1), date(2025, 12, 31), [], rows)
             self.assertEqual(chart[0]['total'], Decimal('1000.00'))
+
+    def test_sales_chart_supports_day_week_month_and_year_granularities(self):
+        sales = [
+            SimpleNamespace(created_at=datetime(2025, 1, 2, 12), final_amount=Decimal('10.00')),
+            SimpleNamespace(created_at=datetime(2025, 1, 8, 12), final_amount=Decimal('20.00')),
+            SimpleNamespace(created_at=datetime(2026, 2, 3, 12), final_amount=Decimal('30.00')),
+        ]
+        history = [
+            SimpleNamespace(report_date=date(2025, 1, 15), revenue=Decimal('40.00')),
+            SimpleNamespace(report_date=date(2026, 2, 10), revenue=Decimal('50.00')),
+        ]
+
+        daily = build_sales_chart(
+            'custom', date(2025, 1, 1), date(2025, 1, 3), sales, history, granularity='day'
+        )
+        weekly = build_sales_chart(
+            'custom', date(2025, 1, 1), date(2025, 1, 31), sales, history, granularity='week'
+        )
+        monthly = build_sales_chart(
+            'custom', date(2025, 1, 1), date(2026, 2, 28), sales, history, granularity='month'
+        )
+        yearly = build_sales_chart(
+            'custom', date(2025, 1, 1), date(2026, 12, 31), sales, history, granularity='year'
+        )
+
+        self.assertEqual(len(daily), 3)
+        self.assertEqual(daily[1]['label'], '02/01')
+        self.assertEqual(daily[1]['total'], Decimal('10.00'))
+        self.assertEqual(len(weekly), 5)
+        self.assertEqual(weekly[0]['label'], 'Sem. 30/12')
+        self.assertEqual(sum(bucket['total'] for bucket in weekly), Decimal('70.00'))
+        self.assertEqual(len(monthly), 14)
+        self.assertEqual(monthly[0]['label'], '01/2025')
+        self.assertEqual(monthly[0]['total'], Decimal('70.00'))
+        self.assertEqual(monthly[-1]['label'], '02/2026')
+        self.assertEqual(monthly[-1]['total'], Decimal('80.00'))
+        self.assertEqual(len(yearly), 2)
+        self.assertEqual(yearly[0]['label'], '2025')
+        self.assertEqual(yearly[0]['total'], Decimal('70.00'))
+        self.assertEqual(yearly[1]['label'], '2026')
+        self.assertEqual(yearly[1]['total'], Decimal('80.00'))
 
     def test_transaction_rolls_back_on_critical_commit_error(self):
         with self.app.app_context():

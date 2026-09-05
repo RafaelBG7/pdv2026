@@ -14,7 +14,7 @@
 </div>
 
 <nav class="report-view-tabs mb-4" aria-label="Tipo de relatório">
-  <a class="{{ 'is-active' if report_view == 'summary' }}" href="{{ url_for('main.reports', view='summary', period=period, start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric=chart_metric) }}">Resumo geral</a>
+  <a class="{{ 'is-active' if report_view == 'summary' }}" href="{{ url_for('main.reports', view='summary', period=period, start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric=chart_metric, chart_granularity=chart_granularity if chart_granularity != 'hour' else None) }}">Resumo geral</a>
   <a class="{{ 'is-active' if report_view == 'products' }}" href="{{ url_for('main.reports', view='products', product_sort=product_sort) }}">Por produto</a>
 </nav>
 
@@ -22,6 +22,7 @@
 <form class="card card-dark filter-panel mb-4 report-filter-form" method="get" data-report-filter-form>
   <input type="hidden" name="view" value="summary">
   <input type="hidden" name="chart_metric" value="{{ chart_metric }}">
+  {% if chart_granularity != 'hour' %}<input type="hidden" name="chart_granularity" value="{{ chart_granularity }}">{% endif %}
   <div>
     <label class="form-label" for="period">Período</label>
     <select class="form-select" id="period" name="period" data-report-period>
@@ -124,25 +125,36 @@
   <div class="report-section-header">
     <div>
       <h5 class="mb-0">{{ 'Vendas por horário' if daily_activity else 'Gráfico de vendas' }}</h5>
-      {% if daily_activity %}<small>Movimentação em intervalos de uma hora</small>{% endif %}
+      {% if daily_activity %}<small>Movimentação em intervalos de uma hora</small>{% else %}<small>Valores agrupados por {{ {'day': 'dia', 'week': 'semana', 'month': 'mês', 'year': 'ano'}.get(chart_granularity, 'período') }}</small>{% endif %}
     </div>
-    {% if daily_activity %}
-    <div class="report-chart-metric" aria-label="Métrica do gráfico">
-      <a
-        class="{{ 'is-active' if chart_metric == 'revenue' }}"
-        href="{{ url_for('main.reports', view='summary', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='revenue') }}"
-      >Faturamento</a>
-      <a
-        class="{{ 'is-active' if chart_metric == 'quantity' }}"
-        href="{{ url_for('main.reports', view='summary', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='quantity') }}"
-      >Quantidade</a>
+    <div class="report-chart-controls">
+      <div class="report-chart-metric report-chart-granularity" aria-label="Agrupamento do gráfico">
+        <span class="report-chart-control-label">Ver por</span>
+        {% for option in chart_granularity_options %}
+        <a
+          class="{{ 'is-active' if chart_granularity == option }}"
+          href="{{ url_for('main.reports', view='summary', period=period, start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric=chart_metric, chart_granularity=option) }}"
+        >{{ chart_granularity_labels[option] }}</a>
+        {% endfor %}
+      </div>
+      {% if daily_activity %}
+      <div class="report-chart-metric" aria-label="Métrica do gráfico">
+        <a
+          class="{{ 'is-active' if chart_metric == 'revenue' }}"
+          href="{{ url_for('main.reports', view='summary', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='revenue') }}"
+        >Faturamento</a>
+        <a
+          class="{{ 'is-active' if chart_metric == 'quantity' }}"
+          href="{{ url_for('main.reports', view='summary', period='daily', start_date=start_date.isoformat(), end_date=end_date.isoformat(), chart_metric='quantity') }}"
+        >Quantidade</a>
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
   </div>
   <div
     class="report-chart{% if daily_activity %} report-chart--hourly{% endif %}{% if chart_data|length > 30 %} report-chart--very-dense{% elif chart_data|length > 18 %} report-chart--dense{% endif %}"
     style="--chart-columns: {{ chart_data|length if chart_data else 1 }};"
-    aria-label="{{ 'Quantidade de vendas por horário' if daily_activity and chart_metric == 'quantity' else 'Faturamento por horário' if daily_activity else 'Total vendido por período' }}"
+    aria-label="{{ 'Quantidade de vendas por horário' if daily_activity and chart_metric == 'quantity' else 'Faturamento por horário' if daily_activity else 'Total vendido por período (agrupado por ' ~ {'day': 'dia', 'week': 'semana', 'month': 'mês', 'year': 'ano'}.get(chart_granularity, 'período') ~ ')' }}"
   >
     {% for point in chart_data %}
     <div

@@ -6783,6 +6783,39 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Saquê'.encode(), annual_response.data)
         self.assertIn('Último ano'.encode(), annual_response.data)
 
+    def test_reports_chart_can_be_grouped_by_day_week_month_and_year(self):
+        self.login()
+
+        cases = (
+            ('day', '2025-01-01', '2025-01-03', 3, '01/01/2025'),
+            ('week', '2025-01-01', '2025-01-31', 5, 'Semana de 30/12/2024 a 05/01/2025'),
+            ('month', '2025-01-01', '2025-03-15', 3, '01/2025'),
+            ('year', '2025-01-01', '2026-03-15', 2, 'Ano 2025'),
+        )
+        for granularity, start_date, end_date, columns, label in cases:
+            with self.subTest(granularity=granularity):
+                response = self.client.get('/relatorios', query_string={
+                    'period': 'custom',
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'chart_granularity': granularity,
+                })
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(f'--chart-columns: {columns}'.encode(), response.data)
+                self.assertIn(label.encode(), response.data)
+
+        response = self.client.get('/relatorios', query_string={
+            'period': 'custom',
+            'start_date': '2025-01-01',
+            'end_date': '2025-01-03',
+            'chart_granularity': 'week',
+        })
+        self.assertIn('>Dia</a>'.encode(), response.data)
+        self.assertIn('>Semana</a>'.encode(), response.data)
+        self.assertIn('>Mês</a>'.encode(), response.data)
+        self.assertIn('>Ano</a>'.encode(), response.data)
+
     def test_daily_report_shows_empty_24_hour_activity(self):
         self.login()
 

@@ -3682,6 +3682,14 @@ html[data-accessibility-bold='true'] .sales-table .sales-total-column {
   color: var(--muted);
 }
 
+.report-chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .report-chart-metric {
   display: inline-flex;
   gap: 0.25rem;
@@ -3689,6 +3697,14 @@ html[data-accessibility-bold='true'] .sales-table .sales-total-column {
   border: 1px solid var(--border);
   border-radius: 0.45rem;
   background: var(--surface-2);
+}
+
+.report-chart-control-label {
+  padding: 0.4rem 0.35rem 0.4rem 0.45rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .report-chart-metric a {

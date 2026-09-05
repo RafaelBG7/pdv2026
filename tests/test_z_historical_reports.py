@@ -70,11 +70,25 @@ def xlsx_bytes(*rows):
 
 
 class HistoricalReportTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        TestConfig.LOG_DIR = Path(cls.temp_dir.name) / 'logs'
+        TestConfig.BACKUP_DIR = Path(cls.temp_dir.name) / 'backups'
+        cls.app = create_app(TestConfig)
+
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        TestConfig.LOG_DIR = Path(self.temp_dir.name) / 'logs'
-        TestConfig.BACKUP_DIR = Path(self.temp_dir.name) / 'backups'
-        self.app = create_app(TestConfig)
+        self.app.config['ENVIRONMENT'] = 'development'
+        with self.app.app_context():
+            db.drop_all()
+            db.create_all()
+            company = Company(name='Painel Master', is_system=True)
+            db.session.add(company)
+            db.session.flush()
+            user = User(username='master', role='master', company_id=company.id, is_active=True)
+            user.set_password('master123')
+            db.session.add(user)
+            db.session.commit()
         self.client = self.app.test_client()
         self.client.post('/login', data={'username': 'master', 'password': 'master123'})
 
@@ -82,12 +96,17 @@ class HistoricalReportTestCase(unittest.TestCase):
         with self.app.app_context():
             db.session.remove()
             db.drop_all()
-            for handler in list(self.app.logger.handlers):
+
+    @classmethod
+    def tearDownClass(cls):
+        with cls.app.app_context():
+            db.session.remove()
+            for handler in list(cls.app.logger.handlers):
                 if getattr(handler, 'baseFilename', None):
-                    self.app.logger.removeHandler(handler)
+                    cls.app.logger.removeHandler(handler)
                     handler.close()
-            logging.shutdown()
-        self.temp_dir.cleanup()
+        logging.shutdown()
+        cls.temp_dir.cleanup()
 
     def company_id(self):
         return User.query.filter_by(username='master').one().company_id
@@ -241,6 +260,7 @@ class HistoricalReportTestCase(unittest.TestCase):
         response = self.client.get('/relatorios/importacao/modelo')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, (Path(self.app.root_path) / 'static/files/modelo_importacao_relatorios_skygest.xlsx').read_bytes())
+        response.close()
         response = self.client.post(
             '/relatorios/importacao/previsualizar',
             data={'spreadsheet': (io.BytesIO(csv_bytes('2025-01-02;2;100;20;50;NEX')), 'historico.csv')},

@@ -2931,7 +2931,19 @@ if (destructiveConfirmationModal) {
         })).filter(item => item.total > 0)
       : [],
   };
-  const colors = ['#22d3ee','#8b5cf6','#34d399','#fbbf24','#fb7185','#60a5fa','#c084fc'];
+  // Canvas pixels do not inherit CSS colors, so read the active theme on each redraw.
+  const chartTheme = () => {
+    const styles = getComputedStyle(page);
+    const color = name => styles.getPropertyValue(name).trim();
+    return {
+      colors: Array.from({length: 7}, (_, index) => color(`--dashboard-chart-${index + 1}`)),
+      text: color('--text'),
+      muted: color('--muted'),
+      surface: color('--surface'),
+      border: color('--border'),
+      accentRgb: color('--accent-rgb'),
+    };
+  };
   const money = value => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(finiteNumber(value));
   const tooltip = document.createElement('div');
   tooltip.className = 'dashboard-chart-tooltip';
@@ -2960,19 +2972,20 @@ if (destructiveConfirmationModal) {
   let linePoints = [];
   const drawLine = () => {
     if (!line || !data.revenue?.length) return;
+    const theme = chartTheme();
     const ratio = window.devicePixelRatio || 1, width = line.clientWidth, height = line.clientHeight || 260;
     line.width = width * ratio; line.height = height * ratio;
     const ctx = line.getContext('2d'); ctx.scale(ratio, ratio); ctx.clearRect(0,0,width,height);
     const pad={l:12,r:12,t:18,b:32}, max=Math.max(...data.revenue.map(p=>p.total),1);
-    ctx.strokeStyle='rgba(148,163,184,.14)'; ctx.lineWidth=1;
+    ctx.strokeStyle=theme.border; ctx.lineWidth=1;
     for(let i=0;i<4;i++){const y=pad.t+(height-pad.t-pad.b)*i/3;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(width-pad.r,y);ctx.stroke()}
     const points=data.revenue.map((p,i)=>({x:pad.l+(width-pad.l-pad.r)*(data.revenue.length===1?0:i/(data.revenue.length-1)),y:height-pad.b-(height-pad.t-pad.b)*(p.total/max),...p}));
     linePoints = points;
-    const gradient=ctx.createLinearGradient(0,pad.t,0,height-pad.b);gradient.addColorStop(0,'rgba(34,211,238,.35)');gradient.addColorStop(1,'rgba(34,211,238,0)');
+    const gradient=ctx.createLinearGradient(0,pad.t,0,height-pad.b);gradient.addColorStop(0,`rgba(${theme.accentRgb},.35)`);gradient.addColorStop(1,`rgba(${theme.accentRgb},0)`);
     ctx.beginPath();ctx.moveTo(points[0].x,height-pad.b);points.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(points.at(-1).x,height-pad.b);ctx.closePath();ctx.fillStyle=gradient;ctx.fill();
-    ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#22d3ee';ctx.lineWidth=3;ctx.stroke();
-    if(activeLineIndex >= 0 && points[activeLineIndex]){const p=points[activeLineIndex];ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fillStyle='#0b1729';ctx.fill();ctx.strokeStyle='#67e8f9';ctx.lineWidth=3;ctx.stroke()}
-    const step=Math.max(1,Math.ceil(points.length/7));ctx.fillStyle='#8292a9';ctx.font='11px system-ui';ctx.textAlign='center';points.forEach((p,i)=>{if(i%step===0||i===points.length-1)ctx.fillText(p.label,p.x,height-8)});
+    ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle=theme.colors[0];ctx.lineWidth=3;ctx.stroke();
+    if(activeLineIndex >= 0 && points[activeLineIndex]){const p=points[activeLineIndex];ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fillStyle=theme.surface;ctx.fill();ctx.strokeStyle=theme.colors[0];ctx.lineWidth=3;ctx.stroke()}
+    const step=Math.max(1,Math.ceil(points.length/7));ctx.fillStyle=theme.muted;ctx.font='11px system-ui';ctx.textAlign='center';points.forEach((p,i)=>{if(i%step===0||i===points.length-1)ctx.fillText(p.label,p.x,height-8)});
   };
   line?.addEventListener('pointermove', event => {
     if (!linePoints.length) return;
@@ -2988,6 +3001,7 @@ if (destructiveConfirmationModal) {
   let activeDonutIndex = -1;
   const drawDonut = () => {
     if (!donut || !data.categories.length) return;
+    const theme = chartTheme();
     const ctx = donut.getContext('2d');
     const cx = 105, cy = 105, radius = 78;
     // Decimal values rendered by Flask's tojson can arrive as strings.
@@ -3007,16 +3021,16 @@ if (destructiveConfirmationModal) {
       donutSegments.push({ start, end, ...category, total: categoryTotal });
       ctx.beginPath();
       ctx.arc(cx, cy, radius, start, end);
-      ctx.strokeStyle = colors[index % colors.length];
+      ctx.strokeStyle = theme.colors[index % theme.colors.length];
       ctx.lineWidth = index === activeDonutIndex ? 31 : 25;
       ctx.stroke();
       start = end;
     });
-    ctx.fillStyle = '#e8eef8';
+    ctx.fillStyle = theme.text;
     ctx.font = '700 19px system-ui';
     ctx.textAlign = 'center';
     ctx.fillText(money(total), cx, cy + 6);
-    ctx.fillStyle = '#8292a9';
+    ctx.fillStyle = theme.muted;
     ctx.font = '11px system-ui';
     ctx.fillText('faturamento', cx, cy + 25);
   };
@@ -3031,4 +3045,12 @@ if (destructiveConfirmationModal) {
   });
   donut?.addEventListener('pointerleave', () => { activeDonutIndex=-1; hideTooltip(); drawDonut(); });
   drawLine(); drawDonut(); window.addEventListener('resize', drawLine);
+  new MutationObserver(() => {
+    hideTooltip();
+    drawLine();
+    drawDonut();
+  }).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme', 'data-contrast'],
+  });
 })();

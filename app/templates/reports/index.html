@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 
+{% macro brl(value) -%}
+  {{ format_brl_value(value or 0) }}
+{%- endmacro %}
+
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
@@ -54,15 +58,15 @@
   </div>
   <div class="card card-dark report-card">
     <span>{{ 'Faturamento total' if period == 'daily' else 'Total vendido' }}</span>
-    <strong>R$ {{ '%.2f'|format(totals.final or 0)|replace('.', ',') }}</strong>
+    <strong>{{ brl(totals.final) }}</strong>
   </div>
   <div class="card card-dark report-card">
     <span>Lucro</span>
-    {% if totals.profit_complete is defined and not totals.profit_complete %}<strong>Indisponível</strong><small>Histórico incompleto</small>{% else %}<strong>R$ {{ '%.2f'|format(totals.profit or 0)|replace('.', ',') }}</strong>{% endif %}
+    {% if totals.profit_complete is defined and not totals.profit_complete %}<strong>Indisponível</strong><small>Histórico incompleto</small>{% else %}<strong>{{ brl(totals.profit) }}</strong>{% endif %}
   </div>
   <div class="card card-dark report-card">
     <span>Ticket médio</span>
-    <strong>R$ {{ '%.2f'|format(totals.average_ticket or 0)|replace('.', ',') }}</strong>
+    <strong>{{ brl(totals.average_ticket) }}</strong>
   </div>
   <div class="card card-dark report-card">
     <span>Itens vendidos</span>
@@ -70,7 +74,7 @@
   </div>
   <div class="card card-dark report-card">
     <span>Descontos</span>
-    <strong>R$ {{ '%.2f'|format(totals.discount or 0)|replace('.', ',') }}</strong>
+    <strong>{{ brl(totals.discount) }}</strong>
   </div>
 </div>
 
@@ -87,7 +91,7 @@
     <span>Horário de pico</span>
     {% if daily_activity.peak %}
     <strong>{{ daily_activity.peak.title }}</strong>
-    <small>{{ daily_activity.peak.sales_count }} venda{{ 's' if daily_activity.peak.sales_count != 1 }} · R$ {{ '%.2f'|format(daily_activity.peak.total or 0)|replace('.', ',') }}</small>
+    <small>{{ daily_activity.peak.sales_count }} venda{{ 's' if daily_activity.peak.sales_count != 1 }} · {{ brl(daily_activity.peak.total) }}</small>
     {% else %}
     <strong>Sem vendas</strong>
     <small>Nenhuma movimentação no dia</small>
@@ -107,7 +111,7 @@
     <span>Melhor hora em faturamento</span>
     {% if daily_activity.peak_by_revenue %}
     <strong>{{ daily_activity.peak_by_revenue.title }}</strong>
-    <small>R$ {{ '%.2f'|format(daily_activity.peak_by_revenue.total or 0)|replace('.', ',') }}</small>
+    <small>{{ brl(daily_activity.peak_by_revenue.total) }}</small>
     {% else %}
     <strong>-</strong>
     <small>R$ 0,00</small>
@@ -143,11 +147,11 @@
     {% for point in chart_data %}
     <div
       class="report-chart-column{% if point.is_peak %} is-peak{% endif %}"
-      title="{{ point.title }} · {% if daily_activity %}{{ point.sales_count }} venda{{ 's' if point.sales_count != 1 }} · {% endif %}R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
+      title="{{ point.title }} · {% if daily_activity %}{{ point.sales_count }} venda{{ 's' if point.sales_count != 1 }} · {% endif %}{{ brl(point.total) }}"
       data-chart-label="{{ point.title }}"
-      data-chart-value="R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
+      data-chart-value="{{ brl(point.total) }}"
       {% if daily_activity %}data-chart-count="{{ point.sales_count }}" data-chart-peak="{{ 'true' if point.is_peak else 'false' }}"{% endif %}
-      aria-label="{{ point.title }}: {% if daily_activity %}{{ point.sales_count }} vendas, {% endif %}R$ {{ '%.2f'|format(point.total or 0)|replace('.', ',') }}"
+      aria-label="{{ point.title }}: {% if daily_activity %}{{ point.sales_count }} vendas, {% endif %}{{ brl(point.total) }}"
       tabindex="0"
     >
       <div class="report-chart-track">
@@ -198,10 +202,10 @@
           <tr>
             <td><a href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">#{{ sale.id }}</a></td>
             <td>{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
-            <td class="text-end">R$ {{ '%.2f'|format(sale.total_amount or 0)|replace('.', ',') }}</td>
-            <td class="text-end">R$ {{ '%.2f'|format(sale.discount_amount or 0)|replace('.', ',') }}</td>
-            <td class="text-end">R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</td>
-            <td class="text-end">R$ {{ '%.2f'|format(sale_profit(sale) or 0)|replace('.', ',') }}</td>
+            <td class="text-end">{{ brl(sale.total_amount) }}</td>
+            <td class="text-end">{{ brl(sale.discount_amount) }}</td>
+            <td class="text-end">{{ brl(sale.final_amount) }}</td>
+            <td class="text-end">{{ brl(sale_profit(sale)) }}</td>
             <td>
               {% for payment in sale.payments %}
               <span class="badge text-bg-secondary">{{ payment_methods.get(payment.method, payment.method) }}</span>
@@ -235,7 +239,7 @@
         {% for method, amount in payment_totals.items() %}
         <div>
           <span>{{ payment_methods.get(method, method) }}</span>
-          <strong>R$ {{ '%.2f'|format(amount or 0)|replace('.', ',') }}</strong>
+          <strong>{{ brl(amount) }}</strong>
         </div>
         {% else %}
         <p class="text-muted mb-0">Nenhum pagamento no período.</p>
@@ -249,7 +253,7 @@
         {% for product in top_products[:8] %}
         <div>
           <span>{{ product.name }} <small class="text-muted">({{ product.quantity }} un.)</small></span>
-          <strong>R$ {{ '%.2f'|format(product.total or 0)|replace('.', ',') }}</strong>
+          <strong>{{ brl(product.total) }}</strong>
         </div>
         {% else %}
         <p class="text-muted mb-0">Nenhum produto vendido no período.</p>
@@ -317,9 +321,9 @@
 <div class="report-summary-grid mb-4">
   <div class="card card-dark report-card"><span>Produtos listados</span><strong>{{ product_report_totals.products }}</strong></div>
   <div class="card card-dark report-card"><span>Quantidade vendida</span><strong>{{ product_report_totals.quantity }}</strong></div>
-  <div class="card card-dark report-card"><span>Faturamento</span><strong>R$ {{ '%.2f'|format(product_report_totals.revenue or 0)|replace('.', ',') }}</strong></div>
-  <div class="card card-dark report-card"><span>Custo total</span><strong>R$ {{ '%.2f'|format(product_report_totals.cost or 0)|replace('.', ',') }}</strong></div>
-  <div class="card card-dark report-card"><span>Lucro estimado</span><strong>R$ {{ '%.2f'|format(product_report_totals.profit or 0)|replace('.', ',') }}</strong></div>
+  <div class="card card-dark report-card"><span>Faturamento</span><strong>{{ brl(product_report_totals.revenue) }}</strong></div>
+  <div class="card card-dark report-card"><span>Custo total</span><strong>{{ brl(product_report_totals.cost) }}</strong></div>
+  <div class="card card-dark report-card"><span>Lucro estimado</span><strong>{{ brl(product_report_totals.profit) }}</strong></div>
 </div>
 
 {% set quantity_ranking = product_report|sort(attribute='quantity', reverse=true) %}
@@ -338,8 +342,8 @@
     </div>
     <div class="product-dashboard-hero-metrics">
       <div><span>Quantidade</span><strong>{{ featured_product.quantity }}</strong></div>
-      <div><span>Faturamento</span><strong>R$ {{ '%.2f'|format(featured_product.revenue or 0)|replace('.', ',') }}</strong></div>
-      <div><span>Lucro</span><strong>R$ {{ '%.2f'|format(featured_product.profit or 0)|replace('.', ',') }}</strong></div>
+      <div><span>Faturamento</span><strong>{{ brl(featured_product.revenue) }}</strong></div>
+      <div><span>Lucro</span><strong>{{ brl(featured_product.profit) }}</strong></div>
       <div><span>Estoque</span><strong>{{ featured_product.stock }}</strong></div>
     </div>
   </article>
@@ -362,12 +366,12 @@
     <div class="card card-dark product-insight-card">
       <span>Maior faturamento</span>
       <strong>{{ best_revenue.product.name if best_revenue else '-' }}</strong>
-      <small>R$ {{ '%.2f'|format(best_revenue.revenue if best_revenue else 0)|replace('.', ',') }}</small>
+      <small>{{ brl(best_revenue.revenue if best_revenue else 0) }}</small>
     </div>
     <div class="card card-dark product-insight-card">
       <span>Maior lucro</span>
       <strong>{{ best_profit.product.name if best_profit else '-' }}</strong>
-      <small>R$ {{ '%.2f'|format(best_profit.profit if best_profit else 0)|replace('.', ',') }}</small>
+      <small>{{ brl(best_profit.profit if best_profit else 0) }}</small>
     </div>
     <div class="card card-dark product-insight-card">
       <span>Menor estoque</span>
@@ -410,7 +414,7 @@
             <strong>{{ item.product.name }}</strong>
             <span>{{ item.category }}</span>
           </div>
-          <b>R$ {{ '%.2f'|format(item.revenue or 0)|replace('.', ',') }}</b>
+          <b>{{ brl(item.revenue) }}</b>
           <i></i>
         </div>
         {% else %}
@@ -431,7 +435,7 @@
             <strong>{{ item.product.name }}</strong>
             <span>{{ item.category }}</span>
           </div>
-          <b>R$ {{ '%.2f'|format(item.profit or 0)|replace('.', ',') }}</b>
+          <b>{{ brl(item.profit) }}</b>
           <i></i>
         </div>
         {% else %}
@@ -449,7 +453,7 @@
         <div class="product-ranking-item product-ranking-item--stock" style="--bar-percent: 100%;">
           <div>
             <strong>{{ item.product.name }}</strong>
-            <span>{{ item.category }} · Ticket R$ {{ '%.2f'|format(item.average_ticket or 0)|replace('.', ',') }}</span>
+            <span>{{ item.category }} · Ticket {{ brl(item.average_ticket) }}</span>
           </div>
           <b>{{ item.stock }} un.</b>
           <i></i>

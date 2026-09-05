@@ -1658,6 +1658,7 @@ def reports():
         products=products,
         payment_methods=PAYMENT_METHODS,
         sale_profit=sale_profit,
+        format_brl_value=format_brl_decimal,
     )
 
 

@@ -6678,6 +6678,68 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('report-chart--very-dense'.encode(), monthly_response.data)
         self.assertIn('--chart-columns: 31'.encode(), monthly_response.data)
 
+    def test_reports_format_large_currency_values_with_brazilian_grouping(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            product = Product(
+                name='Produto Valor Alto',
+                cost_price=40968.03,
+                sale_price=80000,
+                stock_quantity=5,
+                active=True,
+                company_id=company_id,
+            )
+            db.session.add(product)
+            db.session.flush()
+            sale = Sale(
+                company_id=company_id,
+                created_at=datetime.now(),
+                total_amount=80000,
+                discount_amount=2075.07,
+                final_amount=77924.93,
+                payment_status='paid',
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add_all([
+                SaleItem(
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    quantity=1,
+                    unit_price=80000,
+                    unit_cost_price=40968.03,
+                    total_price=80000,
+                    profit_amount=39031.97,
+                ),
+                Payment(sale_id=sale.id, method='pix', amount=77924.93),
+            ])
+            db.session.commit()
+            sale_date = sale.created_at.date().isoformat()
+
+        response = self.client.get('/relatorios', query_string={
+            'period': 'custom',
+            'start_date': sale_date,
+            'end_date': sale_date,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('R$ 77.924,93'.encode(), response.data)
+        self.assertIn('R$ 80.000,00'.encode(), response.data)
+        self.assertIn('R$ 2.075,07'.encode(), response.data)
+        self.assertIn('R$ 36.956,90'.encode(), response.data)
+        self.assertIn('data-chart-value="R$ 77.924,93"'.encode(), response.data)
+        self.assertNotIn('R$ 77924,93'.encode(), response.data)
+
+        product_response = self.client.get('/relatorios', query_string={
+            'view': 'products',
+            'product_sort': 'revenue_desc',
+        })
+
+        self.assertEqual(product_response.status_code, 200)
+        self.assertIn('R$ 39.031,97'.encode(), product_response.data)
+
     def test_reports_auto_periods_use_rolling_date_ranges(self):
         self.login()
 

@@ -2,6 +2,25 @@ name: Deploy HML OCI
 
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        description: Operação HML a executar
+        required: true
+        type: choice
+        default: deploy
+        options:
+          - deploy
+          - provision-user
+      username:
+        description: Login para a operação provision-user
+        required: false
+        type: string
+        default: adegajf
+      company_name:
+        description: Nome da adega para a operação provision-user
+        required: false
+        type: string
+        default: Adega JF
   push:
     branches:
       - develop
@@ -20,6 +39,7 @@ concurrency:
 jobs:
   test:
     name: Testes e isolamento HML
+    if: github.event_name == 'push' || inputs.operation == 'deploy'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -61,10 +81,12 @@ jobs:
           bash -n scripts/provision_hml_env.sh
           bash -n scripts/configure_hml_gateway.sh
           python -m py_compile scripts/cleanup_system_tenant.py
+          python -m py_compile scripts/provision_hml_user.py
           bash -n scripts/audit_oci_readonly.sh
 
   windows-test:
     name: Validar cliente Windows HML/PROD
+    if: github.event_name == 'push' || inputs.operation == 'deploy'
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -83,6 +105,7 @@ jobs:
 
   deploy:
     name: Publicar homologação na OCI
+    if: github.event_name == 'push' || inputs.operation == 'deploy'
     runs-on:
       - self-hosted
       - linux
@@ -115,3 +138,40 @@ jobs:
           curl -fsS https://hml.skygest.com.br/health/dependencies >/dev/null
           curl -fsS https://hml.skygest.com.br/api/v1/health/dependencies >/dev/null
           curl -fsS https://skygest.com.br/health/dependencies >/dev/null
+
+  provision-user:
+    name: Criar usuário somente no HML
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'provision-user'
+    runs-on:
+      - self-hosted
+      - linux
+      - girofy-oci
+    environment: homologation
+    env:
+      HML_DEPLOY_PATH: /opt/girofy/hml
+      HML_COPY_USERNAME: ${{ inputs.username }}
+      HML_COPY_COMPANY_NAME: ${{ inputs.company_name }}
+      HML_COPY_USER_PASSWORD: ${{ secrets.HML_COPY_USER_PASSWORD }}
+    steps:
+      - name: Validar solicitação
+        shell: bash
+        run: |
+          test -n "$HML_COPY_USERNAME"
+          test -n "$HML_COPY_COMPANY_NAME"
+          test -n "$HML_COPY_USER_PASSWORD"
+          test "${#HML_COPY_USER_PASSWORD}" -ge 8
+          test -f "$HML_DEPLOY_PATH/.env.hml"
+
+      - name: Criar conta somente na stack HML
+        shell: bash
+        working-directory: ${{ env.HML_DEPLOY_PATH }}
+        run: |
+          docker compose --env-file .env.hml -p skygest-hml -f docker-compose.hml.yml exec -T \
+            -e HML_COPY_USERNAME \
+            -e HML_COPY_COMPANY_NAME \
+            -e HML_COPY_USER_PASSWORD \
+            app python /app/scripts/provision_hml_user.py
+
+      - name: Validar login público HML
+        shell: bash
+        run: curl -fsS https://hml.skygest.com.br/login >/dev/null

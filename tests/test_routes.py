@@ -349,6 +349,43 @@ class RouteTestCase(unittest.TestCase):
             close_test_log_handlers(proxy_app)
             proxy_temp_dir.cleanup()
 
+    def test_public_https_origin_is_allowed_when_proxy_reports_internal_http(self):
+        class HmlProxyConfig(TestConfig):
+            PUBLIC_BASE_URL = 'https://hml.skygest.com.br'
+            TRUST_PROXY_HEADERS = True
+            TRUSTED_PROXY_COUNT = 2
+
+        proxy_temp_dir = tempfile.TemporaryDirectory()
+        HmlProxyConfig.LOG_DIR = Path(proxy_temp_dir.name) / 'logs'
+        HmlProxyConfig.BACKUP_DIR = Path(proxy_temp_dir.name) / 'backups'
+        proxy_app = create_app(HmlProxyConfig)
+        proxy_client = proxy_app.test_client()
+        try:
+            response = proxy_client.post(
+                '/login?next=%2F',
+                data={'username': 'desconhecido', 'password': 'SenhaErrada123'},
+                headers={'Origin': 'https://hml.skygest.com.br'},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('Usuário/e-mail ou senha inválidos.'.encode(), response.data)
+        finally:
+            with proxy_app.app_context():
+                db.session.remove()
+                db.drop_all()
+                db.engine.dispose()
+            close_test_log_handlers(proxy_app)
+            proxy_temp_dir.cleanup()
+
+    def test_cross_origin_post_remains_blocked(self):
+        response = self.client.post(
+            '/login',
+            data={'username': 'desconhecido', 'password': 'SenhaErrada123'},
+            headers={'Origin': 'https://evil.example'},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
     def test_rate_limit_fails_closed_when_redis_is_unavailable(self):
         class BrokenRedisConfig(TestConfig):
             RATELIMIT_ENABLED = True

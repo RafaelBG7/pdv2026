@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
 from flask_login import current_user
@@ -492,7 +493,19 @@ def create_app(config_class=Config):
         if request.method not in {'POST', 'PUT', 'PATCH', 'DELETE'}:
             return None
         origin = request.headers.get('Origin')
-        if origin and origin.rstrip('/') != request.host_url.rstrip('/'):
+        if not origin:
+            return None
+
+        allowed_origins = {request.host_url.rstrip('/').lower()}
+        configured_public_base = (app.config.get('PUBLIC_BASE_URL') or '').rstrip('/')
+        if configured_public_base:
+            parsed_public_base = urlsplit(configured_public_base)
+            if parsed_public_base.scheme in {'http', 'https'} and parsed_public_base.netloc:
+                allowed_origins.add(
+                    f'{parsed_public_base.scheme.lower()}://{parsed_public_base.netloc.lower()}'
+                )
+
+        if origin.rstrip('/').lower() not in allowed_origins:
             abort(403)
         return None
 

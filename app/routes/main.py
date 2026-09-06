@@ -1954,6 +1954,7 @@ def cash_register():
         current_cash_snapshot=current_cash_snapshot,
         payment_methods=PAYMENT_METHODS,
         show_cash_financials=show_cash_financials,
+        format_brl_value=format_brl_decimal,
     )
 
 
@@ -1996,6 +1997,7 @@ def cash_register_detail(cash_register_id):
             'valid_total': valid_totals['final'],
         },
         show_cash_financials=can_view_cash_financials(),
+        format_brl_value=format_brl_decimal,
     )
 
 

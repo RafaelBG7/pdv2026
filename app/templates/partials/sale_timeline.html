@@ -11,7 +11,7 @@
         <small>{{ entry.date }} · {{ entry.user }}</small>
       </span>
       <span class="sale-timeline-payment">{{ entry.payments_text }}</span>
-      <span class="sale-timeline-total">R$ {{ '%.2f'|format(entry.sale.final_amount or 0)|replace('.', ',') }}</span>
+      <span class="sale-timeline-total">{{ brl(entry.sale.final_amount) }}</span>
     </button>
     <div class="collapse" id="{{ timeline_id }}">
       <div class="sale-timeline-detail">
@@ -36,8 +36,8 @@
               <tr>
                 <td>{{ item.product.name if item.product else 'Produto removido' }}</td>
                 <td class="text-end">{{ item.quantity or 0 }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(item.unit_price or 0)|replace('.', ',') }}</td>
-                <td class="text-end">R$ {{ '%.2f'|format(item.total_price or 0)|replace('.', ',') }}</td>
+                <td class="text-end">{{ brl(item.unit_price) }}</td>
+                <td class="text-end">{{ brl(item.total_price) }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -45,14 +45,14 @@
         </div>
         <div class="timeline-payment-grid">
           {% if show_cash_financials %}
-          <div><span>Saldo antes da venda</span><strong>R$ {{ '%.2f'|format(entry.balance_before_sale or 0)|replace('.', ',') }}</strong></div>
-          <div><span>Saldo após a venda</span><strong>R$ {{ '%.2f'|format(entry.balance_after_sale or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Saldo antes da venda</span><strong>{{ brl(entry.balance_before_sale) }}</strong></div>
+          <div><span>Saldo após a venda</span><strong>{{ brl(entry.balance_after_sale) }}</strong></div>
           {% endif %}
-          <div><span>Subtotal</span><strong>R$ {{ '%.2f'|format(entry.sale.total_amount or 0)|replace('.', ',') }}</strong></div>
-          <div><span>Desconto</span><strong>R$ {{ '%.2f'|format(entry.sale.discount_amount or 0)|replace('.', ',') }}</strong></div>
-          <div><span>Total</span><strong>R$ {{ '%.2f'|format(entry.sale.final_amount or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Subtotal</span><strong>{{ brl(entry.sale.total_amount) }}</strong></div>
+          <div><span>Desconto</span><strong>{{ brl(entry.sale.discount_amount) }}</strong></div>
+          <div><span>Total</span><strong>{{ brl(entry.sale.final_amount) }}</strong></div>
           {% for payment in entry.sale.payments %}
-          <div><span>{{ payment_methods.get(payment.method, payment.method) }}</span><strong>R$ {{ '%.2f'|format(payment.amount or 0)|replace('.', ',') }}</strong></div>
+          <div><span>{{ payment_methods.get(payment.method, payment.method) }}</span><strong>{{ brl(payment.amount) }}</strong></div>
           {% endfor %}
         </div>
       </div>

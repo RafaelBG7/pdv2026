@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% from 'partials/payment_method_icon.html' import payment_method_icon %}
 
+{% macro brl(value) -%}
+  {{ format_brl_value(value or 0) }}
+{%- endmacro %}
+
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
@@ -30,15 +34,15 @@
   {% if show_cash_financials %}
   <div class="card card-dark">
     <span>Valor inicial</span>
-    <strong>R$ {{ '%.2f'|format(cash_register.opening_amount or 0)|replace('.', ',') }}</strong>
+    <strong>{{ brl(cash_register.opening_amount) }}</strong>
   </div>
   <div class="card card-dark">
     <span>Valor final</span>
-    <strong>R$ {{ '%.2f'|format(cash_register.closing_amount or 0)|replace('.', ',') }}</strong>
+    <strong>{{ brl(cash_register.closing_amount) }}</strong>
   </div>
   <div class="card card-dark">
     <span>Total vendido</span>
-    <strong>R$ {{ '%.2f'|format(cash_register_total_sold or 0)|replace('.', ',') }}</strong>
+    <strong>{{ brl(cash_register_total_sold) }}</strong>
   </div>
   <div class="card card-dark">
     <span>Vendas</span>
@@ -46,7 +50,7 @@
   </div>
   <div class="card card-dark">
     <span>Lucro</span>
-    <strong>R$ {{ '%.2f'|format(cash_register_profit or 0)|replace('.', ',') }}</strong>
+    <strong>{{ brl(cash_register_profit) }}</strong>
   </div>
   {% endif %}
 </div>
@@ -55,9 +59,9 @@
 <div class="alert alert-warning mb-4">
   <strong>Ajuste posterior ao fechamento:</strong>
   {{ cancellation_adjustment.count }} venda(s) cancelada(s), total de
-  R$ {{ '%.2f'|format(cancellation_adjustment.total)|replace('.', ',') }}.
+  {{ brl(cancellation_adjustment.total) }}.
   Os valores conferidos no fechamento permanecem históricos. O total válido após os cancelamentos é
-  R$ {{ '%.2f'|format(cancellation_adjustment.valid_total)|replace('.', ',') }}.
+  {{ brl(cancellation_adjustment.valid_total) }}.
 </div>
 {% endif %}
 
@@ -75,7 +79,7 @@
       {% if payment_totals.get(method) %}
       <div>
         <span class="payment-method-label">{{ payment_method_icon(method) }}<span>{{ label }}</span></span>
-        <strong>R$ {{ '%.2f'|format(payment_totals.get(method, 0))|replace('.', ',') }}</strong>
+        <strong>{{ brl(payment_totals.get(method, 0)) }}</strong>
       </div>
       {% endif %}
       {% endfor %}
@@ -97,7 +101,7 @@
       <div>
         <span>{{ hour.label }}</span>
         <strong>{{ hour.sales_count }} venda{{ '' if hour.sales_count == 1 else 's' }}</strong>
-        <small>R$ {{ '%.2f'|format(hour.total or 0)|replace('.', ',') }}</small>
+        <small>{{ brl(hour.total) }}</small>
       </div>
       {% else %}
       <p class="text-muted mb-0">Nenhuma venda registrada neste caixa.</p>
@@ -117,7 +121,7 @@
       <div>
         <span>{{ product.name }}</span>
         <strong>{{ product.quantity }} un.</strong>
-        <small>R$ {{ '%.2f'|format(product.total or 0)|replace('.', ',') }}</small>
+        <small>{{ brl(product.total) }}</small>
       </div>
       {% else %}
       <p class="text-muted mb-0">Nenhum produto vendido neste caixa.</p>

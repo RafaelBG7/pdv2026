@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% from 'partials/payment_method_icon.html' import payment_method_icon %}
 
+{% macro brl(value) -%}
+  {{ format_brl_value(value or 0) }}
+{%- endmacro %}
+
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
@@ -32,12 +36,12 @@
           <div><span>Abertura</span><strong>{{ cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '-' }}</strong></div>
           <div><span>Status</span><strong>Aberto</strong></div>
           {% if show_cash_financials %}
-          <div><span>Valor inicial</span><strong>R$ {{ '%.2f'|format(cash_register.opening_amount or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Valor inicial</span><strong>{{ brl(cash_register.opening_amount) }}</strong></div>
           <div><span>Vendas</span><strong>{{ current_cash_snapshot.totals.sales_count if current_cash_snapshot else 0 }}</strong></div>
-          <div><span>Total vendido</span><strong>R$ {{ '%.2f'|format(current_cash_snapshot.totals.final if current_cash_snapshot else 0)|replace('.', ',') }}</strong></div>
-          <div><span>Ticket médio</span><strong>R$ {{ '%.2f'|format(current_cash_snapshot.totals.average_ticket if current_cash_snapshot else 0)|replace('.', ',') }}</strong></div>
-          <div><span>Valor esperado</span><strong>R$ {{ '%.2f'|format(cash_register_expected_amount or 0)|replace('.', ',') }}</strong></div>
-          <div><span>Lucro do caixa</span><strong>R$ {{ '%.2f'|format(cash_register_profit or 0)|replace('.', ',') }}</strong></div>
+          <div><span>Total vendido</span><strong>{{ brl(current_cash_snapshot.totals.final if current_cash_snapshot else 0) }}</strong></div>
+          <div><span>Ticket médio</span><strong>{{ brl(current_cash_snapshot.totals.average_ticket if current_cash_snapshot else 0) }}</strong></div>
+          <div><span>Valor esperado</span><strong>{{ brl(cash_register_expected_amount) }}</strong></div>
+          <div><span>Lucro do caixa</span><strong>{{ brl(cash_register_profit) }}</strong></div>
           {% endif %}
         </div>
 
@@ -46,7 +50,7 @@
           {% for method, label in payment_methods.items() %}
           <div>
             <span class="payment-method-label">{{ payment_method_icon(method) }}<span>{{ label }}</span></span>
-            <strong>R$ {{ '%.2f'|format(current_cash_snapshot.payment_totals.get(method, 0) if current_cash_snapshot else 0)|replace('.', ',') }}</strong>
+            <strong>{{ brl(current_cash_snapshot.payment_totals.get(method, 0) if current_cash_snapshot else 0) }}</strong>
           </div>
           {% endfor %}
         </div>
@@ -125,9 +129,9 @@
               <td data-label="Fechamento">{{ item.closed_at.strftime('%d/%m/%Y') if item.closed_at else '-' }}</td>
               <td data-label="Status"><span class="badge text-bg-secondary">Fechado</span></td>
               {% if show_cash_financials %}
-              <td data-label="Valor inicial" class="text-end">R$ {{ '%.2f'|format(item.opening_amount or 0)|replace('.', ',') }}</td>
-              <td data-label="Valor final" class="text-end">R$ {{ '%.2f'|format(item.closing_amount or 0)|replace('.', ',') }}</td>
-              <td data-label="Total vendido" class="text-end">R$ {{ '%.2f'|format(history.get('total_sold', 0))|replace('.', ',') }}</td>
+              <td data-label="Valor inicial" class="text-end">{{ brl(item.opening_amount) }}</td>
+              <td data-label="Valor final" class="text-end">{{ brl(item.closing_amount) }}</td>
+              <td data-label="Total vendido" class="text-end">{{ brl(history.get('total_sold', 0)) }}</td>
               {% endif %}
             </tr>
             <tr class="cash-register-detail-row">
@@ -140,7 +144,7 @@
                       <div><span>Responsável</span><strong>{{ history.get('responsible', '-') }}</strong></div>
                       {% if show_cash_financials %}
                       <div><span>Vendas vinculadas</span><strong>{{ history.get('sales_count', 0) }}</strong></div>
-                      <div><span>Diferença</span><strong>R$ {{ '%.2f'|format(history.get('difference', 0)|abs)|replace('.', ',') }} {{ 'excedente' if history.get('difference', 0) > 0 else ('faltante' if history.get('difference', 0) < 0 else 'correto') }}</strong></div>
+                      <div><span>Diferença</span><strong>{{ brl(history.get('difference', 0)|abs) }} {{ 'excedente' if history.get('difference', 0) > 0 else ('faltante' if history.get('difference', 0) < 0 else 'correto') }}</strong></div>
                       {% endif %}
                     </div>
 
@@ -148,9 +152,9 @@
                     <div class="alert alert-warning mt-3 mb-3">
                       <strong>Ajuste posterior ao fechamento:</strong>
                       {{ history.get('cancelled_sales_count') }} venda(s) cancelada(s), total de
-                      R$ {{ '%.2f'|format(history.get('cancelled_sales_total', 0))|replace('.', ',') }}.
+                      {{ brl(history.get('cancelled_sales_total', 0)) }}.
                       O fechamento original foi preservado; o total válido atual é
-                      R$ {{ '%.2f'|format(history.get('valid_sales_total', 0))|replace('.', ',') }}.
+                      {{ brl(history.get('valid_sales_total', 0)) }}.
                     </div>
                     {% endif %}
 
@@ -162,7 +166,7 @@
                           {% if history.get('payment_totals') %}
                           {% for method, label in payment_methods.items() %}
                           {% if history.get('payment_totals', {}).get(method) %}
-                          <span class="payment-method-inline">{{ payment_method_icon(method, true) }}<span>{{ label }}</span> <b>R$ {{ '%.2f'|format(history.get('payment_totals', {}).get(method, 0))|replace('.', ',') }}</b></span>
+                          <span class="payment-method-inline">{{ payment_method_icon(method, true) }}<span>{{ label }}</span> <b>{{ brl(history.get('payment_totals', {}).get(method, 0)) }}</b></span>
                           {% endif %}
                           {% endfor %}
                           {% else %}
@@ -174,7 +178,7 @@
                         <strong>Vendas</strong>
                         <div class="cash-inline-list">
                           {% for sale in history.get('sales', [])[:6] %}
-                          <a href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">Venda #{{ sale.id }} · {{ sale.created_at.strftime('%H:%M') if sale.created_at else '-' }} · R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</a>
+                          <a href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">Venda #{{ sale.id }} · {{ sale.created_at.strftime('%H:%M') if sale.created_at else '-' }} · {{ brl(sale.final_amount) }}</a>
                           {% else %}
                           <span>Nenhuma venda vinculada.</span>
                           {% endfor %}

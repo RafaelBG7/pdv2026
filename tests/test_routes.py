@@ -7082,6 +7082,75 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Lucro do caixa'.encode(), cash_response.data)
         self.assertIn('R$ 3,00'.encode(), cash_response.data)
 
+    def test_cash_register_formats_large_currency_values_with_brazilian_grouping(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            user_id = User.query.filter_by(username='master').one().id
+            product = Product(
+                name='Produto Valor Alto Caixa',
+                cost_price=40968.03,
+                sale_price=80000,
+                stock_quantity=5,
+                active=True,
+                company_id=company_id,
+            )
+            db.session.add(product)
+            db.session.flush()
+            cash_register = CashRegister(
+                opened_at=datetime.now(),
+                opening_amount=2000,
+                status='open',
+                user_id=user_id,
+                company_id=company_id,
+            )
+            db.session.add(cash_register)
+            db.session.flush()
+            sale = Sale(
+                company_id=company_id,
+                cash_register_id=cash_register.id,
+                created_at=datetime.now(),
+                total_amount=80000,
+                discount_amount=2075.07,
+                final_amount=77924.93,
+                payment_status='paid',
+                user_id=user_id,
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add_all([
+                SaleItem(
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    quantity=1,
+                    unit_price=80000,
+                    unit_cost_price=40968.03,
+                    total_price=80000,
+                    profit_amount=39031.97,
+                ),
+                Payment(sale_id=sale.id, method='money', amount=77924.93),
+            ])
+            db.session.commit()
+            cash_register_id = cash_register.id
+
+        response = self.client.get('/caixa')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('R$ 2.000,00'.encode(), response.data)
+        self.assertIn('R$ 77.924,93'.encode(), response.data)
+        self.assertIn('R$ 79.924,93'.encode(), response.data)
+        self.assertIn('R$ 36.956,90'.encode(), response.data)
+        self.assertNotIn('R$ 77924,93'.encode(), response.data)
+
+        detail_response = self.client.get(f'/caixa/{cash_register_id}')
+
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertIn('R$ 2.000,00'.encode(), detail_response.data)
+        self.assertIn('R$ 77.924,93'.encode(), detail_response.data)
+        self.assertIn('R$ 36.956,90'.encode(), detail_response.data)
+        self.assertNotIn('R$ 77924,93'.encode(), detail_response.data)
+
     def test_sale_requires_full_payment(self):
         self.login()
         self.open_cash_register()

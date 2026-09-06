@@ -5255,6 +5255,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Produto Dashboard'.encode(), response.data)
         self.assertIn('Estoque baixo'.encode(), response.data)
         self.assertIn('Internet'.encode(), response.data)
+        self.assertIn(b'brand/skygest-symbol-128.png?v=2026090602', response.data)
 
     def test_operator_dashboard_hides_profit_and_payables(self):
         self.login()

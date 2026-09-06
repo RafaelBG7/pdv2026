@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% macro money(value) -%}R$ {{ '%.2f'|format(value or 0)|replace('.', ',') }}{%- endmacro %}
+{% macro money(value) -%}{{ format_brl_value(value or 0) }}{%- endmacro %}
 {% macro change(value) -%}{% if value is none %}<span class="dashboard-change neutral">Sem base anterior</span>{% elif value >= 0 %}<span class="dashboard-change positive">↑ {{ '%.1f'|format(value)|replace('.', ',') }}%</span>{% else %}<span class="dashboard-change negative">↓ {{ '%.1f'|format(value|abs)|replace('.', ',') }}%</span>{% endif %}{%- endmacro %}
 {% block content %}
 <div class="dashboard-page" data-dashboard-page>

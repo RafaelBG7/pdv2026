@@ -5257,6 +5257,50 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Internet'.encode(), response.data)
         self.assertIn(b'brand/skygest-symbol-128.png?v=2026090602', response.data)
 
+    def test_dashboard_formats_large_currency_values_with_brazilian_grouping(self):
+        self.login()
+
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            product = Product(
+                name='Produto Valor Alto Dashboard',
+                cost_price=40968.03,
+                sale_price=80000,
+                stock_quantity=5,
+                active=True,
+                company_id=company_id,
+            )
+            db.session.add(product)
+            db.session.flush()
+            sale = Sale(
+                company_id=company_id,
+                created_at=datetime.now(),
+                total_amount=80000,
+                discount_amount=2075.07,
+                final_amount=77924.93,
+                payment_status='paid',
+            )
+            db.session.add(sale)
+            db.session.flush()
+            db.session.add(SaleItem(
+                sale_id=sale.id,
+                product_id=product.id,
+                quantity=1,
+                unit_price=80000,
+                unit_cost_price=40968.03,
+                total_price=80000,
+                profit_amount=39031.97,
+            ))
+            db.session.commit()
+
+        response = self.client.get('/dashboard')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('R$ 77.924,93'.encode(), response.data)
+        self.assertIn('R$ 39.031,97'.encode(), response.data)
+        self.assertNotIn('R$ 77924,93'.encode(), response.data)
+        self.assertNotIn('R$ 39031,97'.encode(), response.data)
+
     def test_operator_dashboard_hides_profit_and_payables(self):
         self.login()
         with self.app.app_context():

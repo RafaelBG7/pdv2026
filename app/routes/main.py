@@ -1026,6 +1026,7 @@ def dashboard():
     return render_template(
         'dashboard.html',
         dashboard=snapshot,
+        format_brl_value=format_brl_decimal,
     )
 
 

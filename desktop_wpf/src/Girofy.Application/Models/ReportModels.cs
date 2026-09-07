@@ -66,7 +66,19 @@ public sealed class ReportSummary
     public decimal Final { get; init; }
 
     [JsonPropertyName("profit")]
-    public decimal Profit { get; init; }
+    public decimal? Profit { get; init; }
+
+    [JsonPropertyName("profit_complete")]
+    public bool ProfitComplete { get; init; } = true;
+
+    [JsonPropertyName("historical_days")]
+    public int HistoricalDays { get; init; }
+
+    [JsonPropertyName("historical_sales_count")]
+    public int HistoricalSalesCount { get; init; }
+
+    [JsonPropertyName("historical_revenue")]
+    public decimal HistoricalRevenue { get; init; }
 
     [JsonPropertyName("average_ticket")]
     public decimal AverageTicket { get; init; }
@@ -81,7 +93,9 @@ public sealed class ReportSummary
 
     public string FinalText => DashboardFormatting.Money(Final);
 
-    public string ProfitText => DashboardFormatting.Money(Profit);
+    public string ProfitText => Profit.HasValue
+        ? DashboardFormatting.Money(Profit.Value)
+        : "Não disponível";
 
     public string AverageTicketText => DashboardFormatting.Money(AverageTicket);
 }

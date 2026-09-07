@@ -25,6 +25,7 @@ from app.models import (
     Category,
     Company,
     EmailAlertSetting,
+    HistoricalDailyReport,
     NotificationPreference,
     Payable,
     Payment,
@@ -763,6 +764,35 @@ def api_build_sales_report(sales):
     }
 
 
+def api_merge_historical_sales_report(report, historical_rows):
+    historical_rows = list(historical_rows)
+    summary = report['summary']
+    historical_sales = sum((row.sales_count or 0 for row in historical_rows), 0)
+    historical_revenue = sum(
+        (money_decimal(row.revenue) for row in historical_rows), Decimal('0.00')
+    )
+    summary['sales_count'] += historical_sales
+    summary['subtotal'] = money_decimal(summary['subtotal'] + historical_revenue)
+    summary['final'] = money_decimal(summary['final'] + historical_revenue)
+    if any(row.gross_profit is None for row in historical_rows):
+        summary['profit'] = None
+        summary['profit_complete'] = False
+    else:
+        historical_profit = sum(
+            (money_decimal(row.gross_profit) for row in historical_rows), Decimal('0.00')
+        )
+        summary['profit'] = money_decimal(summary['profit'] + historical_profit)
+        summary['profit_complete'] = True
+    summary['average_ticket'] = (
+        money_decimal(summary['final'] / summary['sales_count'])
+        if summary['sales_count'] else Decimal('0.00')
+    )
+    summary['historical_days'] = len(historical_rows)
+    summary['historical_sales_count'] = historical_sales
+    summary['historical_revenue'] = money_decimal(historical_revenue)
+    return report
+
+
 def api_product_report_sort_options():
     return [
         {'value': 'quantity_desc', 'label': 'Mais vendidos'},
@@ -894,7 +924,7 @@ def api_build_product_report(
     }
 
 
-def api_build_sales_chart(period, start, end, sales, metric='revenue'):
+def api_build_sales_chart(period, start, end, sales, metric='revenue', historical_rows=()):
     metric = metric if metric in {'revenue', 'quantity'} else 'revenue'
     buckets = []
     if period == 'daily':
@@ -914,6 +944,17 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 if bucket is not None:
                     bucket['sales_count'] += 1
                     bucket['total'] += money_decimal(sale.final_amount)
+        historical = next(
+            (row for row in historical_rows if row.report_date == start), None
+        )
+        if historical is not None:
+            buckets.append({
+                'key': 'historical',
+                'label': 'Hist.',
+                'title': f'Histórico de {start.strftime("%d/%m/%Y")}',
+                'sales_count': historical.sales_count or 0,
+                'total': money_decimal(historical.revenue),
+            })
     elif period == 'annual':
         current = start.replace(day=1)
         end_month = end.replace(day=1)
@@ -937,6 +978,12 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 if key in bucket_index:
                     bucket_index[key]['sales_count'] += 1
                     bucket_index[key]['total'] += money_decimal(sale.final_amount)
+        for historical in historical_rows:
+            if historical.report_date:
+                key = f'{historical.report_date.year}-{historical.report_date.month:02d}'
+                if key in bucket_index:
+                    bucket_index[key]['sales_count'] += historical.sales_count or 0
+                    bucket_index[key]['total'] += money_decimal(historical.revenue)
     else:
         current = start
         while current <= end:
@@ -955,6 +1002,12 @@ def api_build_sales_chart(period, start, end, sales, metric='revenue'):
                 if key in bucket_index:
                     bucket_index[key]['sales_count'] += 1
                     bucket_index[key]['total'] += money_decimal(sale.final_amount)
+        for historical in historical_rows:
+            if historical.report_date:
+                key = historical.report_date.isoformat()
+                if key in bucket_index:
+                    bucket_index[key]['sales_count'] += historical.sales_count or 0
+                    bucket_index[key]['total'] += money_decimal(historical.revenue)
 
     active_buckets = [bucket for bucket in buckets if bucket['sales_count'] > 0]
     peak_by_quantity = max(
@@ -2964,9 +3017,17 @@ def api_reports_summary():
                 .order_by(Sale.created_at.asc(), Sale.id.asc())
                 .all()
             )
+            historical_rows = tenant_db.query(HistoricalDailyReport).filter(
+                HistoricalDailyReport.company_id == g.api_user.company_id,
+                HistoricalDailyReport.report_date >= start,
+                HistoricalDailyReport.report_date <= end,
+            ).order_by(HistoricalDailyReport.report_date.asc()).all()
 
         report = api_build_sales_report(sales)
-        chart = api_build_sales_chart(period, start, end, sales, chart_metric)
+        report = api_merge_historical_sales_report(report, historical_rows)
+        chart = api_build_sales_chart(
+            period, start, end, sales, chart_metric, historical_rows
+        )
         return api_success({
             'period': period,
             'period_label': label,

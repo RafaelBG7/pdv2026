@@ -15,7 +15,7 @@ from flask import g
 
 from app import create_app
 from app.extensions import db
-from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, Notification, NotificationPreference, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, HistoricalDailyReport, HistoricalReportImportBatch, Notification, NotificationPreference, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
 from app.services.api_auth_service import clear_api_login_attempts
 from app.services.audit_service import changed_values, record_audit_event
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -2569,6 +2569,100 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(data['chart']['buckets'][0]['total'], 40.0)
         self.assertTrue(data['chart']['buckets'][0]['is_peak'])
         self.assertNotIn('Produto outra adega', str(data))
+
+    def test_api_reports_summary_includes_imported_historical_data(self):
+        user, company = self.create_api_user(username='api-relatorio-historico')
+        other_user, other_company = self.create_api_user(
+            username='api-relatorio-historico-outra',
+            company_name='Outra adega histórica',
+        )
+        report_day = date(2025, 1, 15)
+        with self.app.app_context():
+            batch = HistoricalReportImportBatch(
+                company_id=company.id,
+                user_id=user.id,
+                filename='historico.csv',
+                file_hash='a' * 64,
+                source='Sistema legado',
+                strategy='ignore',
+                status='completed',
+                valid_rows=1,
+                invalid_rows=0,
+                inserted_rows=1,
+                updated_rows=0,
+                ignored_rows=0,
+                period_start=report_day,
+                period_end=report_day,
+                idempotency_key='historico-api',
+            )
+            other_batch = HistoricalReportImportBatch(
+                company_id=other_company.id,
+                user_id=other_user.id,
+                filename='outra.csv',
+                file_hash='b' * 64,
+                source='Outro sistema',
+                strategy='ignore',
+                status='completed',
+                valid_rows=1,
+                invalid_rows=0,
+                inserted_rows=1,
+                updated_rows=0,
+                ignored_rows=0,
+                period_start=report_day,
+                period_end=report_day,
+                idempotency_key='historico-outra-api',
+            )
+            db.session.add_all([batch, other_batch])
+            db.session.flush()
+            db.session.add_all([
+                HistoricalDailyReport(
+                    company_id=company.id,
+                    report_date=report_day,
+                    sales_count=8,
+                    revenue=Decimal('900.00'),
+                    gross_profit=Decimal('315.00'),
+                    average_ticket=Decimal('112.50'),
+                    source='Sistema legado',
+                    batch_id=batch.id,
+                    user_id=user.id,
+                ),
+                HistoricalDailyReport(
+                    company_id=other_company.id,
+                    report_date=report_day,
+                    sales_count=99,
+                    revenue=Decimal('9999.00'),
+                    gross_profit=Decimal('999.00'),
+                    average_ticket=Decimal('101.00'),
+                    source='Outro sistema',
+                    batch_id=other_batch.id,
+                    user_id=other_user.id,
+                ),
+            ])
+            db.session.commit()
+
+        token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
+        response = self.client.get(
+            '/api/v1/reports/summary?period=custom&start_date=2025-01-01&end_date=2025-01-31',
+            headers=self.bearer_header(token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()['data']
+        self.assertEqual(data['summary']['sales_count'], 8)
+        self.assertEqual(data['summary']['final'], 900.0)
+        self.assertEqual(data['summary']['profit'], 315.0)
+        self.assertEqual(data['summary']['average_ticket'], 112.5)
+        self.assertEqual(data['summary']['historical_days'], 1)
+        self.assertEqual(data['summary']['historical_sales_count'], 8)
+        self.assertEqual(data['summary']['historical_revenue'], 900.0)
+        imported_day = next(
+            bucket for bucket in data['chart']['buckets']
+            if bucket['key'] == report_day.isoformat()
+        )
+        self.assertEqual(imported_day['sales_count'], 8)
+        self.assertEqual(imported_day['total'], 900.0)
+        self.assertTrue(imported_day['is_peak'])
+        self.assertNotIn('9999', str(data))
 
     def test_api_reports_summary_requires_reports_permission(self):
         user, _ = self.create_api_user(

@@ -26,9 +26,6 @@ historical_reports_bp = Blueprint('historical_reports', __name__, url_prefix='/r
 
 
 def _ensure_available():
-    environment = (current_app.config.get('ENVIRONMENT') or current_app.config.get('APP_ENV') or 'development').lower()
-    if environment == 'production':
-        abort(404)
     if current_user.role not in ('admin', 'master'):
         abort(403)
     company = current_tenant_company()

@@ -322,9 +322,9 @@ class HistoricalReportTestCase(unittest.TestCase):
         with self.app.app_context():
             self.assertEqual(HistoricalDailyReport.query.count(), 1)
 
-    def test_production_environment_hides_feature(self):
+    def test_production_environment_exposes_feature_to_authorized_user(self):
         self.app.config['ENVIRONMENT'] = 'production'
-        self.assertEqual(self.client.get('/relatorios/importacao/').status_code, 404)
+        self.assertEqual(self.client.get('/relatorios/importacao/').status_code, 200)
 
 
 if __name__ == '__main__':

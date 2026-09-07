@@ -281,7 +281,7 @@
                                                FontWeight="{DynamicResource FontWeightStrong}"
                                                Foreground="{DynamicResource TextPrimaryBrush}" Text="Senha" />
                                     <Grid>
-                                        <PasswordBox x:Name="PasswordInput" Height="52" Padding="14,0,52,0"
+                                        <PasswordBox x:Name="PasswordInput" Height="52" Padding="6,0,52,0"
                                                      PasswordChanged="HandlePasswordChanged">
                                             <PasswordBox.Style>
                                                 <Style TargetType="PasswordBox" BasedOn="{StaticResource PasswordInputStyle}">
@@ -293,7 +293,7 @@
                                                 </Style>
                                             </PasswordBox.Style>
                                         </PasswordBox>
-                                        <TextBox x:Name="VisiblePasswordInput" Height="52" Padding="14,0,52,0"
+                                        <TextBox x:Name="VisiblePasswordInput" Height="52" Padding="6,0,52,0"
                                                  Text="{Binding Login.Password, UpdateSourceTrigger=PropertyChanged}">
                                             <TextBox.Style>
                                                 <Style TargetType="TextBox" BasedOn="{StaticResource TextInputStyle}">

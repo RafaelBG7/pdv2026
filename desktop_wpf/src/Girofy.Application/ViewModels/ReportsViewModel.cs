@@ -69,6 +69,10 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         SelectQuantityMetricCommand = new AsyncRelayCommand(
             cancellationToken => SelectMetricAsync("quantity", cancellationToken),
             () => CanViewReports && !IsBusy);
+        SelectDailyPeriodCommand = CreatePeriodCommand("daily");
+        SelectWeeklyPeriodCommand = CreatePeriodCommand("weekly");
+        SelectMonthlyPeriodCommand = CreatePeriodCommand("monthly");
+        SelectAnnualPeriodCommand = CreatePeriodCommand("annual");
         _sessionContext.Changed += HandleSessionChanged;
     }
 
@@ -81,8 +85,33 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public CatalogFilterOption SelectedPeriod
     {
         get => _selectedPeriod;
-        set => SetProperty(ref _selectedPeriod, value);
+        set
+        {
+            if (SetProperty(ref _selectedPeriod, value))
+            {
+                OnPropertyChanged(nameof(IsDailyPeriodSelected));
+                OnPropertyChanged(nameof(IsWeeklyPeriodSelected));
+                OnPropertyChanged(nameof(IsMonthlyPeriodSelected));
+                OnPropertyChanged(nameof(IsAnnualPeriodSelected));
+                OnPropertyChanged(nameof(ChartTitle));
+                OnPropertyChanged(nameof(ChartDescription));
+            }
+        }
     }
+
+    public bool IsDailyPeriodSelected => IsPeriodSelected("daily");
+
+    public bool IsWeeklyPeriodSelected => IsPeriodSelected("weekly");
+
+    public bool IsMonthlyPeriodSelected => IsPeriodSelected("monthly");
+
+    public bool IsAnnualPeriodSelected => IsPeriodSelected("annual");
+
+    public string ChartTitle => IsDailyPeriodSelected ? "Vendas por horário" : "Vendas por período";
+
+    public string ChartDescription => IsDailyPeriodSelected
+        ? "Movimentação distribuída pelos horários do dia"
+        : "Movimentação distribuída pelos intervalos do período";
 
     public CatalogFilterOption SelectedMetric
     {
@@ -216,6 +245,10 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
                 ApplyProductFiltersCommand.NotifyCanExecuteChanged();
                 SelectRevenueMetricCommand.NotifyCanExecuteChanged();
                 SelectQuantityMetricCommand.NotifyCanExecuteChanged();
+                SelectDailyPeriodCommand.NotifyCanExecuteChanged();
+                SelectWeeklyPeriodCommand.NotifyCanExecuteChanged();
+                SelectMonthlyPeriodCommand.NotifyCanExecuteChanged();
+                SelectAnnualPeriodCommand.NotifyCanExecuteChanged();
                 NotifyProductCommands();
             }
         }
@@ -242,6 +275,14 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand SelectRevenueMetricCommand { get; }
 
     public AsyncRelayCommand SelectQuantityMetricCommand { get; }
+
+    public AsyncRelayCommand SelectDailyPeriodCommand { get; }
+
+    public AsyncRelayCommand SelectWeeklyPeriodCommand { get; }
+
+    public AsyncRelayCommand SelectMonthlyPeriodCommand { get; }
+
+    public AsyncRelayCommand SelectAnnualPeriodCommand { get; }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -296,6 +337,31 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         _isInitialized = false;
         await LoadAsync(cancellationToken);
     }
+
+    private AsyncRelayCommand CreatePeriodCommand(string period) => new(
+        cancellationToken => SelectPeriodAsync(period, cancellationToken),
+        () => CanViewReports && !IsBusy);
+
+    private async Task SelectPeriodAsync(string period, CancellationToken cancellationToken)
+    {
+        var option = PeriodOptions.First(item =>
+            string.Equals(item.Value, period, StringComparison.OrdinalIgnoreCase));
+        var hasCustomDates = !string.IsNullOrWhiteSpace(StartDateText) ||
+            !string.IsNullOrWhiteSpace(EndDateText);
+        if (IsPeriodSelected(option.Value) && !hasCustomDates)
+        {
+            return;
+        }
+
+        SelectedPeriod = option;
+        StartDateText = string.Empty;
+        EndDateText = string.Empty;
+        _isInitialized = false;
+        await LoadAsync(cancellationToken);
+    }
+
+    private bool IsPeriodSelected(string period) =>
+        string.Equals(SelectedPeriod.Value, period, StringComparison.OrdinalIgnoreCase);
 
     private async Task ApplyProductFiltersAsync(CancellationToken cancellationToken)
     {

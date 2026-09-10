@@ -1,4 +1,8 @@
 {$HML_SITE_ADDRESS::18081} {
-	reverse_proxy app:5003
+	reverse_proxy app:5003 {
+		# O Nginx público termina o TLS e o Caddy só aceita tráfego no loopback.
+		# Preserve o protocolo validado pelo primeiro proxy para o Flask.
+		header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+	}
 	encode gzip
 }

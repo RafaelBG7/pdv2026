@@ -33,6 +33,7 @@ class TestConfig:
     WTF_CSRF_ENABLED = False
     MAIL_SUPPRESS_SEND = True
     PUBLIC_BASE_URL = 'http://localhost'
+    MARKETING_BASE_URL = 'http://localhost'
     API_ALLOW_INSECURE_AUTH = True
     API_ACCESS_TOKEN_MINUTES = 15
     API_REFRESH_TOKEN_DAYS = 30
@@ -184,7 +185,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Menos planilhas. Mais controle'.encode(), response.data)
         self.assertIn('R$</span><strong>50,00'.encode(), response.data)
         self.assertIn('wa.me/5511944876166'.encode(), response.data)
-        self.assertIn('href="/login"'.encode(), response.data)
+        self.assertIn('href="http://localhost/login"'.encode(), response.data)
         self.assertIn('name="robots" content="noindex, nofollow"'.encode(), response.data)
 
     def test_dashboard_still_requires_authentication(self):
@@ -374,7 +375,8 @@ class RouteTestCase(unittest.TestCase):
 
     def test_public_https_origin_is_allowed_when_proxy_reports_internal_http(self):
         class HmlProxyConfig(TestConfig):
-            PUBLIC_BASE_URL = 'https://hml.skygest.com.br'
+            PUBLIC_BASE_URL = 'https://app.hml.skygest.com.br'
+            MARKETING_BASE_URL = 'https://hml.skygest.com.br'
             TRUST_PROXY_HEADERS = True
             TRUSTED_PROXY_COUNT = 2
 
@@ -387,7 +389,7 @@ class RouteTestCase(unittest.TestCase):
             response = proxy_client.post(
                 '/login?next=%2F',
                 data={'username': 'desconhecido', 'password': 'SenhaErrada123'},
-                headers={'Origin': 'https://hml.skygest.com.br'},
+                headers={'Origin': 'https://app.hml.skygest.com.br'},
             )
 
             self.assertEqual(response.status_code, 200)

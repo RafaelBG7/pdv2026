@@ -1021,10 +1021,14 @@ def build_product_report(start_datetime, end_datetime, category_id='', product_i
 @main_bp.get('/')
 def home():
     environment = (current_app.config.get('ENVIRONMENT') or 'development').lower()
+    marketing_base_url = (current_app.config.get('MARKETING_BASE_URL') or request.url_root).rstrip('/')
+    app_base_url = (current_app.config.get('PUBLIC_BASE_URL') or request.url_root).rstrip('/')
     return render_template(
         'home.html',
         plans=PUBLIC_PLANS,
         is_non_production=environment != 'production',
+        marketing_base_url=marketing_base_url,
+        app_base_url=app_base_url,
     )
 
 

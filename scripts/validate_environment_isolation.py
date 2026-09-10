@@ -38,7 +38,8 @@ def validate_homologation(values, production_values=None, validate_secrets=True)
     errors = []
     expected = {
         'APP_ENV': 'homologation',
-        'PUBLIC_BASE_URL': 'https://hml.skygest.com.br',
+        'PUBLIC_BASE_URL': 'https://app.hml.skygest.com.br',
+        'MARKETING_BASE_URL': 'https://hml.skygest.com.br',
         'MYSQL_HOST': 'mysql',
         'MYSQL_DATABASE': 'skygest_hml_central',
         'MYSQL_TENANT_DATABASE_PREFIX': 'skygest_hml_tenant',
@@ -83,8 +84,10 @@ def validate_production(values, validate_secrets=True):
     errors = []
     if values.get('APP_ENV') != 'production':
         errors.append("APP_ENV deve ser 'production' em produção")
-    if values.get('PUBLIC_BASE_URL') not in {'https://skygest.com.br', 'https://www.skygest.com.br'}:
-        errors.append('PUBLIC_BASE_URL de produção deve usar o domínio skygest.com.br')
+    if values.get('PUBLIC_BASE_URL') != 'https://app.skygest.com.br':
+        errors.append('PUBLIC_BASE_URL de produção deve usar app.skygest.com.br')
+    if values.get('MARKETING_BASE_URL') not in {'https://skygest.com.br', 'https://www.skygest.com.br'}:
+        errors.append('MARKETING_BASE_URL de produção deve usar o domínio skygest.com.br')
     if values.get('MYSQL_DATABASE', 'adega_central') == 'skygest_hml_central':
         errors.append('produção não pode usar o banco central de homologação')
     if values.get('RATELIMIT_IN_MEMORY_FALLBACK_ENABLED') not in {'0', 'false', 'False'}:

@@ -5,7 +5,7 @@ namespace Girofy.Infrastructure.Api;
 public sealed class ApiOptions
 {
     private const string LegacyProductionHost = "skygest.com.br";
-    private const string CanonicalProductionHost = "www.skygest.com.br";
+    private const string CanonicalProductionHost = "app.skygest.com.br";
 
     public string BaseUrl { get; init; } = string.Empty;
 

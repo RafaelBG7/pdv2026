@@ -2,6 +2,7 @@
 set -euo pipefail
 
 HML_DOMAIN="${HML_DOMAIN:-hml.skygest.com.br}"
+HML_APP_DOMAIN="${HML_APP_DOMAIN:-app.hml.skygest.com.br}"
 EXPECTED_PUBLIC_IP="${EXPECTED_PUBLIC_IP:-168.75.101.126}"
 HML_DEPLOY_PATH="${HML_DEPLOY_PATH:-/opt/girofy/hml}"
 PRODUCTION_DEPLOY_PATH="${PRODUCTION_DEPLOY_PATH:-/opt/girofy/app}"
@@ -14,13 +15,19 @@ if [[ "$HML_DOMAIN" != 'hml.skygest.com.br' ]]; then
   echo "Domínio HML recusado." >&2
   exit 1
 fi
+if [[ "$HML_APP_DOMAIN" != 'app.hml.skygest.com.br' ]]; then
+  echo "Domínio da aplicação HML recusado." >&2
+  exit 1
+fi
 curl -fsS "http://127.0.0.1:${HML_LOOPBACK_PORT}/health/dependencies" >/dev/null
 
-resolved_ips="$(getent ahostsv4 "$HML_DOMAIN" | awk '{print $1}' | sort -u || true)"
-if ! grep -Fxq "$EXPECTED_PUBLIC_IP" <<<"$resolved_ips"; then
-  echo "DNS pendente: crie o registro A hml -> $EXPECTED_PUBLIC_IP antes de configurar HTTPS." >&2
-  exit 2
-fi
+for domain in "$HML_DOMAIN" "$HML_APP_DOMAIN"; do
+  resolved_ips="$(getent ahostsv4 "$domain" | awk '{print $1}' | sort -u || true)"
+  if ! grep -Fxq "$EXPECTED_PUBLIC_IP" <<<"$resolved_ips"; then
+    echo "DNS pendente: $domain deve apontar para $EXPECTED_PUBLIC_IP antes de configurar HTTPS." >&2
+    exit 2
+  fi
+done
 
 echo "Gerando backup integral de produção antes de alterar o gateway compartilhado."
 cd "$PRODUCTION_DEPLOY_PATH"
@@ -64,20 +71,23 @@ if ! command -v certbot >/dev/null 2>&1; then
   exit 1
 fi
 sudo -n certbot --nginx --non-interactive --agree-tos --redirect --keep-until-expiring \
-  --register-unsafely-without-email -d "$HML_DOMAIN"
+  --register-unsafely-without-email -d "$HML_DOMAIN" -d "$HML_APP_DOMAIN"
 sudo -n nginx -t
 sudo -n systemctl reload nginx
 
-curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/login" >/dev/null
-curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/health/dependencies" >/dev/null
-curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/api/v1/health/dependencies" >/dev/null
-auth_status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${HML_DOMAIN}/api/v1/auth/me")"
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_APP_DOMAIN}/login" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_APP_DOMAIN}/health/dependencies" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_APP_DOMAIN}/api/v1/health/dependencies" >/dev/null
+auth_status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${HML_APP_DOMAIN}/api/v1/auth/me")"
 if [[ "$auth_status" != '401' ]]; then
   echo "API HML não reconheceu HTTPS ou não protegeu /auth/me (HTTP ${auth_status})." >&2
   exit 1
 fi
 curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://skygest.com.br/health/dependencies" >/dev/null
 echo | openssl s_client -connect "${HML_DOMAIN}:443" -servername "$HML_DOMAIN" 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -dates
+echo | openssl s_client -connect "${HML_APP_DOMAIN}:443" -servername "$HML_APP_DOMAIN" 2>/dev/null \
   | openssl x509 -noout -subject -issuer -dates
 
 trap - ERR

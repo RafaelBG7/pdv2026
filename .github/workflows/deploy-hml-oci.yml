@@ -119,6 +119,7 @@ jobs:
       PRODUCTION_DEPLOY_PATH: /opt/girofy/app
       HML_LOOPBACK_PORT: '18081'
       HML_DOMAIN: hml.skygest.com.br
+      HML_APP_DOMAIN: app.hml.skygest.com.br
       EXPECTED_PUBLIC_IP: ${{ vars.EXPECTED_PUBLIC_IP || '168.75.101.126' }}
       HML_MASTER_DEFAULT_PASSWORD: ${{ secrets.HML_MASTER_DEFAULT_PASSWORD }}
       DEPLOY_SHA: ${{ github.sha }}
@@ -134,9 +135,10 @@ jobs:
 
       - name: Health checks públicos HML e PROD
         run: |
-          curl -fsS https://hml.skygest.com.br/login >/dev/null
-          curl -fsS https://hml.skygest.com.br/health/dependencies >/dev/null
-          curl -fsS https://hml.skygest.com.br/api/v1/health/dependencies >/dev/null
+          curl -fsS https://hml.skygest.com.br/ >/dev/null
+          curl -fsS https://app.hml.skygest.com.br/login >/dev/null
+          curl -fsS https://app.hml.skygest.com.br/health/dependencies >/dev/null
+          curl -fsS https://app.hml.skygest.com.br/api/v1/health/dependencies >/dev/null
           curl -fsS https://skygest.com.br/health/dependencies >/dev/null
 
   provision-user:
@@ -174,4 +176,4 @@ jobs:
 
       - name: Validar login público HML
         shell: bash
-        run: curl -fsS https://hml.skygest.com.br/login >/dev/null
+        run: curl -fsS https://app.hml.skygest.com.br/login >/dev/null

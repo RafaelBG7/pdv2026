@@ -118,6 +118,7 @@ class Config:
     WTF_CSRF_ENABLED = CSRF_ENABLED
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', str(8 * 1024 * 1024)))
     PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', '')
+    MARKETING_BASE_URL = os.environ.get('MARKETING_BASE_URL', PUBLIC_BASE_URL)
     MAIL_SMTP_SERVER = os.environ.get('MAIL_SMTP_SERVER', os.environ.get('GMAIL_SMTP_SERVER', os.environ.get('BREVO_SMTP_SERVER', 'smtp.gmail.com')))
     MAIL_SMTP_PORT = int(os.environ.get('MAIL_SMTP_PORT', os.environ.get('GMAIL_SMTP_PORT', os.environ.get('BREVO_SMTP_PORT', '587'))))
     MAIL_SMTP_LOGIN = os.environ.get('MAIL_SMTP_LOGIN', os.environ.get('GMAIL_SMTP_LOGIN', os.environ.get('BREVO_SMTP_LOGIN', '')))

@@ -160,6 +160,7 @@ jobs:
       PRODUCTION_DEPLOY_PATH: /opt/girofy/app
       HML_LOOPBACK_PORT: '18081'
       HML_DOMAIN: hml.skygest.com.br
+      HML_APP_DOMAIN: app.hml.skygest.com.br
       EXPECTED_PUBLIC_IP: ${{ vars.EXPECTED_PUBLIC_IP || '168.75.101.126' }}
       HML_MASTER_DEFAULT_PASSWORD: ${{ secrets.HML_MASTER_DEFAULT_PASSWORD }}
       DEPLOY_SHA: ${{ github.sha }}

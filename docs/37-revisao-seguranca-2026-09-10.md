@@ -56,6 +56,16 @@ somente sobre desenvolvimento/homologação; produção não foi alterada.
   memória/CPU mesmo respeitando o limite do corpo HTTP.
 - Correção: máximo de 10.000 linhas, 64 colunas e 32 MiB descompactados para XLSX.
 
+### ALTO — HTTPS da API perdido entre os proxies de homologação
+
+- Arquivo: `deploy/nginx/skygest-hml.conf`
+- Risco: o TLS termina no gateway Caddy, mas o Nginx substituía
+  `X-Forwarded-Proto` pelo protocolo do salto interno (`http`). As rotas de autenticação da
+  API recusavam chamadas HTTPS externas com `426 Upgrade Required`.
+- Correção: o Nginx de HML passou a preservar o protocolo encaminhado pelo gateway local.
+  A validação manual confirmou que o bloqueio incorreto deixou de ocorrer e que chamadas
+  sem credencial seguem rejeitadas.
+
 ## Não implementado / pendências
 
 - **ALTO — usuário administrativo de schema:** `MYSQL_SERVER_DATABASE_URL` ainda usa root

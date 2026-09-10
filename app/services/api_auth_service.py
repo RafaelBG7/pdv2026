@@ -71,6 +71,9 @@ def request_uses_secure_transport():
         return True
     if not current_app.config.get('TRUST_PROXY_HEADERS', False):
         return False
+    trusted_gateway_proto = request.headers.get('X-SkyGest-Forwarded-Proto', '').strip().lower()
+    if trusted_gateway_proto == 'https':
+        return True
     forwarded_proto = request.headers.get('X-Forwarded-Proto', '').split(',', 1)[0].strip().lower()
     return forwarded_proto == 'https'
 

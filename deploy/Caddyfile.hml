@@ -1,8 +1,4 @@
 {$HML_SITE_ADDRESS::18081} {
-	reverse_proxy app:5003 {
-		# O Nginx público termina o TLS e o Caddy só aceita tráfego no loopback.
-		# O salto interno é sempre a continuação da origem HTTPS validada.
-		header_up X-Forwarded-Proto https
-	}
+	reverse_proxy app:5003
 	encode gzip
 }

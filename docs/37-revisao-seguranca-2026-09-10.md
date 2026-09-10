@@ -62,9 +62,9 @@ somente sobre desenvolvimento/homologação; produção não foi alterada.
 - Risco: o TLS termina no gateway Caddy, mas o Nginx substituía
   `X-Forwarded-Proto` pelo protocolo do salto interno (`http`). As rotas de autenticação da
   API recusavam chamadas HTTPS externas com `426 Upgrade Required`.
-- Correção: o Nginx de HML passou a preservar o protocolo encaminhado pelo gateway local.
-  A validação manual confirmou que o bloqueio incorreto deixou de ocorrer e que chamadas
-  sem credencial seguem rejeitadas.
+- Correção: o Nginx de HML sobrescreve um marcador privado com o protocolo validado; a
+  aplicação só o aceita quando a confiança em proxies está explicitamente habilitada.
+  O deploy também passou a exigir `401` (e recusar `426`) em uma rota autenticada sem token.
 
 ## Não implementado / pendências
 

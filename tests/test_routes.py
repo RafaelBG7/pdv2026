@@ -706,6 +706,20 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 426)
         self.assertEqual(response.get_json()['errors'][0]['code'], 'https_required')
 
+    def test_api_authentication_accepts_https_from_trusted_gateway(self):
+        user, _ = self.create_api_user()
+        self.app.config['API_ALLOW_INSECURE_AUTH'] = False
+        self.app.config['TRUST_PROXY_HEADERS'] = True
+
+        response = self.client.post(
+            '/api/v1/auth/login',
+            json={'username': user.username, 'password': 'SenhaApi123'},
+            headers={'X-SkyGest-Forwarded-Proto': 'https'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['success'])
+
     def test_api_settings_account_returns_profile_and_company_settings(self):
         user, company = self.create_api_user(
             first_name='Ana',

@@ -84,6 +84,8 @@ echo "Aplicando migrations somente no MySQL HML."
 echo "Removendo eventual tenant legado do Painel Master somente após backup e migrations."
 "${COMPOSE[@]}" run --rm --no-deps app python scripts/cleanup_system_tenant.py --apply
 "${COMPOSE[@]}" up -d --remove-orphans app backup caddy
+"${COMPOSE[@]}" exec -T caddy caddy validate --config /etc/caddy/Caddyfile
+"${COMPOSE[@]}" exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 
 for attempt in {1..40}; do
   if curl -fsS "http://127.0.0.1:${HML_LOOPBACK_PORT}/health/dependencies" >/dev/null 2>&1; then

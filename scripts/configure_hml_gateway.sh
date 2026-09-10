@@ -68,15 +68,15 @@ sudo -n certbot --nginx --non-interactive --agree-tos --redirect --keep-until-ex
 sudo -n nginx -t
 sudo -n systemctl reload nginx
 
-curl -fsS "https://${HML_DOMAIN}/login" >/dev/null
-curl -fsS "https://${HML_DOMAIN}/health/dependencies" >/dev/null
-curl -fsS "https://${HML_DOMAIN}/api/v1/health/dependencies" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/login" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/health/dependencies" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/api/v1/health/dependencies" >/dev/null
 auth_status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${HML_DOMAIN}/api/v1/auth/me")"
 if [[ "$auth_status" != '401' ]]; then
   echo "API HML não reconheceu HTTPS ou não protegeu /auth/me (HTTP ${auth_status})." >&2
   exit 1
 fi
-curl -fsS "https://skygest.com.br/health/dependencies" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://skygest.com.br/health/dependencies" >/dev/null
 echo | openssl s_client -connect "${HML_DOMAIN}:443" -servername "$HML_DOMAIN" 2>/dev/null \
   | openssl x509 -noout -subject -issuer -dates
 

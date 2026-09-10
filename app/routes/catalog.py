@@ -144,6 +144,11 @@ def read_csv_rows(file_storage):
     return list(reader)
 
 
+MAX_PRODUCT_IMPORT_ROWS = 10000
+MAX_PRODUCT_IMPORT_COLUMNS = 64
+MAX_XLSX_UNCOMPRESSED_BYTES = 32 * 1024 * 1024
+
+
 def xlsx_column_index(cell_reference):
     letters = ''.join(char for char in cell_reference if char.isalpha())
     index = 0
@@ -155,6 +160,8 @@ def xlsx_column_index(cell_reference):
 def read_xlsx_rows(file_storage):
     data = file_storage.read()
     with zipfile.ZipFile(io.BytesIO(data)) as workbook:
+        if sum(item.file_size for item in workbook.infolist()) > MAX_XLSX_UNCOMPRESSED_BYTES:
+            raise ValueError('A planilha descompactada excede o limite permitido.')
         shared_strings = []
         if 'xl/sharedStrings.xml' in workbook.namelist():
             shared_root = ElementTree.fromstring(workbook.read('xl/sharedStrings.xml'))
@@ -173,6 +180,8 @@ def read_xlsx_rows(file_storage):
             for cell in sheet_row.iter('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c'):
                 reference = cell.attrib.get('r', '')
                 index = xlsx_column_index(reference)
+                if index < 0 or index >= MAX_PRODUCT_IMPORT_COLUMNS:
+                    raise ValueError('A planilha possui colunas além do limite permitido.')
                 while len(values) <= index:
                     values.append('')
 
@@ -205,10 +214,14 @@ def read_xlsx_rows(file_storage):
 def read_import_rows(file_storage):
     filename = (file_storage.filename or '').lower()
     if filename.endswith('.csv'):
-        return read_csv_rows(file_storage)
-    if filename.endswith('.xlsx'):
-        return read_xlsx_rows(file_storage)
-    raise ValueError('Formato inválido. Envie uma planilha CSV ou XLSX.')
+        rows = read_csv_rows(file_storage)
+    elif filename.endswith('.xlsx'):
+        rows = read_xlsx_rows(file_storage)
+    else:
+        raise ValueError('Formato inválido. Envie uma planilha CSV ou XLSX.')
+    if len(rows) > MAX_PRODUCT_IMPORT_ROWS:
+        raise ValueError(f'A planilha excede o limite de {MAX_PRODUCT_IMPORT_ROWS} linhas.')
+    return rows
 
 
 def find_or_create_category(name, tenant_db, company_id):

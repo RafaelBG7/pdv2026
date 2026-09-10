@@ -674,6 +674,18 @@ def render_auth_form(auth_tab='login', form_values=None, field_errors=None):
     )
 
 
+def rotate_browser_session_before_login(preserve=()):
+    """Discard anonymous session state before establishing an authenticated session."""
+    preserved = {
+        key: session[key]
+        for key in preserve
+        if key in session
+    }
+    session.clear()
+    session.permanent = True
+    session.update(preserved)
+
+
 @auth_bp.get('/register')
 def register():
     if current_user.is_authenticated:
@@ -812,6 +824,7 @@ def login():
                 flash('Esta adega está inativa. Fale com o usuário master.', 'danger')
                 return render_auth_form('login', login_form_values(), {'username': 'A adega deste usuário está inativa.'})
             remember_me = request.form.get('remember_me') == '1'
+            rotate_browser_session_before_login(preserve=('app_registration',))
             login_user(user, remember=remember_me)
             record_audit_event(
                 'login_success',
@@ -917,9 +930,10 @@ def verify_email():
             db_session=db.session,
         )
         db.session.commit()
+        app_registration = session.get('app_registration')
         clear_verification_user()
+        rotate_browser_session_before_login()
         login_user(user)
-        app_registration = session.pop('app_registration', None)
         if app_registration and valid_callback_request(
             app_registration.get('state'),
             app_registration.get('code_challenge'),

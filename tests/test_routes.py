@@ -2429,7 +2429,7 @@ class RouteTestCase(unittest.TestCase):
                 company_id=company.id,
                 user_id=user.id,
                 cash_register_id=cash_register.id,
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 total_amount=20,
                 final_amount=20,
                 payment_status='paid',
@@ -3569,6 +3569,20 @@ class RouteTestCase(unittest.TestCase):
         cookies = response.headers.getlist('Set-Cookie')
         self.assertTrue(any('remember_token=' in cookie for cookie in cookies))
 
+    def test_login_discards_anonymous_session_state(self):
+        with self.client.session_transaction() as browser_session:
+            browser_session['attacker_controlled_marker'] = 'fixed'
+            browser_session['_csrf_token'] = 'old-token'
+
+        response = self.login()
+
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as browser_session:
+            self.assertNotIn('attacker_controlled_marker', browser_session)
+            self.assertNotIn('_csrf_token', browser_session)
+            self.assertEqual(browser_session.get('_user_id'), '1')
+            self.assertTrue(browser_session.permanent)
+
     def test_csrf_rejects_missing_token_when_enabled(self):
         class CSRFConfig(TestConfig):
             CSRF_ENABLED = True
@@ -3642,10 +3656,19 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.get('/login')
 
         self.assertEqual(response.headers.get('X-Content-Type-Options'), 'nosniff')
-        self.assertEqual(response.headers.get('X-Frame-Options'), 'SAMEORIGIN')
+        self.assertEqual(response.headers.get('X-Frame-Options'), 'DENY')
         self.assertIn("default-src 'self'", response.headers.get('Content-Security-Policy', ''))
         self.assertIn("form-action 'self'", response.headers.get('Content-Security-Policy', ''))
+        self.assertIn("frame-ancestors 'none'", response.headers.get('Content-Security-Policy', ''))
         self.assertEqual(response.headers.get('Cross-Origin-Opener-Policy'), 'same-origin')
+
+    def test_secure_environment_hsts_does_not_claim_subdomains(self):
+        self.app.config['SESSION_COOKIE_SECURE'] = True
+
+        response = self.client.get('/login')
+
+        self.assertEqual(response.headers.get('Strict-Transport-Security'), 'max-age=31536000')
+        self.assertNotIn('includeSubDomains', response.headers.get('Strict-Transport-Security', ''))
 
     def test_production_rejects_insecure_default_secrets(self):
         class ProductionConfig(TestConfig):
@@ -5341,7 +5364,7 @@ class RouteTestCase(unittest.TestCase):
             sale = Sale(
                 company_id=company_id,
                 cash_register_id=cash_register.id,
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 total_amount=100,
                 final_amount=100,
                 payment_status='paid',
@@ -5395,7 +5418,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.flush()
             sale = Sale(
                 company_id=company_id,
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 total_amount=80000,
                 discount_amount=2075.07,
                 final_amount=77924.93,
@@ -5459,7 +5482,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.flush()
             sale = Sale(
                 company_id=company_id,
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 total_amount=20,
                 final_amount=20,
                 payment_status='paid',
@@ -6279,6 +6302,26 @@ class RouteTestCase(unittest.TestCase):
             self.assertEqual(whisky.min_stock_quantity, 2)
             self.assertEqual(whisky.stock_quantity, 7)
 
+    def test_import_products_rejects_excessive_csv_rows(self):
+        self.login()
+        header = 'categoria;produto;preco_custo;preco_venda;estoque_minimo;estoque_atual\n'
+        csv_content = header + ''.join(
+            f'Categoria;Produto {index};1,00;2,00;0;0\n'
+            for index in range(10001)
+        )
+
+        response = self.client.post(
+            '/catalogo/produtos/importar',
+            data={'spreadsheet': (io.BytesIO(csv_content.encode()), 'produtos.csv')},
+            content_type='multipart/form-data',
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('excede o limite de 10000 linhas'.encode(), response.data)
+        with self.app.app_context():
+            self.assertEqual(Product.query.count(), 0)
+
     def test_import_template_can_be_downloaded_from_settings(self):
         self.login()
 
@@ -6691,7 +6734,7 @@ class RouteTestCase(unittest.TestCase):
             user = User.query.filter_by(username='master').one()
             cash_register = CashRegister.query.filter_by(company_id=company_id, status='open').one()
             today_sale = Sale(
-                created_at=datetime.now().replace(hour=10, minute=0, second=0, microsecond=0),
+                created_at=datetime.now(timezone.utc).replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=None),
                 total_amount=11,
                 final_amount=11,
                 payment_status='paid',
@@ -6700,7 +6743,7 @@ class RouteTestCase(unittest.TestCase):
                 cash_register_id=cash_register.id,
             )
             old_sale = Sale(
-                created_at=datetime.now() - timedelta(days=1),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1),
                 total_amount=99,
                 final_amount=99,
                 payment_status='paid',
@@ -6861,7 +6904,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.flush()
             sale = Sale(
                 company_id=company_id,
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 total_amount=80000,
                 discount_amount=2075.07,
                 final_amount=77924.93,
@@ -6913,7 +6956,7 @@ class RouteTestCase(unittest.TestCase):
             company_id = self.master_company_id()
             product = Product(name='Saquê', cost_price=20, sale_price=50, stock_quantity=6, active=True, company_id=company_id)
             sale = Sale(
-                created_at=datetime.now() - timedelta(days=5),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=5),
                 total_amount=50,
                 final_amount=50,
                 payment_status='paid',
@@ -7275,7 +7318,7 @@ class RouteTestCase(unittest.TestCase):
             sale = Sale(
                 company_id=company_id,
                 cash_register_id=cash_register.id,
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 total_amount=80000,
                 discount_amount=2075.07,
                 final_amount=77924.93,
@@ -7780,7 +7823,7 @@ class RouteTestCase(unittest.TestCase):
             db.session.add(cash_register)
             db.session.flush()
             sale = Sale(
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 total_amount=12,
                 discount_amount=0,
                 final_amount=12,

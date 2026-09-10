@@ -583,13 +583,13 @@ def create_app(config_class=Config):
     @app.after_request
     def add_security_headers(response):
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('X-Frame-Options', 'DENY')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
         response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
         response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
         if app.config.get('SESSION_COOKIE_SECURE'):
-            response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+            response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
         response.headers.setdefault('Content-Security-Policy', (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
@@ -597,7 +597,7 @@ def create_app(config_class=Config):
             "img-src 'self' data:; "
             "font-src 'self' data: https://cdn.jsdelivr.net; "
             "connect-src 'self'; "
-            "frame-ancestors 'self'; "
+            "frame-ancestors 'none'; "
             "base-uri 'self'; "
             "form-action 'self'"
         ))

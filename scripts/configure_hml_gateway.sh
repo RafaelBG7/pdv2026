@@ -71,7 +71,7 @@ if ! command -v certbot >/dev/null 2>&1; then
   exit 1
 fi
 sudo -n certbot --nginx --non-interactive --agree-tos --redirect --keep-until-expiring \
-  --register-unsafely-without-email -d "$HML_DOMAIN" -d "$HML_APP_DOMAIN"
+  --register-unsafely-without-email --expand -d "$HML_DOMAIN" -d "$HML_APP_DOMAIN"
 sudo -n nginx -t
 sudo -n systemctl reload nginx
 

@@ -23,7 +23,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
             central = self.engine(directory, 'central.db')
             tenant = self.engine(directory, 'tenant.db')
             self.assertEqual(upgrade_database(central, 'central').current_revision, 'central_0010')
-            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0010')
+            self.assertEqual(upgrade_database(tenant, 'tenant').current_revision, 'tenant_0011')
             self.assertEqual(assert_database_at_head(central, 'central'), migration_head('central'))
             self.assertEqual(assert_database_at_head(tenant, 'tenant'), migration_head('tenant'))
             self.assertIn('sales', inspect(tenant).get_table_names())
@@ -43,7 +43,7 @@ class VersionedMigrationTestCase(unittest.TestCase):
                 ))
                 connection.commit()
 
-            self.assertEqual(upgrade_database(engine, 'tenant').current_revision, 'tenant_0010')
+            self.assertEqual(upgrade_database(engine, 'tenant').current_revision, 'tenant_0011')
             columns = {column['name']: column for column in inspect(engine).get_columns('payables')}
             with engine.connect() as connection:
                 amount = connection.execute(text('SELECT amount FROM payables WHERE id = 3')).scalar_one()
@@ -68,6 +68,24 @@ class VersionedMigrationTestCase(unittest.TestCase):
             self.assertFalse(second.baseline_applied)
             self.assertEqual(name, 'Cliente')
             self.assertEqual(database_revision(engine), 'central_0010')
+            engine.dispose()
+
+    def test_tenant_upgrade_repairs_notification_tables_missing_from_legacy_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            engine = self.engine(directory, 'legacy-missing-notifications.db')
+            with engine.connect() as connection:
+                command.upgrade(migration_config('tenant', connection), 'tenant_0009')
+                connection.execute(text('DROP TABLE notifications'))
+                connection.execute(text('DROP TABLE notification_preferences'))
+                connection.commit()
+
+            result = upgrade_database(engine, 'tenant')
+            tables = set(inspect(engine).get_table_names())
+
+            self.assertEqual(result.current_revision, 'tenant_0011')
+            self.assertIn('notifications', tables)
+            self.assertIn('notification_preferences', tables)
+            self.assertEqual(assert_database_at_head(engine, 'tenant'), 'tenant_0011')
             engine.dispose()
 
     def test_incompatible_legacy_database_fails_without_stamp(self):
@@ -202,7 +220,8 @@ class VersionedMigrationTestCase(unittest.TestCase):
                     connection.commit()
 
                 result = upgrade_database(engine, database_kind)
-                self.assertEqual(result.current_revision, f'{database_kind}_0010')
+                expected_revision = 'tenant_0011' if database_kind == 'tenant' else 'central_0010'
+                self.assertEqual(result.current_revision, expected_revision)
                 with engine.connect() as connection:
                     company = connection.execute(text(
                         'SELECT pix_fee_percent, debit_fee_percent, credit_fee_percent '

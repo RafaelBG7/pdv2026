@@ -6796,6 +6796,136 @@ body:has(.login-screen) .system-flash-stack {
   border-left: 1px solid var(--primary);
 }
 
+/* Public navigation shown on the shared login/registration screen. */
+.content-frame:has(.login-screen) {
+  display: flex;
+  flex-direction: column;
+  place-items: initial;
+  padding: 0;
+}
+
+.auth-public-header {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  width: 100%;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 7, 17, 0.88);
+  backdrop-filter: blur(18px);
+}
+
+.auth-public-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(calc(100% - 2.5rem), 1180px);
+  min-height: 76px;
+  margin-inline: auto;
+}
+
+.auth-public-brand img {
+  display: block;
+  width: 156px;
+  height: auto;
+}
+
+.auth-public-navigation {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 1.6rem);
+}
+
+.auth-public-navigation a {
+  color: #c7c3d4;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.auth-public-navigation a:hover,
+.auth-public-navigation a:focus-visible {
+  color: #fff;
+}
+
+.auth-public-menu-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  padding: 0.65rem;
+  border: 0;
+  background: transparent;
+}
+
+.auth-public-menu-toggle > span:not(.visually-hidden) {
+  display: block;
+  height: 2px;
+  margin: 5px 0;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.content-frame:has(.login-screen) .login-screen {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.content-frame:has(.login-screen) .login-screen .card {
+  max-height: calc(100vh - 108px);
+}
+
+@media (max-width: 960px) {
+  .auth-public-menu-toggle {
+    display: block;
+  }
+
+  .auth-public-navigation {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 1.25rem;
+    left: 1.25rem;
+    display: none;
+    align-items: stretch;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    background: #121022;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  }
+
+  .auth-public-navigation.is-open {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .auth-public-navigation a {
+    padding: 0.55rem 0.4rem;
+  }
+
+}
+
+@media (max-width: 575.98px) {
+  .auth-public-header-inner {
+    width: calc(100% - 1.5rem);
+    min-height: 66px;
+  }
+
+  .auth-public-brand img {
+    width: 140px;
+  }
+
+  .content-frame:has(.login-screen) .login-screen {
+    align-items: flex-start !important;
+    padding: 0.75rem;
+  }
+
+  .content-frame:has(.login-screen) .login-screen .card {
+    max-height: none;
+  }
+}
+
 .login-screen .card {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);

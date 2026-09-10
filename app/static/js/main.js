@@ -3054,3 +3054,24 @@ if (destructiveConfirmationModal) {
     attributeFilter: ['data-theme', 'data-contrast'],
   });
 })();
+
+(function () {
+  const toggle = document.querySelector('[data-auth-public-menu-toggle]');
+  const navigation = document.querySelector('[data-auth-public-navigation]');
+  if (!toggle || !navigation) return;
+
+  const closeMenu = () => {
+    toggle.setAttribute('aria-expanded', 'false');
+    navigation.classList.remove('is-open');
+  };
+
+  toggle.addEventListener('click', () => {
+    const shouldOpen = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(shouldOpen));
+    navigation.classList.toggle('is-open', shouldOpen);
+  });
+  navigation.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeMenu();
+  });
+})();

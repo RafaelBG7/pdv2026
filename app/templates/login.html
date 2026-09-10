@@ -2,6 +2,23 @@
 {% block title %}Acesso | SkyGest{% endblock %}
 
 {% block content %}
+<header class="auth-public-header" data-auth-public-header>
+  <div class="auth-public-header-inner">
+    <a class="auth-public-brand" href="{{ url_for('main.home') }}" aria-label="SkyGest, voltar para a página inicial">
+      <img src="{{ url_for('static', filename='brand/skygest-logo-horizontal.png', v='20260826-auth-header') }}" width="156" height="45" alt="SkyGest">
+    </a>
+    <button class="auth-public-menu-toggle" type="button" aria-expanded="false" aria-controls="auth-public-navigation" data-auth-public-menu-toggle>
+      <span class="visually-hidden">Abrir menu</span><span></span><span></span><span></span>
+    </button>
+    <nav class="auth-public-navigation" id="auth-public-navigation" aria-label="Navegação da página pública" data-auth-public-navigation>
+      <a href="{{ url_for('main.home') }}#funcionalidades">Funcionalidades</a>
+      <a href="{{ url_for('main.home') }}#como-funciona">Como funciona</a>
+      <a href="{{ url_for('main.home') }}#planos">Planos</a>
+      <a href="{{ url_for('main.home') }}#quem-somos">Quem somos</a>
+      <a href="{{ url_for('main.home') }}#faq">Perguntas frequentes</a>
+    </nav>
+  </div>
+</header>
 <div class="row justify-content-center align-items-center min-vh-100 login-screen">
   <div class="col-md-5">
     <div class="card card-dark p-4 shadow">

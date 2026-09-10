@@ -674,6 +674,13 @@ def render_auth_form(auth_tab='login', form_values=None, field_errors=None):
     )
 
 
+@auth_bp.get('/register')
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    return redirect(url_for('auth.login', auth_tab='register'))
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit(
     configured_limit('RATELIMIT_LOGIN', '10 per 5 minutes'),

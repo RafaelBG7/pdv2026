@@ -518,6 +518,7 @@ def create_app(config_class=Config):
         if not request.endpoint:
             return None
         allowed_endpoints = {
+            'main.home',
             'auth.subscription_activation',
             'auth.subscriptions',
             'auth.logout',
@@ -540,7 +541,7 @@ def create_app(config_class=Config):
             return None
         if app.config.get('TESTING') or session.get('master_company_id'):
             return None
-        if request.blueprint in {'main', 'catalog', 'historical_reports'} and request.endpoint != 'main.master_audit_logs':
+        if request.blueprint in {'main', 'catalog', 'historical_reports'} and request.endpoint not in {'main.home', 'main.master_audit_logs'}:
             return redirect(url_for('auth.master_dashboard'))
         return None
 

@@ -160,6 +160,10 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('Gestão que faz girar o seu negócio'.encode(), response.data)
         self.assertNotIn('Sistema PDV Local'.encode(), response.data)
         self.assertIn('Entrar'.encode(), response.data)
+        self.assertIn('aria-label="Navegação da página pública"'.encode(), response.data)
+        self.assertIn('href="/#funcionalidades"'.encode(), response.data)
+        self.assertIn('href="/#planos"'.encode(), response.data)
+        self.assertNotIn('Voltar ao início'.encode(), response.data)
         self.assertIn('Lembre de mim'.encode(), response.data)
         self.assertIn('name="remember_me"'.encode(), response.data)
         self.assertIn('Cadastrar'.encode(), response.data)
@@ -169,6 +173,25 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn(": 'dark'".encode(), response.data)
         self.assertIn("localStorage.getItem('girofy-theme')".encode(), response.data)
         self.assertIn("prefers-color-scheme: dark".encode(), response.data)
+
+    def test_public_homepage_loads_without_authentication(self):
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Venda com agilidade'.encode(), response.data)
+        self.assertIn('Do balcão à gestão, tudo conectado'.encode(), response.data)
+        self.assertIn('Um dia com o SkyGest'.encode(), response.data)
+        self.assertIn('Menos planilhas. Mais controle'.encode(), response.data)
+        self.assertIn('R$</span><strong>50,00'.encode(), response.data)
+        self.assertIn('wa.me/5511944876166'.encode(), response.data)
+        self.assertIn('href="/login"'.encode(), response.data)
+        self.assertIn('name="robots" content="noindex, nofollow"'.encode(), response.data)
+
+    def test_dashboard_still_requires_authentication(self):
+        response = self.client.get('/dashboard')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/login', response.headers['Location'])
 
     def test_authenticated_layout_exposes_accessible_theme_toggle(self):
         self.login()
@@ -4999,13 +5022,17 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('value="email-invalido"'.encode(), response.data)
         self.assertNotIn('Key de ativação'.encode(), response.data)
 
-    def test_dashboard_routes_redirect_anonymous_users_to_login(self):
-        for route in ('/', '/dashboard'):
-            with self.subTest(route=route):
-                response = self.client.get(route)
+    def test_dashboard_route_redirects_anonymous_users_to_login(self):
+        response = self.client.get('/dashboard')
 
-                self.assertEqual(response.status_code, 302)
-                self.assertIn('/login', response.location)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/login', response.location)
+
+    def test_register_route_opens_registration_tab(self):
+        response = self.client.get('/register')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/login?auth_tab=register', response.location)
 
     def test_valid_login_redirects_master_to_company_panel(self):
         response = self.login()
@@ -6655,7 +6682,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('data-sale-quantity-modal'.encode(), new_response.data)
         self.assertIn('data-discount-new-total'.encode(), new_response.data)
 
-    def test_sales_page_shows_only_today_sales(self):
+    def test_sales_page_shows_complete_sales_history(self):
         self.login()
         self.open_cash_register()
 
@@ -6694,10 +6721,10 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.get('/vendas')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('histórico de vendas de hoje'.encode(), response.data)
+        self.assertIn('histórico de vendas'.encode(), response.data)
         self.assertIn(f'#{today_id}'.encode(), response.data)
-        self.assertNotIn(f'#{old_id}'.encode(), response.data)
-        self.assertNotIn('R$ 99,00'.encode(), response.data)
+        self.assertIn(f'#{old_id}'.encode(), response.data)
+        self.assertIn('R$ 99,00'.encode(), response.data)
 
     def test_global_f3_sale_shortcut_is_available_on_main_operational_pages(self):
         self.login()

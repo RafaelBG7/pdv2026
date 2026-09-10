@@ -5,10 +5,20 @@
 O SkyGest mantém dois ambientes independentes:
 
 ```text
-branch de trabalho -> develop -> HOMOLOGAÇÃO -> aprovação humana -> main -> PRODUÇÃO
+branch de trabalho -> develop -> HOMOLOGAÇÃO -> teste manual -> autorização explícita -> main -> PRODUÇÃO -> nova versão
 ```
 
-Não existe promoção automática de HML para PROD. O merge em `main` é a aprovação explícita.
+Não existe promoção automática de HML para PROD. O merge em `main` não deve ser tratado como aprovação implícita: a autorização explícita do responsável precisa ser concedida depois do teste manual em homologação.
+
+## Política obrigatória de promoção
+
+1. Toda alteração é implantada primeiro em homologação pela branch `develop`.
+2. A alteração implantada é testada manualmente em `https://hml.skygest.com.br`.
+3. O resultado do teste é apresentado ao responsável e a promoção aguarda autorização explícita.
+4. Somente após a autorização, a mesma alteração validada é promovida para `main` e implantada em produção.
+5. Depois da promoção para produção, é gerada a nova versão correspondente.
+
+Testes automatizados, commit, push, abertura de PR ou o pedido original de implementação não substituem a autorização explícita para produção. Sem autorização, o trabalho termina em homologação e a produção permanece intocada.
 
 | Ambiente | URL | Branch | Diretório OCI | Compose project |
 |---|---|---|---|---|

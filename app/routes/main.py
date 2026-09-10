@@ -63,6 +63,29 @@ REPORT_CHART_GRANULARITY_LABELS = {
     'year': 'Ano',
 }
 
+# TODO(comercial): validar preços, descrições e benefícios antes da publicação em produção.
+PUBLIC_PLANS = (
+    {
+        'name': 'Basic',
+        'price': '50,00',
+        'description': 'Para adegas começando a controlar vendas e estoque.',
+        'features': ('Produtos, categorias e kits', 'Vendas e formas de pagamento', 'Caixa, estoque e relatórios essenciais'),
+    },
+    {
+        'name': 'Pro',
+        'price': '120,00',
+        'description': 'Para adegas que precisam de uma gestão mais completa.',
+        'features': ('Tudo do Basic', 'Equipe e permissões', 'Contas a pagar e relatórios completos'),
+    },
+    {
+        'name': 'Ultimate',
+        'price': '180,00',
+        'description': 'Para operações que precisam do máximo de controle e escala.',
+        'features': ('Tudo do Pro', 'Recursos avançados de gestão', 'Relatórios e auditoria completos'),
+        'featured': True,
+    },
+)
+
 
 @main_bp.get('/health')
 def health_check():
@@ -995,7 +1018,16 @@ def build_product_report(start_datetime, end_datetime, category_id='', product_i
     return rows, totals, sort
 
 
-@main_bp.route('/')
+@main_bp.get('/')
+def home():
+    environment = (current_app.config.get('ENVIRONMENT') or 'development').lower()
+    return render_template(
+        'home.html',
+        plans=PUBLIC_PLANS,
+        is_non_production=environment != 'production',
+    )
+
+
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
@@ -1034,14 +1066,8 @@ def dashboard():
 @login_required
 @permission_required('can_manage_sales')
 def sales():
-    today = date.today()
-    start_of_day = datetime.combine(today, time.min)
-    end_of_day = datetime.combine(today, time.max)
     sales = tenant_query(Sale).options(
         selectinload(Sale.payments),
-    ).filter(
-        Sale.created_at >= start_of_day,
-        Sale.created_at <= end_of_day,
     ).order_by(Sale.created_at.desc()).all()
     user_ids = {sale.user_id for sale in sales if sale.user_id}
     sale_users = {

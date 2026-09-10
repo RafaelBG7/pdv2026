@@ -166,7 +166,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertNotIn('Voltar ao início'.encode(), response.data)
         self.assertIn('Lembre de mim'.encode(), response.data)
         self.assertIn('name="remember_me"'.encode(), response.data)
-        self.assertIn('Cadastrar'.encode(), response.data)
+        self.assertIn('Criar conta'.encode(), response.data)
         self.assertNotIn('Key de ativação'.encode(), response.data)
         self.assertNotIn('Não tenho key'.encode(), response.data)
         self.assertNotIn('data-theme-toggle'.encode(), response.data)

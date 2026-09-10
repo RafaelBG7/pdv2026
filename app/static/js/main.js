@@ -81,8 +81,9 @@ document.addEventListener('DOMContentLoaded', function () {
     ensureCsrfField(event.target);
   }, true);
 
-  document.querySelectorAll('[data-register-form]').forEach(function (form) {
-    const submitButton = form.querySelector('[data-register-submit]');
+  document.querySelectorAll('[data-auth-form]').forEach(function (form) {
+    const submitButton = form.querySelector('[data-auth-submit]');
+    const submitLabel = submitButton?.querySelector('.auth-submit-label');
     let submitting = false;
     form.addEventListener('submit', function (event) {
       if (submitting) {
@@ -93,9 +94,54 @@ document.addEventListener('DOMContentLoaded', function () {
       if (submitButton) {
         submitButton.disabled = true;
         submitButton.setAttribute('aria-disabled', 'true');
-        submitButton.textContent = 'Criando cadastro...';
+        submitButton.classList.add('is-loading');
+        if (submitLabel) {
+          submitLabel.textContent = form.dataset.registerForm !== undefined ? 'Criando conta...' : 'Entrando...';
+        }
       }
     });
+  });
+
+  document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+    const input = document.getElementById(button.dataset.passwordToggle || '');
+    if (!input) {
+      return;
+    }
+    button.addEventListener('click', function () {
+      const showPassword = input.type === 'password';
+      input.type = showPassword ? 'text' : 'password';
+      button.setAttribute('aria-pressed', showPassword ? 'true' : 'false');
+      button.setAttribute('aria-label', showPassword ? 'Ocultar senha' : 'Mostrar senha');
+      input.focus({ preventScroll: true });
+    });
+  });
+
+  document.querySelectorAll('[data-password-strength]').forEach(function (input) {
+    const feedback = input.closest('.auth-field')?.querySelector('.auth-password-feedback');
+    const label = feedback?.querySelector('[data-password-strength-label]');
+    const rule = input.closest('.auth-field')?.querySelector('[data-password-min]');
+    const minLength = Number.parseInt(rule?.dataset.passwordMin || input.minLength || '8', 10);
+
+    function updatePasswordFeedback() {
+      const value = input.value || '';
+      const characterGroups = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(function (pattern) {
+        return pattern.test(value);
+      }).length;
+      let score = 0;
+      if (value.length > 0) score = 1;
+      if (value.length >= minLength) score = 2;
+      if (value.length >= minLength && characterGroups >= 2) score = 3;
+      if (value.length >= 12 && characterGroups >= 3) score = 4;
+
+      if (feedback) feedback.dataset.score = String(score);
+      if (rule) rule.classList.toggle('is-valid', value.length >= minLength);
+      if (label) {
+        label.textContent = !value ? 'Use pelo menos ' + minLength + ' caracteres' : ['','Senha muito curta','Senha válida','Boa senha','Senha forte'][score];
+      }
+    }
+
+    input.addEventListener('input', updatePasswordFeedback);
+    updatePasswordFeedback();
   });
 
   if (csrfToken && window.fetch) {

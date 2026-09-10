@@ -996,22 +996,20 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         if not valid_email(email):
-            flash('Informe um e-mail válido.', 'danger')
-            return render_template('forgot_password.html')
+            return render_template('forgot_password.html', email_value=email, email_error='Informe um e-mail válido.')
 
         try:
             request_password_recovery(email)
         except EmailAuthenticationError as error:
             current_app.logger.error('Falha de autenticação SMTP na recuperação de senha.', exc_info=True)
             flash('Gmail recusou o envio. Confira as configurações de envio.', 'danger')
-            return render_template('forgot_password.html')
+            return render_template('forgot_password.html', email_value=email)
         except Exception:
             current_app.logger.error('Falha ao enviar recuperação de senha.', exc_info=True)
             flash('Não foi possível enviar o e-mail agora. Verifique a configuração de envio.', 'danger')
-            return render_template('forgot_password.html')
+            return render_template('forgot_password.html', email_value=email)
 
-        flash('Se este e-mail estiver cadastrado, enviaremos um link de redefinição.', 'success')
-        return redirect(url_for('auth.login'))
+        return render_template('forgot_password.html', sent=True, email_value=email)
 
     return render_template('forgot_password.html')
 

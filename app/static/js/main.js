@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
         submitButton.setAttribute('aria-disabled', 'true');
         submitButton.classList.add('is-loading');
         if (submitLabel) {
-          submitLabel.textContent = form.dataset.registerForm !== undefined ? 'Criando conta...' : 'Entrando...';
+          submitLabel.textContent = form.dataset.authLoadingLabel || (form.dataset.registerForm !== undefined ? 'Criando conta...' : 'Entrando...');
         }
       }
     });

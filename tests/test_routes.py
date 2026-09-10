@@ -5614,6 +5614,9 @@ class RouteTestCase(unittest.TestCase):
 
         self.assertEqual(request_response.status_code, 200)
         self.assertIn('Se este e-mail estiver cadastrado'.encode(), request_response.data)
+        self.assertIn('Confira seu e-mail'.encode(), request_response.data)
+        self.assertIn('resetavel@example.com'.encode(), request_response.data)
+        self.assertIn('Enviar para outro e-mail'.encode(), request_response.data)
         token = self.app.config['TEST_LAST_PASSWORD_RESET_TOKEN']
         with self.app.app_context():
             self.assertEqual(PasswordResetToken.query.count(), 1)
@@ -5631,6 +5634,15 @@ class RouteTestCase(unittest.TestCase):
             token_record = PasswordResetToken.query.one()
             self.assertTrue(user.check_password('nova1234'))
             self.assertTrue(token_record.used)
+
+    def test_password_reset_request_shows_accessible_inline_validation(self):
+        response = self.client.post('/forgot-password', data={'email': 'email-invalido'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Informe um e-mail válido.'.encode(), response.data)
+        self.assertIn(b'id="email-error"', response.data)
+        self.assertIn(b'aria-describedby="email-error"', response.data)
+        self.assertIn(b'value="email-invalido"', response.data)
 
     def test_api_password_recovery_accepts_username_and_keeps_response_generic(self):
         self.create_api_user(username='recuperavel')

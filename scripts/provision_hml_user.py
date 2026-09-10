@@ -55,12 +55,30 @@ def provision():
             )
         if matches:
             existing = matches[0]
+            existing.set_password(password)
+            existing.is_active = True
+            record_audit_event(
+                'user_password_reset',
+                'user',
+                existing.id,
+                f'Senha do usuário HML {existing.username} redefinida.',
+                new_values={
+                    'username': existing.username,
+                    'company_id': existing.company_id,
+                    'environment': 'homologation',
+                },
+                company_id=existing.company_id,
+                db_session=db.session,
+            )
+            db.session.commit()
+            if not existing.check_password(password):
+                raise RuntimeError('A nova senha da conta HML não pôde ser validada após a gravação.')
             print(
-                'Conta HML já existente: '
+                'Senha da conta HML redefinida com sucesso: '
                 f'user_id={existing.id}, username={existing.username}, '
                 f'company_id={existing.company_id}, role={existing.role}.'
             )
-            return False
+            return True
 
         company = next(
             (

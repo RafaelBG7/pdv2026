@@ -13,8 +13,10 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private CatalogFilterOption _selectedMetric;
     private CatalogFilterOption _selectedProductSort;
     private string _productSearchText = string.Empty;
-    private string _startDateText = string.Empty;
-    private string _endDateText = string.Empty;
+    private string _startDateText = BrazilianDateFormatting.FormatDate(DashboardFormatting.BusinessToday());
+    private string _endDateText = BrazilianDateFormatting.FormatDate(DashboardFormatting.BusinessToday());
+    private bool _datesManuallySelected;
+    private bool _updatingAutomaticDates;
     private string _errorMessage = string.Empty;
     private bool _isBusy;
     private bool _isInitialized;
@@ -89,6 +91,10 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         {
             if (SetProperty(ref _selectedPeriod, value))
             {
+                if (!_datesManuallySelected)
+                {
+                    UpdateAutomaticDates(value.Value);
+                }
                 OnPropertyChanged(nameof(IsDailyPeriodSelected));
                 OnPropertyChanged(nameof(IsWeeklyPeriodSelected));
                 OnPropertyChanged(nameof(IsMonthlyPeriodSelected));
@@ -146,13 +152,25 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public string StartDateText
     {
         get => _startDateText;
-        set => SetProperty(ref _startDateText, value);
+        set
+        {
+            if (SetProperty(ref _startDateText, value) && !_updatingAutomaticDates)
+            {
+                _datesManuallySelected = true;
+            }
+        }
     }
 
     public string EndDateText
     {
         get => _endDateText;
-        set => SetProperty(ref _endDateText, value);
+        set
+        {
+            if (SetProperty(ref _endDateText, value) && !_updatingAutomaticDates)
+            {
+                _datesManuallySelected = true;
+            }
+        }
     }
 
     public ReportsSnapshot Snapshot
@@ -346,18 +364,37 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     {
         var option = PeriodOptions.First(item =>
             string.Equals(item.Value, period, StringComparison.OrdinalIgnoreCase));
-        var hasCustomDates = !string.IsNullOrWhiteSpace(StartDateText) ||
-            !string.IsNullOrWhiteSpace(EndDateText);
-        if (IsPeriodSelected(option.Value) && !hasCustomDates)
+        if (IsPeriodSelected(option.Value) && !_datesManuallySelected)
         {
             return;
         }
 
         SelectedPeriod = option;
-        StartDateText = string.Empty;
-        EndDateText = string.Empty;
         _isInitialized = false;
         await LoadAsync(cancellationToken);
+    }
+
+    private void UpdateAutomaticDates(string period)
+    {
+        var end = DashboardFormatting.BusinessToday();
+        var start = period.ToLowerInvariant() switch
+        {
+            "weekly" => end.AddDays(-7),
+            "monthly" => end.AddMonths(-1),
+            "annual" => end.AddYears(-1),
+            _ => end,
+        };
+
+        _updatingAutomaticDates = true;
+        try
+        {
+            StartDateText = BrazilianDateFormatting.FormatDate(start);
+            EndDateText = BrazilianDateFormatting.FormatDate(end);
+        }
+        finally
+        {
+            _updatingAutomaticDates = false;
+        }
     }
 
     private bool IsPeriodSelected(string period) =>
@@ -487,6 +524,9 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private void Reset()
     {
         _isInitialized = false;
+        _datesManuallySelected = false;
+        SelectedPeriod = PeriodOptions[0];
+        UpdateAutomaticDates(SelectedPeriod.Value);
         Snapshot = new ReportsSnapshot();
         ProductSnapshot = new ProductReportSnapshot();
         ProductSearchText = string.Empty;

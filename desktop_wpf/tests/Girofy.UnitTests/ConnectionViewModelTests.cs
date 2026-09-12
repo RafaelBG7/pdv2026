@@ -21,6 +21,41 @@ public sealed class ConnectionViewModelTests
     }
 
     [Fact]
+    public void Reports_show_the_effective_dates_and_update_automatic_periods_visually()
+    {
+        var sessionContext = new AppSessionContext();
+        using var viewModel = CreateConnectionViewModel(new StubApiClient(new HealthStatus()), sessionContext);
+        var today = DashboardFormatting.BusinessToday();
+
+        Assert.Equal(BrazilianDateFormatting.FormatDate(today), viewModel.Reports.StartDateText);
+        Assert.Equal(BrazilianDateFormatting.FormatDate(today), viewModel.Reports.EndDateText);
+
+        viewModel.Reports.SelectedPeriod = viewModel.Reports.PeriodOptions.Single(option => option.Value == "weekly");
+        Assert.Equal(BrazilianDateFormatting.FormatDate(today.AddDays(-7)), viewModel.Reports.StartDateText);
+        Assert.Equal(BrazilianDateFormatting.FormatDate(today), viewModel.Reports.EndDateText);
+
+        viewModel.Reports.SelectedPeriod = viewModel.Reports.PeriodOptions.Single(option => option.Value == "monthly");
+        Assert.Equal(BrazilianDateFormatting.FormatDate(today.AddMonths(-1)), viewModel.Reports.StartDateText);
+
+        viewModel.Reports.SelectedPeriod = viewModel.Reports.PeriodOptions.Single(option => option.Value == "annual");
+        Assert.Equal(BrazilianDateFormatting.FormatDate(today.AddYears(-1)), viewModel.Reports.StartDateText);
+    }
+
+    [Fact]
+    public void Reports_preserve_dates_selected_manually_when_the_period_changes()
+    {
+        var sessionContext = new AppSessionContext();
+        using var viewModel = CreateConnectionViewModel(new StubApiClient(new HealthStatus()), sessionContext);
+        viewModel.Reports.StartDateText = "03/08/2026";
+        viewModel.Reports.EndDateText = "09/09/2026";
+
+        viewModel.Reports.SelectedPeriod = viewModel.Reports.PeriodOptions.Single(option => option.Value == "weekly");
+
+        Assert.Equal("03/08/2026", viewModel.Reports.StartDateText);
+        Assert.Equal("09/09/2026", viewModel.Reports.EndDateText);
+    }
+
+    [Fact]
     public async Task Dashboard_f3_opens_the_new_sale_editor_instead_of_only_the_sales_screen()
     {
         var sessionContext = new AppSessionContext();

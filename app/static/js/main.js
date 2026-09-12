@@ -2701,38 +2701,67 @@ document.addEventListener('DOMContentLoaded', function () {
     const periodInput = reportForm.querySelector('[data-report-period]');
     const startInput = reportForm.querySelector('[data-report-start-date]');
     const endInput = reportForm.querySelector('[data-report-end-date]');
+    const dateModeInput = reportForm.querySelector('[data-report-date-mode]');
 
     function formatDate(date) {
-      return date.toISOString().slice(0, 10);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
 
-    function shiftDate(days) {
+    function todayAtNoon() {
       const date = new Date();
       date.setHours(12, 0, 0, 0);
-      date.setDate(date.getDate() - days);
       return date;
     }
 
+    function shiftCalendarMonths(date, months) {
+      const shifted = new Date(date);
+      const originalDay = shifted.getDate();
+      shifted.setDate(1);
+      shifted.setMonth(shifted.getMonth() - months);
+      const lastDay = new Date(shifted.getFullYear(), shifted.getMonth() + 1, 0).getDate();
+      shifted.setDate(Math.min(originalDay, lastDay));
+      return shifted;
+    }
+
     function applyReportDates() {
-      if (!periodInput || !startInput || !endInput || periodInput.value === 'custom') {
+      if (!periodInput || !startInput || !endInput || periodInput.value === 'custom' || (dateModeInput && dateModeInput.value === 'manual')) {
         return;
       }
 
-      const daysByPeriod = {
-        daily: 0,
-        weekly: 7,
-        monthly: 30,
-        annual: 365,
-      };
-      const days = daysByPeriod[periodInput.value] || 0;
-      const today = shiftDate(0);
+      const today = todayAtNoon();
+      let start = new Date(today);
+      if (periodInput.value === 'weekly') {
+        start.setDate(start.getDate() - 7);
+      } else if (periodInput.value === 'monthly') {
+        start = shiftCalendarMonths(today, 1);
+      } else if (periodInput.value === 'annual') {
+        start = shiftCalendarMonths(today, 12);
+      }
 
-      startInput.value = formatDate(shiftDate(days));
+      startInput.value = formatDate(start);
       endInput.value = formatDate(today);
+    }
+
+    function markReportDatesAsManual() {
+      if (dateModeInput) {
+        dateModeInput.value = 'manual';
+      }
+      if (periodInput) {
+        periodInput.value = 'custom';
+      }
     }
 
     if (periodInput) {
       periodInput.addEventListener('change', applyReportDates);
+    }
+    if (startInput) {
+      startInput.addEventListener('change', markReportDatesAsManual);
+    }
+    if (endInput) {
+      endInput.addEventListener('change', markReportDatesAsManual);
     }
   }
 

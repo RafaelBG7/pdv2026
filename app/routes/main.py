@@ -1,6 +1,7 @@
 import csv
 import io
 import uuid
+from calendar import monthrange
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from types import SimpleNamespace
@@ -56,6 +57,12 @@ EXPORT_TYPES = ('produtos', 'vendas', 'caixas', 'contas')
 REPORT_SALES_TABLE_LIMIT = 50
 REPORT_SALES_TABLE_MAX_LIMIT = 200
 REPORT_CHART_GRANULARITIES = ('day', 'week', 'month', 'year')
+REPORT_PERIOD_BY_CHART_GRANULARITY = {
+    'day': 'daily',
+    'week': 'weekly',
+    'month': 'monthly',
+    'year': 'annual',
+}
 REPORT_CHART_GRANULARITY_LABELS = {
     'day': 'Dia',
     'week': 'Semana',
@@ -638,6 +645,14 @@ def build_cash_register_snapshot(cash_register):
     }
 
 
+def subtract_calendar_months(value, months):
+    month_index = value.year * 12 + value.month - 1 - months
+    target_year, target_month_index = divmod(month_index, 12)
+    target_month = target_month_index + 1
+    target_day = min(value.day, monthrange(target_year, target_month)[1])
+    return value.replace(year=target_year, month=target_month, day=target_day)
+
+
 def report_period_range(period, start_date=None, end_date=None):
     today = date.today()
 
@@ -647,11 +662,11 @@ def report_period_range(period, start_date=None, end_date=None):
         label = f'Últimos 7 dias: {start.strftime("%d/%m/%Y")} a {end.strftime("%d/%m/%Y")}'
     elif period == 'monthly':
         end = end_date or today
-        start = start_date or (end - timedelta(days=30))
-        label = f'Últimos 30 dias: {start.strftime("%d/%m/%Y")} a {end.strftime("%d/%m/%Y")}'
+        start = start_date or subtract_calendar_months(end, 1)
+        label = f'Último mês: {start.strftime("%d/%m/%Y")} a {end.strftime("%d/%m/%Y")}'
     elif period == 'annual':
         end = end_date or today
-        start = start_date or (end - timedelta(days=365))
+        start = start_date or subtract_calendar_months(end, 12)
         label = f'Último ano: {start.strftime("%d/%m/%Y")} a {end.strftime("%d/%m/%Y")}'
     elif period == 'custom':
         start = start_date or today
@@ -1649,8 +1664,14 @@ def reports():
         if requested_chart_granularity in REPORT_CHART_GRANULARITIES
         else None
     )
-    start_date = parse_date(request.args.get('start_date'))
-    end_date = parse_date(request.args.get('end_date'))
+    start_date_arg = (request.args.get('start_date') or '').strip()
+    end_date_arg = (request.args.get('end_date') or '').strip()
+    requested_date_mode = (request.args.get('date_mode') or '').strip().casefold()
+    dates_manually_selected = requested_date_mode == 'manual' or (
+        not requested_date_mode and bool(start_date_arg or end_date_arg)
+    )
+    start_date = parse_date(start_date_arg) if dates_manually_selected else None
+    end_date = parse_date(end_date_arg) if dates_manually_selected else None
     period, start, end, start_datetime, end_datetime, label = report_period_range(
         selected_period,
         start_date=start_date,
@@ -1738,6 +1759,8 @@ def reports():
         chart_granularity=chart_granularity,
         chart_granularity_options=REPORT_CHART_GRANULARITIES,
         chart_granularity_labels=REPORT_CHART_GRANULARITY_LABELS,
+        chart_period_by_granularity=REPORT_PERIOD_BY_CHART_GRANULARITY,
+        dates_manually_selected=dates_manually_selected,
         daily_activity=daily_activity,
         payment_totals=payment_totals,
         top_products=top_products,

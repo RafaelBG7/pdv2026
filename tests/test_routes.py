@@ -16,6 +16,7 @@ from flask import g
 from app import create_app
 from app.extensions import db
 from app.models import ActivationKey, ApiRefreshToken, ApiSaleRequest, AuditLog, CashRegister, Category, Company, EmailAlertDelivery, EmailAlertSetting, EmailChangeRequest, EmailVerificationCode, HistoricalDailyReport, HistoricalReportImportBatch, Notification, NotificationPreference, PasswordResetToken, Payable, Payment, Product, Sale, SaleItem, StockMovement, User
+from app.routes.main import subtract_calendar_months
 from app.services.api_auth_service import clear_api_login_attempts
 from app.services.audit_service import changed_values, record_audit_event
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -6913,7 +6914,8 @@ class RouteTestCase(unittest.TestCase):
         monthly_response = self.client.get('/relatorios', query_string={'period': 'monthly'})
         self.assertEqual(monthly_response.status_code, 200)
         self.assertIn('report-chart--very-dense'.encode(), monthly_response.data)
-        self.assertIn('--chart-columns: 31'.encode(), monthly_response.data)
+        monthly_columns = (date.today() - subtract_calendar_months(date.today(), 1)).days + 1
+        self.assertIn(f'--chart-columns: {monthly_columns}'.encode(), monthly_response.data)
 
     def test_reports_format_large_currency_values_with_brazilian_grouping(self):
         self.login()
@@ -7016,9 +7018,40 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Saquê'.encode(), weekly_response.data)
         self.assertIn('Últimos 7 dias'.encode(), weekly_response.data)
         self.assertIn('Saquê'.encode(), monthly_response.data)
-        self.assertIn('Últimos 30 dias'.encode(), monthly_response.data)
+        self.assertIn('Último mês'.encode(), monthly_response.data)
         self.assertIn('Saquê'.encode(), annual_response.data)
         self.assertIn('Último ano'.encode(), annual_response.data)
+
+    def test_report_chart_filters_update_automatic_range_and_preserve_manual_dates(self):
+        self.login()
+
+        automatic = self.client.get('/relatorios')
+        today = date.today()
+        month_start = subtract_calendar_months(today, 1)
+
+        self.assertEqual(automatic.status_code, 200)
+        self.assertIn(
+            f'period=monthly&amp;date_mode=auto&amp;chart_metric=revenue&amp;chart_granularity=month'.encode(),
+            automatic.data,
+        )
+
+        monthly = self.client.get('/relatorios', query_string={
+            'period': 'monthly',
+            'date_mode': 'auto',
+            'chart_granularity': 'month',
+        })
+        self.assertIn(f'value="{month_start.isoformat()}"'.encode(), monthly.data)
+        self.assertIn(f'value="{today.isoformat()}"'.encode(), monthly.data)
+
+        manual = self.client.get('/relatorios', query_string={
+            'period': 'custom',
+            'start_date': '2026-08-03',
+            'end_date': '2026-09-09',
+            'date_mode': 'manual',
+            'chart_granularity': 'day',
+        })
+        self.assertIn('period=custom&amp;start_date=2026-08-03&amp;end_date=2026-09-09&amp;date_mode=manual'.encode(), manual.data)
+        self.assertIn('name="date_mode" value="manual"'.encode(), manual.data)
 
     def test_reports_chart_can_be_grouped_by_day_week_month_and_year(self):
         self.login()

@@ -214,16 +214,19 @@ public sealed class ConnectionViewModel : ObservableObject, IDisposable
             cancellationToken,
             Sales.ReturnToInitialState);
 
-    private async Task StartSaleAsync(CancellationToken cancellationToken)
-    {
-        await NavigateAsync("sales", Sales.InitializeAsync, cancellationToken);
-        if (cancellationToken.IsCancellationRequested || !IsSalesView)
-        {
-            return;
-        }
-
-        await Sales.OpenSaleEditorCommand.ExecuteAsync(cancellationToken);
-    }
+    private Task StartSaleAsync(CancellationToken cancellationToken) =>
+        NavigateAsync(
+            "sales",
+            async navigationCancellation =>
+            {
+                await Sales.InitializeAsync(navigationCancellation);
+                if (!navigationCancellation.IsCancellationRequested &&
+                    Sales.OpenSaleEditorCommand.CanExecute(null))
+                {
+                    await Sales.OpenSaleEditorCommand.ExecuteAsync(navigationCancellation);
+                }
+            },
+            cancellationToken);
 
     private async Task ExecuteSalesScreenF3Async(CancellationToken cancellationToken)
     {

@@ -21,6 +21,21 @@ public sealed class ConnectionViewModelTests
     }
 
     [Fact]
+    public async Task Dashboard_f3_opens_the_new_sale_editor_instead_of_only_the_sales_screen()
+    {
+        var sessionContext = new AppSessionContext();
+        var apiClient = new StubApiClient(new HealthStatus());
+        using var viewModel = CreateConnectionViewModel(apiClient, sessionContext);
+        sessionContext.Set(CreateSession(canManageSales: true));
+
+        await viewModel.StartSaleCommand.ExecuteAsync();
+
+        Assert.True(viewModel.IsSalesView);
+        Assert.True(viewModel.Sales.IsSaleEditorOpen);
+        Assert.Equal(1, apiClient.CashRegisterSummaryCalls);
+    }
+
+    [Fact]
     public void Start_sale_notifies_can_execute_when_permissions_finish_loading()
     {
         var sessionContext = new AppSessionContext();

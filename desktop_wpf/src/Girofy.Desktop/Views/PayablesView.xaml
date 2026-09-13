@@ -226,7 +226,7 @@
                             <Style.Triggers><DataTrigger Binding="{Binding ShowEmptyState}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                         </Style></TextBlock.Style>
                     </TextBlock>
-                    <Border Background="#66000000" CornerRadius="10">
+                    <Border Background="{DynamicResource OverlaySoftBrush}" CornerRadius="10">
                         <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers><DataTrigger Binding="{Binding IsBusy}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                         </Style></Border.Style>

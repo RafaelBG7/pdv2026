@@ -22,18 +22,18 @@
     <Duration x:Key="AnimationNormalDuration">0:0:0.22</Duration>
     <system:Boolean x:Key="AccessibilityReduceMotion" xmlns:system="clr-namespace:System;assembly=mscorlib">False</system:Boolean>
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="#050B16" />
-    <SolidColorBrush x:Key="AppBackgroundSoftBrush" Color="#081421" />
-    <SolidColorBrush x:Key="SidebarBrush" Color="#041421" />
-    <SolidColorBrush x:Key="SidebarRaisedBrush" Color="#082033" />
+    <SolidColorBrush x:Key="AppBackgroundSoftBrush" Color="#050B16" />
+    <SolidColorBrush x:Key="SidebarBrush" Color="#030D18" />
+    <SolidColorBrush x:Key="SidebarRaisedBrush" Color="#102B3C" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#0B1424" />
     <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#122033" />
-    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#182B45" />
-    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#1B314E" />
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#122033" />
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#122033" />
     <SolidColorBrush x:Key="BorderBrush" Color="#26364D" />
     <SolidColorBrush x:Key="BorderStrongBrush" Color="#34506D" />
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F7FBFF" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B8C7D9" />
-    <SolidColorBrush x:Key="TextMutedBrush" Color="#8293AA" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#9FB0C3" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#9FB0C3" />
     <SolidColorBrush x:Key="PrimaryBrush" Color="#8B5CF6" />
     <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#A78BFA" />
     <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#6D28D9" />
@@ -87,14 +87,14 @@
         <GradientStop Color="#22D3EE" Offset="1" />
     </LinearGradientBrush>
     <LinearGradientBrush x:Key="HeroGradientBrush" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Color="#122033" Offset="0" />
+        <GradientStop Color="#0B1424" Offset="0" />
         <GradientStop Color="#0B1424" Offset="0.58" />
-        <GradientStop Color="#0B3142" Offset="1" />
+        <GradientStop Color="#122033" Offset="1" />
     </LinearGradientBrush>
     <LinearGradientBrush x:Key="SidebarGradientBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#041421" Offset="0" />
-        <GradientStop Color="#061525" Offset="0.55" />
-        <GradientStop Color="#120A2A" Offset="1" />
+        <GradientStop Color="#030D18" Offset="0" />
+        <GradientStop Color="#030D18" Offset="0.55" />
+        <GradientStop Color="#050B16" Offset="1" />
     </LinearGradientBrush>
 
     <DropShadowEffect x:Key="CardShadowEffect"

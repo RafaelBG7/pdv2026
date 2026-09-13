@@ -13,18 +13,18 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
         new Dictionary<string, string>
         {
             ["AppBackgroundBrush"] = "#050B16",
-            ["AppBackgroundSoftBrush"] = "#081421",
-            ["SidebarBrush"] = "#041421",
-            ["SidebarRaisedBrush"] = "#082033",
+            ["AppBackgroundSoftBrush"] = "#050B16",
+            ["SidebarBrush"] = "#030D18",
+            ["SidebarRaisedBrush"] = "#102B3C",
             ["SurfaceBrush"] = "#0B1424",
             ["SurfaceRaisedBrush"] = "#122033",
-            ["SurfaceElevatedBrush"] = "#182B45",
-            ["SurfaceHoverBrush"] = "#1B314E",
+            ["SurfaceElevatedBrush"] = "#122033",
+            ["SurfaceHoverBrush"] = "#122033",
             ["BorderBrush"] = "#26364D",
             ["BorderStrongBrush"] = "#34506D",
             ["TextPrimaryBrush"] = "#F7FBFF",
-            ["TextSecondaryBrush"] = "#B8C7D9",
-            ["TextMutedBrush"] = "#8293AA",
+            ["TextSecondaryBrush"] = "#9FB0C3",
+            ["TextMutedBrush"] = "#9FB0C3",
             ["PrimaryBrush"] = "#8B5CF6",
             ["PrimaryHoverBrush"] = "#A78BFA",
             ["PrimaryPressedBrush"] = "#6D28D9",
@@ -56,27 +56,27 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
     private static readonly IReadOnlyDictionary<string, string> LightPalette =
         new Dictionary<string, string>
         {
-            ["AppBackgroundBrush"] = "#F4F7FB",
-            ["AppBackgroundSoftBrush"] = "#EEF3F8",
-            ["SidebarBrush"] = "#F7FAFC",
-            ["SidebarRaisedBrush"] = "#E8F3FA",
+            ["AppBackgroundBrush"] = "#F6F8FF",
+            ["AppBackgroundSoftBrush"] = "#F6F8FF",
+            ["SidebarBrush"] = "#F6F8FF",
+            ["SidebarRaisedBrush"] = "#EEF6FB",
             ["SurfaceBrush"] = "#FFFFFF",
-            ["SurfaceRaisedBrush"] = "#F8FAFC",
-            ["SurfaceElevatedBrush"] = "#EDF3F8",
-            ["SurfaceHoverBrush"] = "#E5EEF6",
-            ["BorderBrush"] = "#D7E0EA",
+            ["SurfaceRaisedBrush"] = "#EEF6FB",
+            ["SurfaceElevatedBrush"] = "#EEF6FB",
+            ["SurfaceHoverBrush"] = "#EEF6FB",
+            ["BorderBrush"] = "#D8E1EE",
             ["BorderStrongBrush"] = "#B8C7D8",
-            ["TextPrimaryBrush"] = "#172033",
-            ["TextSecondaryBrush"] = "#3F4D63",
-            ["TextMutedBrush"] = "#5F6D80",
+            ["TextPrimaryBrush"] = "#071126",
+            ["TextSecondaryBrush"] = "#637188",
+            ["TextMutedBrush"] = "#637188",
             ["PrimaryBrush"] = "#6D28D9",
-            ["PrimaryHoverBrush"] = "#7C3AED",
+            ["PrimaryHoverBrush"] = "#5B21B6",
             ["PrimaryPressedBrush"] = "#5B21B6",
-            ["AccentBrush"] = "#0891B2",
+            ["AccentBrush"] = "#06B6D4",
             ["InfoBrush"] = "#2563EB",
-            ["SuccessBrush"] = "#15803D",
-            ["WarningBrush"] = "#D97706",
-            ["ErrorBrush"] = "#DC2626",
+            ["SuccessBrush"] = "#16A34A",
+            ["WarningBrush"] = "#F59E0B",
+            ["ErrorBrush"] = "#EF4444",
             ["AccentSoftBrush"] = "#DDF7FB",
             ["InfoSurfaceBrush"] = "#E8F4FF",
             ["InfoBorderBrush"] = "#8BC5EA",
@@ -162,14 +162,14 @@ public sealed class WindowsThemeService(IUserPreferencesStore preferencesStore) 
         }
 
         ApplyGradient("HeroGradientBrush", IsDarkMode
-            ? ["#122033", "#0B1424", "#0B3142"]
-            : ["#FFFFFF", "#F7FAFC", "#E5F7FB"]);
+            ? ["#0B1424", "#0B1424", "#122033"]
+            : ["#FFFFFF", "#FFFFFF", "#EEF6FB"]);
         ApplyGradient("SidebarGradientBrush", IsDarkMode
-            ? ["#041421", "#061525", "#120A2A"]
-            : ["#F7FAFC", "#F1F7FA", "#F4EFFF"]);
+            ? ["#030D18", "#030D18", "#050B16"]
+            : ["#F6F8FF", "#F6F8FF", "#EEF6FB"]);
         ApplyGradient("PrimaryGradientBrush", IsDarkMode
             ? ["#8B5CF6", "#22D3EE"]
-            : ["#6D28D9", "#0891B2"]);
+            : ["#6D28D9", "#06B6D4"]);
     }
 
     private static void ApplyGradient(string key, IReadOnlyList<string> colors)

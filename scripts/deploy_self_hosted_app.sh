@@ -44,6 +44,20 @@ rsync -az --delete \
 
 cd "$OCI_DEPLOY_PATH"
 test -f .env
+update_public_url() {
+  local key="$1" value="$2" temporary_file
+  temporary_file="$(mktemp)"
+  awk -F= -v key="$key" -v value="$value" '
+    BEGIN { updated = 0 }
+    $1 == key { print key "=" value; updated = 1; next }
+    { print }
+    END { if (!updated) print key "=" value }
+  ' .env > "$temporary_file"
+  install -m 600 "$temporary_file" .env
+  rm -f "$temporary_file"
+}
+update_public_url PUBLIC_BASE_URL 'https://skygest.com.br'
+update_public_url MARKETING_BASE_URL 'https://skygest.com.br'
 mkdir -p /opt/girofy/backups
 export APP_VERSION="$DEPLOY_SHA"
 

@@ -68,24 +68,26 @@ sudo -n nginx -t
 sudo -n systemctl reload nginx
 
 homepage_headers="$(curl --retry 5 --retry-all-errors --retry-delay 2 -fsS -D - \
-  -o /tmp/skygest-production-homepage.html "https://${MARKETING_WWW_DOMAIN}/")"
+  -o /tmp/skygest-production-homepage.html "https://${MARKETING_DOMAIN}/")"
 grep -Fq 'SkyGest | PDV e gestão' /tmp/skygest-production-homepage.html
 if grep -Eqi '^location:[[:space:]].*/login' <<<"$homepage_headers"; then
   echo "Homepage de produção ainda redireciona para o login." >&2
   exit 1
 fi
 
-apex_location="$(curl -sS -o /dev/null -w '%{redirect_url}' "https://${MARKETING_DOMAIN}/")"
-if [[ "$apex_location" != "https://${MARKETING_WWW_DOMAIN}/" ]]; then
-  echo "Domínio raiz não redirecionou para a homepage canônica." >&2
-  exit 1
-fi
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS \
+  "https://${MARKETING_DOMAIN}/login" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS \
+  "https://${MARKETING_DOMAIN}/health/dependencies" >/dev/null
 
-curl --retry 5 --retry-all-errors --retry-delay 2 -fsS \
-  "https://${APP_DOMAIN}/login" >/dev/null
-curl --retry 5 --retry-all-errors --retry-delay 2 -fsS \
-  "https://${APP_DOMAIN}/health/dependencies" >/dev/null
+for legacy_domain in "$MARKETING_WWW_DOMAIN" "$APP_DOMAIN"; do
+  legacy_location="$(curl -sS -o /dev/null -w '%{redirect_url}' "https://${legacy_domain}/login")"
+  if [[ "$legacy_location" != "https://${MARKETING_DOMAIN}/login" ]]; then
+    echo "Host legado ${legacy_domain} não preservou o caminho." >&2
+    exit 1
+  fi
+done
 
 rm -f /tmp/skygest-production-homepage.html
 trap - ERR
-echo "Gateway de produção separado entre homepage e aplicação."
+echo "Gateway de produção unificado em skygest.com.br."

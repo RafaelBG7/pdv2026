@@ -76,10 +76,10 @@ sudo -n nginx -t
 sudo -n systemctl reload nginx
 
 curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/" >/dev/null
-curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_APP_DOMAIN}/login" >/dev/null
-curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_APP_DOMAIN}/health/dependencies" >/dev/null
-curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_APP_DOMAIN}/api/v1/health/dependencies" >/dev/null
-auth_status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${HML_APP_DOMAIN}/api/v1/auth/me")"
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/login" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/health/dependencies" >/dev/null
+curl --retry 5 --retry-all-errors --retry-delay 2 -fsS "https://${HML_DOMAIN}/api/v1/health/dependencies" >/dev/null
+auth_status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${HML_DOMAIN}/api/v1/auth/me")"
 if [[ "$auth_status" != '401' ]]; then
   echo "API HML não reconheceu HTTPS ou não protegeu /auth/me (HTTP ${auth_status})." >&2
   exit 1
@@ -90,5 +90,11 @@ echo | openssl s_client -connect "${HML_DOMAIN}:443" -servername "$HML_DOMAIN" 2
 echo | openssl s_client -connect "${HML_APP_DOMAIN}:443" -servername "$HML_APP_DOMAIN" 2>/dev/null \
   | openssl x509 -noout -subject -issuer -dates
 
+legacy_location="$(curl -sS -o /dev/null -w '%{redirect_url}' "https://${HML_APP_DOMAIN}/login")"
+if [[ "$legacy_location" != "https://${HML_DOMAIN}/login" ]]; then
+  echo "Host HML legado não preservou o caminho no redirecionamento." >&2
+  exit 1
+fi
+
 trap - ERR
-echo "Gateway HTTPS HML configurado e produção revalidada."
+echo "Gateway HTTPS HML unificado e produção revalidada."

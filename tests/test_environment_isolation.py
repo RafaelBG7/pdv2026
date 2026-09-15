@@ -15,7 +15,7 @@ class EnvironmentIsolationTestCase(unittest.TestCase):
         values = parse_env(ROOT / '.env.hml.example')
         self.assertEqual(validate_homologation(values, validate_secrets=False), [])
         self.assertEqual(values['APP_ENV'], 'homologation')
-        self.assertEqual(values['PUBLIC_BASE_URL'], 'https://app.hml.skygest.com.br')
+        self.assertEqual(values['PUBLIC_BASE_URL'], 'https://hml.skygest.com.br')
         self.assertEqual(values['MARKETING_BASE_URL'], 'https://hml.skygest.com.br')
         self.assertEqual(values['MYSQL_DATABASE'], 'skygest_hml_central')
         self.assertEqual(values['RATELIMIT_KEY_PREFIX'], 'skygest-hml')

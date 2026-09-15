@@ -609,6 +609,7 @@ def create_app(config_class=Config):
         master_company = None
         permission_authorizer_users = []
         subscription_locked = False
+        marketing_base_url = (app.config.get('MARKETING_BASE_URL') or request.host_url.rstrip('/')).rstrip('/')
         from app.permissions import has_permission_view_override, needs_permission_override
         from app.services.alert_service import alert_settings_for_company, claim_email_alert_check, enqueue_configured_email_alert
 
@@ -658,6 +659,7 @@ def create_app(config_class=Config):
                     'can_view_permission': can_view_permission,
                     'needs_permission_override': needs_permission_override,
                     'mask_secret': mask_secret,
+                    'marketing_base_url': marketing_base_url,
                     'password_min_length': int(app.config.get('PASSWORD_MIN_LENGTH') or (3 if app.config.get('TESTING') else 8)),
                 }
 
@@ -796,6 +798,7 @@ def create_app(config_class=Config):
             'can_view_permission': can_view_permission,
             'needs_permission_override': needs_permission_override,
             'mask_secret': mask_secret,
+            'marketing_base_url': marketing_base_url,
             'password_min_length': int(app.config.get('PASSWORD_MIN_LENGTH') or (3 if app.config.get('TESTING') else 8)),
         }
 

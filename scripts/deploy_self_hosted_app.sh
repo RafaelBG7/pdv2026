@@ -88,5 +88,6 @@ if [[ "$DEPLOY_SHA" != unknown ]] && ! grep -Fq "$DEPLOY_SHA" <<<"$version_paylo
   echo "O endpoint de versão PROD não confirmou o commit implantado." >&2
   exit 1
 fi
+bash scripts/configure_production_gateway.sh
 printf '%s\n' "$DEPLOY_SHA" > DEPLOYED_COMMIT
 echo "Deploy local concluído em http://127.0.0.1:$OCI_DEPLOY_PORT"

@@ -63,6 +63,7 @@ jobs:
         run: |
           bash -n scripts/deploy_self_hosted_app.sh
           bash -n scripts/deploy_oci_app.sh
+          bash -n scripts/configure_production_gateway.sh
           python -m py_compile scripts/cleanup_system_tenant.py
           bash -n scripts/oci/load_oci_env.sh
           bash -n scripts/oci/oci_check.sh

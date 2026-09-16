@@ -20,7 +20,7 @@ upsert_public_url() {
 }
 
 if [[ -f "$HML_ENV_FILE" ]]; then
-  upsert_public_url PUBLIC_BASE_URL 'https://app.hml.skygest.com.br'
+  upsert_public_url PUBLIC_BASE_URL 'https://hml.skygest.com.br'
   upsert_public_url MARKETING_BASE_URL 'https://hml.skygest.com.br'
   echo "Arquivo .env.hml existente preservado; URLs públicas atualizadas."
   exit 0
@@ -42,7 +42,7 @@ mysql_password="$(openssl rand -hex 32)"
 cat > "$HML_ENV_FILE" <<EOF
 APP_ENV=homologation
 FLASK_DEBUG=0
-PUBLIC_BASE_URL=https://app.hml.skygest.com.br
+PUBLIC_BASE_URL=https://hml.skygest.com.br
 MARKETING_BASE_URL=https://hml.skygest.com.br
 SECRET_KEY=$secret_key
 API_TOKEN_SECRET=$api_token_secret

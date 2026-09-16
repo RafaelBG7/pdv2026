@@ -7,31 +7,31 @@ public sealed class ApiOptionsTests
     [Fact]
     public void GetValidatedBaseUri_uses_canonical_production_host()
     {
-        var options = CreateOptions("https://app.skygest.com.br");
+        var options = CreateOptions("https://skygest.com.br");
 
         var result = options.GetValidatedBaseUri();
 
-        Assert.Equal("https://app.skygest.com.br/", result.AbsoluteUri);
+        Assert.Equal("https://skygest.com.br/", result.AbsoluteUri);
     }
 
     [Fact]
     public void GetValidatedBaseUri_replaces_legacy_production_host()
     {
-        var options = CreateOptions("https://skygest.com.br");
+        var options = CreateOptions("https://app.skygest.com.br");
 
         var result = options.GetValidatedBaseUri();
 
-        Assert.Equal("https://app.skygest.com.br/", result.AbsoluteUri);
+        Assert.Equal("https://skygest.com.br/", result.AbsoluteUri);
     }
 
     [Fact]
     public void GetValidatedBaseUri_preserves_homologation_host()
     {
-        var options = CreateOptions("https://app.hml.skygest.com.br");
+        var options = CreateOptions("https://hml.skygest.com.br");
 
         var result = options.GetValidatedBaseUri();
 
-        Assert.Equal("https://app.hml.skygest.com.br/", result.AbsoluteUri);
+        Assert.Equal("https://hml.skygest.com.br/", result.AbsoluteUri);
     }
 
     private static ApiOptions CreateOptions(string baseUrl)

@@ -390,6 +390,53 @@ public sealed class SalesViewModelTests
     }
 
     [Fact]
+    public async Task Token_refresh_keeps_the_open_order_and_accepts_the_sale_response()
+    {
+        var sessionContext = SessionContext();
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, sessionContext);
+
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.AddProductCommand.Execute(null);
+        viewModel.OpenPaymentStepCommand.Execute(null);
+
+        RefreshSession(sessionContext);
+
+        Assert.True(viewModel.IsSaleEditorOpen);
+        Assert.True(viewModel.IsPaymentStepVisible);
+        Assert.Single(viewModel.CartItems);
+        Assert.Equal("12,00", viewModel.MoneyText);
+
+        apiClient.BeforeCreateSaleResult = () => RefreshSession(sessionContext);
+        await viewModel.FinalizeCommand.ExecuteAsync();
+
+        Assert.True(viewModel.HasReceipt);
+        Assert.Equal(42, viewModel.Receipt?.Id);
+        Assert.Empty(viewModel.CartItems);
+    }
+
+    [Fact]
+    public async Task A_new_login_still_discards_the_previous_users_order()
+    {
+        var sessionContext = SessionContext();
+        using var viewModel = new SalesViewModel(new StubApiClient(), sessionContext);
+        await viewModel.OpenSaleEditorCommand.ExecuteAsync();
+        Assert.True(await viewModel.SelectExactBarcodeAsync("789", showNotFound: true));
+        viewModel.AddProductCommand.Execute(null);
+
+        sessionContext.Set(new AuthSession
+        {
+            AccessToken = "other-access-token",
+            User = new UserIdentity { Id = 5 },
+            Company = new CompanyIdentity { Id = 2 },
+        });
+
+        Assert.False(viewModel.IsSaleEditorOpen);
+        Assert.Empty(viewModel.CartItems);
+    }
+
+    [Fact]
     public async Task Discount_above_subtotal_is_rejected_before_the_api_call()
     {
         var sessionContext = SessionContext();
@@ -818,6 +865,18 @@ public sealed class SalesViewModelTests
         return context;
     }
 
+    private static void RefreshSession(AppSessionContext context)
+    {
+        var previous = context.Current!;
+        Assert.True(context.TryRefresh(previous, new AuthSession
+        {
+            AccessToken = $"access-{Guid.NewGuid():N}",
+            RefreshToken = $"refresh-{Guid.NewGuid():N}",
+            User = previous.User,
+            Company = previous.Company,
+        }));
+    }
+
     private static CashRegisterSnapshot CreateOpenCashRegisterSnapshot(decimal openingAmount = 0) =>
         new()
         {
@@ -836,6 +895,8 @@ public sealed class SalesViewModelTests
         private int _saleAttempts;
 
         public bool FailFirstSaleAttempt { get; init; }
+
+        public Action? BeforeCreateSaleResult { get; set; }
 
         public List<string> IdempotencyKeys { get; } = [];
 
@@ -942,6 +1003,7 @@ public sealed class SalesViewModelTests
             CancellationToken cancellationToken)
         {
             _saleAttempts++;
+            BeforeCreateSaleResult?.Invoke();
             IdempotencyKeys.Add(idempotencyKey);
             LastDiscountAmount = discountAmount;
             LastPayments = payments;

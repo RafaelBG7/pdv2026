@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Girofy.Application.Models;
 
-/// <summary>Single date boundary for the Windows app: pt-BR in UI and ISO in API contracts.</summary>
+/// <summary>pt-BR display using the device time zone; ISO dates in API contracts.</summary>
 public static class BrazilianDateFormatting
 {
     public const string DateFormat = "dd/MM/yyyy";
@@ -11,7 +11,6 @@ public static class BrazilianDateFormatting
 
     private static readonly CultureInfo BrazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
     private static readonly string[] InputFormats = [DateFormat, "d/M/yyyy", ApiDateFormat];
-    private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
 
     public static bool TryParseDate(string? value, out DateOnly date)
     {
@@ -53,7 +52,7 @@ public static class BrazilianDateFormatting
         };
     }
 
-    public static DateTimeOffset? ToBusinessTime(string? value)
+    public static DateTimeOffset? ToBusinessTime(string? value, TimeZoneInfo? timeZone = null)
     {
         if (!DateTimeOffset.TryParse(
                 value,
@@ -64,31 +63,12 @@ public static class BrazilianDateFormatting
             return null;
         }
 
-        return TimeZoneInfo.ConvertTime(instant, BusinessTimeZone);
+        return TimeZoneInfo.ConvertTime(instant, timeZone ?? TimeZoneInfo.Local);
     }
 
     public static string FormatTimestamp(string? value, string fallback = "Data não informada") =>
         ToBusinessTime(value)?.ToString(TimestampFormat, BrazilianCulture) ?? fallback;
 
     public static DateOnly BusinessToday() =>
-        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, BusinessTimeZone).DateTime);
-
-    private static TimeZoneInfo ResolveBusinessTimeZone()
-    {
-        foreach (var identifier in new[] { "E. South America Standard Time", "America/Sao_Paulo" })
-        {
-            try
-            {
-                return TimeZoneInfo.FindSystemTimeZoneById(identifier);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-            }
-            catch (InvalidTimeZoneException)
-            {
-            }
-        }
-
-        return TimeZoneInfo.Local;
-    }
+        DateOnly.FromDateTime(DateTime.Now);
 }

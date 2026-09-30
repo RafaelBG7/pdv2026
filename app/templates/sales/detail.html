@@ -20,7 +20,7 @@
   <div class="d-flex flex-wrap justify-content-between gap-3">
     <div>
       <strong>Venda cancelada</strong>
-      <div class="small mt-1">{{ sale.cancelled_at.strftime('%d/%m/%Y %H:%M') if sale.cancelled_at else 'Data não informada' }}</div>
+      <div class="small mt-1">{{ sale.cancelled_at|local_time('datetime', 'Data não informada') }}</div>
     </div>
     <div>
       <span class="text-muted">Cancelado por</span>

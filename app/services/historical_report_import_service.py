@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.models import HistoricalDailyReport, HistoricalReportImportBatch, Sale
 from app.money import money_decimal
+from app.time_utils import business_date_range_utc, to_business_datetime
 
 
 IMPORT_SHEET = 'Importacao_Relatorios'
@@ -277,8 +278,7 @@ def preview_historical_import(content, filename, db_session, company_id):
     } if valid_dates else set()
     real_sale_dates = set()
     if valid_dates:
-        start_at = datetime.combine(min(valid_dates), time.min)
-        end_at = datetime.combine(max(valid_dates) + timedelta(days=1), time.min)
+        start_at, end_at = business_date_range_utc(min(valid_dates), max(valid_dates))
         for created_at, in db_session.query(Sale.created_at).filter(
             Sale.company_id == company_id,
             Sale.valid_filter(),
@@ -286,7 +286,7 @@ def preview_historical_import(content, filename, db_session, company_id):
             Sale.created_at < end_at,
         ).all():
             if created_at:
-                real_sale_dates.add(created_at.date())
+                real_sale_dates.add(to_business_datetime(created_at).date())
 
     for row in parsed_rows:
         if row['errors']:
@@ -335,10 +335,9 @@ def import_preview_rows(preview, db_session, company_id, user_id, strategy, idem
     if not rows:
         raise HistoricalImportError('Não há linhas válidas para importar.')
     dates = [row['data'] for row in rows]
-    start_at = datetime.combine(min(dates), time.min)
-    end_at = datetime.combine(max(dates) + timedelta(days=1), time.min)
+    start_at, end_at = business_date_range_utc(min(dates), max(dates))
     real_dates = {
-        created_at.date()
+        to_business_datetime(created_at).date()
         for created_at, in db_session.query(Sale.created_at).filter(
             Sale.company_id == company_id,
             Sale.valid_filter(),

@@ -4,11 +4,11 @@
   {% set timeline_id = timeline_id_prefix ~ '-' ~ entry.sale.id %}
   <article class="sale-timeline-item">
     <button class="sale-timeline-summary" type="button" data-bs-toggle="collapse" data-bs-target="#{{ timeline_id }}" aria-expanded="false" aria-controls="{{ timeline_id }}">
-      <span class="sale-timeline-marker">{{ entry.time }}</span>
+      <span class="sale-timeline-marker">{{ entry.sale.created_at|local_time('time') }}</span>
       <span class="sale-timeline-main">
         <strong>Venda #{{ entry.sale.id }}</strong>
         {% if entry.sale.is_cancelled %}<span class="badge text-bg-danger ms-2">Cancelada</span>{% endif %}
-        <small>{{ entry.date }} · {{ entry.user }}</small>
+        <small>{{ entry.sale.created_at|local_time('date') }} · {{ entry.user }}</small>
       </span>
       <span class="sale-timeline-payment">{{ entry.payments_text }}</span>
       <span class="sale-timeline-total">{{ brl(entry.sale.final_amount) }}</span>

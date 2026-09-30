@@ -2,16 +2,28 @@ import os
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from flask import has_request_context, request
+
 
 DEFAULT_BUSINESS_TIMEZONE = 'America/Sao_Paulo'
 
 
 def business_timezone():
-    name = os.environ.get('BUSINESS_TIMEZONE', DEFAULT_BUSINESS_TIMEZONE).strip()
-    try:
-        return ZoneInfo(name)
-    except ZoneInfoNotFoundError:
-        return ZoneInfo(DEFAULT_BUSINESS_TIMEZONE)
+    names = []
+    if has_request_context():
+        names.extend((
+            request.headers.get('X-SkyGest-Timezone'),
+            request.cookies.get('skygest_timezone'),
+        ))
+    names.append(os.environ.get('BUSINESS_TIMEZONE', DEFAULT_BUSINESS_TIMEZONE))
+    for name in names:
+        if not name or len(name) > 100:
+            continue
+        try:
+            return ZoneInfo(name.strip())
+        except (ZoneInfoNotFoundError, ValueError):
+            continue
+    return ZoneInfo(DEFAULT_BUSINESS_TIMEZONE)
 
 
 def as_utc(value):
@@ -33,6 +45,18 @@ def utc_isoformat(value):
 def to_business_datetime(value):
     normalized = as_utc(value)
     return normalized.astimezone(business_timezone()) if normalized else None
+
+
+def format_local_datetime(value, style='datetime'):
+    local = to_business_datetime(value)
+    if local is None:
+        return ''
+    formats = {
+        'datetime': '%d/%m/%Y %H:%M',
+        'date': '%d/%m/%Y',
+        'time': '%H:%M',
+    }
+    return local.strftime(formats.get(style, formats['datetime']))
 
 
 def business_today():

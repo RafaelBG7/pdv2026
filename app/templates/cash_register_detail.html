@@ -10,9 +10,9 @@
   <div>
     <h2>Detalhes do caixa</h2>
     <p class="text-muted mb-0">
-      {{ cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '-' }}
+      {{ cash_register.opened_at|local_time }}
       até
-      {{ cash_register.closed_at.strftime('%d/%m/%Y %H:%M') if cash_register.closed_at else 'em aberto' }}
+      {{ cash_register.closed_at|local_time('datetime', 'em aberto') }}
     </p>
   </div>
   <a class="btn btn-outline-light" href="{{ url_for('main.cash_register') }}">Voltar ao caixa</a>
@@ -25,11 +25,11 @@
   </div>
   <div class="card card-dark">
     <span>Abertura</span>
-    <strong>{{ cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '-' }}</strong>
+    <strong>{{ cash_register.opened_at|local_time }}</strong>
   </div>
   <div class="card card-dark">
     <span>Fechamento</span>
-    <strong>{{ cash_register.closed_at.strftime('%d/%m/%Y %H:%M') if cash_register.closed_at else 'em aberto' }}</strong>
+    <strong>{{ cash_register.closed_at|local_time('datetime', 'em aberto') }}</strong>
   </div>
   {% if show_cash_financials %}
   <div class="card card-dark">

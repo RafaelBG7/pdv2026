@@ -214,7 +214,7 @@
           {% for sale in sales %}
           <tr>
             <td><a href="{{ url_for('main.sale_detail', sale_id=sale.id) }}">#{{ sale.id }}</a></td>
-            <td>{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
+            <td>{{ sale.created_at|local_time }}</td>
             <td class="text-end">{{ brl(sale.total_amount) }}</td>
             <td class="text-end">{{ brl(sale.discount_amount) }}</td>
             <td class="text-end">{{ brl(sale.final_amount) }}</td>

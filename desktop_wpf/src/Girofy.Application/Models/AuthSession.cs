@@ -28,6 +28,9 @@ public sealed class AuthSession
     [JsonPropertyName("company")]
     public CompanyIdentity? Company { get; init; }
 
+    [JsonIgnore]
+    internal long AuthenticationVersion { get; set; }
+
     public AuthSession WithCalculatedAccessExpiration(DateTimeOffset now) => new()
     {
         AccessToken = AccessToken,

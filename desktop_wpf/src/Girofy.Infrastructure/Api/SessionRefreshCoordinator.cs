@@ -81,7 +81,11 @@ public sealed class SessionRefreshCoordinator(
 
             var refreshed = envelope.Data.WithCalculatedAccessExpiration(DateTimeOffset.UtcNow);
             await sessionStore.SaveAsync(refreshed, cancellationToken);
-            sessionContext.Set(refreshed);
+            if (!sessionContext.TryRefresh(current, refreshed))
+            {
+                logger.LogWarning("Session changed while token refresh was in progress.");
+                return false;
+            }
             logger.LogInformation("Session refresh completed successfully.");
             return true;
         }

@@ -154,6 +154,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private static readonly CultureInfo BrazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
     private readonly IGirofyApiClient _apiClient;
     private readonly IAppSessionContext _sessionContext;
+    private long _authenticationVersion;
     private string _searchText = string.Empty;
     private CatalogProduct? _selectedSearchProduct;
     private string _quantityText = "1";
@@ -198,6 +199,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     {
         _apiClient = apiClient;
         _sessionContext = sessionContext;
+        _authenticationVersion = sessionContext.Current?.AuthenticationVersion ?? -1;
         SearchCommand = new AsyncRelayCommand(SearchAsync);
         AddProductCommand = new RelayCommand(AddSelectedProduct);
         OpenQuantityPopupCommand = new RelayCommand(OpenQuantityPopup, () => SelectedSearchProduct is not null);
@@ -1772,7 +1774,17 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCancelSales));
     }
 
-    private void HandleSessionChanged(object? sender, EventArgs e) => ResetAll();
+    private void HandleSessionChanged(object? sender, EventArgs e)
+    {
+        var current = _sessionContext.Current;
+        if (current is not null && current.AuthenticationVersion == _authenticationVersion)
+        {
+            return;
+        }
+
+        _authenticationVersion = current?.AuthenticationVersion ?? -1;
+        ResetAll();
+    }
 
     private AuthSession RequireSession() => _sessionContext.Current
         ?? throw new GirofyApiException(
@@ -1780,10 +1792,9 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
             "session_required",
             401);
 
-    private bool IsSameSession(AuthSession session) => string.Equals(
-        _sessionContext.Current?.AccessToken,
-        session.AccessToken,
-        StringComparison.Ordinal);
+    private bool IsSameSession(AuthSession session) =>
+        _sessionContext.Current is { } current &&
+        current.AuthenticationVersion == session.AuthenticationVersion;
 
     private void ClearMessages()
     {

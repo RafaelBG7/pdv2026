@@ -268,6 +268,12 @@ data civil ISO (`YYYY-MM-DD`), enquanto `created_at` e `paid_at` são instantes 
 com sufixo `Z`. Todos os endpoints exigem `can_manage_payables` e ignoram qualquer
 tentativa do cliente de escolher `company_id`.
 
+O cliente pode enviar `X-SkyGest-Timezone` com um identificador IANA, por exemplo
+`America/Sao_Paulo`. Esse fuso determina o dia local em filtros, relatórios e
+exportações de data e hora. O aplicativo Windows envia o fuso do dispositivo.
+Os timestamps JSON continuam em UTC com sufixo `Z` para que cada cliente os exiba
+em seu próprio horário. Sem um fuso válido, vale o fuso padrão do servidor.
+
 Datas civis impossíveis (por exemplo, `2025-02-29`) retornam HTTP 422 com código
 `invalid_date` e campo `due_date`. Falhas inesperadas de listagem/cadastro são
 registradas no log do servidor com `request_id` e retornam envelope JSON sanitizado;

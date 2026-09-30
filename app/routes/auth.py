@@ -124,7 +124,7 @@ PASSWORD_RESET_TTL_MINUTES = 30
 EMAIL_CHANGE_TTL_MINUTES = 30
 LOG_ENTRY_PATTERN = re.compile(
     r'^(?P<created_at>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) '
-    r'(?P<level>[A-Z]+) \[(?P<logger>[^\]]+)\] (?P<message>.*)$'
+    r'(?P<level>[A-Z]+) \[(?P<logger>[^\]]+)\](?: \[environment=[^\]]+\])? (?P<message>.*)$'
 )
 EMPLOYEE_PERMISSIONS = (
     'can_view_products',
@@ -470,7 +470,7 @@ def read_recent_error_logs(limit=20):
             if current_entry:
                 entries.append(current_entry)
             current_entry = {
-                'created_at': match.group('created_at'),
+                'created_at': datetime.strptime(match.group('created_at'), '%Y-%m-%d %H:%M:%S,%f').replace(tzinfo=timezone.utc),
                 'level': match.group('level'),
                 'logger': match.group('logger'),
                 'message': match.group('message'),

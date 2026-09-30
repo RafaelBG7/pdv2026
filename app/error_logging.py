@@ -151,6 +151,7 @@ def setup_error_logging(app):
     formatter = logging.Formatter(
         '%(asctime)s %(levelname)s [%(name)s] [environment=%(environment)s] %(message)s'
     )
+    formatter.converter = time.gmtime
     environment_filter = EnvironmentFilter(app.config.get('ENVIRONMENT'))
 
     for existing_handler in list(app.logger.handlers):

@@ -10,5 +10,7 @@ public interface IAppSessionContext
 
     void Set(AuthSession session);
 
+    bool TryRefresh(AuthSession previous, AuthSession refreshed);
+
     void Clear();
 }

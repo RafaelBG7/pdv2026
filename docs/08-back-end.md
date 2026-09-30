@@ -4,6 +4,13 @@
 
 O backend é uma aplicação Flask organizada por fábrica de aplicação, blueprints, modelos e serviços auxiliares.
 
+Os instantes de vendas, caixa, auditoria, notificações e demais eventos são gravados em UTC.
+`app/time_utils.py` converte esses instantes para o fuso informado pelo dispositivo ao exibir
+horários ou calcular limites de dias em consultas e relatórios. O aplicativo Windows envia
+`X-SkyGest-Timezone` com o identificador IANA; o navegador envia o mesmo identificador no
+cookie `skygest_timezone`. Na ausência de um fuso válido, o servidor usa
+`BUSINESS_TIMEZONE` ou `America/Sao_Paulo`.
+
 ```text
 app/
 ├── __init__.py

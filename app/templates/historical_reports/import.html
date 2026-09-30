@@ -82,7 +82,7 @@
       <thead><tr><th>Data</th><th>Arquivo</th><th>Usuário</th><th>Período</th><th>Origem</th><th>Registros</th><th>Inseridos</th><th>Atualizados</th><th>Ignorados</th><th>Status</th></tr></thead>
       <tbody>
         {% for batch in batches %}
-        <tr><td>{{ batch.created_at.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ batch.filename }}</td><td>#{{ batch.user_id }}</td><td>{{ batch.period_start.strftime('%d/%m/%Y') if batch.period_start else '-' }} a {{ batch.period_end.strftime('%d/%m/%Y') if batch.period_end else '-' }}</td><td>{{ batch.source }}</td><td>{{ batch.valid_rows }}</td><td>{{ batch.inserted_rows }}</td><td>{{ batch.updated_rows }}</td><td>{{ batch.ignored_rows }}</td><td>{{ batch.status }}</td></tr>
+        <tr><td>{{ batch.created_at|local_time }}</td><td>{{ batch.filename }}</td><td>#{{ batch.user_id }}</td><td>{{ batch.period_start.strftime('%d/%m/%Y') if batch.period_start else '-' }} a {{ batch.period_end.strftime('%d/%m/%Y') if batch.period_end else '-' }}</td><td>{{ batch.source }}</td><td>{{ batch.valid_rows }}</td><td>{{ batch.inserted_rows }}</td><td>{{ batch.updated_rows }}</td><td>{{ batch.ignored_rows }}</td><td>{{ batch.status }}</td></tr>
         {% else %}
         <tr><td colspan="10" class="text-center text-muted py-4">Nenhuma importação realizada.</td></tr>
         {% endfor %}

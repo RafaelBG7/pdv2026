@@ -1,4 +1,27 @@
 document.addEventListener('DOMContentLoaded', function () {
+  function formatDeviceTimestamp(value, style) {
+    const instant = new Date(value);
+    if (!Number.isFinite(instant.getTime())) return null;
+    const pad = function (part) { return String(part).padStart(2, '0'); };
+    const date = pad(instant.getDate()) + '/' + pad(instant.getMonth() + 1) + '/' + instant.getFullYear();
+    const time = pad(instant.getHours()) + ':' + pad(instant.getMinutes());
+    if (style === 'date') return date;
+    if (style === 'time') return time;
+    return date + ' ' + time;
+  }
+
+  document.querySelectorAll('time[data-local-time]').forEach(function (element) {
+    const label = formatDeviceTimestamp(element.dateTime, element.dataset.localTime);
+    if (label) element.textContent = label;
+  });
+
+  document.querySelectorAll('[data-sale-timestamp]').forEach(function (row) {
+    const instant = new Date(row.dataset.saleTimestamp);
+    if (!Number.isFinite(instant.getTime())) return;
+    row.dataset.saleDate = formatDeviceTimestamp(row.dataset.saleTimestamp, 'datetime');
+    row.dataset.saleDateIso = [instant.getFullYear(), String(instant.getMonth() + 1).padStart(2, '0'), String(instant.getDate()).padStart(2, '0')].join('-');
+  });
+
   const storedTheme = localStorage.getItem('girofy-theme');
   let accessibilityEnabled = localStorage.getItem('girofy-accessibility-enabled') !== 'false';
   let accessibilityBold = localStorage.getItem('girofy-accessibility-bold') === 'true';

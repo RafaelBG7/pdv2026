@@ -94,12 +94,13 @@
         <tr
           data-sales-row
           data-sale-id="{{ sale.id }}"
-          data-sale-date="{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '' }}"
+          data-sale-date="{{ format_local_datetime(sale.created_at) }}"
+          data-sale-timestamp="{{ utc_isoformat(sale.created_at) or '' }}"
           data-sale-user="{{ seller }}"
           data-sale-payment="{{ payment_text.value }}"
           data-sale-total="{{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}"
           data-sale-total-number="{{ '%.2f'|format(sale.final_amount or 0) }}"
-          data-sale-date-iso="{{ sale.created_at.strftime('%Y-%m-%d') if sale.created_at else '' }}"
+          data-sale-date-iso="{{ to_business_datetime(sale.created_at).date().isoformat() if sale.created_at else '' }}"
           data-sale-client=""
         >
           <td class="fw-semibold sales-id-column">
@@ -108,7 +109,7 @@
             <span class="badge text-bg-danger ms-1">CANCELADA</span>
             {% endif %}
           </td>
-          <td class="sales-date-column">{{ sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '-' }}</td>
+          <td class="sales-date-column">{{ sale.created_at|local_time }}</td>
           <td class="sales-seller-column">{{ seller }}</td>
           <td class="text-end sales-total-column">R$ {{ '%.2f'|format(sale.final_amount or 0)|replace('.', ',') }}</td>
           <td class="sales-payment-column">

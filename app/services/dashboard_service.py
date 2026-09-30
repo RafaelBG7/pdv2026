@@ -132,8 +132,8 @@ def _sales_totals(db_session, company_id, start_at, end_at):
         func.coalesce(func.sum(HistoricalDailyReport.revenue), Decimal('0.00')),
     ).filter(
         HistoricalDailyReport.company_id == company_id,
-        HistoricalDailyReport.report_date >= start_at.date(),
-        HistoricalDailyReport.report_date < end_at.date(),
+        HistoricalDailyReport.report_date >= to_business_datetime(start_at).date(),
+        HistoricalDailyReport.report_date < to_business_datetime(end_at).date(),
     ).one()
     count = int(row[0] or 0) + int(historical[0] or 0)
     total = _money(row[1]) + _money(historical[1])
@@ -165,8 +165,8 @@ def _sales_profit(db_session, company_id, start_at=None, end_at=None, cash_regis
         func.coalesce(func.sum(HistoricalDailyReport.gross_profit), Decimal('0.00')),
     ).filter(
         HistoricalDailyReport.company_id == company_id,
-        HistoricalDailyReport.report_date >= start_at.date(),
-        HistoricalDailyReport.report_date < end_at.date(),
+        HistoricalDailyReport.report_date >= to_business_datetime(start_at).date(),
+        HistoricalDailyReport.report_date < to_business_datetime(end_at).date(),
     ).one()
     if historical[0] != historical[1]:
         return None

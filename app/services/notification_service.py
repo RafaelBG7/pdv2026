@@ -212,7 +212,7 @@ def get_user_notifications(db_session, company_id, user_id, *, page=1, page_size
     if date_from:
         query = query.filter(Notification.created_at >= date_from)
     if date_to:
-        query = query.filter(Notification.created_at <= date_to)
+        query = query.filter(Notification.created_at < date_to)
     if search:
         term = f'%{safe_text(search, 100)}%'
         query = query.filter(or_(Notification.title.ilike(term), Notification.message.ilike(term)))

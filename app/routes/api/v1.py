@@ -100,6 +100,8 @@ from app.services.notification_service import (
 from app.time_utils import (
     business_date_range_utc,
     business_today,
+    business_timezone,
+    format_local_datetime,
     to_business_datetime,
     utc_isoformat,
 )
@@ -275,7 +277,7 @@ def available_activation_key(value, company=None):
 
 
 def apply_activation_key_to_company(activation_key, company):
-    today = date.today()
+    today = business_today()
     company.activation_key = activation_key.key
     company.activation_key_updated_at = datetime.now(timezone.utc)
     company.subscription_plan = activation_key.plan
@@ -1837,7 +1839,7 @@ def api_require_product_import_permission():
 
 
 def format_export_datetime(value):
-    return value.strftime('%d/%m/%Y %H:%M') if value else ''
+    return format_local_datetime(value)
 
 
 def format_export_date(value):
@@ -1947,7 +1949,7 @@ def api_export_payables_rows(tenant_db):
         .order_by(Payable.due_date.desc(), Payable.description.asc())
         .all()
     )
-    today = date.today()
+    today = business_today()
     return [
         [
             payable.id,
@@ -2042,7 +2044,7 @@ def api_csv_export_response(export_type, headers, rows):
     writer.writerow(headers)
     writer.writerows(rows)
     csv_body = '\ufeff' + output.getvalue()
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now(business_timezone()).strftime('%Y%m%d_%H%M%S')
     filename = f'{API_EXPORT_DEFINITIONS[export_type]["filename"]}_{timestamp}.csv'
     response = Response(csv_body, mimetype='text/csv; charset=utf-8')
     response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -3177,9 +3179,11 @@ def api_audit_logs():
             if http_method != 'ALL':
                 base_query = base_query.filter(AuditLog.http_method == http_method)
             if start_date:
-                base_query = base_query.filter(AuditLog.created_at >= datetime.combine(start_date, time.min))
+                start_at, _ = business_date_range_utc(start_date, start_date)
+                base_query = base_query.filter(AuditLog.created_at >= start_at)
             if end_date:
-                base_query = base_query.filter(AuditLog.created_at <= datetime.combine(end_date, time.max))
+                _, end_at = business_date_range_utc(end_date, end_date)
+                base_query = base_query.filter(AuditLog.created_at < end_at)
 
             total = base_query.count()
             total_pages = max((total + per_page - 1) // per_page, 1) if total else 0
@@ -3907,9 +3911,8 @@ def api_today_sales():
                     Sale.cash_register_id == open_cash_register.id,
                 )
             else:
-                today = datetime.now().date()
-                start_at = datetime.combine(today, time.min)
-                end_at = start_at + timedelta(days=1)
+                today = business_today()
+                start_at, end_at = business_date_range_utc(today, today)
                 sales_query = sales_query.filter(
                     Sale.created_at >= start_at,
                     Sale.created_at < end_at,
@@ -4872,8 +4875,8 @@ def api_notifications():
         is_read = None if not raw_is_read else raw_is_read in {'true', '1'}
         date_from = parse_optional_query_date_argument('date_from')
         date_to = parse_optional_query_date_argument('date_to')
-        start_at = datetime.combine(date_from, time.min) if date_from else None
-        end_at = datetime.combine(date_to, time.max) if date_to else None
+        start_at = business_date_range_utc(date_from, date_from)[0] if date_from else None
+        end_at = business_date_range_utc(date_to, date_to)[1] if date_to else None
 
         with api_tenant_database(g.api_user) as tenant_db:
             sync_operational_notifications(tenant_db, g.api_user.company_id)

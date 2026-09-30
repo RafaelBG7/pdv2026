@@ -43,7 +43,7 @@ from app.services.stock_service import (
     stock_source_label,
 )
 from app.tenant import current_tenant_company, tenant_session
-from app.time_utils import business_today
+from app.time_utils import business_date_range_utc, business_today, format_local_datetime, to_business_datetime
 
 main_bp = Blueprint('main', __name__)
 PAYMENT_METHODS = {
@@ -228,7 +228,7 @@ def export_sales_rows():
         )
         rows.append([
             sale.id,
-            sale.created_at.strftime('%d/%m/%Y %H:%M') if sale.created_at else '',
+            format_local_datetime(sale.created_at),
             f'{sale.total_amount or 0:.2f}',
             f'{sale.discount_amount or 0:.2f}',
             f'{sale.final_amount or 0:.2f}',
@@ -245,8 +245,8 @@ def export_cash_register_rows():
     return [
         [
             cash_register.id,
-            cash_register.opened_at.strftime('%d/%m/%Y %H:%M') if cash_register.opened_at else '',
-            cash_register.closed_at.strftime('%d/%m/%Y %H:%M') if cash_register.closed_at else '',
+            format_local_datetime(cash_register.opened_at),
+            format_local_datetime(cash_register.closed_at),
             cash_register.status,
             f'{cash_register.opening_amount or 0:.2f}',
             f'{cash_register.closing_amount or 0:.2f}',
@@ -269,7 +269,7 @@ def export_payables_rows():
             payable.due_date.strftime('%d/%m/%Y') if payable.due_date else '',
             payable_status_label(payable),
             'Sim' if payable.paid else 'Não',
-            payable.paid_at.strftime('%d/%m/%Y %H:%M') if payable.paid_at else '',
+            format_local_datetime(payable.paid_at),
             payable.notes or '',
         ]
         for payable in payables
@@ -532,9 +532,11 @@ def apply_date_filters(query, model, start_value, end_value):
     start_date = parse_date(start_value)
     end_date = parse_date(end_value)
     if start_date:
-        query = query.filter(model.created_at >= datetime.combine(start_date, time.min))
+        start_at, _ = business_date_range_utc(start_date, start_date)
+        query = query.filter(model.created_at >= start_at)
     if end_date:
-        query = query.filter(model.created_at < datetime.combine(end_date + timedelta(days=1), time.min))
+        _, end_at = business_date_range_utc(end_date, end_date)
+        query = query.filter(model.created_at < end_at)
     return query
 
 
@@ -625,8 +627,8 @@ def build_sale_timeline(sales, opening_amount=Decimal('0.00')):
         running_balance = money_decimal(running_balance + money_decimal(sale.final_amount))
         timeline.append({
             'sale': sale,
-            'time': sale.created_at.strftime('%H:%M') if sale.created_at else '-',
-            'date': sale.created_at.strftime('%d/%m/%Y') if sale.created_at else '-',
+            'time': format_local_datetime(sale.created_at, 'time') if sale.created_at else '-',
+            'date': format_local_datetime(sale.created_at, 'date') if sale.created_at else '-',
             'user': users.get(sale.user_id, 'Usuário não identificado'),
             'payments_text': payment_summary_text(sale),
             'balance_before_sale': balance_before_sale,
@@ -654,7 +656,7 @@ def subtract_calendar_months(value, months):
 
 
 def report_period_range(period, start_date=None, end_date=None):
-    today = date.today()
+    today = business_today()
 
     if period == 'weekly':
         end = end_date or today
@@ -680,8 +682,7 @@ def report_period_range(period, start_date=None, end_date=None):
         end = start
         label = start.strftime('%d/%m/%Y')
 
-    start_datetime = datetime.combine(start, time.min)
-    end_datetime = datetime.combine(end + timedelta(days=1), time.min)
+    start_datetime, end_datetime = business_date_range_utc(start, end)
     return period, start, end, start_datetime, end_datetime, label
 
 
@@ -840,7 +841,7 @@ def build_sales_chart(period, start, end, sales, historical_rows=(), granularity
     bucket_index = {bucket['key']: bucket for bucket in buckets}
     for sale in sales:
         if sale.created_at:
-            sale_date = sale.created_at.date()
+            sale_date = to_business_datetime(sale.created_at).date()
             key = _chart_bucket_start(sale_date, granularity)
             if key in bucket_index:
                 bucket_index[key]['total'] += money_decimal(sale.final_amount)
@@ -860,27 +861,25 @@ def build_sales_chart(period, start, end, sales, historical_rows=(), granularity
 
 
 def build_daily_sales_activity(start_datetime, end_datetime, metric='revenue'):
-    """Aggregate daily sales in SQL and return a stable 24-hour chart structure."""
+    """Aggregate a device-local day into device-local hourly buckets."""
     metric = metric if metric in ('revenue', 'quantity') else 'revenue'
-    hour_expression = func.extract('hour', Sale.created_at)
     rows = tenant_query(Sale).with_entities(
-        hour_expression.label('sale_hour'),
-        func.count(Sale.id).label('sales_count'),
-        func.coalesce(func.sum(Sale.final_amount), 0).label('revenue'),
+        Sale.created_at,
+        Sale.final_amount,
     ).filter(
         Sale.created_at >= start_datetime,
         Sale.created_at < end_datetime,
         Sale.valid_filter(),
-    ).group_by(hour_expression).all()
+    ).all()
 
-    aggregated = {
-        int(row.sale_hour): {
-            'sales_count': int(row.sales_count or 0),
-            'total': money_decimal(row.revenue),
-        }
-        for row in rows
-        if row.sale_hour is not None
-    }
+    aggregated = {}
+    for created_at, amount in rows:
+        if created_at is None:
+            continue
+        hour = to_business_datetime(created_at).hour
+        values = aggregated.setdefault(hour, {'sales_count': 0, 'total': Decimal('0.00')})
+        values['sales_count'] += 1
+        values['total'] += money_decimal(amount)
     buckets = []
     for hour in range(24):
         values = aggregated.get(hour, {'sales_count': 0, 'total': Decimal('0.00')})
@@ -1439,7 +1438,7 @@ def export_data(export_type):
     if export_type not in EXPORT_TYPES:
         abort(404)
 
-    today_label = date.today().strftime('%Y-%m-%d')
+    today_label = business_today().strftime('%Y-%m-%d')
     record_audit_event(
         'data_exported',
         'export',
@@ -1727,8 +1726,8 @@ def reports():
         product_end = product_end or end
     if product_start and product_end and product_end < product_start:
         product_start, product_end = product_end, product_start
-    product_start_datetime = datetime.combine(product_start, time.min) if product_start else None
-    product_end_datetime = datetime.combine(product_end + timedelta(days=1), time.min) if product_end else None
+    product_start_datetime = business_date_range_utc(product_start, product_start)[0] if product_start else None
+    product_end_datetime = business_date_range_utc(product_end, product_end)[1] if product_end else None
     product_category_id = request.args.get('product_category_id', '').strip()
     product_id = request.args.get('product_id', '').strip()
     product_sort = request.args.get('product_sort', 'quantity_desc')

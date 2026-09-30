@@ -80,8 +80,8 @@
         {% for log in logs %}
         <tr class="expandable-row" data-expand-row>
           <td data-label="Data e hora">
-            <span class="audit-date">{{ log.created_at.strftime('%d/%m/%Y') if log.created_at else '-' }}</span>
-            <small>{{ log.created_at.strftime('%H:%M') if log.created_at else '' }}</small>
+            <span class="audit-date">{{ log.created_at|local_time('date') }}</span>
+            <small>{{ log.created_at|local_time('time', '') }}</small>
           </td>
           <td data-label="Usuário">
             <span class="audit-user">{{ log.user_name or 'Sistema' }}</span>

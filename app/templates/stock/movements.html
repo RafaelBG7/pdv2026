@@ -88,7 +88,7 @@
         {% for movement in movements %}
         {% set is_entry = movement.new_stock >= movement.previous_stock %}
         <tr class="expandable-row" data-expand-row>
-          <td>{{ movement.created_at.strftime('%d/%m/%Y %H:%M') if movement.created_at else '-' }}</td>
+          <td>{{ movement.created_at|local_time }}</td>
           <td>{{ products_by_id.get(movement.product_id, 'Produto removido') }}</td>
           <td><span class="status-badge {{ 'status-paid' if is_entry else 'status-danger' }}">{{ stock_movement_label(movement.movement_type) }}</span></td>
           <td class="text-end">{{ movement.quantity if is_entry else '-' }}</td>

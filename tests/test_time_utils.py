@@ -1,9 +1,11 @@
 import os
 import unittest
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
-from app.time_utils import business_date_range_utc, to_business_datetime, utc_isoformat
+from flask import Flask
+
+from app.time_utils import business_date_range_utc, format_local_datetime, to_business_datetime, utc_isoformat
 
 
 class TimeUtilsTests(unittest.TestCase):
@@ -24,6 +26,29 @@ class TimeUtilsTests(unittest.TestCase):
         start, end = business_date_range_utc(date(2026, 8, 18), date(2026, 8, 18))
         self.assertEqual(start, datetime(2026, 8, 18, 3, 0))
         self.assertEqual(end, datetime(2026, 8, 19, 3, 0))
+
+    def test_request_timezone_controls_display_and_day_bounds(self):
+        app = Flask(__name__)
+        with app.test_request_context('/', headers={'X-SkyGest-Timezone': 'Asia/Tokyo'}):
+            instant = datetime(2026, 8, 18, 22, 30)
+            self.assertEqual(format_local_datetime(instant), '19/08/2026 07:30')
+            start, end = business_date_range_utc(date(2026, 8, 19), date(2026, 8, 19))
+            self.assertEqual(start, datetime(2026, 8, 18, 15, 0))
+            self.assertEqual(end, datetime(2026, 8, 19, 15, 0))
+
+    def test_browser_timezone_cookie_is_used_and_invalid_header_is_ignored(self):
+        app = Flask(__name__)
+        with app.test_request_context('/', headers={
+            'Cookie': 'skygest_timezone=America%2FSao_Paulo',
+            'X-SkyGest-Timezone': 'invalid/timezone',
+        }):
+            self.assertEqual(format_local_datetime(datetime(2026, 8, 19, 2, 30)), '18/08/2026 23:30')
+
+    def test_day_bounds_follow_daylight_saving_transitions(self):
+        app = Flask(__name__)
+        with app.test_request_context('/', headers={'X-SkyGest-Timezone': 'America/New_York'}):
+            start, end = business_date_range_utc(date(2026, 3, 8), date(2026, 3, 8))
+            self.assertEqual(end - start, timedelta(hours=23))
 
 
 if __name__ == '__main__':

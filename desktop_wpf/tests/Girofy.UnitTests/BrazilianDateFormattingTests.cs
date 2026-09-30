@@ -69,10 +69,24 @@ public sealed class BrazilianDateFormattingTests
     [InlineData("2026-08-24T02:30:00Z", "23/08/2026 23:30")]
     [InlineData("2027-01-01T02:30:00Z", "31/12/2026 23:30")]
     [InlineData("2024-03-01T02:30:00Z", "29/02/2024 23:30")]
-    public void FormatTimestamp_converts_once_to_sao_paulo_and_handles_rollovers(
+    public void Timestamp_conversion_supports_timezone_rollovers(
         string timestamp,
         string expected) =>
+        Assert.Equal(expected, BrazilianDateFormatting.ToBusinessTime(
+            timestamp,
+            TimeZoneInfo.CreateCustomTimeZone("UTC-03", TimeSpan.FromHours(-3), "UTC-03", "UTC-03"))
+            ?.ToString(BrazilianDateFormatting.TimestampFormat, CultureInfo.GetCultureInfo("pt-BR")));
+
+    [Fact]
+    public void FormatTimestamp_uses_the_device_timezone()
+    {
+        const string timestamp = "2026-08-24T02:30:00Z";
+        var expected = TimeZoneInfo.ConvertTime(
+            DateTimeOffset.Parse(timestamp, CultureInfo.InvariantCulture),
+            TimeZoneInfo.Local).ToString(BrazilianDateFormatting.TimestampFormat, CultureInfo.GetCultureInfo("pt-BR"));
+
         Assert.Equal(expected, BrazilianDateFormatting.FormatTimestamp(timestamp));
+    }
 
     [Fact]
     public void Reports_period_description_never_exposes_iso_dates()
@@ -101,6 +115,6 @@ public sealed class BrazilianDateFormattingTests
             canViewFinancials: true,
             (_, _) => Task.CompletedTask);
 
-        Assert.Equal("23/08/2026 23:30", item.DateTimeText);
+        Assert.Equal(BrazilianDateFormatting.FormatTimestamp(item.Summary.CreatedAt), item.DateTimeText);
     }
 }

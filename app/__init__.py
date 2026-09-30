@@ -3,6 +3,7 @@ from urllib.parse import urlsplit
 
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
 from flask_login import current_user
+from markupsafe import Markup, escape
 from sqlalchemy import create_engine, inspect, or_, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
@@ -15,7 +16,7 @@ from app.error_logging import log_http_error, setup_error_logging
 from app.security.csrf import init_csrf
 from app.security.rate_limit import init_rate_limit_errors
 from config import Config
-from app.time_utils import business_today
+from app.time_utils import business_today, format_local_datetime, to_business_datetime, utc_isoformat
 
 
 def ensure_mysql_database_exists(database_uri):
@@ -370,6 +371,22 @@ def ensure_company_backup_columns():
 
 def create_app(config_class=Config):
     app = Flask(__name__)
+    app.jinja_env.globals.update(
+        format_local_datetime=format_local_datetime,
+        to_business_datetime=to_business_datetime,
+        utc_isoformat=utc_isoformat,
+    )
+
+    @app.template_filter('local_time')
+    def local_time_filter(value, style='datetime', fallback='-'):
+        if value is None:
+            return escape(fallback)
+        timestamp = utc_isoformat(value)
+        label = format_local_datetime(value, style)
+        kind = style if style in {'datetime', 'date', 'time'} else 'datetime'
+        return Markup('<time datetime="{}" data-local-time="{}">{}</time>').format(
+            escape(timestamp), escape(kind), escape(label),
+        )
     app.config.from_object(config_class)
     if app.config.get('TRUST_PROXY_HEADERS', False):
         trusted_proxy_count = max(1, int(app.config.get('TRUSTED_PROXY_COUNT', 1)))

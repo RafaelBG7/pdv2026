@@ -451,7 +451,7 @@
             <span>Último backup</span>
             <strong>
               {% if settings_company and settings_company.backup_last_at %}
-              {{ settings_company.backup_last_at.strftime('%d/%m/%Y %H:%M') }}
+              {{ settings_company.backup_last_at|local_time }}
               {% else %}
               Nunca realizado
               {% endif %}

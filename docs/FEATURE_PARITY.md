@@ -120,7 +120,7 @@ Legenda de situação: `OK`, `DIVERGÊNCIA VISUAL`, `DIVERGÊNCIA FUNCIONAL`, `R
 | Estoque | baixa/devolução/kit | Sim | Reflete com origem distinta | sale_service | OK | Homologar cenário completo no App |
 | Contas | listar/criar/pagar/reabrir | Sim | Sim | endpoints payables, Decimal(12,2), tenant do token e auditoria | OK | Homologar migration tenant_0004 na OCI |
 | Contas | valores pt-BR e precisão | Sim | Máscara de centavos da direita para a esquerda, com colagem e exclusão normalizadas | aceita `65,99`, `2.480,35`, `19` e `19,90`; responde strings decimais de duas casas | OK | Homologar entrada na VM |
-| Contas | datas e horários | Data de vencimento local | Entrada `dd/MM/aaaa`, DateOnly no vencimento e horário convertido para America/Sao_Paulo | datas ISO `YYYY-MM-DD`; timestamps UTC `Z` | OK | Teste de fuso corrigido no workflow #172 |
+| Contas | datas e horários | Data de vencimento local | Entrada `dd/MM/aaaa`, DateOnly no vencimento e horário convertido para o fuso do dispositivo | datas ISO `YYYY-MM-DD`; timestamps UTC `Z` | OK | Validar no Windows em homologação |
 | Contas | busca, categoria, status e período | Sim | Sim | filtros sempre escopados por company_id | OK | Nenhuma |
 | Contas | editar conta existente | Não | Não | endpoint ausente | NÃO APLICÁVEL | Definir como feature futura se necessário |
 | Contas | status e alertas | Sim | Sim | backend/notificações; pagar resolve e reabrir rematerializa o alerta | OK | Nenhuma |

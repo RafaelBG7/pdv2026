@@ -74,6 +74,11 @@ public partial class App : System.Windows.Application
                 var serverUri = apiOptions.GetValidatedBaseUri();
                 var productVersion = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "unknown";
                 var userAgent = $"SkyGest-Windows/{productVersion}";
+                var deviceTimeZone = TimeZoneInfo.Local.Id;
+                if (TimeZoneInfo.TryConvertWindowsIdToIanaId(deviceTimeZone, out var ianaTimeZone))
+                {
+                    deviceTimeZone = ianaTimeZone;
+                }
 
                 services.AddSingleton(apiOptions);
                 services.AddSingleton<IExternalBrowserService, SystemBrowserService>();
@@ -93,18 +98,21 @@ public partial class App : System.Windows.Application
                     client.BaseAddress = serverUri;
                     client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
                     client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+                    client.DefaultRequestHeaders.TryAddWithoutValidation("X-SkyGest-Timezone", deviceTimeZone);
                 });
                 services.AddHttpClient<IGirofyApiClient, GirofyApiClient>(client =>
                 {
                     client.BaseAddress = serverUri;
                     client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
                     client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+                    client.DefaultRequestHeaders.TryAddWithoutValidation("X-SkyGest-Timezone", deviceTimeZone);
                 }).AddHttpMessageHandler<AutomaticSessionRefreshHandler>();
                 services.AddHttpClient<IPasswordRecoveryService, PasswordRecoveryService>(client =>
                 {
                     client.BaseAddress = serverUri;
                     client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutSeconds);
                     client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+                    client.DefaultRequestHeaders.TryAddWithoutValidation("X-SkyGest-Timezone", deviceTimeZone);
                 });
                 services.AddTransient<ForgotPasswordViewModel>();
                 services.AddSingleton(provider => new LoginViewModel(

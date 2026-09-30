@@ -6799,6 +6799,39 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn(f'#{old_id}'.encode(), response.data)
         self.assertIn('R$ 99,00'.encode(), response.data)
 
+    def test_sales_history_displays_the_device_timezone(self):
+        self.login()
+        self.open_cash_register()
+        with self.app.app_context():
+            company_id = self.master_company_id()
+            user = User.query.filter_by(username='master').one()
+            cash_register = CashRegister.query.filter_by(company_id=company_id, status='open').one()
+            db.session.add(Sale(
+                created_at=datetime(2026, 8, 19, 2, 30),
+                total_amount=42,
+                final_amount=42,
+                payment_status='paid',
+                user_id=user.id,
+                company_id=company_id,
+                cash_register_id=cash_register.id,
+            ))
+            db.session.commit()
+
+        brazil = self.client.get('/vendas', headers={'X-SkyGest-Timezone': 'America/Sao_Paulo'})
+        tokyo = self.client.get('/vendas', headers={'X-SkyGest-Timezone': 'Asia/Tokyo'})
+
+        self.assertIn(b'data-sale-date="18/08/2026 23:30"', brazil.data)
+        self.assertIn(b'data-sale-date-iso="2026-08-18"', brazil.data)
+        self.assertIn(b'<time datetime="2026-08-19T02:30:00Z" data-local-time="datetime">18/08/2026 23:30</time>', brazil.data)
+        self.assertIn(b'data-sale-date="19/08/2026 11:30"', tokyo.data)
+        self.assertIn(b'data-sale-date-iso="2026-08-19"', tokyo.data)
+
+        period = {'period': 'custom', 'start_date': '2026-08-18', 'end_date': '2026-08-18'}
+        brazil_report = self.client.get('/relatorios', query_string=period, headers={'X-SkyGest-Timezone': 'America/Sao_Paulo'})
+        tokyo_report = self.client.get('/relatorios', query_string=period, headers={'X-SkyGest-Timezone': 'Asia/Tokyo'})
+        self.assertIn(b'data-chart-value="R$ 42,00"', brazil_report.data)
+        self.assertNotIn(b'data-chart-value="R$ 42,00"', tokyo_report.data)
+
     def test_global_f3_sale_shortcut_is_available_on_main_operational_pages(self):
         self.login()
         self.open_cash_register()

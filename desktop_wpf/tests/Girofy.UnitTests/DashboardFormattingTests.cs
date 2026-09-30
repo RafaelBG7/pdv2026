@@ -23,9 +23,10 @@ public sealed class DashboardFormattingTests
     public void Audit_record_exposes_date_and_time_for_the_new_table_layout()
     {
         var record = new AuditLogRecord { CreatedAt = "2026-08-18T15:30:00Z" };
+        var deviceTime = DateTimeOffset.Parse("2026-08-18T15:30:00Z").ToLocalTime();
 
-        Assert.Equal("18/08/2026", record.CreatedDateText);
-        Assert.Equal("12:30", record.CreatedTimeText);
+        Assert.Equal(deviceTime.ToString("dd/MM/yyyy"), record.CreatedDateText);
+        Assert.Equal(deviceTime.ToString("HH:mm"), record.CreatedTimeText);
     }
 
     [Fact]

@@ -26,10 +26,7 @@ public sealed class DashboardViewModel : ObservableObject, IDisposable
         ApplyPeriodCommand = new AsyncRelayCommand(LoadAsync);
         Periods =
         [
-            new("today", "Hoje"), new("7d", "7 dias"), new("30d", "30 dias"),
-            new("month", "Este mês"), new("previous_month", "Mês anterior"),
-            new("3m", "3 meses"), new("6m", "6 meses"), new("year", "Este ano"),
-            new("custom", "Personalizado")
+            new("cash", "Caixa atual"), new("previous_cash", "Caixa anterior")
         ];
         _selectedPeriod = Periods[0];
         _sessionContext.Changed += HandleSessionChanged;

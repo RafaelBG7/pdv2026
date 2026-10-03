@@ -2276,7 +2276,7 @@ class RouteTestCase(unittest.TestCase):
                 user_id=user.id,
                 status='open',
                 opening_amount=100,
-                opened_at=today_at_ten - timedelta(hours=1),
+                opened_at=today_start_utc - timedelta(hours=2),
             )
             db.session.add_all([product, other_product, cash_register])
             db.session.flush()
@@ -2285,7 +2285,7 @@ class RouteTestCase(unittest.TestCase):
                 company_id=company.id,
                 user_id=user.id,
                 cash_register_id=cash_register.id,
-                created_at=today_at_ten,
+                created_at=today_start_utc - timedelta(hours=1),
                 total_amount=24,
                 final_amount=24,
                 payment_status='paid',
@@ -2356,6 +2356,13 @@ class RouteTestCase(unittest.TestCase):
                     paid=False,
                 ),
             ])
+            older_cash = CashRegister(company_id=company.id, status='closed', opened_at=today_start_utc - timedelta(days=1), closed_at=today_start_utc)
+            db.session.add(older_cash)
+            db.session.flush()
+            db.session.add_all([
+                Sale(company_id=company.id, cash_register_id=older_cash.id, created_at=today_at_ten, total_amount=100, final_amount=100, payment_status='paid'),
+                Sale(company_id=company.id, created_at=today_at_ten, total_amount=900, final_amount=900, payment_status='paid'),
+            ])
             db.session.commit()
 
         token = self.api_login(user.username, 'SenhaApi123').get_json()['data']['access_token']
@@ -2382,7 +2389,7 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(data['top_products'][0]['name'], 'Coca Cola 2L')
         self.assertEqual(data['top_products'][0]['quantity'], 3)
         self.assertEqual(data['top_products'][0]['category'], 'Sem categoria')
-        self.assertEqual(data['period']['key'], 'today')
+        self.assertEqual(data['period']['key'], 'cash')
         self.assertEqual(data['category_sales'][0]['percent'], 100.0)
         self.assertEqual(sum(point['total'] for point in data['revenue_series']['points']), 34.0)
         self.assertFalse(data['summary']['customers_available'])
@@ -2392,6 +2399,22 @@ class RouteTestCase(unittest.TestCase):
         self.assertEqual(data['upcoming_payables'][0]['description'], 'Energia')
         self.assertNotIn('Produto de outra adega', str(data))
         self.assertNotIn('Conta de outra adega', str(data))
+
+        legacy = self.client.get('/api/v1/dashboard/summary?period=today', headers=self.bearer_header(token)).get_json()['data']
+        self.assertEqual(legacy['summary']['sales_total'], 34.0)
+        self.assertEqual(legacy['period']['key'], 'cash')
+        self.assertEqual(data['summary']['sales_total_change'], -66.0)
+        self.assertEqual(data['revenue_series']['granularity'], 'sale')
+        self.assertEqual(len(data['revenue_series']['points']), 2)
+        previous = self.client.get('/api/v1/dashboard/summary?period=previous_cash', headers=self.bearer_header(token)).get_json()['data']
+        self.assertEqual(previous['summary']['sales_total'], 100.0)
+        with self.app.app_context():
+            db.session.query(CashRegister).filter_by(company_id=company.id, status='open').update({'status': 'closed'})
+            db.session.commit()
+        empty = self.client.get('/api/v1/dashboard/summary', headers=self.bearer_header(token)).get_json()['data']
+        self.assertEqual(empty['summary']['sales_count'], 0)
+        self.assertEqual(empty['recent_sales'], [])
+        self.assertEqual(empty['revenue_series']['points'], [])
 
     def test_api_dashboard_supports_custom_period_and_validates_range(self):
         user, company = self.create_api_user(username='api-dashboard-periodo')
@@ -5410,9 +5433,9 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.get('/dashboard')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Vendido hoje'.encode(), response.data)
+        self.assertIn('Vendido no caixa'.encode(), response.data)
         self.assertIn('R$ 100,00'.encode(), response.data)
-        self.assertIn('Lucro hoje'.encode(), response.data)
+        self.assertIn('Lucro do caixa'.encode(), response.data)
         self.assertIn('R$ 40,00'.encode(), response.data)
         self.assertIn('Produto Dashboard'.encode(), response.data)
         self.assertIn('Estoque baixo'.encode(), response.data)
@@ -5455,7 +5478,7 @@ class RouteTestCase(unittest.TestCase):
             ))
             db.session.commit()
 
-        response = self.client.get('/dashboard')
+        response = self.client.get(f'/dashboard?period=custom&start_date={business_today().isoformat()}&end_date={business_today().isoformat()}')
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('R$ 77.924,93'.encode(), response.data)
@@ -5523,7 +5546,7 @@ class RouteTestCase(unittest.TestCase):
         response = self.client.get('/dashboard')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Vendido hoje'.encode(), response.data)
+        self.assertIn('Vendido no caixa'.encode(), response.data)
         self.assertIn('Produto Sem Financeiro'.encode(), response.data)
         self.assertIn('Estoque baixo'.encode(), response.data)
         self.assertNotIn('Lucro hoje'.encode(), response.data)

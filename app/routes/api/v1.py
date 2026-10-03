@@ -2969,7 +2969,7 @@ def api_update_employee(user_id):
 @api_auth_required
 def api_dashboard_summary():
     try:
-        period = (request.args.get('period') or 'today').strip()
+        period = (request.args.get('period') or 'cash').strip()
         start_date = parse_report_date_argument('start_date')
         end_date = parse_report_date_argument('end_date')
         with api_tenant_database(g.api_user) as tenant_db:

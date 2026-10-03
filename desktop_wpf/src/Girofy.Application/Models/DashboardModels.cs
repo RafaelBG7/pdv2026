@@ -136,7 +136,7 @@ public sealed class DashboardSummary
     public string SalesTotalChangeText => ChangeText(SalesTotalChange);
     public string SalesCountChangeText => ChangeText(SalesCountChange);
     public string ProfitChangeText => ChangeText(ProfitChange);
-    private static string ChangeText(decimal? value) => !value.HasValue ? "Sem base anterior" : $"{(value >= 0 ? "↑" : "↓")} {Math.Abs(value.Value):N1}% vs. anterior";
+    private static string ChangeText(decimal? value) => !value.HasValue ? "Sem base anterior" : $"{(value >= 0 ? "↑" : "↓")} {Math.Abs(value.Value):N1}% vs. caixa anterior";
 }
 
 public sealed class DashboardCashRegister

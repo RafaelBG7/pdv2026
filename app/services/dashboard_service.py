@@ -112,7 +112,9 @@ def _item_profit_expression():
     )
 
 
-def _period_filters(company_id, start_at, end_at):
+def _period_filters(company_id, start_at, end_at, cash_register_id=None):
+    if cash_register_id is not None:
+        return (Sale.company_id == company_id, Sale.valid_filter(), Sale.cash_register_id == cash_register_id)
     return (
         Sale.company_id == company_id,
         Sale.valid_filter(),
@@ -121,12 +123,15 @@ def _period_filters(company_id, start_at, end_at):
     )
 
 
-def _sales_totals(db_session, company_id, start_at, end_at):
-    filters = _period_filters(company_id, start_at, end_at)
+def _sales_totals(db_session, company_id, start_at, end_at, cash_register_id=None):
+    filters = _period_filters(company_id, start_at, end_at, cash_register_id)
     row = db_session.query(
         func.count(Sale.id),
         func.coalesce(func.sum(Sale.final_amount), Decimal('0.00')),
     ).filter(*filters).one()
+    if cash_register_id is not None:
+        count, total = int(row[0] or 0), _money(row[1])
+        return {'sales_count': count, 'sales_total': total, 'average_ticket': _money(total / count) if count else Decimal('0.00')}
     historical = db_session.query(
         func.coalesce(func.sum(HistoricalDailyReport.sales_count), 0),
         func.coalesce(func.sum(HistoricalDailyReport.revenue), Decimal('0.00')),
@@ -173,11 +178,11 @@ def _sales_profit(db_session, company_id, start_at=None, end_at=None, cash_regis
     return _money(real_profit + _money(historical[2]))
 
 
-def _payment_totals(db_session, company_id, start_at, end_at):
+def _payment_totals(db_session, company_id, start_at, end_at, cash_register_id=None):
     rows = (
         db_session.query(Payment.method, func.coalesce(func.sum(Payment.amount), Decimal('0.00')))
         .join(Sale, Sale.id == Payment.sale_id)
-        .filter(*_period_filters(company_id, start_at, end_at))
+        .filter(*_period_filters(company_id, start_at, end_at, cash_register_id))
         .group_by(Payment.method)
         .all()
     )
@@ -192,7 +197,7 @@ def _payment_totals(db_session, company_id, start_at, end_at):
     ]
 
 
-def _top_products(db_session, company_id, start_at, end_at, include_profit):
+def _top_products(db_session, company_id, start_at, end_at, include_profit, cash_register_id=None):
     profit_expression = _item_profit_expression()
     rows = (
         db_session.query(
@@ -207,7 +212,7 @@ def _top_products(db_session, company_id, start_at, end_at, include_profit):
         .join(Sale, Sale.id == SaleItem.sale_id)
         .outerjoin(Category, Category.id == Product.category_id)
         .filter(Product.company_id == company_id)
-        .filter(*_period_filters(company_id, start_at, end_at))
+        .filter(*_period_filters(company_id, start_at, end_at, cash_register_id))
         .group_by(Product.id, Product.name, Category.name)
         .order_by(func.sum(SaleItem.quantity).desc(), func.lower(Product.name), Product.id)
         .limit(5)
@@ -226,7 +231,7 @@ def _top_products(db_session, company_id, start_at, end_at, include_profit):
     ]
 
 
-def _category_sales(db_session, company_id, start_at, end_at):
+def _category_sales(db_session, company_id, start_at, end_at, cash_register_id=None):
     rows = (
         db_session.query(
             Category.name,
@@ -237,7 +242,7 @@ def _category_sales(db_session, company_id, start_at, end_at):
         .join(Sale, Sale.id == SaleItem.sale_id)
         .outerjoin(Category, Category.id == Product.category_id)
         .filter(Product.company_id == company_id)
-        .filter(*_period_filters(company_id, start_at, end_at))
+        .filter(*_period_filters(company_id, start_at, end_at, cash_register_id))
         .group_by(Category.name)
         .order_by(func.sum(SaleItem.total_price).desc())
         .all()
@@ -254,13 +259,20 @@ def _category_sales(db_session, company_id, start_at, end_at):
     return result
 
 
-def _revenue_series(db_session, company_id, start_at, end_at, start_date, end_date):
+def _revenue_series(db_session, company_id, start_at, end_at, start_date, end_date, cash_register_id=None):
     rows = (
         db_session.query(Sale.created_at, Sale.final_amount)
-        .filter(*_period_filters(company_id, start_at, end_at))
-        .order_by(Sale.created_at.asc())
+        .filter(*_period_filters(company_id, start_at, end_at, cash_register_id))
+        .order_by(Sale.created_at.asc(), Sale.id.asc())
         .all()
     )
+    if cash_register_id is not None:
+        # A point per sale preserves turn chronology across midnight, without a 24h axis.
+        points = [{'label': to_business_datetime(at).strftime('%d/%m %H:%M'), 'total': _money(amount)} for at, amount in rows]
+        maximum = max((point['total'] for point in points), default=Decimal('0.00'))
+        for point in points:
+            point['ratio'] = float(point['total'] / maximum) if maximum else 0.0
+        return {'granularity': 'sale', 'points': points}
     historical_rows = db_session.query(
         HistoricalDailyReport.report_date,
         HistoricalDailyReport.revenue,
@@ -348,12 +360,12 @@ def _low_stock(db_session, company_id):
     ]
 
 
-def _recent_sales(db_session, company_id, start_at=None, end_at=None):
+def _recent_sales(db_session, company_id, start_at=None, end_at=None, cash_register_id=None):
     sales = (
         db_session.query(Sale)
         .options(selectinload(Sale.payments))
         .filter(Sale.company_id == company_id, Sale.valid_filter())
-        .filter(Sale.created_at >= start_at, Sale.created_at < end_at)
+        .filter(*_period_filters(company_id, start_at, end_at, cash_register_id))
         .order_by(Sale.created_at.desc(), Sale.id.desc())
         .limit(6)
         .all()
@@ -465,21 +477,43 @@ def build_dashboard_snapshot(
     can_view_reports,
     can_manage_payables,
     today=None,
-    period='today',
+    period='cash',
     start_date=None,
     end_date=None,
 ):
     today = today or business_today()
-    selected = resolve_dashboard_period(period, start_date, end_date, today)
+    # Older desktop builds send 'today'; keep their operational view on the current register.
+    if period == 'today':
+        period = 'cash'
+    cash_mode = period in {'cash', 'previous_cash'}
+    cash = previous_cash = None
+    scope = previous_scope = None
+    if cash_mode:
+        registers = db_session.query(CashRegister).filter(CashRegister.company_id == company_id)
+        cash = (registers.filter(CashRegister.status == 'open').order_by(CashRegister.opened_at.desc(), CashRegister.id.desc()).first()
+                if period == 'cash' else registers.filter(CashRegister.status == 'closed').order_by(CashRegister.opened_at.desc(), CashRegister.id.desc()).first())
+        if cash:
+            previous_cash = registers.filter(CashRegister.status == 'closed',
+                (CashRegister.opened_at < cash.opened_at) | ((CashRegister.opened_at == cash.opened_at) & (CashRegister.id < cash.id))
+            ).order_by(CashRegister.opened_at.desc(), CashRegister.id.desc()).first()
+        scope = cash.id if cash else -1
+        previous_scope = previous_cash.id if previous_cash else -1
+    selected = resolve_dashboard_period('today' if cash_mode else period, start_date, end_date, today)
+    if cash_mode:
+        selected.update(key=period, label=(f"Caixa #{cash.id} · {'aberto' if cash.status == 'open' else 'fechado'}" if cash else 'Nenhum caixa aberto' if period == 'cash' else 'Nenhum caixa anterior'),
+            start_date=to_business_datetime(cash.opened_at).date() if cash else today,
+            end_date=to_business_datetime(cash.closed_at).date() if cash and cash.closed_at else today,
+            previous_start_date=to_business_datetime(previous_cash.opened_at).date() if previous_cash else today,
+            previous_end_date=to_business_datetime(previous_cash.closed_at).date() if previous_cash and previous_cash.closed_at else today)
     start_at, end_at = business_date_range_utc(selected['start_date'], selected['end_date'])
     previous_start_at, previous_end_at = business_date_range_utc(
         selected['previous_start_date'], selected['previous_end_date'])
 
-    totals = _sales_totals(db_session, company_id, start_at, end_at)
-    previous_totals = _sales_totals(db_session, company_id, previous_start_at, previous_end_at)
-    profit = _sales_profit(db_session, company_id, start_at, end_at) if can_view_reports else None
+    totals = _sales_totals(db_session, company_id, start_at, end_at, scope)
+    previous_totals = _sales_totals(db_session, company_id, previous_start_at, previous_end_at, previous_scope)
+    profit = _sales_profit(db_session, company_id, None if cash_mode else start_at, None if cash_mode else end_at, scope) if can_view_reports else None
     previous_profit = (
-        _sales_profit(db_session, company_id, previous_start_at, previous_end_at)
+        _sales_profit(db_session, company_id, None if cash_mode else previous_start_at, None if cash_mode else previous_end_at, previous_scope)
         if can_view_reports else None
     )
     low_stock_count, low_stock_products = _low_stock(db_session, company_id)
@@ -523,7 +557,7 @@ def build_dashboard_snapshot(
         },
         'cash_register': _current_cash(db_session, company_id, can_view_reports),
         'payment_totals': (
-            _payment_totals(db_session, company_id, start_at, end_at)
+            _payment_totals(db_session, company_id, start_at, end_at, scope)
             if can_view_reports else []
         ),
         'top_products': _top_products(
@@ -532,18 +566,19 @@ def build_dashboard_snapshot(
             start_at,
             end_at,
             can_view_reports,
+            scope,
         ),
         'revenue_series': (
             _revenue_series(
                 db_session, company_id, start_at, end_at,
-                selected['start_date'], selected['end_date'])
+                selected['start_date'], selected['end_date'], scope)
             if can_view_reports else {'granularity': 'day', 'points': []}
         ),
         'category_sales': (
-            _category_sales(db_session, company_id, start_at, end_at)
+            _category_sales(db_session, company_id, start_at, end_at, scope)
             if can_view_reports else []
         ),
         'low_stock_products': low_stock_products,
-        'recent_sales': _recent_sales(db_session, company_id, start_at, end_at),
+        'recent_sales': _recent_sales(db_session, company_id, start_at, end_at, scope),
         'upcoming_payables': upcoming_payables,
     }

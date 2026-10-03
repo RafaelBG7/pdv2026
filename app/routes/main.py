@@ -1051,7 +1051,7 @@ def home():
 def dashboard():
     company = current_tenant_company()
     tenant_db = tenant_session()
-    period = (request.args.get('period') or 'today').strip()
+    period = (request.args.get('period') or 'cash').strip()
     try:
         custom_start = date.fromisoformat(request.args['start_date']) if request.args.get('start_date') else None
         custom_end = date.fromisoformat(request.args['end_date']) if request.args.get('end_date') else None

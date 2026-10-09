@@ -325,7 +325,9 @@ def tenant_engine(company, *, persist_identifier=True):
     cache_key = f'mysql:{identifier}'
     if cache_key not in _engines:
         create_mysql_database_if_needed(identifier)
-        engine = create_engine(mysql_tenant_url(identifier))
+        # Tenant pools survive between logins. MySQL/proxies may close idle
+        # connections, so validate them before the first query of a request.
+        engine = create_engine(mysql_tenant_url(identifier), pool_pre_ping=True)
         schema_mode = current_app.config.get('SCHEMA_MANAGEMENT_MODE', 'verify')
         if schema_mode == 'upgrade' or not inspect(engine).get_table_names():
             upgrade_database(engine, 'tenant', logger=current_app.logger)

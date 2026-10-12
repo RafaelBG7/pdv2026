@@ -168,6 +168,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
     private string _successMessage = string.Empty;
     private bool _isBusy;
     private bool _isSearching;
+    private long _searchVersion;
     private bool _isSaleEditorOpen;
     private bool _isPaymentStepOpen;
     private bool _isQuantityPopupOpen;
@@ -741,8 +742,24 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         ClearMessages();
     }
 
-    private Task SearchAsync(CancellationToken cancellationToken) =>
-        SearchProductsAsync(showMessages: true, cancellationToken);
+    private async Task SearchAsync(CancellationToken cancellationToken)
+    {
+        CancelPendingSearch();
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _searchDebounceCts = cts;
+        try
+        {
+            await SearchProductsAsync(showMessages: true, cts.Token);
+        }
+        finally
+        {
+            if (ReferenceEquals(_searchDebounceCts, cts))
+            {
+                _searchDebounceCts = null;
+            }
+            cts.Dispose();
+        }
+    }
 
     public async Task<bool> SelectExactBarcodeAsync(
         string barcode,
@@ -980,6 +997,7 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private async Task SearchProductsAsync(bool showMessages, CancellationToken cancellationToken)
     {
+        var version = _searchVersion;
         var term = SearchText.Trim();
         if (term.Length < 1)
         {
@@ -1008,7 +1026,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 1,
                 30,
                 cancellationToken);
-            if (!IsSameSession(session)
+            if (version != _searchVersion || cancellationToken.IsCancellationRequested
+                || !IsSameSession(session)
                 || !string.Equals(SearchText.Trim(), term, StringComparison.Ordinal))
             {
                 return;
@@ -1026,8 +1045,15 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
                 ErrorMessage = "Nenhum produto ativo foi encontrado.";
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception exception)
         {
+            if (version != _searchVersion || !IsSameSession(session))
+            {
+                return;
+            }
             if (showMessages)
             {
                 SetSafeError(exception, "Não foi possível pesquisar os produtos agora.");
@@ -1039,7 +1065,10 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            IsSearching = false;
+            if (version == _searchVersion)
+            {
+                IsSearching = false;
+            }
         }
     }
 
@@ -1150,6 +1179,8 @@ public sealed class SalesViewModel : ObservableObject, IDisposable
 
     private void CancelPendingSearch()
     {
+        ++_searchVersion;
+        IsSearching = false;
         _searchDebounceCts?.Cancel();
         _searchDebounceCts = null;
     }

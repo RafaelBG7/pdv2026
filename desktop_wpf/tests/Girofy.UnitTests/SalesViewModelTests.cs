@@ -8,6 +8,69 @@ namespace Girofy.UnitTests;
 public sealed class SalesViewModelTests
 {
     [Fact]
+    public async Task Enter_cancels_the_scheduled_typing_search()
+    {
+        var apiClient = new StubApiClient();
+        using var viewModel = new SalesViewModel(apiClient, SessionContext()) { SearchText = "coca" };
+
+        await viewModel.SearchCommand.ExecuteAsync();
+        await Task.Delay(350);
+
+        Assert.Equal(1, apiClient.CatalogCalls);
+        Assert.Equal(2, viewModel.SearchResults.Count);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Obsolete_search_cannot_clear_results_or_finish_the_current_loading_state(bool failOldSearch, bool finishOldLast)
+    {
+        var oldResponse = new TaskCompletionSource<CatalogProductList>();
+        var newResponse = new TaskCompletionSource<CatalogProductList>();
+        CancellationToken oldToken = default;
+        var apiClient = new StubApiClient
+        {
+            SearchHandler = (term, token) =>
+            {
+                if (term == "old") { oldToken = token; return oldResponse.Task; }
+                return newResponse.Task;
+            },
+        };
+        using var viewModel = new SalesViewModel(apiClient, SessionContext()) { SearchText = "old" };
+        var oldSearch = viewModel.SearchCommand.ExecuteAsync();
+        viewModel.SearchText = "coca";
+        await WaitUntilAsync(() => apiClient.CatalogCalls == 2);
+        Assert.True(oldToken.IsCancellationRequested);
+        Assert.True(viewModel.IsSearching);
+
+        void CompleteOldSearch()
+        {
+            if (failOldSearch) oldResponse.SetException(new HttpRequestException("Old request failed"));
+            else oldResponse.SetResult(new CatalogProductList());
+        }
+        if (!finishOldLast)
+        {
+            CompleteOldSearch();
+            await oldSearch;
+            Assert.True(viewModel.IsSearching);
+        }
+        newResponse.SetResult(new CatalogProductList
+        {
+            Items = [new CatalogProduct { Id = 1, Name = "Coca Cola", Active = true }],
+        });
+        await WaitUntilAsync(() => !viewModel.IsSearching);
+        if (finishOldLast)
+        {
+            CompleteOldSearch();
+            await oldSearch;
+        }
+        Assert.Single(viewModel.SearchResults);
+        Assert.False(viewModel.HasError);
+    }
+
+    [Fact]
     public async Task Search_orders_products_and_adds_the_selected_quantity()
     {
         var sessionContext = SessionContext();
@@ -910,6 +973,10 @@ public sealed class SalesViewModelTests
 
         public int LastCatalogPerPage { get; private set; }
 
+        public int CatalogCalls { get; private set; }
+
+        public Func<string, CancellationToken, Task<CatalogProductList>>? SearchHandler { get; init; }
+
         public Exception? HistoryException { get; init; }
 
         public int HistoryCalls { get; private set; }
@@ -935,6 +1002,11 @@ public sealed class SalesViewModelTests
             CancellationToken cancellationToken)
         {
             LastCatalogPerPage = perPage;
+            CatalogCalls++;
+            if (SearchHandler is not null)
+            {
+                return SearchHandler(search, cancellationToken);
+            }
             var products = CatalogProducts ??
             [
                 new CatalogProduct

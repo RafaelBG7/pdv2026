@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
 from app.models import Notification, NotificationPreference, Payable, Product
 from app.money import format_brl
@@ -109,6 +110,7 @@ def create_notification(
     metadata=None,
     expires_at=None,
     email_requested=None,
+    _existing_by_key=None,
 ):
     if severity not in SEVERITIES:
         raise ValueError('Severidade de notificação inválida.')
@@ -118,10 +120,14 @@ def create_notification(
     if not deduplication_key:
         raise ValueError('A chave de deduplicação é obrigatória.')
 
-    existing = db_session.query(Notification).filter_by(
-        company_id=company_id,
-        deduplication_key=deduplication_key,
-    ).first()
+    existing = (
+        _existing_by_key.get(deduplication_key)
+        if _existing_by_key is not None
+        else db_session.query(Notification).filter_by(
+            company_id=company_id,
+            deduplication_key=deduplication_key,
+        ).first()
+    )
     if existing and not existing.is_resolved:
         return existing, False
 
@@ -273,27 +279,34 @@ def resolve_notification(db_session, company_id, deduplication_key):
     return notification
 
 
-def _resolve_other_entity_notifications(db_session, company_id, entity_type, entity_id, active_key):
+OPERATIONAL_NOTIFICATION_TYPES = (
+    'product_out_of_stock', 'product_low_stock',
+    'payable_overdue', 'payable_due_today', 'payable_due_soon',
+)
+
+
+def _resolve_other_entity_notifications(notifications, active_key):
     now = utcnow()
-    notifications = db_session.query(Notification).filter(
-        Notification.company_id == company_id,
-        Notification.entity_type == entity_type,
-        Notification.entity_id == entity_id,
-        Notification.notification_type.in_((
-            'product_out_of_stock', 'product_low_stock',
-            'payable_overdue', 'payable_due_today', 'payable_due_soon',
-        )),
-        Notification.is_resolved.is_(False),
-        Notification.deduplication_key != active_key,
-    ).all()
     for notification in notifications:
-        notification.is_resolved = True
-        notification.resolved_at = now
+        if not notification.is_resolved and notification.deduplication_key != active_key:
+            notification.is_resolved = True
+            notification.resolved_at = now
 
 
 def sync_operational_notifications(db_session, company_id):
     """Materializa no tenant os mesmos alertas operacionais exibidos pela Web."""
-    products = db_session.query(Product).filter(
+    # One request-local snapshot replaces a query per product/payable on every
+    # desktop poll. Do not cache across requests: stock and read state can change.
+    existing = db_session.query(Notification).filter(
+        Notification.company_id == company_id,
+        Notification.notification_type.in_(OPERATIONAL_NOTIFICATION_TYPES),
+    ).all()
+    existing_by_key = {notification.deduplication_key: notification for notification in existing}
+    existing_by_entity = {}
+    for notification in existing:
+        existing_by_entity.setdefault((notification.entity_type, notification.entity_id), []).append(notification)
+
+    products = db_session.query(Product).options(joinedload(Product.kit_component)).filter(
         Product.company_id == company_id,
         Product.active.is_(True),
     ).all()
@@ -321,8 +334,9 @@ def sync_operational_notifications(db_session, company_id):
                 entity_id=product.id,
                 action_url='/products',
                 metadata={'stock_quantity': quantity, 'min_stock_quantity': minimum},
+                _existing_by_key=existing_by_key,
             )
-        _resolve_other_entity_notifications(db_session, company_id, 'product', product.id, active_key)
+        _resolve_other_entity_notifications(existing_by_entity.get(('product', product.id), ()), active_key)
 
     today = business_today()
     alert_limit = today + timedelta(days=3)
@@ -360,8 +374,9 @@ def sync_operational_notifications(db_session, company_id):
             entity_id=payable.id,
             action_url='/payables',
             metadata={'amount': str(payable.amount or 0), 'due_date': payable.due_date.isoformat()},
+            _existing_by_key=existing_by_key,
         )
-        _resolve_other_entity_notifications(db_session, company_id, 'payable', payable.id, active_key)
+        _resolve_other_entity_notifications(existing_by_entity.get(('payable', payable.id), ()), active_key)
 
     stale_payables = db_session.query(Notification).filter(
         Notification.company_id == company_id,

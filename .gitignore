@@ -18,3 +18,11 @@ desktop_wpf/**/bin/
 desktop_wpf/**/obj/
 desktop_wpf/artifacts/
 *.spec
+
+# Runtime data must never be published.
+database/
+backups/
+*.db
+*.sqlite
+*.sqlite3
+*.sql

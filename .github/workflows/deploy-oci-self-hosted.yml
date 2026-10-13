@@ -3,6 +3,10 @@ name: Deploy OCI Self Hosted
 on:
   workflow_dispatch:
     inputs:
+      validated_hml_sha:
+        description: SHA completo testado manualmente e autorizado para produção
+        required: false
+        type: string
       operation:
         description: Operação segura a executar
         required: true
@@ -12,15 +16,10 @@ on:
           - deploy
           - audit
           - hml
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: girofy-oci-deploy
@@ -87,7 +86,7 @@ jobs:
       - linux
       - girofy-oci
     needs: test
-    if: github.event_name == 'push' || inputs.operation == 'deploy'
+    if: github.ref == 'refs/heads/main' && inputs.operation == 'deploy'
     environment: production
 
     env:
@@ -98,6 +97,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Conferir conteúdo validado em homologação
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_HML_SHA: ${{ inputs.validated_hml_sha }}
+        run: python3 scripts/verify_hml_promotion.py
 
       - name: Publicar containers na própria VM
         run: bash scripts/deploy_self_hosted_app.sh

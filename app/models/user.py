@@ -1,4 +1,8 @@
 from datetime import datetime, timezone
+import hashlib
+import hmac
+
+from flask import current_app
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -45,6 +49,15 @@ class User(db.Model, UserMixin):
         cascade='all, delete-orphan',
         passive_deletes=True,
     )
+
+    def get_id(self):
+        # Bind both session and remember cookies to the current credential.
+        signature = hmac.new(
+            current_app.config["SECRET_KEY"].encode(),
+            f"web-session:{self.id}:{self.password_hash}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        return f"{self.id}:{signature}"
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='scrypt')

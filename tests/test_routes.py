@@ -3599,6 +3599,28 @@ class RouteTestCase(unittest.TestCase):
         self.assertFalse(third_data['has_more'])
         self.assertEqual(third_data['page'], 3)
 
+    def test_password_change_revokes_sessions_and_remember_cookies(self):
+        other = self.app.test_client()
+        for client in (self.client, other):
+            client.post('/login', data={'username': 'master', 'password': 'master123', 'remember_me': '1'})
+            self.assertEqual(client.get('/dashboard').status_code, 200)
+        with self.app.app_context():
+            User.query.filter_by(username='master').one().set_password('ChangedPassword123!')
+            db.session.commit()
+        self.assertEqual(self.client.get('/dashboard').status_code, 302)
+        with other.session_transaction() as browser_session:
+            browser_session.clear()
+        self.assertEqual(other.get('/dashboard').status_code, 302)
+        self.assertEqual(self.login(password='ChangedPassword123!').status_code, 302)
+        self.assertEqual(self.client.get('/dashboard').status_code, 200)
+
+    def test_legacy_or_malformed_session_is_rejected(self):
+        for identifier in ('1', 'invalid', '1:bad-signature', '999999:invalid'):
+            with self.client.session_transaction() as browser_session:
+                browser_session['_user_id'] = identifier
+                browser_session['_fresh'] = True
+            self.assertEqual(self.client.get('/dashboard').status_code, 302)
+
     def test_login_remember_me_sets_persistent_cookie(self):
         response = self.client.post(
             '/login',
@@ -3621,7 +3643,7 @@ class RouteTestCase(unittest.TestCase):
         with self.client.session_transaction() as browser_session:
             self.assertNotIn('attacker_controlled_marker', browser_session)
             self.assertNotIn('_csrf_token', browser_session)
-            self.assertEqual(browser_session.get('_user_id'), '1')
+            self.assertTrue(browser_session.get('_user_id').startswith('1:'))
             self.assertTrue(browser_session.permanent)
 
     def test_csrf_rejects_missing_token_when_enabled(self):

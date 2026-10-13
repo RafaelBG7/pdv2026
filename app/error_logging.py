@@ -77,7 +77,7 @@ def error_context():
     if current_user and current_user.is_authenticated:
         user_context = {
             'authenticated': True,
-            'id': current_user.get_id(),
+            'id': str(current_user.id),
             'username': getattr(current_user, 'username', None),
             'role': getattr(current_user, 'role', None),
             'company_id': getattr(current_user, 'company_id', None),

@@ -399,6 +399,8 @@ def create_app(config_class=Config):
         )
     environment = (app.config.get('ENVIRONMENT') or app.config.get('APP_ENV') or '').lower()
     if environment in {'production', 'homologation'}:
+        app.config.update(SESSION_COOKIE_SECURE=True, REMEMBER_COOKIE_SECURE=True,
+                          PREFERRED_URL_SCHEME='https')
         if app.config.get('SECRET_KEY') == 'adega-jf-secret-key':
             raise RuntimeError('Defina SECRET_KEY seguro antes de rodar em ambiente protegido.')
         if app.config.get('MASTER_DEFAULT_PASSWORD') == 'master123':
@@ -492,7 +494,15 @@ def create_app(config_class=Config):
     @login_manager.user_loader
     def load_user(user_id):
         from app.models import User
-        return db.session.get(User, int(user_id))
+        import hmac
+        try:
+            identifier, signature = user_id.split(':', 1)
+            user = db.session.get(User, int(identifier))
+        except (ValueError, TypeError, AttributeError):
+            return None
+        if user and user.is_active and hmac.compare_digest(user.get_id(), user_id):
+            return user
+        return None
 
     @app.get('/favicon.ico')
     def favicon():

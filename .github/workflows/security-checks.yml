@@ -1,0 +1,18 @@
+name: Security checks
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+permissions:
+  contents: read
+jobs:
+  tracked-data:
+    name: No runtime data in Git
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python scripts/check_tracked_data.py

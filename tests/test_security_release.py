@@ -8,6 +8,8 @@ from app import create_app
 from app.extensions import db
 from tests.test_routes import TestConfig, close_test_log_handlers
 from scripts.verify_hml_promotion import verify
+from scripts.check_security_headers import HTTPSRedirectHandler, check_headers
+from urllib.request import Request
 
 
 class SecurityReleaseTests(unittest.TestCase):
@@ -48,3 +50,24 @@ class SecurityReleaseTests(unittest.TestCase):
             with patch('scripts.verify_hml_promotion.subprocess.check_output', side_effect=[b'aaa', b'bbb']):
                 with self.assertRaises(SystemExit):
                     verify()
+
+
+class HTTPSRedirectTests(unittest.TestCase):
+    def test_permanent_redirect_preserves_https_on_python310(self):
+        redirected = HTTPSRedirectHandler().redirect_request(
+            Request('https://app.example.test/login'), None, 308, 'Permanent Redirect', {},
+            'https://example.test/login')
+        self.assertEqual(redirected.full_url, 'https://example.test/login')
+        self.assertEqual(redirected.get_method(), 'GET')
+        self.assertTrue(callable(HTTPSRedirectHandler.http_error_308))
+
+    def test_redirect_cannot_downgrade_transport(self):
+        for status in (301, 302, 307, 308):
+            with self.subTest(status=status), self.assertRaises(ValueError):
+                HTTPSRedirectHandler().redirect_request(
+                    Request('https://example.test/login'), None, status, '', {},
+                    'http://example.test/login')
+
+    def test_initial_url_requires_https(self):
+        with self.assertRaises(ValueError):
+            check_headers('http://example.test/login')

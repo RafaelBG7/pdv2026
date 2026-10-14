@@ -58,6 +58,7 @@ class EnvironmentIsolationTestCase(unittest.TestCase):
         self.assertIn('python3 scripts/verify_hml_promotion.py', alternate)
         self.assertNotIn('- develop', production)
         self.assertIn('- develop', hml)
+        self.assertNotIn('paths-ignore:', hml)
         self.assertNotIn('deploy_self_hosted_app.sh', hml)
         self.assertIn('deploy_hml.sh', hml)
 

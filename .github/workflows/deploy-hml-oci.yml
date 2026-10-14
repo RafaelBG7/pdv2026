@@ -24,9 +24,6 @@ on:
   push:
     branches:
       - develop
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
 
 permissions:
   contents: read

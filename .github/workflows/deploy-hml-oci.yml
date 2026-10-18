@@ -28,9 +28,9 @@ on:
 permissions:
   contents: read
 
-# Produção e HML compartilham uma VM pequena; nunca buildar as duas stacks ao mesmo tempo.
+# HML usa um runner exclusivo; produção mantém seu runner e sua concorrência.
 concurrency:
-  group: girofy-oci-deploy
+  group: skygest-hml-deploy
   cancel-in-progress: false
 
 jobs:
@@ -109,7 +109,7 @@ jobs:
     runs-on:
       - self-hosted
       - linux
-      - girofy-oci
+      - skygest-hml-oci
     needs:
       - test
       - windows-test
@@ -120,18 +120,23 @@ jobs:
       HML_LOOPBACK_PORT: '18081'
       HML_DOMAIN: hml.skygest.com.br
       HML_APP_DOMAIN: app.hml.skygest.com.br
-      EXPECTED_PUBLIC_IP: ${{ vars.EXPECTED_PUBLIC_IP || '168.75.101.126' }}
+      HML_GATEWAY_MODE: external
       HML_MASTER_DEFAULT_PASSWORD: ${{ secrets.HML_MASTER_DEFAULT_PASSWORD }}
       DEPLOY_SHA: ${{ github.sha }}
     steps:
+      - name: Confirmar host dedicado
+        run: test "$(hostname)" = skygest-hml-01
+
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Publicar stack HML isolada
         run: bash scripts/deploy_hml.sh
 
-      - name: Configurar e validar gateway HTTPS HML
-        run: bash scripts/configure_hml_gateway.sh
+      - name: Validar stack no host dedicado
+        run: |
+          test "$(hostname)" = skygest-hml-01
+          curl -fsS http://127.0.0.1:18081/health/dependencies >/dev/null
 
       - name: Validar segurança HTTPS HML
         run: python3 scripts/check_security_headers.py https://app.hml.skygest.com.br/login
@@ -150,7 +155,7 @@ jobs:
     runs-on:
       - self-hosted
       - linux
-      - girofy-oci
+      - skygest-hml-oci
     environment: homologation
     env:
       HML_DEPLOY_PATH: /opt/girofy/hml
@@ -161,6 +166,7 @@ jobs:
       - name: Validar solicitação
         shell: bash
         run: |
+          test "$(hostname)" = skygest-hml-01
           test -n "$HML_COPY_USERNAME"
           test -n "$HML_COPY_COMPANY_NAME"
           test -n "$HML_COPY_USER_PASSWORD"

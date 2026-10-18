@@ -165,7 +165,7 @@ run_backup() {
 
   echo "Iniciando backup completo do MySQL em $timestamp UTC."
   rm -f "$temporary_path"
-  mysqldump \
+  nice -n 15 mysqldump \
     --host="$MYSQL_HOST_VALUE" \
     --port="$MYSQL_PORT_VALUE" \
     --user="$MYSQL_USER_VALUE" \

@@ -51,10 +51,14 @@ export HML_DEPLOY_PATH
 bash "$HML_DEPLOY_PATH/scripts/provision_hml_env.sh"
 cd "$HML_DEPLOY_PATH"
 
-python3 scripts/validate_environment_isolation.py \
-  --environment homologation \
-  --env-file .env.hml \
-  --production-env-file "$PRODUCTION_DEPLOY_PATH/.env"
+isolation_args=(--environment homologation --env-file .env.hml)
+if [[ -f "$PRODUCTION_DEPLOY_PATH/.env" ]]; then
+  isolation_args+=(--production-env-file "$PRODUCTION_DEPLOY_PATH/.env")
+elif [[ "${HML_GATEWAY_MODE:-shared}" != external || "$(hostname)" != skygest-hml-01 ]]; then
+  echo "Sem configuração de produção: exige host HML dedicado e gateway externo." >&2
+  exit 1
+fi
+python3 scripts/validate_environment_isolation.py "${isolation_args[@]}"
 
 export APP_VERSION="$DEPLOY_SHA"
 export HML_LOOPBACK_PORT

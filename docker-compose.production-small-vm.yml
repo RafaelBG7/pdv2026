@@ -1,0 +1,10 @@
+# Aplicar somente após validação em HML e autorização explícita de produção.
+# docker compose -f docker-compose.oci.yml -f docker-compose.production-small-vm.yml up -d mysql
+services:
+  mysql:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=64
+      - --performance-schema=OFF

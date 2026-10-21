@@ -452,18 +452,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
   applySidebar(storedSidebar === 'collapsed');
 
+  const mobileSidebar = document.getElementById('appSidebar');
+  const mobileSidebarDismiss = document.querySelector('[data-mobile-sidebar-dismiss]');
+  const mainContent = document.querySelector('.main-content');
+
   function setMobileSidebar(open) {
     if (!appShell) {
       return;
     }
 
+    const wasOpen = appShell.classList.contains('mobile-sidebar-open');
     const shouldOpen = Boolean(open && mobileSidebarQuery.matches);
+    if (mobileSidebar) mobileSidebar.inert = mobileSidebarQuery.matches && !shouldOpen;
+    if (mainContent && mobileSidebar) mainContent.inert = shouldOpen;
     appShell.classList.toggle('mobile-sidebar-open', shouldOpen);
     document.body.classList.toggle('mobile-navigation-open', shouldOpen);
     if (mobileSidebarToggle) {
       mobileSidebarToggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
       mobileSidebarToggle.setAttribute('aria-label', shouldOpen ? 'Fechar menu' : 'Abrir menu');
     }
+    if (shouldOpen && !wasOpen && mobileSidebarDismiss) mobileSidebarDismiss.focus();
+    if (!shouldOpen && wasOpen && mobileSidebarToggle && mobileSidebarQuery.matches) mobileSidebarToggle.focus();
+  }
+
+  setMobileSidebar(false);
+
+  if (mobileSidebarDismiss) {
+    mobileSidebarDismiss.addEventListener('click', function () { setMobileSidebar(false); });
   }
 
   if (mobileSidebarToggle) {
@@ -479,6 +494,13 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.addEventListener('keydown', function (event) {
+    if (event.key === 'Tab' && mobileSidebar && appShell.classList.contains('mobile-sidebar-open')) {
+      const targets = Array.from(mobileSidebar.querySelectorAll('a[href], button:not([disabled])')).filter(function (element) { return element.getClientRects().length; });
+      const first = targets[0];
+      const last = targets[targets.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
     if (event.key === 'Escape' && appShell && appShell.classList.contains('mobile-sidebar-open')) {
       setMobileSidebar(false);
       if (mobileSidebarToggle) {

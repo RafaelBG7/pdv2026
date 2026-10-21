@@ -2,7 +2,7 @@
 <html lang="pt-BR" data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}{% if request.endpoint == 'main.dashboard' %}Dashboard | {% elif request.endpoint in ['catalog.products', 'catalog.new_product', 'catalog.edit_product'] %}Produtos | {% elif request.endpoint == 'catalog.categories' %}Categorias | {% elif request.endpoint in ['main.sales', 'main.new_sale', 'main.sale_detail'] %}Vendas | {% elif request.endpoint == 'main.cash_register' %}Caixa | {% elif request.endpoint in ['main.stock_movements', 'main.stock_entry', 'main.stock_adjustment'] %}Estoque | {% elif request.endpoint == 'main.payables' %}Contas a pagar | {% elif request.endpoint == 'main.reports' %}Relatórios | {% elif request.endpoint == 'auth.settings' %}Configurações | {% endif %}SkyGest{% endblock %}</title>
     <meta name="application-name" content="SkyGest">
@@ -36,6 +36,7 @@
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='2026091002') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css', v='2026102101') }}">
   </head>
   <body>
     {% macro sidebar_icon(name) -%}
@@ -80,6 +81,7 @@
                   <h4>SkyGest</h4>
                 </div>
               </div>
+              <button class="mobile-sidebar-dismiss" type="button" data-mobile-sidebar-dismiss aria-label="Fechar menu">✕</button>
               <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Minimizar menu" title="Minimizar menu">
                 <span data-sidebar-toggle-icon>‹</span>
               </button>
@@ -285,6 +287,6 @@
     {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js', v='2026093001') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js', v='2026102101') }}"></script>
   </body>
 </html>

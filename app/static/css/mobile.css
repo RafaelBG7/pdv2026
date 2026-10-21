@@ -1,0 +1,102 @@
+/* Mobile web phase 1. Loaded after the desktop styles; no business rules change. */
+.mobile-sidebar-dismiss { display: none; }
+
+@media (max-width: 900px) {
+  /* Keep navigation usable with touch, keyboard and a screen reader. */
+  body.mobile-navigation-open { touch-action: auto; }
+  .sidebar { overscroll-behavior-y: contain; }
+  .mobile-sidebar-dismiss {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: .65rem;
+    color: var(--text);
+    background: var(--surface);
+  }
+  .sidebar-header { gap: .75rem; }
+  .sidebar .nav-link { min-height: 44px; }
+  .btn, .form-control, .form-select { min-height: 44px; }
+  /* 16px prevents Safari from zooming the page when focusing small inputs. */
+  .form-control, .form-select, .input-group-text { font-size: max(1rem, 16px); }
+  textarea.form-control { min-height: 100px; }
+  .form-check-input { width: 1.25rem; height: 1.25rem; }
+  .form-check-label { padding-block: .35rem; }
+  .btn { white-space: normal; overflow-wrap: anywhere; }
+  .content-frame { padding-right: max(.85rem, env(safe-area-inset-right)); }
+  .topbar { padding-right: max(.85rem, env(safe-area-inset-right)); }
+  .topbar-user-area { min-width: 0; }
+  .pagination { flex-wrap: wrap; gap: .25rem; }
+  .pagination .page-link { min-width: 44px; min-height: 44px; text-align: center; }
+  .table-responsive { max-width: 100%; -webkit-overflow-scrolling: touch; }
+  .table-responsive .btn { min-width: 44px; }
+  .product-suggestion-list { max-height: min(320px, 45dvh); overflow-y: auto; overscroll-behavior: contain; }
+  .product-suggestion-item { min-height: 56px; white-space: normal; }
+  .product-suggestion-title, .product-suggestion-meta { overflow-wrap: anywhere; }
+
+  /* A compact card per item instead of six desktop columns (or six tall rows). */
+  .sale-form-shell .sale-layout { grid-template-columns: minmax(0, 1fr); }
+  .sale-items-header { display: none; }
+  .sale-items-lines .sale-item-row,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: .75rem;
+    padding: .85rem;
+    border-radius: .75rem;
+  }
+  .sale-items-lines .sale-item-row > div:first-child,
+  html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row > div:first-child,
+  .sale-items-lines .sale-row-action { grid-column: 1 / -1; }
+  .sale-items-lines .sale-item-row > div { display: block; }
+  .sale-items-lines .sale-item-row .form-label {
+    display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    margin-bottom: .25rem;
+    clip: auto;
+    clip-path: none;
+    overflow: visible;
+    font-size: .85rem;
+  }
+  .sale-items-lines .sale-item-row .form-control { width: 100%; min-width: 0; }
+  .sale-items-lines .sale-row-action .btn { width: 100%; }
+  .sale-summary-panel { position: static; }
+  .sale-total-box--primary strong { white-space: normal; overflow-wrap: anywhere; }
+  .sale-form-shell .shortcut-label { display: none; }
+
+  /* Use dynamic viewport height so browser bars don't hide modal actions. */
+  .sale-payment-step,
+  html[data-text-scale='extra'] .sale-payment-step {
+    inset: .5rem;
+    width: auto;
+    max-height: calc(100dvh - 1rem);
+    transform: none;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    overscroll-behavior-y: contain;
+  }
+  .sale-payment-step .sale-payment-layout { grid-template-columns: minmax(0, 1fr); }
+  .discount-modal, .sale-quantity-modal {
+    max-height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding: max(.75rem, env(safe-area-inset-top)) max(.75rem, env(safe-area-inset-right)) max(.75rem, env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left));
+  }
+  .discount-dialog, .sale-quantity-dialog {
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-frame { padding-right: max(.65rem, env(safe-area-inset-right)); }
+  .topbar { padding-right: max(.65rem, env(safe-area-inset-right)); }
+  .sale-products-panel, .sale-summary-panel { padding: .85rem; }
+  .sale-product-picker { padding: .75rem; }
+  .sale-page-header { gap: .75rem !important; }
+  .sale-page-header > .btn { width: 100%; }
+  .sale-payment-step .payment-grid { grid-template-columns: minmax(0, 1fr); }
+}

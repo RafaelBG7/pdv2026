@@ -73,7 +73,7 @@
           </div>
           <div>
             <label class="form-label">Qtd.</label>
-            <input class="form-control" name="quantity[]" type="number" min="1" value="{{ item.quantity or '1' }}" data-quantity-input required>
+            <input class="form-control" name="quantity[]" type="number" inputmode="numeric" min="1" value="{{ item.quantity or '1' }}" data-quantity-input required>
           </div>
           <div>
             <label class="form-label">Subtotal</label>
@@ -105,7 +105,7 @@
           </div>
           <div>
             <label class="form-label">Qtd.</label>
-            <input class="form-control" name="quantity[]" type="number" min="1" value="1" data-quantity-input required>
+            <input class="form-control" name="quantity[]" type="number" inputmode="numeric" min="1" value="1" data-quantity-input required>
           </div>
           <div>
             <label class="form-label">Subtotal</label>
@@ -181,7 +181,7 @@
 
       <p class="sale-quantity-meta" data-sale-quantity-meta></p>
       <label class="form-label" for="sale_product_quantity">Quantidade do produto</label>
-      <input class="form-control" id="sale_product_quantity" type="number" min="1" step="1" value="1" data-sale-quantity-input>
+      <input class="form-control" id="sale_product_quantity" type="number" inputmode="numeric" min="1" step="1" value="1" data-sale-quantity-input>
       <button class="btn btn-primary w-100 mt-3" type="button" data-sale-quantity-add>Adicionar produto</button>
     </div>
   </div>

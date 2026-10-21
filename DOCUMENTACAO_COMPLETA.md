@@ -28538,3 +28538,12 @@ Origem: `docs/14-auditoria/validacao-mermaid.json`.
 ]
 ```
 
+
+
+## Evolução mobile — fase 1 (21/10/2026)
+
+A primeira fase adapta o site Flask/Jinja existente para uso online em celulares Android e iPhone. A segunda fase promove a mesma alteração validada em homologação para produção, somente com autorização explícita posterior ao teste manual. A terceira fase será o desenvolvimento e distribuição dos aplicativos Android e iOS; não está incluída nesta entrega.
+
+A interface carrega `app/static/css/mobile.css` após o estilo principal. Até 900 px, os controles têm alvo de toque mínimo de 44 px, campos usam fonte mínima de 16 px, o menu lateral tem botão de fechamento e isolamento de foco, e cada item da venda agrupa nome, preço, estoque, quantidade e subtotal em cartão compacto. As janelas de pagamento, quantidade e desconto respeitam a altura dinâmica do navegador e as áreas seguras. Quantidades solicitam teclado numérico. Tabelas continuam com rolagem horizontal quando necessário; o cadastro, as permissões, os valores monetários, a API e o cliente Windows mantêm seus contratos.
+
+Validação local: 311 testes Python passaram em base temporária SQLite, com envio de e-mail suprimido. Verificação visual e funcional em navegador com larguras de celular e desktop; a emulação não substitui teste físico de Safari/iPhone, Chrome/Android ou do teclado virtual. Publicação e teste manual HML serão registrados após conclusão. Produção, nova versão e aplicativos permanecem pendentes.

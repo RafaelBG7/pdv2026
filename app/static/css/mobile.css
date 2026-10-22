@@ -49,7 +49,7 @@
   }
   .sale-items-lines .sale-item-row > div:first-child,
   html:not([data-sidebar-state='collapsed']) .app-shell:not(.sidebar-collapsed) .sale-items-lines .sale-item-row > div:first-child,
-  .sale-items-lines .sale-row-action { grid-column: 1 / -1; }
+  .sale-items-lines .sale-row-action { grid-column: 1 / -1 !important; }
   .sale-items-lines .sale-item-row > div { display: block; }
   .sale-items-lines .sale-item-row .form-label {
     display: block;

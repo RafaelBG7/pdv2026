@@ -28,6 +28,18 @@ class MoneyTestCase(unittest.TestCase):
         self.assertEqual(money_json(Decimal('2480.35')), '2480.35')
         self.assertEqual(format_brl(Decimal('2480.35')), 'R$ 2.480,35')
 
+    def test_format_brl_displays_losses_without_relaxing_input_validation(self):
+        for raw_value in (Decimal('-1234.56'), '-1.234,56'):
+            with self.subTest(raw_value=raw_value):
+                self.assertEqual(format_brl(raw_value), 'R$ -1.234,56')
+                with self.assertRaises(ValueError):
+                    parse_money_decimal(raw_value)
+                with self.assertRaises(ValueError):
+                    money_json(raw_value)
+        for raw_value in ('NaN', 'Infinity', '-Infinity', True):
+            with self.subTest(raw_value=raw_value), self.assertRaises(ValueError):
+                format_brl(raw_value)
+
     def test_import_style_decimal_separators_preserve_cents(self):
         cases = {
             '0,01': Decimal('0.01'),

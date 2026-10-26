@@ -7430,6 +7430,29 @@ class RouteTestCase(unittest.TestCase):
         self.assertIn('Lucro do caixa'.encode(), cash_response.data)
         self.assertIn('R$ 3,00'.encode(), cash_response.data)
 
+    def test_dashboard_and_cash_register_render_negative_profit(self):
+        self.create_api_user(username='loss-operator', password='LossOperator123')
+        self.login('loss-operator', 'LossOperator123')
+        self.open_cash_register('0,00')
+        with self.app.app_context():
+            user = User.query.filter_by(username='loss-operator').one()
+            product = Product(name='Produto com prejuízo', company_id=user.company_id,
+                              cost_price=Decimal('10.00'), sale_price=Decimal('5.00'),
+                              stock_quantity=5, active=True)
+            db.session.add(product)
+            db.session.commit()
+            product_id = product.id
+        response = self.client.post('/vendas/nova', data={
+            'product_id[]': [str(product_id)], 'quantity[]': ['1'],
+            'payment_money': '5,00',
+        })
+        self.assertEqual(response.status_code, 302)
+        for path in ('/dashboard', '/caixa'):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(b'R$ -5,00', response.data)
+
     def test_cash_register_formats_large_currency_values_with_brazilian_grouping(self):
         self.login()
 

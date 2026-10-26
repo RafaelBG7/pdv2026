@@ -29,7 +29,7 @@ def percent_decimal(raw_value):
     return decimal_value(raw_value, quantum=PERCENT_QUANTUM)
 
 
-def _normalized_money_decimal(raw_value, *, positive=False, enforce_maximum=True):
+def _normalized_money_decimal(raw_value, *, positive=False, enforce_maximum=True, allow_negative=False):
     """Normalize monetary values without losing decimal precision."""
     if isinstance(raw_value, bool) or raw_value is None:
         raise ValueError('missing_money')
@@ -50,7 +50,7 @@ def _normalized_money_decimal(raw_value, *, positive=False, enforce_maximum=True
     if not value.is_finite():
         raise ValueError('invalid_money')
     value = value.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
-    if value < 0 or (positive and value <= 0):
+    if (value < 0 and not allow_negative) or (positive and value <= 0):
         raise ValueError('invalid_money')
     if enforce_maximum and value > MAX_MONEY:
         raise ValueError('money_out_of_range')
@@ -73,6 +73,6 @@ def money_json(value):
 
 
 def format_brl(value):
-    amount = _normalized_money_decimal(value or 0, enforce_maximum=False)
+    amount = _normalized_money_decimal(value or 0, enforce_maximum=False, allow_negative=True)
     whole, cents = format(amount, ',.2f').split('.')
     return f'R$ {whole.replace(",", ".")},{cents}'
